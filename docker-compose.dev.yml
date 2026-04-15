@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgis/postgis:18-3.6-alpine
+    container_name: badges_postgis
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=badges_system_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:8.6-alpine
+    container_name: badges_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+volumes:
+  postgis_data:

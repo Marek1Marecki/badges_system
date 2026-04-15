@@ -1,0 +1,270 @@
+# Kompletny .gitignore dla projektu Django z uv i Dockerem
+# =============================================================================
+
+# 1. Python - podstawowe pliki wygenerowane
+# -------------------------------------------
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# 2. Virtual environments
+# ------------------------
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# 3. Sekrety i konfiguracje lokalne (KRYTYCZNE)
+# --------------------------------------------
+.env
+.env.dev
+.env.prod
+.env.local
+.env.development
+.env.production
+.env.test
+docker-compose.override.yml
+local_settings.py
+
+# 4. Cache Pythona i narzedzi deweloperskich
+# ------------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.import_linter_cache/
+.qodo/
+.zenflow/
+.zencoder/
+
+# 5. Bazy danych
+# --------------
+# SQLite (testy)
+*.sqlite3
+*.sqlite3-journal
+db.sqlite3
+
+# PostgreSQL zrzuty
+*.sql
+*.dump
+clean_dump.sql
+dump_regionow.sql
+
+# Redis dump
+dump.rdb
+
+# 6. Django specyficzne
+# ---------------------
+# Logi
+*.log
+
+# Tlumaczenia
+*.mo
+*.pot
+
+# Media i pliki statyczne
+media/
+staticfiles/
+uploads/
+downloads/
+temp/
+
+# 7. Celery
+# ---------
+celerybeat-schedule
+celerybeat.pid
+
+# 8. Docker
+# ----------
+docker-compose.override.yml
+
+# 9. IDE i edytory
+# ----------------
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history/
+
+# PyCharm
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Inne edytory
+*.swp
+*.swo
+*~
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 10. Zarzadzanie zaleznosciami
+# -----------------------------
+# pipenv
+#Pipfile.lock
+
+# poetry
+#poetry.lock
+
+# pdm
+#pdm.lock
+.pdm.toml
+
+# 11. Dodatkowe narzedzia
+# ----------------------
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# PEP 582
+__pypackages__/
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+site/
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# SageMath parsed files
+*.sage.py
+
+# 12. Pliki tymczasowe i kopie zapasowe
+# ------------------------------------
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+
+# 13. Systemowe pliki tymczasowe
+# ------------------------------
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# 14. Logi systemowe i raporty
+# ---------------------------
+logs/
+*.log.*
+
+# 15. Pliki konfiguracyjne systemowe
+# ----------------------------------
+# Local History for Visual Studio Code
+.history/
+
+# Built Visual Studio Code Extensions
+*.vsix
+
+# 16. Inne
+# --------
+# Node modules (jesli uzywasz frontendu)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Pliki generowane przez systemy CI/CD
+.jenkins/
+.gitlab-ci.yml
+
+# Pliki tymczasowe systemu budowania
+.tmp/
+.temp/
+
+# Backupy baz danych
+*.backup
+*.bak
+
+# Pliki z danymi uzytkownikow (jesli generowane)
+user_data/
+user_files/
+
+# Pliki cache systemowe
+.cache/
+.sass-cache/
+
+# Pliki generowane przez Leaflet (mapy)
+leaflet_data/
+
+# Pliki generowane przez Pillow (obrazy)
+.pil/
+
+# =============================================================================
+# UWAGA: Ten plik jest kompletnym .gitignore dla projektu badges-system
+# Zawiera wszystkie wzorce potrzebne dla Django, PostgreSQL, Redis, Celery,
+# uv, Docker oraz narzedzi deweloperskich uzywanych w projekcie.
+# =============================================================================

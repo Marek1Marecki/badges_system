@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1760" height="930" viewBox="0 0 1760 930">
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="#5b6470" />
+  </marker>
+</defs>
+<rect width="100%" height="100%" fill="#f7f7f5" />
+<rect x="40" y="40" width="256" height="472" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
+<text x="58" y="64" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#26313d">domain</text>
+<rect x="320" y="40" width="256" height="364" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
+<text x="338" y="64" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#26313d">application</text>
+<rect x="600" y="40" width="256" height="148" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
+<text x="618" y="64" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#26313d">ports</text>
+<rect x="880" y="40" width="256" height="310" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
+<text x="898" y="64" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#26313d">infrastructure</text>
+<rect x="1160" y="40" width="256" height="850" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
+<text x="1178" y="64" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#26313d">interface</text>
+<path d="M 558.0 206.0 C 733.0 206.0, -117.0 476.0, 58.0 476.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 838.0 152.0 C 1111.0 152.0, -215.0 206.0, 58.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 368.0 C 635.0 368.0, 261.0 206.0, 338.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 368.0 C 635.0 368.0, 261.0 260.0, 338.0 260.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 368.0 C 606.0 368.0, 570.0 152.0, 618.0 152.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 368.0 C 733.0 368.0, -117.0 260.0, 58.0 260.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1398.0 206.0 C 1475.0 206.0, 1101.0 314.0, 1178.0 314.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1398.0 206.0 C 1475.0 206.0, 1101.0 692.0, 1178.0 692.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1398.0 206.0 C 1475.0 206.0, 1101.0 746.0, 1178.0 746.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1398.0 314.0 C 1475.0 314.0, 1101.0 692.0, 1178.0 692.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1398.0 314.0 C 1573.0 314.0, 723.0 152.0, 898.0 152.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1398.0 746.0 C 1475.0 746.0, 1101.0 692.0, 1178.0 692.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 278.0 206.0 C 355.0 206.0, -19.0 260.0, 58.0 260.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 278.0 206.0 C 355.0 206.0, -19.0 368.0, 58.0 368.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 278.0 206.0 C 355.0 206.0, -19.0 476.0, 58.0 476.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 278.0 368.0 C 355.0 368.0, -19.0 476.0, 58.0 476.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1118.0 152.0 C 1166.0 152.0, 1130.0 692.0, 1178.0 692.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1118.0 152.0 C 1195.0 152.0, 821.0 314.0, 898.0 314.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1118.0 260.0 C 1293.0 260.0, 443.0 152.0, 618.0 152.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1118.0 260.0 C 1166.0 260.0, 1130.0 692.0, 1178.0 692.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1118.0 260.0 C 1489.0 260.0, -313.0 206.0, 58.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1118.0 260.0 C 1489.0 260.0, -313.0 368.0, 58.0 368.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1118.0 260.0 C 1489.0 260.0, -313.0 476.0, 58.0 476.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<rect x="338" y="80" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
+<text x="350" y="103" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application</text>
+<rect x="338" y="134" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
+<text x="350" y="157" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.dto</text>
+<rect x="338" y="188" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
+<text x="350" y="211" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.dto.ascent_dto</text>
+<rect x="338" y="242" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
+<text x="350" y="265" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.exceptions</text>
+<rect x="618" y="80" width="220" height="36" rx="10" fill="khaki" stroke="#7f8a96" stroke-width="1.2" />
+<text x="630" y="103" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.ports</text>
+<rect x="618" y="134" width="220" height="36" rx="10" fill="khaki" stroke="#7f8a96" stroke-width="1.2" />
+<text x="630" y="157" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.ports.badge_repository_port</text>
+<rect x="338" y="296" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
+<text x="350" y="319" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases</text>
+<rect x="338" y="350" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
+<text x="350" y="373" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases.verify_badge</text>
+<rect x="1178" y="80" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="103" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps</text>
+<rect x="1178" y="134" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="157" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.badges</text>
+<rect x="1178" y="188" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="211" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.badges.admin</text>
+<rect x="1178" y="242" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="265" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.badges.apps</text>
+<rect x="1178" y="296" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="319" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.badges.forms</text>
+<rect x="1178" y="350" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="373" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.badges.migrations</text>
+<rect x="1178" y="404" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="427" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.badges.migrations.0001_initial</text>
+<rect x="1178" y="458" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="481" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.badges.migrations.0002_alter_touristobject_type</text>
+<rect x="1178" y="512" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="535" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.badges.migrations.0003_osmtypemapping_peakmodel</text>
+<rect x="1178" y="566" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="589" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.badges.migrations.0004_touristobject_local_names_and_more</text>
+<rect x="1178" y="620" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="643" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.badges.migrations.0005_alter_touristobject_is_active</text>
+<rect x="1178" y="674" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="697" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.badges.models</text>
+<rect x="1178" y="728" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="751" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.badges.tasks</text>
+<rect x="1178" y="782" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="805" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.badges.tests</text>
+<rect x="1178" y="836" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="859" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.badges.views</text>
+<rect x="58" y="80" width="220" height="36" rx="10" fill="lightblue" stroke="#7f8a96" stroke-width="1.2" />
+<text x="70" y="103" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">domain</text>
+<rect x="58" y="134" width="220" height="36" rx="10" fill="lightblue" stroke="#7f8a96" stroke-width="1.2" />
+<text x="70" y="157" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">domain.entities</text>
+<rect x="58" y="188" width="220" height="36" rx="10" fill="lightblue" stroke="#7f8a96" stroke-width="1.2" />
+<text x="70" y="211" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">domain.entities.badge_version</text>
+<rect x="58" y="242" width="220" height="36" rx="10" fill="lightblue" stroke="#7f8a96" stroke-width="1.2" />
+<text x="70" y="265" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">domain.exceptions</text>
+<rect x="58" y="296" width="220" height="36" rx="10" fill="lightblue" stroke="#7f8a96" stroke-width="1.2" />
+<text x="70" y="319" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">domain.rules</text>
+<rect x="58" y="350" width="220" height="36" rx="10" fill="lightblue" stroke="#7f8a96" stroke-width="1.2" />
+<text x="70" y="373" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">domain.rules.badge_rules</text>
+<rect x="58" y="404" width="220" height="36" rx="10" fill="lightblue" stroke="#7f8a96" stroke-width="1.2" />
+<text x="70" y="427" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">domain.value_objects</text>
+<rect x="58" y="458" width="220" height="36" rx="10" fill="lightblue" stroke="#7f8a96" stroke-width="1.2" />
+<text x="70" y="481" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">domain.value_objects.ascent</text>
+<rect x="898" y="80" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
+<text x="910" y="103" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure</text>
+<rect x="898" y="134" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
+<text x="910" y="157" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.adapters.osm_adapter</text>
+<rect x="898" y="188" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
+<text x="910" y="211" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.adapters.persistence</text>
+<rect x="898" y="242" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
+<text x="910" y="265" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.adapters.persistence.django_badge_repo</text>
+<rect x="898" y="296" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
+<text x="910" y="319" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.exceptions</text>
+</svg>

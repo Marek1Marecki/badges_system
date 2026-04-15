@@ -1,0 +1,33 @@
+              {% extends "admin/base_site.html" %}
+
+{% block content %}
+<form action="" method="post">
+    {% csrf_token %}
+
+    <div>
+        <p>Wybrałeś poniższe obiekty turystyczne:</p>
+        <ul>
+            {% for obj in objects %}
+            <li>{{ obj.name }}</li>
+            {% endfor %}
+        </ul>
+
+        <p>Wybierz docelową Odznakę:</p>
+        <!-- Wyświetlenie formularza. Tutaj pojawi się dropdown -->
+        {{ form.as_p }}
+
+        <!-- Przekazanie IDków zaznaczonych obiektów, żeby formularz POST wiedział, co ma przypiąć -->
+        {% for obj in objects %}
+        <input type="hidden" name="{{ action_checkbox_name }}" value="{{ obj.pk }}" />
+        {% endfor %}
+
+        <!-- Powiadomienie Django, jaką akcję obecnie wykonujemy -->
+        <input type="hidden" name="action" value="add_to_badge_version" />
+
+        <div>
+            <input type="submit" name="apply" value="Przypnij do Odznaki" class="default" />
+            <a href="#" onclick="window.history.back(); return false;" class="button">Anuluj</a>
+        </div>
+    </div>
+</form>
+{% endblock %}

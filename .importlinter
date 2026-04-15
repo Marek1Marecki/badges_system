@@ -1,0 +1,27 @@
+[importlinter]
+root_packages =
+    domain
+    application
+    infrastructure
+    apps
+include_external_packages = True
+
+[importlinter:contract:domain-purity]
+name = Domain must not import from application, infrastructure, apps or django
+type = forbidden
+source_modules = domain
+forbidden_modules =
+    application
+    infrastructure
+    apps
+    django
+    pydantic
+
+[importlinter:contract:application-purity]
+name = Application must not import from infrastructure, apps or django
+type = forbidden
+source_modules = application
+forbidden_modules =
+    infrastructure
+    apps
+    django

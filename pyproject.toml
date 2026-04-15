@@ -1,0 +1,90 @@
+[project]
+name = "badges-system"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "celery>=5.6.3",
+    "django>=6.0.3",
+    "django-jsonform>=2.23.2",
+    "django-leaflet>=0.33.0",
+    "httpx>=0.28.1",
+    "pillow>=12.2.0",
+    "psycopg>=3.3.3",
+    "pydantic-settings>=2.13.1",
+    "redis>=7.4.0",
+]
+
+[dependency-groups]
+dev = [
+    "import-linter>=2.11",
+    "mypy>=1.19.1",
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.1.0",
+    "pytest-django>=4.12.0",
+    "ruff>=0.15.8",
+]
+
+[tool.pytest.ini_options]
+# To jest informacja dla pytest-django:
+DJANGO_SETTINGS_MODULE = "config.settings"
+# Pozwala wtyczce pytest-django rozpoznać, że używamy jej do uruchomienia bazy danych
+python_files = ["test_*.py", "*_test.py"]
+markers = [
+    "integration: testy dotykające bazy danych lub zewnętrznych API",
+]
+addopts = ["--strict-markers", "--cov=.", "--cov-fail-under=80"]
+filterwarnings = [
+    "ignore:DateTimeField .* received a naive datetime:RuntimeWarning",
+]
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+disallow_untyped_defs = true
+warn_return_any = true
+ignore_missing_imports = true
+exclude = ["migrations"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
+
+[[tool.mypy.overrides]]
+module = ["infrastructure.*", "apps.*"]
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = ["django.*"]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "C4", "D", "S", "UP", "TID"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["D", "S101"]
+"**/domain/**" = ["S101"]
+"**/migrations/**" = ["D", "E501"]
+"**/admin.py" = ["D"]
+"infrastructure/**" = ["D"] # tymczasowo, do czasu pełnego wdrożenia
+"apps/**" = ["D"]
+"scripts/**" = ["D", "E501"]
+"bootstrap/**" = ["D"]
+
+# Banned API (Contract 14 & 17)
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"datetime.datetime.now" = { msg = "Use injected ClockPort instead of datetime.now()." }
+
+[tool.audit]
+domain_paths = ["domain"]
+application_paths = ["application"]
+bootstrap_paths = ["bootstrap"]
