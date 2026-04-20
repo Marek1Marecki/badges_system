@@ -31,7 +31,7 @@ class TestApplicationException:
 
     def test_application_exception_can_be_caught_as_exception(self):
         """Test że ApplicationException może być łapany jako Exception."""
-        with pytest.raises(Exception):
+        with pytest.raises(ApplicationException):
             raise ApplicationException("Test error")
 
 
@@ -72,7 +72,7 @@ class TestUseCaseError:
 
     def test_use_case_error_can_be_caught_as_exception(self):
         """Test że UseCaseError może być łapany jako Exception."""
-        with pytest.raises(Exception):
+        with pytest.raises(UseCaseError):
             raise UseCaseError("Test error")
 
     def test_use_case_error_specific_catch(self):
@@ -91,10 +91,10 @@ class TestUseCaseError:
     def test_exception_hierarchy_chain(self):
         """Test łańcucha dziedziczenia wyjątków."""
         # Test that both can be caught as Exception
-        with pytest.raises(Exception):
+        with pytest.raises(ApplicationException):
             raise ApplicationException("App error")
         
-        with pytest.raises(Exception):
+        with pytest.raises(UseCaseError):
             raise UseCaseError("Use case error")
         
         # Test that UseCaseError can be caught as ApplicationException

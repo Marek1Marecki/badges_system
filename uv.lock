@@ -53,6 +53,7 @@ dependencies = [
     { name = "django" },
     { name = "django-jsonform" },
     { name = "django-leaflet" },
+    { name = "django-tinymce" },
     { name = "httpx" },
     { name = "pillow" },
     { name = "psycopg" },
@@ -77,6 +78,7 @@ requires-dist = [
     { name = "django", specifier = ">=6.0.3" },
     { name = "django-jsonform", specifier = ">=2.23.2" },
     { name = "django-leaflet", specifier = ">=0.33.0" },
+    { name = "django-tinymce", specifier = ">=5.0.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "pillow", specifier = ">=12.2.0" },
     { name = "psycopg", specifier = ">=3.3.3" },
@@ -284,6 +286,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/71/35/be356129d89c98c8f4884e946abec7f7d21ddcce159bcde4970e754ea3ab/django_leaflet-0.33.0.tar.gz", hash = "sha256:b51c71e7179eed9961484dfd57b87bd1ece3b1ff7bee4dfb7f4d5702206b2eca", size = 562259, upload-time = "2025-12-01T13:00:41.525Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d5/9b/b323a5ea711961e77e9e362f55ea6d229d75daa6c1eaa37aec3ddaba1017/django_leaflet-0.33.0-py3-none-any.whl", hash = "sha256:bf30526daf7710f9afc35f0221284fe3b0558f3d9f259344ac3b82e23d28ec98", size = 577199, upload-time = "2025-12-01T13:00:39.069Z" },
+]
+
+[[package]]
+name = "django-tinymce"
+version = "5.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0a/71/e9556c8bc1d99c0cb4081af0abc6440d7cf53c87b6c7da7b117f2de24881/django_tinymce-5.0.0.tar.gz", hash = "sha256:6257669ed596accf5fa967ff3061276b2c5352baac1bbc658fcd8252b12ca38a", size = 1161002, upload-time = "2025-10-21T19:25:25.831Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/21/22/b7b9299b40995b524bb2f6d61ae55bd690858630ff5e0ba9a06210313195/django_tinymce-5.0.0-py3-none-any.whl", hash = "sha256:c2e9c5efd2cc6c036f4c57e602b133180433e2bd1513b897089d3c4fb4e20579", size = 1400312, upload-time = "2025-10-21T19:25:24.113Z" },
 ]
 
 [[package]]

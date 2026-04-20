@@ -63,7 +63,7 @@ class TestValidationError:
 
     def test_validation_error_can_be_caught_as_exception(self):
         """Test że ValidationError może być łapany jako Exception."""
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             raise ValidationError("Test error")
 
     def test_validation_error_specific_catch(self):

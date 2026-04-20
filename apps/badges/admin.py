@@ -276,7 +276,10 @@ class TouristObjectAdmin(LeafletGeoAdmin):
 
 @admin.register(OrganizerModel)
 class OrganizerAdmin(admin.ModelAdmin):
-    list_display = ("name", "club_rules_link")
+    list_display = ("name", "has_publication_consent", "club_rules_link")
+    # Dodano filtr boczny (szybkie szukanie tych bez zgody)
+    list_filter = ("has_publication_consent",)
+    search_fields = ("name",)
 
 
 @admin.register(BadgeModel)
@@ -307,7 +310,7 @@ class BadgeVersionAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ("Metadane", {"fields": ("badge", "version_code", "valid_from")}),
-        ("Archiwum Regulaminu", {"fields": ("official_link", "rules_link", "booklet_template_image")}),
+        ("Archiwum Regulaminu", {"fields": ("official_link", "rules_link", "rules_text", "booklet_template_image")}),
         ("Reguły Biznesowe (Czysta Domena)", {"fields": ("rules",)}),
         (
             "Pula Dopuszczalnych Obiektów",

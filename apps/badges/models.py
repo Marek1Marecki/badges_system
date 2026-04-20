@@ -4,6 +4,7 @@ from django.contrib.gis.db import models as gis_models
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django_jsonform.models.fields import JSONField
+from tinymce.models import HTMLField
 
 
 class RegionBaseModel(gis_models.Model):
@@ -148,6 +149,13 @@ class OrganizerModel(models.Model):
         blank=True,
         null=True,
         verbose_name="Wzór książeczki (PDF)",
+    )
+    has_publication_consent = models.BooleanField(
+        default=False,
+        verbose_name="Zgoda na publikację",
+        help_text=(
+            "Zaznacz, jeśli masz zgodę organizatora na publikację wizerunku odznak, książeczek i treści regulaminów.",
+        ),
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -396,6 +404,10 @@ RULES_SCHEMA = {
                     {"value": "ActivityRule", "title": "Ograniczenie Aktywności"},
                     {"value": "TimeLimitRule", "title": "Limit Czasowy w latach"},
                     {"value": "RequiresClubJoinDateRule", "title": "Wymaga zapisu do Klubu (tylko nowe wejścia)"},
+                    {"value": "MinAgeRule", "title": "Minimalny Wiek (w latach)"},
+                    {"value": "StartDateRule", "title": "Szczyty zaliczane od konkretnej daty"},
+                    {"value": "MandatoryObjectsRule", "title": "Obowiązkowe konkretne obiekty"},
+                    {"value": "GroupedAlternativesRule", "title": "Wymagane obiekty w różnych grupach/pasmach"},
                 ],
             },
             "allowed_activities": {
@@ -407,6 +419,49 @@ RULES_SCHEMA = {
             "limit_in_years": {
                 "type": "integer",
                 "title": "Limit w latach (tylko dla TimeLimitRule)",
+                "required": False,
+            },
+            "min_age": {
+                "type": "integer",
+                "title": "Minimalny Wiek (tylko dla MinAgeRule)",
+                "required": False,
+            },
+            "start_date": {
+                "type": "string",
+                "format": "date",  # To wymusi pojawienie się widgetu kalendarza!
+                "title": "Zalicza wejścia od daty (tylko dla StartDateRule)",
+                "required": False,
+            },
+            "mandatory_peak_ids": {
+                "type": "array",
+                "title": "ID obowiązkowych obiektów (Wpisz liczby, np. ID Babiej Góry)",
+                "items": {"type": "integer"},
+                "required": False,
+            },
+            "min_groups_required": {
+                "type": "integer",
+                "title": "Ile RÓŻNYCH grup/pasm turysta musi zaliczyć? (tylko dla GroupedAlternativesRule)",
+                "required": False,
+            },
+            "groups": {
+                "type": "array",
+                "title": "Grupy / Pasma / Wiaderka",
+                "items": {
+                    "type": "dict",
+                    "title": "Pojedyncza Grupa",
+                    "keys": {
+                        "group_name": {
+                            "type": "string",
+                            "title": "Nazwa grupy dla Twojej wygody (np. 'Tatry')",
+                            "required": False,
+                        },
+                        "peak_ids": {
+                            "type": "array",
+                            "title": "ID obiektów należących do tej grupy",
+                            "items": {"type": "integer"},
+                        },
+                    },
+                },
                 "required": False,
             },
         },
@@ -505,6 +560,12 @@ class BadgeVersionModel(models.Model):
         null=True,
         verbose_name="Wzór książeczki",
     )
+    rules_text = HTMLField(
+        blank=True,
+        null=True,
+        verbose_name="Treść regulaminu",
+        help_text="Wklej tutaj oryginalną treść regulaminu PTTK dla zachowania historii.",
+    )
     # Elastyczne reguły w postaci weryfikowanego JSON-a
     rules = JSONField(
         schema=RULES_SCHEMA,
@@ -560,7 +621,8 @@ class BadgeTierModel(models.Model):
     name = models.CharField(
         max_length=50,
         choices=LevelType.choices,
-        default=LevelType.JEDNOSTOPNIOWA,
+        null=True,
+        blank=False,
         verbose_name="Stopień",
     )
     order = models.PositiveSmallIntegerField(

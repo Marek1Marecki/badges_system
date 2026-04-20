@@ -1,3 +1,4 @@
+"""Konfiguracja aplikacji Celery dla projektu badges_system."""
 import os
 
 from celery import Celery

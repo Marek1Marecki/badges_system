@@ -9,6 +9,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -18,8 +19,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure---rxds0(35&_w++%pj&k#t)fkoq1lgrhrm^a+@m9q-m%m+^0mn'
+# ZASADA BEZSTANOWYCH TESTÓW: Używamy zaślepki, jeśli brak zmiennej środowiskowej
+SECRET_KEY = os.environ.get(
+    "DJANGO_SECRET_KEY",
+    "django-insecure-dummy-key-for-local-tests-only"
+)
+
+# W trybie testowym/lokalnym DEBUG jest domyślnie True
+DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
+
+# Fail-Fast: Blokujemy start aplikacji TYLKO na produkcji, jeśli ktoś zapomniał klucza!
+if not DEBUG and SECRET_KEY == "django-insecure-dummy-key-for-local-tests-only":
+    raise ValueError("DJANGO_SECRET_KEY environment variable must be set in production.")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -40,6 +51,7 @@ INSTALLED_APPS = [
     'django.contrib.gis',
     'django_jsonform',
     'leaflet',
+    'tinymce',
     
     'apps.badges',
 ]
@@ -145,3 +157,12 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 # Strefa czasowa dla zadań opóźnionych
 CELERY_TIMEZONE = 'Europe/Warsaw'
+
+
+TINYMCE_DEFAULT_CONFIG = {
+    "height": "500px",
+    "width": "100%",
+    "menubar": True,
+    "plugins": "advlist autolink lists link image charmap print preview anchor searchreplace visualblocks code fullscreen insertdatetime media table paste code help wordcount",
+    "toolbar": "undo redo | formatselect | bold italic backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help",
+}

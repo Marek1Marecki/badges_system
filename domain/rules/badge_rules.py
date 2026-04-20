@@ -109,3 +109,145 @@ class RequiresClubJoinDateRule(BadgeRule):
                 )
 
         return errors
+
+
+@dataclass(frozen=True)
+class MinAgeRule(BadgeRule):
+    """Reguła minimalnego wieku wymagana do zdobywania odznaki.
+
+    Weryfikuje, czy turysta w dniu wejścia na szczyt miał ukończony
+    określony wiek (np. 8 lat).
+    """
+
+    min_age: int
+
+    def validate(self, ascents: list[Ascent]) -> list[str]:
+        """Sprawdza, czy wiek w dniu wejścia spełnia minimalny próg.
+
+        Args:
+            ascents: Lista wejść do sprawdzenia.
+
+        Returns:
+            Lista komunikatów o błędach dla wejść poniżej wymaganego wieku.
+        """
+        errors = []
+
+        # TODO: Faza C - Pobrać z VerificationContext!
+        # Tymczasowa zaślepka: Zakładamy, że turysta urodził się 1 stycznia 2015 r.
+        mock_birth_date = date(2015, 1, 1)
+
+        for ascent in ascents:
+            # Precyzyjne wyliczenie wieku w dniu wejścia na szczyt (uwzględnia miesiące i dni)
+            age_at_ascent = (
+                ascent.ascent_date.year
+                - mock_birth_date.year
+                - ((ascent.ascent_date.month, ascent.ascent_date.day) < (mock_birth_date.month, mock_birth_date.day))
+            )
+
+            if age_at_ascent < self.min_age:
+                errors.append(
+                    f"Wejście na szczyt (ID: {ascent.peak_id}) odrzucone. "
+                    f"Wiek w dniu wejścia ({age_at_ascent} lat) był mniejszy "
+                    f"niż wymagane {self.min_age} lat."
+                )
+
+        return errors
+
+
+@dataclass(frozen=True)
+class StartDateRule(BadgeRule):
+    """Reguła określająca datę, od której zaliczane są wejścia na szczyty.
+
+    Weryfikuje, czy turysta zdobył szczyt po dacie wejścia w życie regulaminu.
+    """
+
+    start_date: date
+
+    def validate(self, ascents: list[Ascent]) -> list[str]:
+        """Sprawdza, czy wejścia są późniejsze niż data wejścia regulaminu.
+
+        Args:
+            ascents: Lista wejść do sprawdzenia.
+
+        Returns:
+            Lista komunikatów o błędach dla wejść sprzed daty startowej.
+        """
+        errors = []
+        for ascent in ascents:
+            if ascent.ascent_date < self.start_date:
+                errors.append(
+                    f"Wejście na szczyt (ID: {ascent.peak_id}) odrzucone. "
+                    f"Data wejścia ({ascent.ascent_date}) jest przed datą wejścia "
+                    f"w życie regulaminu odznaki ({self.start_date})."
+                )
+        return errors
+
+
+@dataclass(frozen=True)
+class MandatoryObjectsRule(BadgeRule):
+    """Reguła wymagająca zdobycia konkretnych, wskazanych obiektów z puli.
+
+    Niezależnie od ogólnej liczby wymaganych szczytów (np. 40 dowolnych),
+    te konkretne obiekty muszą zostać zdobyte, aby odznaka została zaliczona.
+    """
+
+    mandatory_peak_ids: set[int]
+
+    def validate(self, ascents: list[Ascent]) -> list[str]:
+        """Sprawdza, czy turysta zdobył wszystkie obowiązkowe obiekty.
+
+        Args:
+            ascents: Lista wszystkich wejść turysty.
+
+        Returns:
+            Lista komunikatów o brakujących obowiązkowych szczytach lub pusta lista.
+        """
+        # Zbieramy ID wszystkich szczytów zdobytych przez turystę
+        climbed_peak_ids = {ascent.peak_id for ascent in ascents}
+
+        # Wyliczamy różnicę zbiorów: Obowiązkowe MINUS Zdobyte
+        missing_mandatory_peaks = self.mandatory_peak_ids - climbed_peak_ids
+
+        if missing_mandatory_peaks:
+            # Poprawka Ruff C414: sorted() samo przyjmuje zbiory (sets)
+            missing_list = sorted(missing_mandatory_peaks)
+            return [f"Brakuje obowiązkowych obiektów. Musisz zdobyć obiekty o ID: {missing_list}"]
+
+        return []
+
+
+@dataclass(frozen=True)
+class GroupedAlternativesRule(BadgeRule):
+    """Zasada 'Wiaderek' dla odznak wymagających zdobycia obiektów z wielu grup.
+
+    Na przykład: Odznaka wymaga wejścia na po 1 punkcie widokowym w 30
+    z 38 dostępnych pasm górskich.
+    Każde pasmo to jedno 'wiaderko' (zbiór IDków).
+    """
+
+    # Lista wiaderek (każde wiaderko to zbiór int)
+    groups: list[set[int]]
+
+    # Ile wiaderek (grup) trzeba zaliczyć (z każdego min. 1 obiekt)
+    min_groups_required: int
+
+    def validate(self, ascents: list[Ascent]) -> list[str]:
+        """Zlicza, ile grup (wiaderek) zawiera przynajmniej jedno zdobyte wejście."""
+        climbed_peak_ids = {ascent.peak_id for ascent in ascents}
+
+        groups_completed = 0
+
+        # Sprawdzamy każde wiaderko:
+        for group in self.groups:
+            # Przecięcie zbiorów (intersection). Jeśli nie jest puste,
+            # to znaczy, że w tym wiaderku zdobyliśmy chociaż 1 szczyt!
+            if group.intersection(climbed_peak_ids):
+                groups_completed += 1
+
+        if groups_completed < self.min_groups_required:
+            return [
+                f"Zbyt mało zdobytych grup (pasm). Wymagano {self.min_groups_required}, "
+                f"zdobyto obiekty zaledwie z {groups_completed} grup."
+            ]
+
+        return []

@@ -32,8 +32,8 @@ class TestBadgeRepositoryPort:
         assert 'badge_code' in params
         assert 'version_code' in params
         
-        assert params['badge_code'].annotation == str
-        assert params['version_code'].annotation == str
+        assert params['badge_code'].annotation is str
+        assert params['version_code'].annotation is str
 
     def test_get_badge_version_return_type(self):
         """Test typu zwracanego przez get_badge_version."""
@@ -124,7 +124,7 @@ class TestBadgeRepositoryPort:
             pass
         
         # This should not raise any errors
-        test_function.__annotations__
+        assert test_function.__annotations__ is not None
 
     def test_protocol_can_be_used_as_type_hint(self):
         """Test że protokół może być używany jako type hint."""

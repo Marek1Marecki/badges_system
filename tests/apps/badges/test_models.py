@@ -43,10 +43,13 @@ class TestRulesSchema:
         assert type_field["title"] == "Typ Reguły"
         
         choices = type_field["choices"]
-        assert len(choices) == 3
+        assert len(choices) == 7
         assert {"value": "ActivityRule", "title": "Ograniczenie Aktywności"} in choices
         assert {"value": "TimeLimitRule", "title": "Limit Czasowy w latach"} in choices
         assert {"value": "RequiresClubJoinDateRule", "title": "Wymaga zapisu do Klubu (tylko nowe wejścia)"} in choices
+        assert {"value": "MinAgeRule", "title": "Minimalny Wiek (w latach)"} in choices
+        assert {"value": "StartDateRule", "title": "Szczyty zaliczane od konkretnej daty"} in choices
+        assert {"value": "MandatoryObjectsRule", "title": "Obowiązkowe konkretne obiekty"} in choices
 
     def test_allowed_activities_field(self):
         """Test pola dozwolonych aktywności."""
