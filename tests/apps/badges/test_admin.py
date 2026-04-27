@@ -162,7 +162,7 @@ class TestBadgeAdmin:
 
     def test_badge_admin_list_display(self):
         """Test pól list_display."""
-        expected = ("name", "code", "organizer")
+        expected = ("name", "code", "organizer", "is_booklet_required")
         assert BadgeAdmin.list_display == expected
 
 
@@ -456,7 +456,7 @@ class TestTouristObjectAdmin:
 
     def test_tourist_object_admin_actions(self):
         """Test akcji admina."""
-        expected_actions = ["recalculate_regions_async", "add_to_badge_version"]
+        expected_actions = ["recalculate_regions_async", "add_to_badge_version", "show_ids_for_json"]
         assert TouristObjectAdmin.actions == expected_actions
 
     def test_tourist_object_admin_modifiable(self):
@@ -478,13 +478,14 @@ class TestTouristObjectAdmin:
     def test_tourist_object_admin_fieldsets_structure(self):
         """Test struktury fieldsets."""
         fieldsets = TouristObjectAdmin.fieldsets
-        assert len(fieldsets) == 4
+        assert len(fieldsets) == 5
         
         # Sprawdzamy tytuły sekcji
         titles = [fs[0] for fs in fieldsets]
         expected_titles = [
             "Złoty Standard (Curated)",
-            "Ewidencja i Relacje (PTTK)",
+            "Stan fizyczny i cykl życia",
+            "Ewidencja i Relacje",
             "Integracja z OSM (Data Lake)",
             "Dane Wyliczane w Tle (CQRS)",
         ]
@@ -501,12 +502,12 @@ class TestOrganizerAdmin:
 
     def test_organizer_admin_list_display(self):
         """Test pól list_display."""
-        expected = ("name", "has_publication_consent", "club_rules_link")
+        expected = ("name", "is_booklet_required", "has_publication_consent", "club_rules_link")
         assert OrganizerAdmin.list_display == expected
 
     def test_organizer_admin_list_filter(self):
         """Test pól list_filter."""
-        expected = ("has_publication_consent",)
+        expected = ("is_booklet_required", "has_publication_consent")
         assert OrganizerAdmin.list_filter == expected
 
     def test_organizer_admin_search_fields(self):

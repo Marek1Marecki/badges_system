@@ -6,6 +6,8 @@ from django.utils.translation import gettext_lazy as _
 from django_jsonform.models.fields import JSONField
 from tinymce.models import HTMLField
 
+from infrastructure.schemas.badge_rules_schema import RULES_SCHEMA
+
 
 class RegionBaseModel(gis_models.Model):
     """Abstrakcyjny model bazowy dla wszystkich regionów geograficznych."""
@@ -144,6 +146,13 @@ class OrganizerModel(models.Model):
         null=True,
         verbose_name="Odznaka klubowa",
     )
+    is_booklet_required = models.BooleanField(
+        default=False,
+        verbose_name="Wymagana książeczka klubowa",
+        help_text=(
+            "Zaznacz, jeśli organizator bezwzględnie wymaga posiadania swojej książeczki do zdobywania jego odznak."
+        ),
+    )
     booklet_template_pdf = models.FileField(
         upload_to="organizers/booklets/",
         blank=True,
@@ -277,6 +286,18 @@ class TouristObject(gis_models.Model):
             "Nie usuwaj obiektu z bazy, by nie popsuć historii zdobytych odznak!"
         ),
     )
+    existence_start = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Data powstania/otwarcia",
+        help_text="Wypełnij np. dla nowo wybudowanych wież widokowych. Puste = istniał 'od zawsze' (np. góry).",
+    )
+    existence_end = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Data zniszczenia/zamknięcia",
+        help_text="Wypełnij dla obiektów rozebranych lub zniszczonych. Puste = istnieje do dziś.",
+    )
     # Relacja rekurencyjna: Nadrzędność obiektów (np. Schronisko przypięte do Szczytu)
     parent_object = models.ForeignKey(
         "self",
@@ -390,112 +411,6 @@ class ObjectRegionCache(models.Model):
 # HIERARCHIA ODZNAK (Badge -> Tier -> Version)
 # ==========================================================
 
-# Definicja schematu JSON Schema dla panelu Django Admin
-RULES_SCHEMA = {
-    "type": "list",
-    "title": "Reguły Biznesowe",
-    "items": {
-        "type": "dict",
-        "keys": {
-            "type": {
-                "type": "string",
-                "title": "Typ Reguły",
-                "choices": [
-                    {"value": "ActivityRule", "title": "Ograniczenie Aktywności"},
-                    {"value": "TimeLimitRule", "title": "Limit Czasowy w latach"},
-                    {"value": "RequiresClubJoinDateRule", "title": "Wymaga zapisu do Klubu (tylko nowe wejścia)"},
-                    {"value": "MinAgeRule", "title": "Minimalny Wiek (w latach)"},
-                    {"value": "StartDateRule", "title": "Szczyty zaliczane od konkretnej daty"},
-                    {"value": "MandatoryObjectsRule", "title": "Obowiązkowe konkretne obiekty"},
-                    {"value": "GroupedAlternativesRule", "title": "Wymagane obiekty w różnych grupach/pasmach"},
-                ],
-            },
-            "allowed_activities": {
-                "type": "array",
-                "title": "Dozwolone aktywności (tylko dla ActivityRule)",
-                "items": {"type": "string", "choices": ["HIKING", "CYCLING", "SKIING"]},
-                "required": False,
-            },
-            "limit_in_years": {
-                "type": "integer",
-                "title": "Limit w latach (tylko dla TimeLimitRule)",
-                "required": False,
-            },
-            "min_age": {
-                "type": "integer",
-                "title": "Minimalny Wiek (tylko dla MinAgeRule)",
-                "required": False,
-            },
-            "start_date": {
-                "type": "string",
-                "format": "date",  # To wymusi pojawienie się widgetu kalendarza!
-                "title": "Zalicza wejścia od daty (tylko dla StartDateRule)",
-                "required": False,
-            },
-            "mandatory_peak_ids": {
-                "type": "array",
-                "title": "ID obowiązkowych obiektów (Wpisz liczby, np. ID Babiej Góry)",
-                "items": {"type": "integer"},
-                "required": False,
-            },
-            "min_groups_required": {
-                "type": "integer",
-                "title": "Ile RÓŻNYCH grup/pasm turysta musi zaliczyć? (tylko dla GroupedAlternativesRule)",
-                "required": False,
-            },
-            "groups": {
-                "type": "array",
-                "title": "Grupy / Pasma / Wiaderka",
-                "items": {
-                    "type": "dict",
-                    "title": "Pojedyncza Grupa",
-                    "keys": {
-                        "group_name": {
-                            "type": "string",
-                            "title": "Nazwa grupy dla Twojej wygody (np. 'Tatry')",
-                            "required": False,
-                        },
-                        "peak_ids": {
-                            "type": "array",
-                            "title": "ID obiektów należących do tej grupy",
-                            "items": {"type": "integer"},
-                        },
-                    },
-                },
-                "required": False,
-            },
-        },
-    },
-}
-
-
-class PeakModel(models.Model):
-    """Model szczytu."""
-
-    name = models.CharField(max_length=100, verbose_name="Nazwa szczytu")
-    altitude = models.IntegerField(verbose_name="Wysokość (m n.p.m.)")
-    mesoregion = models.ForeignKey(
-        "MesoregionModel",
-        on_delete=models.CASCADE,
-        related_name="peaks",
-        verbose_name="Mezoregion",
-    )
-    link = models.URLField(max_length=255, blank=True, null=True, verbose_name="Link do opisu")
-    shape = models.CharField(max_length=255, blank=True, null=True, verbose_name="Kształt szczytu")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Utworzono")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Zaktualizowano")
-
-    class Meta:
-        """Meta klasy PeakModel."""
-
-        db_table = "odznaki_peak"
-        verbose_name = "Szczyt"
-        verbose_name_plural = "Szczyty"
-
-    def __str__(self) -> str:
-        """Zwraca reprezentację tekstową szczytu."""
-        return f"{self.name} ({self.altitude} m n.p.m.)"
-
 
 class BadgeModel(models.Model):
     """Główna tożsamość odznaki (Trwa wiecznie)."""
@@ -514,6 +429,11 @@ class BadgeModel(models.Model):
         null=True,
         blank=True,
         verbose_name="Data ustanowienia",
+    )
+    is_booklet_required = models.BooleanField(
+        default=False,
+        verbose_name="Wymagana książeczka odznaki",
+        help_text="Zaznacz, jeśli ta konkretna odznaka wymaga posiadania dedykowanej książeczki do odznaki.",
     )
 
     class Meta:
@@ -570,6 +490,8 @@ class BadgeVersionModel(models.Model):
     rules = JSONField(
         schema=RULES_SCHEMA,
         default=list,
+        blank=True,
+        null=True,
         verbose_name="Reguły biznesowe",
     )
     # Nowe: Prosta, klasyczna relacja M2M wspierana przez 'filter_horizontal'
@@ -649,6 +571,10 @@ class BadgeTierModel(models.Model):
         ordering = ["version", "order"]
         verbose_name = "Stopień Odznaki"
         verbose_name_plural = "Stopnie Odznak"
+        constraints = [
+            models.UniqueConstraint(fields=["version", "name"], name="unique_tier_name_per_version"),
+            models.UniqueConstraint(fields=["version", "order"], name="unique_tier_order_per_version"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.version} - {self.get_name_display()}"

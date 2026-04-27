@@ -9,6 +9,8 @@ from django.contrib.admin import (
     SimpleListFilter,
     helpers,  # Do przekazania kontekstu akcji
 )
+from django.core.exceptions import ValidationError
+from django.forms.models import BaseInlineFormSet
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from leaflet.admin import LeafletGeoAdmin
@@ -173,7 +175,7 @@ class TouristObjectAdmin(LeafletGeoAdmin):
     list_display = ("name", "type", "altitude", "osm_id", "code", "is_active")
     list_filter = ("is_active", "type", RegionLevelFilter)
     search_fields = ("name", "alt_name", "osm_id", "code")
-    actions = ["recalculate_regions_async", "add_to_badge_version"]
+    actions = ["recalculate_regions_async", "add_to_badge_version", "show_ids_for_json"]
     modifiable = True
     settings_overrides = {
         "DEFAULT_CENTER": (52.0, 19.0),
@@ -186,7 +188,6 @@ class TouristObjectAdmin(LeafletGeoAdmin):
             "Złoty Standard (Curated)",
             {
                 "fields": (
-                    "is_active",  # Na samej górze, by rzucało się w oczy
                     "name",
                     "alt_name",
                     "type",
@@ -197,9 +198,16 @@ class TouristObjectAdmin(LeafletGeoAdmin):
             },
         ),
         (
-            "Ewidencja i Relacje (PTTK)",
+            "Stan fizyczny i cykl życia",
             {
-                # Nowa sekcja na kod PTTK i relację rodzic-dziecko
+                "fields": ("is_active", "existence_start", "existence_end"),
+                "description": "Zarządzanie widocznością obiektu w czasie (przydatne m.in. dla wież i schronisk).",
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Ewidencja i Relacje",
+            {
                 "fields": ("code", "parent_object"),
             },
         ),
@@ -273,24 +281,67 @@ class TouristObjectAdmin(LeafletGeoAdmin):
 
         return render(request, "admin/badges/add_to_badge_action.html", context)
 
+    @admin.action(description="Pokaż ID zaznaczonych obiektów (do skopiowania w reguły JSON)")
+    def show_ids_for_json(self, request, queryset):
+        """Generuje listę ID po przecinku, by Admin mógł je łatwo skopiować."""
+        # Pobieramy IDki
+        ids = list(queryset.values_list("id", flat=True))
+        # Zamieniamy na string z przecinkami
+        ids_str = ", ".join(str(i) for i in ids)
+
+        # Wyświetlamy jako zielony komunikat (możesz to zaznaczyć myszką i skopiować)
+        self.message_user(request, f"Skopiuj te ID do reguły JSON: {ids_str}")
+
 
 @admin.register(OrganizerModel)
 class OrganizerAdmin(admin.ModelAdmin):
-    list_display = ("name", "has_publication_consent", "club_rules_link")
+    list_display = ("name", "is_booklet_required", "has_publication_consent", "club_rules_link")
     # Dodano filtr boczny (szybkie szukanie tych bez zgody)
-    list_filter = ("has_publication_consent",)
+    list_filter = (
+        "is_booklet_required",
+        "has_publication_consent",
+    )
     search_fields = ("name",)
 
 
 @admin.register(BadgeModel)
 class BadgeAdmin(admin.ModelAdmin):
-    list_display = ("name", "code", "organizer")
+    """Panel zarządzania samymi odznakami (nazwy)."""
+
+    list_display = ("name", "code", "organizer", "is_booklet_required")
+    list_filter = ("is_booklet_required", "organizer")
+    search_fields = ("name", "code")
+
+
+class BadgeTierInlineFormSet(BaseInlineFormSet):
+    """Walidator dla wierszy stopni odznaki (FormSet)."""
+
+    def clean(self):
+        super().clean()
+        # Jeśli formularze mają już inne błędy, nie sprawdzamy dalej
+        if any(self.errors):
+            return
+
+        orders = set()
+        for form in self.forms:
+            # Pomijamy puste wiersze oraz te zaznaczone do usunięcia
+            if not form.cleaned_data or form.cleaned_data.get("DELETE"):
+                continue
+
+            order_val = form.cleaned_data.get("order")
+            if order_val is not None:
+                if order_val in orders:
+                    raise ValidationError(
+                        "Błąd: Kolejność zdobywania stopni (pole 'order') musi być unikalna w ramach jednej odznaki!"
+                    )
+                orders.add(order_val)
 
 
 class BadgeTierInline(admin.TabularInline):
     """Wbudowany formularz pozwalający zdefiniować stopnie prosto z widoku Wersji Odznaki."""
 
     model = BadgeTierModel
+    formset = BadgeTierInlineFormSet
     extra = 1
     fields = ("name", "order", "required_peaks_count", "badge_image")
 

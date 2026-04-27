@@ -115,7 +115,7 @@ class TestBadgeVersionDomain:
         
         error_message = str(exc_info.value)
         assert "Aktywność CYCLING jest niedozwolona" in error_message
-        assert "Przekroczono limit 1 lat" in error_message
+        assert "Przekroczono limit czasu" in error_message
 
     def test_evaluate_with_empty_ascents_list(self):
         """Test ewaluacji z pustą listą wejść."""

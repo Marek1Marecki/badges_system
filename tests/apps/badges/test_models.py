@@ -10,7 +10,6 @@ from apps.badges.models import (
     CountryModel,
     MacroregionModel,
     MesoregionModel,
-    PeakModel,
     ProvinceModel,
     RegionBaseModel,
     SubprovinceModel,
@@ -24,39 +23,69 @@ class TestRulesSchema:
     def test_rules_schema_structure(self):
         """Test struktury schematu reguł."""
         assert RULES_SCHEMA["type"] == "list"
-        assert RULES_SCHEMA["title"] == "Reguły Biznesowe"
+        assert RULES_SCHEMA["title"] == "Reguły Biznesowe Odznaki"
         assert "items" in RULES_SCHEMA
         
         items = RULES_SCHEMA["items"]
-        assert items["type"] == "dict"
-        assert "keys" in items
+        assert "oneOf" in items
         
-        keys = items["keys"]
-        assert "type" in keys
-        assert "allowed_activities" in keys
-        assert "limit_in_years" in keys
+        oneOf = items["oneOf"]
+        assert len(oneOf) == 11
+        
+        # Check that each rule type has the expected structure
+        for rule_def in oneOf:
+            assert rule_def["type"] == "dict"
+            assert "keys" in rule_def
+            assert "type" in rule_def["keys"]
 
     def test_rule_type_choices(self):
         """Test wyborów typu reguły."""
-        type_field = RULES_SCHEMA["items"]["keys"]["type"]
-        assert type_field["type"] == "string"
-        assert type_field["title"] == "Typ Reguły"
+        oneOf = RULES_SCHEMA["items"]["oneOf"]
         
-        choices = type_field["choices"]
-        assert len(choices) == 7
-        assert {"value": "ActivityRule", "title": "Ograniczenie Aktywności"} in choices
-        assert {"value": "TimeLimitRule", "title": "Limit Czasowy w latach"} in choices
-        assert {"value": "RequiresClubJoinDateRule", "title": "Wymaga zapisu do Klubu (tylko nowe wejścia)"} in choices
-        assert {"value": "MinAgeRule", "title": "Minimalny Wiek (w latach)"} in choices
-        assert {"value": "StartDateRule", "title": "Szczyty zaliczane od konkretnej daty"} in choices
-        assert {"value": "MandatoryObjectsRule", "title": "Obowiązkowe konkretne obiekty"} in choices
+        # Find ActivityRule
+        activity_rule = next(rule for rule in oneOf if rule["keys"]["type"]["default"] == "ActivityRule")
+        assert activity_rule["title"] == "Ograniczenie Aktywności"
+        
+        # Find TimeLimitRule
+        time_limit_rule = next(rule for rule in oneOf if rule["keys"]["type"]["default"] == "TimeLimitRule")
+        assert time_limit_rule["title"] == "Limit Czasowy"
+        
+        # Find RequiresClubJoinDateRule
+        club_rule = next(rule for rule in oneOf if rule["keys"]["type"]["default"] == "RequiresClubJoinDateRule")
+        assert club_rule["title"] == "Wymaga zapisu do Klubu"
+        
+        # Find MinAgeRule
+        min_age_rule = next(rule for rule in oneOf if rule["keys"]["type"]["default"] == "MinAgeRule")
+        assert min_age_rule["title"] == "Minimalny Wiek"
+        
+        # Find StartDateRule
+        start_date_rule = next(rule for rule in oneOf if rule["keys"]["type"]["default"] == "StartDateRule")
+        assert start_date_rule["title"] == "Szczyty zaliczane od daty"
+        
+        # Find MandatoryObjectsRule
+        mandatory_rule = next(rule for rule in oneOf if rule["keys"]["type"]["default"] == "MandatoryObjectsRule")
+        assert mandatory_rule["title"] == "Obowiązkowe konkretne obiekty"
+        
+        # Find GroupedAlternativesRule
+        grouped_rule = next(rule for rule in oneOf if rule["keys"]["type"]["default"] == "GroupedAlternativesRule")
+        assert grouped_rule["title"] == "Wymagane obiekty z RÓŻNYCH grup (Wiaderek)"
+        
+        # Find PrerequisiteBadgeRule
+        prerequisite_rule = next(rule for rule in oneOf if rule["keys"]["type"]["default"] == "PrerequisiteBadgeRule")
+        assert prerequisite_rule["title"] == "Wymaga posiadania innej odznaki"
+        
+        # Find DateWindowRule
+        date_window_rule = next(rule for rule in oneOf if rule["keys"]["type"]["default"] == "DateWindowRule")
+        assert date_window_rule["title"] == "Zamknięte Okno Czasowe (np. Jubileusz)"
 
     def test_allowed_activities_field(self):
         """Test pola dozwolonych aktywności."""
-        activities_field = RULES_SCHEMA["items"]["keys"]["allowed_activities"]
+        oneOf = RULES_SCHEMA["items"]["oneOf"]
+        activity_rule = next(rule for rule in oneOf if rule["keys"]["type"]["default"] == "ActivityRule")
+        
+        activities_field = activity_rule["keys"]["allowed_activities"]
         assert activities_field["type"] == "array"
-        assert activities_field["title"] == "Dozwolone aktywności (tylko dla ActivityRule)"
-        assert activities_field["required"] is False
+        assert activities_field["title"] == "Dozwolone aktywności"
         
         items = activities_field["items"]
         assert items["type"] == "string"
@@ -66,10 +95,12 @@ class TestRulesSchema:
 
     def test_limit_in_years_field(self):
         """Test pola limitu lat."""
-        limit_field = RULES_SCHEMA["items"]["keys"]["limit_in_years"]
+        oneOf = RULES_SCHEMA["items"]["oneOf"]
+        time_limit_rule = next(rule for rule in oneOf if rule["keys"]["type"]["default"] == "TimeLimitRule")
+        
+        limit_field = time_limit_rule["keys"]["limit_in_years"]
         assert limit_field["type"] == "integer"
-        assert limit_field["title"] == "Limit w latach (tylko dla TimeLimitRule)"
-        assert limit_field["required"] is False
+        assert limit_field["title"] == "Limit (w latach)"
 
 
 class TestRegionBaseModel:
@@ -216,30 +247,6 @@ class TestMesoregionModel:
         assert hasattr(MesoregionModel, 'macroregion')
 
 
-class TestPeakModel:
-    """Testy modelu szczytu."""
-
-    def test_peak_model_fields(self):
-        """Test pól modelu PeakModel."""
-        assert hasattr(PeakModel, 'name')
-        assert hasattr(PeakModel, 'altitude')
-
-    def test_peak_model_name_field(self):
-        """Test pola name."""
-        name_field = PeakModel._meta.get_field('name')
-        assert name_field.max_length == 100
-        assert name_field.verbose_name == "Nazwa szczytu"
-
-    def test_peak_model_altitude_field(self):
-        """Test pola altitude."""
-        altitude_field = PeakModel._meta.get_field('altitude')
-        assert altitude_field.verbose_name == "Wysokość (m n.p.m.)"
-
-    def test_peak_model_str_method(self):
-        """Test metody __str__."""
-        # Test that the __str__ method exists and returns expected format
-        assert hasattr(PeakModel, '__str__')
-        # We can't test the actual return value without an instance
 
 
 class TestBadgeModel:

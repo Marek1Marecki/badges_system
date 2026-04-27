@@ -3,7 +3,7 @@
 import json
 import re
 import time
-from datetime import datetime
+from datetime import date, datetime
 
 import httpx
 from pydantic import BaseModel, Field
@@ -226,3 +226,39 @@ class OsmDataExtractor:
             # próbujemy zbudować chociaż polski link jako domyślny fallback
             formatted_title = wiki_ref.strip().replace(" ", "_")
             return f"https://pl.wikipedia.org/wiki/{formatted_title}"
+
+    @staticmethod
+    def extract_start_date(tags: dict[str, str]) -> date | None:
+        """Próbuje bezpiecznie wyciągnąć i sformatować datę powstania obiektu z tagów OSM."""
+        start_str = tags.get("start_date")
+        if not start_str:
+            return None
+
+        # Używamy wyrażeń regularnych, by wyłowić najpopularniejsze, twarde formaty z OSM
+        import re
+
+        # Przypadek 1: Pełna data YYYY-MM-DD
+        match_full = re.match(r"^(\d{4})-(\d{2})-(\d{2})", start_str)
+        if match_full:
+            try:
+                return date(int(match_full.group(1)), int(match_full.group(2)), int(match_full.group(3)))
+            except ValueError:
+                pass  # Błędne dni/miesiące
+
+        # Przypadek 2: Rok i miesiąc YYYY-MM (Zgadywanie: 1 dzień miesiąca)
+        match_month = re.match(r"^(\d{4})-(\d{2})", start_str)
+        if match_month:
+            try:
+                return date(int(match_month.group(1)), int(match_month.group(2)), 1)
+            except ValueError:
+                pass
+
+        # Przypadek 3: Sam rok YYYY (Zgadywanie: 1 stycznia)
+        # Często poprzedzone znakami typu 'C19', '~1890'. Wyciągamy pierwszą 4-cyfrową liczbę.
+        match_year = re.search(r"(\d{4})", start_str)
+        if match_year:
+            return date(int(match_year.group(1)), 1, 1)
+
+        # Jeśli format był całkowicie opisowy (np. "wiosna 1920", "XIX wiek"), poddajemy się.
+        # Wymaga to ludzkiego oka w panelu Admina.
+        return None

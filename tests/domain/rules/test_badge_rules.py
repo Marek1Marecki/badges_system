@@ -113,8 +113,8 @@ class TestTimeLimitRule:
         
         errors = rule.validate(ascents)
         assert len(errors) == 1
-        assert "Przekroczono limit 1 lat" in errors[0]
-        assert "trwało 516 dni" in errors[0]
+        assert "Przekroczono limit czasu" in errors[0]
+        assert "wymagała ukończenia do" in errors[0]
 
     def test_validate_empty_ascents_list(self):
         """Test walidacji z pustą listą wejść."""
@@ -195,8 +195,7 @@ class TestRequiresClubJoinDateRule:
         
         errors = rule.validate(ascents)
         assert len(errors) == 1
-        assert "Wejście na szczyt (ID: 1) odrzucone" in errors[0]
-        assert "Data wejścia (2019-06-01) jest przed datą dołączenia do klubu (2020-01-01)" in errors[0]
+        assert "Wejście na obiekt (ID: 1, Data: 2019-06-01) odrzucone: wejście odbyło się przed dołączeniem do klubu (2020-01-01)." in errors[0]
 
     def test_validate_multiple_ascents_before_join_date(self):
         """Test walidacji z wieloma wejściami przed datą dołączenia."""
@@ -210,8 +209,8 @@ class TestRequiresClubJoinDateRule:
         
         errors = rule.validate(ascents)
         assert len(errors) == 2
-        assert "Wejście na szczyt (ID: 1) odrzucone" in errors[0]
-        assert "Wejście na szczyt (ID: 2) odrzucone" in errors[1]
+        assert "Wejście na obiekt (ID: 1, Data: 2018-05-01) odrzucone: wejście odbyło się przed dołączeniem do klubu (2020-01-01)." in errors[0]
+        assert "Wejście na obiekt (ID: 2, Data: 2019-03-15) odrzucone: wejście odbyło się przed dołączeniem do klubu (2020-01-01)." in errors[1]
 
     def test_validate_empty_ascents_list(self):
         """Test walidacji z pustą listą wejść."""
@@ -256,10 +255,8 @@ class TestMinAgeRule:
         
         errors = rule.validate(ascents)
         assert len(errors) == 2
-        assert "Wejście na szczyt (ID: 1) odrzucone" in errors[0]
-        assert "Wiek w dniu wejścia (7 lat) był mniejszy niż wymagane 10 lat" in errors[0]
-        assert "Wejście na szczyt (ID: 2) odrzucone" in errors[1]
-        assert "Wiek w dniu wejścia (9 lat) był mniejszy niż wymagane 10 lat" in errors[1]
+        assert "Wejście na obiekt (ID: 1, Data: 2022-06-01) odrzucone: wiek (7 lat) był mniejszy niż wymagane 10 lat." in errors[0]
+        assert "Wejście na obiekt (ID: 2, Data: 2024-06-01) odrzucone: wiek (9 lat) był mniejszy niż wymagane 10 lat." in errors[1]
 
     def test_validate_birthday_edge_case(self):
         """Test walidacji przypadków granicznych związanych z urodzinami."""
@@ -269,7 +266,7 @@ class TestMinAgeRule:
         ascents_before = [Ascent(peak_id=1, ascent_date=date(2022, 12, 31), activity=ActivityType.HIKING)]
         errors = rule.validate(ascents_before)
         assert len(errors) == 1
-        assert "Wiek w dniu wejścia (7 lat) był mniejszy niż wymagane 8 lat" in errors[0]
+        assert "Wejście na obiekt (ID: 1, Data: 2022-12-31) odrzucone: wiek (7 lat) był mniejszy niż wymagane 8 lat." in errors[0]
         
         # W dniu 8. urodzin
         ascents_on = [Ascent(peak_id=2, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING)]
@@ -319,8 +316,7 @@ class TestStartDateRule:
         
         errors = rule.validate(ascents)
         assert len(errors) == 1
-        assert "Wejście na szczyt (ID: 1) odrzucone" in errors[0]
-        assert "Data wejścia (2019-06-01) jest przed datą wejścia w życie regulaminu odznaki (2020-06-01)" in errors[0]
+        assert "Wejście na obiekt (ID: 1, Data: 2019-06-01) odrzucone: wejście było przed wejściem regulaminu w życie (2020-06-01)." in errors[0]
 
     def test_validate_multiple_ascents_before_start_date(self):
         """Test walidacji z wieloma wejściami przed datą startową."""
@@ -334,8 +330,8 @@ class TestStartDateRule:
         
         errors = rule.validate(ascents)
         assert len(errors) == 2
-        assert "Wejście na szczyt (ID: 1) odrzucone" in errors[0]
-        assert "Wejście na szczyt (ID: 2) odrzucone" in errors[1]
+        assert "Wejście na obiekt (ID: 1, Data: 2018-05-01) odrzucone: wejście było przed wejściem regulaminu w życie (2020-06-01)." in errors[0]
+        assert "Wejście na obiekt (ID: 2, Data: 2019-03-15) odrzucone: wejście było przed wejściem regulaminu w życie (2020-06-01)." in errors[1]
 
     def test_validate_empty_ascents_list(self):
         """Test walidacji z pustą listą wejść."""
@@ -382,7 +378,7 @@ class TestMandatoryObjectsRule:
         
         errors = rule.validate(ascents)
         assert len(errors) == 1
-        assert "Brakuje obowiązkowych obiektów. Musisz zdobyć obiekty o ID: [2, 4]" in errors[0]
+        assert "Brakuje obowiązkowych obiektów o ID: [2, 4]" in errors[0]
 
     def test_validate_no_mandatory_peaks_climbed(self):
         """Test walidacji gdy żaden obowiązkowy szczyt nie został zdobyty."""
@@ -395,7 +391,7 @@ class TestMandatoryObjectsRule:
         
         errors = rule.validate(ascents)
         assert len(errors) == 1
-        assert "Brakuje obowiązkowych obiektów. Musisz zdobyć obiekty o ID: [1, 2, 3]" in errors[0]
+        assert "Brakuje obowiązkowych obiektów o ID: [1, 2, 3]" in errors[0]
 
     def test_validate_empty_ascents_list(self):
         """Test walidacji z pustą listą wejść."""
@@ -403,7 +399,7 @@ class TestMandatoryObjectsRule:
         
         errors = rule.validate([])
         assert len(errors) == 1
-        assert "Brakuje obowiązkowych obiektów. Musisz zdobyć obiekty o ID: [1, 2, 3]" in errors[0]
+        assert "Brakuje obowiązkowych obiektów o ID: [1, 2, 3]" in errors[0]
 
     def test_validate_empty_mandatory_peaks(self):
         """Test walidacji gdy nie ma obowiązkowych szczytów."""

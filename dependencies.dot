@@ -42,6 +42,8 @@ digraph G {
     "infrastructure.adapters.persistence" [fillcolor="orange"];
     "infrastructure.adapters.persistence.django_badge_repo" [fillcolor="orange"];
     "infrastructure.exceptions" [fillcolor="orange"];
+    "infrastructure.schemas" [fillcolor="orange"];
+    "infrastructure.schemas.badge_rules_schema" [fillcolor="orange"];
   }
 
   subgraph cluster_interface {
@@ -60,6 +62,11 @@ digraph G {
     "apps.badges.migrations.0005_alter_touristobject_is_active" [fillcolor="pink"];
     "apps.badges.migrations.0006_alter_badgetiermodel_name" [fillcolor="pink"];
     "apps.badges.migrations.0007_badgeversionmodel_rules_text_and_more" [fillcolor="pink"];
+    "apps.badges.migrations.0008_alter_badgeversionmodel_rules" [fillcolor="pink"];
+    "apps.badges.migrations.0009_badgemodel_is_booklet_required_and_more" [fillcolor="pink"];
+    "apps.badges.migrations.0010_touristobject_existence_end_and_more" [fillcolor="pink"];
+    "apps.badges.migrations.0011_delete_peakmodel" [fillcolor="pink"];
+    "apps.badges.migrations.0012_badgetiermodel_unique_tier_name_per_version_and_more" [fillcolor="pink"];
     "apps.badges.models" [fillcolor="pink"];
     "apps.badges.tasks" [fillcolor="pink"];
     "apps.badges.tests" [fillcolor="pink"];
@@ -77,6 +84,7 @@ digraph G {
   "apps.badges.admin" -> "apps.badges.tasks";
   "apps.badges.forms" -> "apps.badges.models";
   "apps.badges.forms" -> "infrastructure.adapters.osm_adapter";
+  "apps.badges.models" -> "infrastructure.schemas.badge_rules_schema";
   "apps.badges.tasks" -> "apps.badges.models";
   "domain.entities.badge_version" -> "domain.exceptions";
   "domain.entities.badge_version" -> "domain.rules.badge_rules";

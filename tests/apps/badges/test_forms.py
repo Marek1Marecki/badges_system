@@ -182,6 +182,7 @@ class TestTouristObjectAdminForm:
         mock_extractor.extract_altitude.return_value = 1234
         mock_extractor.extract_alt_name.return_value = ""
         mock_extractor.extract_wikipedia_link.return_value = "https://pl.wikipedia.org/wiki/Test_Peak"
+        mock_extractor.extract_start_date.return_value = None
         mock_extractor.determine_type.return_value = ("Szczyt", [])
         
         form = TouristObjectAdminForm(data={
@@ -242,6 +243,7 @@ class TestTouristObjectAdminForm:
         mock_extractor.extract_altitude.return_value = None
         mock_extractor.extract_alt_name.return_value = None
         mock_extractor.extract_wikipedia_link.return_value = None
+        mock_extractor.extract_start_date.return_value = None
         mock_extractor.determine_type.return_value = (None, [])
         
         form = TouristObjectAdminForm(data={
@@ -277,6 +279,7 @@ class TestTouristObjectAdminForm:
         mock_extractor.extract_altitude.return_value = None
         mock_extractor.extract_alt_name.return_value = None
         mock_extractor.extract_wikipedia_link.return_value = None
+        mock_extractor.extract_start_date.return_value = None
         mock_extractor.determine_type.return_value = (None, [])
         
         form = TouristObjectAdminForm(data={
@@ -313,6 +316,7 @@ class TestTouristObjectAdminForm:
         mock_extractor.extract_altitude.return_value = None
         mock_extractor.extract_alt_name.return_value = None
         mock_extractor.extract_wikipedia_link.return_value = None
+        mock_extractor.extract_start_date.return_value = None
         mock_extractor.determine_type.return_value = (None, [])
         
         # Mock nearby objects
@@ -358,6 +362,7 @@ class TestTouristObjectAdminForm:
         mock_extractor.extract_altitude.return_value = None
         mock_extractor.extract_alt_name.return_value = None
         mock_extractor.extract_wikipedia_link.return_value = None
+        mock_extractor.extract_start_date.return_value = None
         mock_extractor.determine_type.return_value = ("Szczyt", ["new_tag=new_value"])
         
         request = RequestFactory().post('/')

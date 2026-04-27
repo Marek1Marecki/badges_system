@@ -130,6 +130,12 @@ class TouristObjectAdminForm(forms.ModelForm):
             if not cleaned_data.get("wikipedia_link") and extracted_wiki:
                 cleaned_data["wikipedia_link"] = extracted_wiki
 
+            # NOWE: Automatyczne zasysanie daty powstania (np. wieże widokowe)
+            # Działa zasada "Data Override" - jeśli wpisałeś datę z palca, nie nadpiszemy jej.
+            extracted_start = OsmDataExtractor.extract_start_date(osm_node.tags)
+            if not cleaned_data.get("existence_start") and extracted_start:
+                cleaned_data["existence_start"] = extracted_start.isoformat()
+
             if not geom:
                 geom = Point(osm_node.longitude, osm_node.latitude, srid=4326)
                 cleaned_data["geom"] = geom
