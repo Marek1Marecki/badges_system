@@ -67,6 +67,8 @@ digraph G {
     "apps.badges.migrations.0010_touristobject_existence_end_and_more" [fillcolor="pink"];
     "apps.badges.migrations.0011_delete_peakmodel" [fillcolor="pink"];
     "apps.badges.migrations.0012_badgetiermodel_unique_tier_name_per_version_and_more" [fillcolor="pink"];
+    "apps.badges.migrations.0013_touristobject_osm_error_touristobject_status" [fillcolor="pink"];
+    "apps.badges.migrations.0014_proximitycandidate" [fillcolor="pink"];
     "apps.badges.models" [fillcolor="pink"];
     "apps.badges.tasks" [fillcolor="pink"];
     "apps.badges.tests" [fillcolor="pink"];
@@ -83,9 +85,9 @@ digraph G {
   "apps.badges.admin" -> "apps.badges.models";
   "apps.badges.admin" -> "apps.badges.tasks";
   "apps.badges.forms" -> "apps.badges.models";
-  "apps.badges.forms" -> "infrastructure.adapters.osm_adapter";
   "apps.badges.models" -> "infrastructure.schemas.badge_rules_schema";
   "apps.badges.tasks" -> "apps.badges.models";
+  "apps.badges.tasks" -> "infrastructure.adapters.osm_adapter";
   "domain.entities.badge_version" -> "domain.exceptions";
   "domain.entities.badge_version" -> "domain.rules.badge_rules";
   "domain.entities.badge_version" -> "domain.value_objects.ascent";

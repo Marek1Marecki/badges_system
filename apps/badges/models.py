@@ -222,6 +222,15 @@ class OsmTypeMapping(models.Model):
 # ==========================================================
 
 
+class TouristObjectStatus(models.TextChoices):
+    """Status cyklu życia obiektu w systemie zasilania."""
+
+    DRAFT = "DRAFT", "Szkic"
+    FETCHING_OSM = "FETCHING_OSM", "Pobieranie z OSM..."
+    READY = "READY", "Gotowy (Przeliczony)"
+    ERROR = "ERROR", "Błąd pobierania"
+
+
 class TouristObject(gis_models.Model):
     """Złoty Standard dla punktu na mapie (Write Model & OSM Data Lake)."""
 
@@ -334,6 +343,15 @@ class TouristObject(gis_models.Model):
         blank=True,
         verbose_name="Surowe tagi OSM",
         help_text="Wszystkie pobrane tagi z OSM (Data Lake).",
+    )
+    status = models.CharField(
+        max_length=20, choices=TouristObjectStatus.choices, default=TouristObjectStatus.DRAFT, verbose_name="Status"
+    )
+    osm_error = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name="Błąd asynchronicznego pobierania",
+        help_text="Jeśli Celery napotka krytyczny błąd (np. obiekt nie istnieje), tu pojawi się przyczyna.",
     )
 
     # Metadane
@@ -578,3 +596,46 @@ class BadgeTierModel(models.Model):
 
     def __str__(self) -> str:
         return f"{self.version} - {self.get_name_display()}"
+
+
+# ==========================================================
+# NARZĘDZIA JAKOŚCI DANYCH (Radary i Klastry)
+# ==========================================================
+
+
+class ProximityStatus(models.TextChoices):
+    PENDING = "PENDING", "Oczekujące na decyzję"
+    RESOLVED = "RESOLVED", "Rozwiązane (Połączone)"
+    IGNORED = "IGNORED", "Ignorowane"
+
+
+class ProximityCandidate(models.Model):
+    """Skrzynka odbiorcza: Pary bliskich obiektów wykrytych przez Celery."""
+
+    # Nazywamy je obj_a i obj_b (kolejność nie ma znaczenia, skaner ustawi je alfabetycznie)
+    obj_a = models.ForeignKey(TouristObject, on_delete=models.CASCADE, related_name="proximity_a")
+    obj_b = models.ForeignKey(TouristObject, on_delete=models.CASCADE, related_name="proximity_b")
+
+    distance_meters = models.FloatField(verbose_name="Odległość [m]")
+    status = models.CharField(
+        max_length=20, choices=ProximityStatus.choices, default=ProximityStatus.PENDING, verbose_name="Status"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "odznaki_proximity_candidate"
+        verbose_name = "Kandydat do Klastrowania (Radar)"
+        verbose_name_plural = "Radar Klastrowania"
+        # Gwarantujemy, że ta sama para nie zostanie dodana dwa razy
+        unique_together = ("obj_a", "obj_b")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        # Pobieramy również typ dla czytelności (np. "Chryszczata [Szczyt] <-> Chryszczata [Wieża]")
+        obj_a_type = self.obj_a.get_type_display() if hasattr(self.obj_a, "get_type_display") else self.obj_a.type
+        obj_b_type = self.obj_b.get_type_display() if hasattr(self.obj_b, "get_type_display") else self.obj_b.type
+        obj_a_display = f"{self.obj_a.name} [{obj_a_type}]"
+        obj_b_display = f"{self.obj_b.name} [{obj_b_type}]"
+
+        return f"{obj_a_display} <-> {obj_b_display} ({self.distance_meters:.0f}m)"

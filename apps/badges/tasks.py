@@ -5,7 +5,7 @@ odciążając główny wątek aplikacji webowej.
 """
 
 from celery import shared_task
-from django.contrib.gis.geos import GeometryCollection, MultiPolygon, Polygon
+from django.contrib.gis.geos import GeometryCollection, MultiPolygon, Point, Polygon
 from django.db import transaction
 from django.db.models import Q
 
@@ -21,6 +21,76 @@ from apps.badges.models import (
     TouristRegionModel,
     VoivodeshipModel,
 )
+from infrastructure.adapters.osm_adapter import OsmAdapterError, OsmDataExtractor, OverpassClient
+
+
+@shared_task(bind=True, max_retries=15)
+def fetch_osm_data_task(self, object_id: int) -> str:
+    """Pobiera dane z OSM. Przy błędzie ponawia próbę równo co 60 sekund."""
+    try:
+        obj = TouristObject.objects.get(id=object_id)
+    except TouristObject.DoesNotExist:
+        return f"Błąd: Obiekt {object_id} nie istnieje."
+
+    if not obj.osm_id:
+        return "Pominięto: Brak OSM ID."
+
+    client = OverpassClient()
+    try:
+        osm_node = client.fetch_object(obj.osm_id)
+    except OsmAdapterError as e:
+        # LINIOWY RETRY (60 sekund), dopóki nie wyczerpiemy prób (max_retries=10)
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e, countdown=60) from e
+        else:
+            # Wyczerpano próby! Oznaczamy na czerwono w panelu Admina.
+            obj.status = "ERROR"
+            obj.osm_error = f"Ostateczny błąd po 15 próbach: {str(e)}"
+            obj.save(update_fields=["status", "osm_error"])
+            return f"BŁĄD KRYTYCZNY: Nie udało się pobrać {obj.osm_id}."
+
+    # Mamy dane! Inteligentna ekstrakcja (Data Override chroni ręczne wpisy)
+    obj.osm_raw_tags = osm_node.tags
+
+    ext_name = OsmDataExtractor.extract_name(osm_node.tags)
+    if not obj.name and ext_name:
+        obj.name = ext_name
+
+    ext_alt = OsmDataExtractor.extract_alt_name(osm_node.tags, obj.name)
+    if not obj.alt_name and ext_alt:
+        obj.alt_name = ext_alt
+
+    ext_altit = OsmDataExtractor.extract_altitude(osm_node.tags)
+    if not obj.altitude and ext_altit is not None:
+        obj.altitude = ext_altit
+
+    ext_wiki = OsmDataExtractor.extract_wikipedia_link(osm_node.tags)
+    if not obj.wikipedia_link and ext_wiki:
+        obj.wikipedia_link = ext_wiki
+
+    if osm_node.version:
+        obj.osm_version = osm_node.version
+    if osm_node.timestamp:
+        obj.osm_timestamp = osm_node.timestamp
+
+    if not obj.geom:
+        obj.geom = Point(osm_node.longitude, osm_node.latitude, srid=4326)
+
+    determined_type, _ = OsmDataExtractor.determine_type(osm_node.tags)
+    if determined_type:
+        obj.type = determined_type
+    elif not obj.type:
+        obj.type = "Inny punkt"
+
+    # Aktualizujemy status i zdejmujemy flagę błędu
+    obj.status = "READY"
+    obj.osm_error = None
+    obj.save()
+
+    # MAGIA ŁAŃCUCHA: Teraz wyzwalamy przeliczanie geografii CQRS dla tego obiektu!
+    calculate_object_regions_task.delay(obj.id)
+
+    return f"Sukces: Pobrano z OSM {obj.osm_id}. Wyzwolono przeliczanie regionów."
 
 
 @shared_task
@@ -211,3 +281,52 @@ def build_tourist_region_geometry_task(region_id: int) -> str:
             ObjectRegionCache.objects.bulk_create(new_entries, ignore_conflicts=True)
 
     return f"Sukces: Przypisano {len(new_entries)} obiektów do {t_region.name}."
+
+
+@shared_task
+def scan_proximity_candidates_task() -> str:
+    """Skanuje całą bazę szukając niepowiązanych obiektów blisko siebie (Radar 150m)."""
+
+    # Importujemy lokalnie, by uniknąć problemów cyrkularnych
+    from django.contrib.gis.measure import D
+
+    from apps.badges.models import ProximityCandidate, ProximityStatus, TouristObject
+
+    SEARCH_RADIUS = 150.0  # 150 metrów
+
+    # Szukamy tylko wśród obiektów, które fizycznie istnieją, mają geometrię
+    # i nie są "podrzędne" (nie mają jeszcze rodzica)
+    base_qs = TouristObject.objects.filter(geom__isnull=False, is_active=True, parent_object__isnull=True)
+
+    created_count = 0
+
+    # Pętla po wszystkich obiektach. To zadanie może zająć chwilę w dużej bazie,
+    # ale działa w tle, więc nie ma to znaczenia.
+    for obj in base_qs:
+        # Szukamy sąsiadów w promieniu 150m (używając lookupu D)
+        neighbors = base_qs.exclude(id=obj.id).filter(geom__distance_lte=(obj.geom, D(m=SEARCH_RADIUS)))
+
+        for neighbor in neighbors:
+            # Uporządkowanie alfabetyczne (lub po ID), by uniknąć zapisu pary (A,B) i (B,A)
+            if obj.id >= neighbor.id:
+                continue
+
+            # Liczymy dokładny dystans w metrach dla panelu informacyjnego
+            # dla bazy używamy ST_Distance, ale w pythonie wystarczy mnożnik
+            # dokładniej: obj.geom.transform(3857, clone=True).distance(neighbor.geom.transform(3857, clone=True))
+
+            try:
+                # PostGIS transform daje dokładne metry
+                exact_dist = obj.geom.transform(3857, clone=True).distance(neighbor.geom.transform(3857, clone=True))
+            except Exception:
+                exact_dist = 0.0
+
+            # Próba zapisu do Skrzynki. Jeśli już tam są, get_or_create zignoruje.
+            candidate, created = ProximityCandidate.objects.get_or_create(
+                obj_a=obj, obj_b=neighbor, defaults={"distance_meters": exact_dist, "status": ProximityStatus.PENDING}
+            )
+
+            if created:
+                created_count += 1
+
+    return f"Skanowanie zakończone. Utworzono {created_count} nowych kandydujących par."

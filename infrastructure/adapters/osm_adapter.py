@@ -1,15 +1,20 @@
 """Adapter do komunikacji z API OpenStreetMap (Overpass)."""
 
 import json
+import logging
 import re
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import date, datetime
 
-import httpx
 from pydantic import BaseModel, Field
 
 from apps.badges.models import OsmTypeMapping
 from infrastructure.exceptions import InfrastructureException
+
+logger = logging.getLogger(__name__)
 
 
 class OsmAdapterError(InfrastructureException):
@@ -55,18 +60,20 @@ class OsmNodeDTO(BaseModel):
 class OverpassClient:
     """Klient HTTP do pobierania danych z OSM z mechanizmem Retry i Fallback."""
 
-    # Skrócona i najbardziej niezawodna lista publicznych węzłów Overpass w Europie.
     OVERPASS_URLS = [
         "https://overpass-api.de/api/interpreter",
+        "https://lz4.overpass-api.de/api/interpreter",
         "https://overpass.kumi.systems/api/interpreter",
-        "https://lz4.overpass-api.de/api/interpreter",  # Oficjalny serwer klastrowany
     ]
 
-    # Wymagany przez netykietę OpenStreetMap "User-Agent"
-    # Bez niego wiele serwerów zwraca 403 Forbidden dla skryptów.
-    HEADERS = {"User-Agent": "BadgeSystem/1.0 (Contact: admin@example.com)", "Accept": "application/json"}
+    HEADERS = {
+        "User-Agent": "Mozilla/5.0 (compatible; BadgeApp/1.0; +https://example.com)",
+        "Accept": "application/json",
+    }
 
     def fetch_object(self, osm_id: str, max_retries: int = 3) -> OsmNodeDTO:
+        logger.info(f"\n--- ROZPOCZĘCIE POBIERANIA OSM ID: {osm_id} ---")
+
         try:
             osm_type, numeric_id = osm_id.strip().split("/")
         except ValueError as e:
@@ -75,41 +82,47 @@ class OverpassClient:
         if osm_type not in ("node", "way", "relation"):
             raise OsmAdapterError(f"Nieobsługiwany typ OSM: {osm_type}")
 
-        query = f"""
-        [out:json];
-        {osm_type}({numeric_id});
-        out center meta;
-        """
+        out_modifier = "meta" if osm_type == "node" else "center meta"
+        query = f"[out:json];{osm_type}({numeric_id});out {out_modifier};"
 
-        last_exception = None
+        # Kodujemy zapytanie, by było bezpieczne w URL
+        encoded_query = urllib.parse.urlencode({"data": query})
+
+        last_exception: Exception | None = None
 
         for attempt in range(max_retries):
-            url = self.OVERPASS_URLS[attempt % len(self.OVERPASS_URLS)]
+            # UŻYWAMY GET: Doklejamy całe zapytanie bezpośrednio do URL-a
+            base_url = self.OVERPASS_URLS[attempt % len(self.OVERPASS_URLS)]
+            url = f"{base_url}?{encoded_query}"
+
+            # Ważne: wysyłamy żądanie bez ciała (data=None) i bez jawnego wymuszania POST,
+            # dzięki czemu urllib użyje domyślnej, nieblokowanej metody GET.
+            req = urllib.request.Request(url, headers=self.HEADERS)  # noqa: S310
 
             try:
-                # Wysłanie zapytania z jawnym User-Agent'em, co rozwiązuje problem 403.
-                with httpx.Client(timeout=25.0, headers=self.HEADERS) as client:
-                    # Overpass API przyjmuje skrypty również jako POST w urlencode
-                    response = client.post(url, data={"data": query})
-
-                    response.raise_for_status()
-                    data = response.json()
+                # Limitujemy czas na odpowiedź do 8 sekund. Serwer francuski
+                # od razu wyrzuci timeout, a my nie zablokujemy workera!
+                with urllib.request.urlopen(req, timeout=30.0) as response:  # noqa: S310
+                    response_body = response.read().decode("utf-8")
+                    logger.info("SUKCES! Pomyślnie pobrano dane.")
+                    response_data = json.loads(response_body)
                     break
 
-            except (httpx.RequestError, httpx.HTTPStatusError, json.JSONDecodeError) as e:
+            except urllib.error.HTTPError as e:
                 last_exception = e
+                error_body = e.read().decode("utf-8", errors="replace")
+                logger.warning(f"Serwer odrzucił żądanie. Błąd {e.code}")
 
-                # Zabezpieczenie przed 40x.
-                if isinstance(e, httpx.HTTPStatusError) and e.response.status_code < 500:
-                    # Bardzo restrykcyjne API OSM czasem oddaje 429 Too Many Requests
-                    if e.response.status_code == 429:
-                        # W przypadku "429 Too Many Requests" traktujemy to jako błąd
-                        # infrastruktury przejściowy (możemy poczekać i ponowić).
-                        pass
-                    else:
-                        raise OsmAdapterError(f"Błąd klienta OSM ({e.response.status_code}): {e}") from e
+                if e.code in (400, 404):
+                    raise OsmAdapterError(f"Odrzucono zapytanie ({e.code}): {error_body[:100]}") from e
 
-                # Jeśli jeszcze nie osiągnięto max_retries - ponów.
+                if attempt < max_retries - 1:
+                    time.sleep(1.0 * (2**attempt))
+                    continue
+
+            except (urllib.error.URLError, json.JSONDecodeError, TimeoutError) as e:
+                last_exception = e
+                logger.error(f"Błąd sieci/parsowania/timeout: {str(e)}")
                 if attempt < max_retries - 1:
                     time.sleep(1.0 * (2**attempt))
                     continue
@@ -118,7 +131,10 @@ class OverpassClient:
                 f"Nie udało się połączyć z Overpass API po {max_retries} próbach. Ostatni błąd: {last_exception}"
             )
 
-        elements = data.get("elements", [])
+        if not response_data:
+            raise OsmAdapterError(f"Brak danych z OSM dla obiektu {osm_id}.")
+
+        elements = response_data.get("elements", [])
         if not elements:
             raise OsmAdapterError(f"Obiekt {osm_id} nie został znaleziony w OSM.")
 

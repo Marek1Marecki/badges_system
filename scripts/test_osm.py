@@ -20,7 +20,7 @@ def test_kremenaros() -> None:
     client = OverpassClient()
     print("Pobieram Kremenaros z OSM...")
     # node/477984782 to Kremenaros na trójstyku
-    osm_data = client.fetch_object("node/477984782")
+    osm_data = client.fetch_object("way/27918182")
 
     print("\n--- SUROWE TAGI Z OSM (Do Data Lake) ---")
     print(f"Liczba tagów: {len(osm_data.tags)}")

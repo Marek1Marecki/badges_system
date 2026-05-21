@@ -40,7 +40,7 @@ class TestBadgeVersionDomain:
         """Test błędu przy niewystarczającej liczbie szczytów."""
         rules = [Mock()]
         rules[0].validate.return_value = []
-        
+
         badge_version = BadgeVersionDomain(
             version_id="v1",
             rules=rules,
@@ -112,7 +112,7 @@ class TestBadgeVersionDomain:
 
         with pytest.raises(ValidationError) as exc_info:
             badge_version.evaluate(ascents)
-        
+
         error_message = str(exc_info.value)
         assert "Aktywność CYCLING jest niedozwolona" in error_message
         assert "Przekroczono limit czasu" in error_message
@@ -121,7 +121,7 @@ class TestBadgeVersionDomain:
         """Test ewaluacji z pustą listą wejść."""
         rules = [Mock()]
         rules[0].validate.return_value = []
-        
+
         badge_version = BadgeVersionDomain(
             version_id="v1",
             rules=rules,

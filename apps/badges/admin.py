@@ -10,9 +10,11 @@ from django.contrib.admin import (
     helpers,  # Do przekazania kontekstu akcji
 )
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.forms.models import BaseInlineFormSet
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
+from django.utils.html import format_html
 from leaflet.admin import LeafletGeoAdmin
 
 from apps.badges.forms import TouristObjectAdminForm
@@ -27,12 +29,18 @@ from apps.badges.models import (
     OrganizerModel,
     OsmTypeMapping,
     ProvinceModel,
+    ProximityCandidate,
     SubprovinceModel,
     TouristObject,
     TouristRegionModel,
     VoivodeshipModel,
 )
-from apps.badges.tasks import build_tourist_region_geometry_task, calculate_object_regions_task
+from apps.badges.tasks import (
+    build_tourist_region_geometry_task,
+    calculate_object_regions_task,
+    fetch_osm_data_task,
+    scan_proximity_candidates_task,
+)
 
 
 class AddToBadgeForm(forms.Form):
@@ -172,22 +180,33 @@ class TouristObjectAdmin(LeafletGeoAdmin):
     """Główny panel tworzenia punktów (Słownik Obiektów)."""
 
     form = TouristObjectAdminForm
-    list_display = ("name", "type", "altitude", "osm_id", "code", "is_active")
-    list_filter = ("is_active", "type", RegionLevelFilter)
+    list_display = ("name", "type", "altitude", "osm_id", "status", "code", "is_active")
+    list_filter = ("status", "is_active", "type", RegionLevelFilter)
     search_fields = ("name", "alt_name", "osm_id", "code")
-    actions = ["recalculate_regions_async", "add_to_badge_version", "show_ids_for_json"]
+    actions = [
+        "recalculate_regions_async",
+        "add_to_badge_version",
+        "show_ids_for_json",
+        "mark_as_ready",
+        "retry_osm_fetch",
+        "run_proximity_scanner",
+    ]
     modifiable = True
     settings_overrides = {
         "DEFAULT_CENTER": (52.0, 19.0),
         "DEFAULT_ZOOM": 5,
     }
     inlines = [ObjectRegionCacheInline]
+    readonly_fields = ("status", "osm_error", "local_names")
 
     fieldsets = (
         (
             "Złoty Standard (Curated)",
             {
                 "fields": (
+                    "is_active",
+                    "status",  # Dodajemy do widoku, ale będzie read-only dzięki liście wyżej
+                    "osm_error",  # Dodajemy do widoku, ale będzie read-only
                     "name",
                     "alt_name",
                     "type",
@@ -200,7 +219,7 @@ class TouristObjectAdmin(LeafletGeoAdmin):
         (
             "Stan fizyczny i cykl życia",
             {
-                "fields": ("is_active", "existence_start", "existence_end"),
+                "fields": ("existence_start", "existence_end"),
                 "description": "Zarządzanie widocznością obiektu w czasie (przydatne m.in. dla wież i schronisk).",
                 "classes": ("collapse",),
             },
@@ -235,10 +254,26 @@ class TouristObjectAdmin(LeafletGeoAdmin):
 
     def save_model(self, request, obj, form, change):
         """Nadpisuje standardowy zapis, by wyzwolić przeliczanie geograficzne w tle."""
+
+        needs_osm_fetch = False
+
+        # Jeśli to nowy obiekt z OSM, lub zmieniono mu OSM ID -> ustaw na "Pobieranie"
+        if obj.osm_id and (not change or "osm_id" in form.changed_data):
+            obj.status = "FETCHING_OSM"
+            obj.osm_error = None
+            needs_osm_fetch = True
+        elif not obj.osm_id and obj.status == "DRAFT":
+            # Ręczny obiekt od razu jest "Gotowy"
+            obj.status = "READY"
+
         super().save_model(request, obj, form, change)
+
         from django.db import transaction
 
-        transaction.on_commit(lambda: calculate_object_regions_task.delay(obj.id))
+        if needs_osm_fetch:
+            transaction.on_commit(lambda: fetch_osm_data_task.delay(obj.id))
+        else:
+            transaction.on_commit(lambda: calculate_object_regions_task.delay(obj.id))
 
     @admin.action(description="[Celery] Przelicz geografię (w tle) dla zaznaczonych")
     def recalculate_regions_async(self, request, queryset):
@@ -291,6 +326,32 @@ class TouristObjectAdmin(LeafletGeoAdmin):
 
         # Wyświetlamy jako zielony komunikat (możesz to zaznaczyć myszką i skopiować)
         self.message_user(request, f"Skopiuj te ID do reguły JSON: {ids_str}")
+
+    # NOWA AKCJA: Wymuszenie statusu Gotowy
+    @admin.action(description="Oznacz wybrane obiekty jako GOTOWE (READY)")
+    def mark_as_ready(self, request, queryset):
+        """Szybka akcja do aktualizacji statusów historycznych rekordów."""
+        updated_count = queryset.update(status="READY")
+        self.message_user(request, f"Zaktualizowano status {updated_count} obiektów na 'Gotowy (Przeliczony)'.")
+
+    @admin.action(description="[OSM] Ponów pobieranie danych z OSM dla zaznaczonych")
+    def retry_osm_fetch(self, request, queryset):
+        count = 0
+        for obj in queryset.filter(osm_id__isnull=False).exclude(osm_id=""):
+            obj.status = "FETCHING_OSM"
+            obj.osm_error = None
+            obj.save(update_fields=["status", "osm_error"])
+            fetch_osm_data_task.delay(obj.id)
+            count += 1
+        self.message_user(request, f"Ponowiono pobieranie OSM dla {count} obiektów.")
+
+    @admin.action(description="[Celery] Uruchom Radar Zbliżeniowy 150m (Szukaj Klastrów)")
+    def run_proximity_scanner(self, request, queryset):
+        """Wrzuca zadanie skanowania całej bazy do Celery."""
+        scan_proximity_candidates_task.delay()
+        self.message_user(
+            request, "Wysłano zadanie Skanera do Celery. Za kilka sekund sprawdź zakładkę 'Radar Klastrowania'."
+        )
 
 
 @admin.register(OrganizerModel)
@@ -350,6 +411,12 @@ class BadgeTierInline(admin.TabularInline):
 class BadgeVersionAdmin(admin.ModelAdmin):
     """Panel Wersji Odznaki (Tu przypinamy szczyty i definiujemy stopnie)."""
 
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        """KWARANTANNA: W puli odznak pokazujemy TYLKO obiekty gotowe, by Admin nie zepsuł reguł."""
+        if db_field.name == "pool_peaks":
+            kwargs["queryset"] = TouristObject.objects.filter(status="READY")
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
+
     list_display = ("badge", "version_code", "valid_from")
     list_filter = ("badge", "valid_from")
 
@@ -404,3 +471,69 @@ class TouristRegionAdmin(ReadOnlyMapAdmin):
         for obj in queryset:
             build_tourist_region_geometry_task.delay(obj.id)
         self.message_user(request, "Wysłano zadania generowania do Celery.")
+
+
+@admin.register(ProximityCandidate)
+class ProximityCandidateAdmin(admin.ModelAdmin):
+    list_display = ("get_obj_a_info", "get_obj_b_info", "distance_meters", "status", "created_at")
+    list_filter = ("status",)
+    search_fields = ("obj_a__name", "obj_b__name")
+
+    @admin.display(description="Obiekt A (Lewy)")
+    def get_obj_a_info(self, obj: ProximityCandidate) -> str:
+        """Generuje czytelny opis Obiektu A wraz z linkiem do edycji."""
+        url = f"/admin/badges/touristobject/{obj.obj_a.id}/change/"
+        type_str = obj.obj_a.type
+        # Tłumimy błąd mypy: format_html zwraca SafeString/Any, co jest tutaj pożądane
+        return format_html('<a href="{}">{} [{}]</a>', url, obj.obj_a.name, type_str)  # type: ignore[no-any-return]
+
+    @admin.display(description="Obiekt B (Prawy)")
+    def get_obj_b_info(self, obj: ProximityCandidate) -> str:
+        """Generuje czytelny opis Obiektu B wraz z linkiem do edycji."""
+        url = f"/admin/badges/touristobject/{obj.obj_b.id}/change/"
+        type_str = obj.obj_b.type
+        return format_html('<a href="{}">{} [{}]</a>', url, obj.obj_b.name, type_str)  # type: ignore[no-any-return]
+
+    def has_add_permission(self, request) -> bool:
+        return False
+
+    actions = ["make_a_parent", "make_b_parent", "ignore_pair"]
+
+    @admin.action(description="POŁĄCZ: Lewy obiekt (A) jest Rodzicem Prawego (B)")
+    def make_a_parent(self, request, queryset):
+        self._resolve_pairs(queryset, parent_is="A")
+
+    @admin.action(description="POŁĄCZ: Prawy obiekt (B) jest Rodzicem Lewego (A)")
+    def make_b_parent(self, request, queryset):
+        self._resolve_pairs(queryset, parent_is="B")
+
+    @admin.action(description="IGNORUJ: Obiekty nie są powiązane (np. dwa osobne szczyty)")
+    def ignore_pair(self, request, queryset):
+        queryset.update(status="IGNORED")
+
+    def _resolve_pairs(self, queryset, parent_is: str):
+        """Mechanika łączenia w Klastry i inteligentnego ignorowania rodzeństwa."""
+        for candidate in queryset.filter(status="PENDING"):
+            if parent_is == "A":
+                parent = candidate.obj_a
+                child = candidate.obj_b
+            else:
+                parent = candidate.obj_b
+                child = candidate.obj_a
+
+            # 1. Zapisujemy relację
+            child.parent_object = parent
+            child.save(update_fields=["parent_object"])
+
+            # 2. Oznaczamy tę parę jako rozwiązaną
+            candidate.status = "RESOLVED"
+            candidate.save(update_fields=["status"])
+
+            # 3. AUTO-RESOLVE RODZEŃSTWA (Zgodnie z naszymi ustaleniami!)
+            # Jeśli dziecko ma już w Radarze inne pary ze statusem PENDING
+            # z obiektami, które też są dziećmi tego samego rodzica -> Zignoruj je!
+            siblings_ids = parent.child_objects.values_list("id", flat=True)
+
+            ProximityCandidate.objects.filter(status="PENDING").filter(
+                Q(obj_a=child, obj_b_id__in=siblings_ids) | Q(obj_b=child, obj_a_id__in=siblings_ids)
+            ).update(status="IGNORED")

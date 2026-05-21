@@ -75,6 +75,6 @@ class TestValidationError:
         """Test że DomainException nie jest ValidationError."""
         with pytest.raises(DomainException) as exc_info:
             raise DomainException("Domain error")
-        
+
         assert not isinstance(exc_info.value, ValidationError)
         assert type(exc_info.value) is DomainException

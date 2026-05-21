@@ -1,6 +1,5 @@
 """Testy dla ustawień Django."""
 
-
 from config.settings import (
     ALLOWED_HOSTS,
     AUTH_PASSWORD_VALIDATORS,
@@ -56,25 +55,25 @@ class TestInstalledApps:
     def test_core_django_apps_are_installed(self):
         """Test że podstawowe aplikacje Django są zainstalowane."""
         core_apps = [
-            'django.contrib.admin',
-            'django.contrib.auth',
-            'django.contrib.contenttypes',
-            'django.contrib.sessions',
-            'django.contrib.messages',
-            'django.contrib.staticfiles',
+            "django.contrib.admin",
+            "django.contrib.auth",
+            "django.contrib.contenttypes",
+            "django.contrib.sessions",
+            "django.contrib.messages",
+            "django.contrib.staticfiles",
         ]
-        
+
         for app in core_apps:
             assert app in INSTALLED_APPS
 
     def test_gis_and_custom_apps_are_installed(self):
         """Test że aplikacje GIS i własne są zainstalowane."""
         expected_apps = [
-            'django.contrib.gis',
-            'django_jsonform',
-            'apps.badges',
+            "django.contrib.gis",
+            "django_jsonform",
+            "apps.badges",
         ]
-        
+
         for app in expected_apps:
             assert app in INSTALLED_APPS
 
@@ -90,15 +89,15 @@ class TestMiddleware:
     def test_core_middleware_are_present(self):
         """Test że podstawowe middleware są obecne."""
         core_middleware = [
-            'django.middleware.security.SecurityMiddleware',
-            'django.contrib.sessions.middleware.SessionMiddleware',
-            'django.middleware.common.CommonMiddleware',
-            'django.middleware.csrf.CsrfViewMiddleware',
-            'django.contrib.auth.middleware.AuthenticationMiddleware',
-            'django.contrib.messages.middleware.MessageMiddleware',
-            'django.middleware.clickjacking.XFrameOptionsMiddleware',
+            "django.middleware.security.SecurityMiddleware",
+            "django.contrib.sessions.middleware.SessionMiddleware",
+            "django.middleware.common.CommonMiddleware",
+            "django.middleware.csrf.CsrfViewMiddleware",
+            "django.contrib.auth.middleware.AuthenticationMiddleware",
+            "django.contrib.messages.middleware.MessageMiddleware",
+            "django.middleware.clickjacking.XFrameOptionsMiddleware",
         ]
-        
+
         for middleware in core_middleware:
             assert middleware in MIDDLEWARE
 
@@ -109,22 +108,22 @@ class TestDatabaseSettings:
     def test_databases_is_dict(self):
         """Test że DATABASES jest słownikiem."""
         assert isinstance(DATABASES, dict)
-        assert 'default' in DATABASES
+        assert "default" in DATABASES
 
     def test_default_database_config(self):
         """Test konfiguracji domyślnej bazy danych."""
-        default_db = DATABASES['default']
-        
-        assert 'ENGINE' in default_db
-        assert 'NAME' in default_db
-        assert 'USER' in default_db
-        assert 'PASSWORD' in default_db
-        assert 'HOST' in default_db
-        assert 'PORT' in default_db
+        default_db = DATABASES["default"]
+
+        assert "ENGINE" in default_db
+        assert "NAME" in default_db
+        assert "USER" in default_db
+        assert "PASSWORD" in default_db
+        assert "HOST" in default_db
+        assert "PORT" in default_db
 
     def test_database_engine_is_postgis(self):
         """Test że silnikiem bazy danych jest PostGIS."""
-        assert DATABASES['default']['ENGINE'] == 'django.contrib.gis.db.backends.postgis'
+        assert DATABASES["default"]["ENGINE"] == "django.contrib.gis.db.backends.postgis"
 
 
 class TestTemplatesSettings:
@@ -138,22 +137,22 @@ class TestTemplatesSettings:
     def test_template_backend(self):
         """Test backendu szablonów."""
         template_config = TEMPLATES[0]
-        assert template_config['BACKEND'] == 'django.template.backends.django.DjangoTemplates'
+        assert template_config["BACKEND"] == "django.template.backends.django.DjangoTemplates"
 
     def test_template_options(self):
         """Test opcji szablonów."""
         template_config = TEMPLATES[0]
-        
-        assert 'OPTIONS' in template_config
-        assert 'context_processors' in template_config['OPTIONS']
-        
-        context_processors = template_config['OPTIONS']['context_processors']
+
+        assert "OPTIONS" in template_config
+        assert "context_processors" in template_config["OPTIONS"]
+
+        context_processors = template_config["OPTIONS"]["context_processors"]
         expected_processors = [
-            'django.template.context_processors.request',
-            'django.contrib.auth.context_processors.auth',
-            'django.contrib.messages.context_processors.messages',
+            "django.template.context_processors.request",
+            "django.contrib.auth.context_processors.auth",
+            "django.contrib.messages.context_processors.messages",
         ]
-        
+
         for processor in expected_processors:
             assert processor in context_processors
 
@@ -170,19 +169,19 @@ class TestAuthPasswordValidators:
         """Test struktury walidatorów haseł."""
         for validator in AUTH_PASSWORD_VALIDATORS:
             assert isinstance(validator, dict)
-            assert 'NAME' in validator
+            assert "NAME" in validator
 
     def test_default_password_validators_are_present(self):
         """Test że domyślne walidatory haseł są obecne."""
         expected_validators = [
-            'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-            'django.contrib.auth.password_validation.MinimumLengthValidator',
-            'django.contrib.auth.password_validation.CommonPasswordValidator',
-            'django.contrib.auth.password_validation.NumericPasswordValidator',
+            "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+            "django.contrib.auth.password_validation.MinimumLengthValidator",
+            "django.contrib.auth.password_validation.CommonPasswordValidator",
+            "django.contrib.auth.password_validation.NumericPasswordValidator",
         ]
-        
-        validator_names = [v['NAME'] for v in AUTH_PASSWORD_VALIDATORS]
-        
+
+        validator_names = [v["NAME"] for v in AUTH_PASSWORD_VALIDATORS]
+
         for validator in expected_validators:
             assert validator in validator_names
 
@@ -216,7 +215,7 @@ class TestStaticFilesSettings:
         """Test ustawienia STATIC_URL."""
         assert isinstance(STATIC_URL, str)
         assert len(STATIC_URL) > 0
-        assert STATIC_URL.endswith('/')
+        assert STATIC_URL.endswith("/")
 
 
 class TestUrlAndWsgiSettings:

@@ -66,7 +66,7 @@ class TestUseCaseError:
         """Test że UseCaseError może być łapany jako ApplicationException."""
         with pytest.raises(ApplicationException) as exc_info:
             raise UseCaseError("Test use case error")
-        
+
         assert isinstance(exc_info.value, UseCaseError)
         assert isinstance(exc_info.value, ApplicationException)
 
@@ -84,7 +84,7 @@ class TestUseCaseError:
         """Test że ApplicationException nie jest UseCaseError."""
         with pytest.raises(ApplicationException) as exc_info:
             raise ApplicationException("Application error")
-        
+
         assert not isinstance(exc_info.value, UseCaseError)
         assert type(exc_info.value) is ApplicationException
 
@@ -93,18 +93,18 @@ class TestUseCaseError:
         # Test that both can be caught as Exception
         with pytest.raises(ApplicationException):
             raise ApplicationException("App error")
-        
+
         with pytest.raises(UseCaseError):
             raise UseCaseError("Use case error")
-        
+
         # Test that UseCaseError can be caught as ApplicationException
         with pytest.raises(ApplicationException):
             raise UseCaseError("Use case error")
-        
+
         # But ApplicationException cannot be caught as UseCaseError
         with pytest.raises(ApplicationException) as exc_info:
             raise ApplicationException("App error")
-        
+
         assert not isinstance(exc_info.value, UseCaseError)
 
     def test_exception_with_different_message_types(self):
@@ -116,10 +116,10 @@ class TestUseCaseError:
             "Error with unicode: ąęłżśćźń",
             "Very long error message " * 10,
         ]
-        
+
         for message in messages:
             app_error = ApplicationException(message)
             use_case_error = UseCaseError(message)
-            
+
             assert str(app_error) == message
             assert str(use_case_error) == message

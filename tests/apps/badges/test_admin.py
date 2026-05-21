@@ -158,6 +158,7 @@ class TestBadgeAdmin:
     def test_badge_admin_inheritance(self):
         """Test dziedziczenia BadgeAdmin."""
         from django.contrib import admin
+
         assert issubclass(BadgeAdmin, admin.ModelAdmin)
 
     def test_badge_admin_list_display(self):
@@ -172,6 +173,7 @@ class TestBadgeVersionAdmin:
     def test_badge_version_admin_inheritance(self):
         """Test dziedziczenia BadgeVersionAdmin."""
         from django.contrib import admin
+
         assert issubclass(BadgeVersionAdmin, admin.ModelAdmin)
 
     def test_badge_version_admin_list_display(self):
@@ -191,41 +193,49 @@ class TestAdminRegistrations:
     def test_country_model_is_registered(self):
         """Test że CountryModel jest zarejestrowany."""
         from django.contrib import admin
+
         assert admin.site.is_registered(CountryModel)
 
     def test_voivodeship_model_is_registered(self):
         """Test że VoivodeshipModel jest zarejestrowany."""
         from django.contrib import admin
+
         assert admin.site.is_registered(VoivodeshipModel)
 
     def test_province_model_is_registered(self):
         """Test że ProvinceModel jest zarejestrowany."""
         from django.contrib import admin
+
         assert admin.site.is_registered(ProvinceModel)
 
     def test_subprovince_model_is_registered(self):
         """Test że SubprovinceModel jest zarejestrowany."""
         from django.contrib import admin
+
         assert admin.site.is_registered(SubprovinceModel)
 
     def test_macroregion_model_is_registered(self):
         """Test że MacroregionModel jest zarejestrowany."""
         from django.contrib import admin
+
         assert admin.site.is_registered(MacroregionModel)
 
     def test_mesoregion_model_is_registered(self):
         """Test że MesoregionModel jest zarejestrowany."""
         from django.contrib import admin
+
         assert admin.site.is_registered(MesoregionModel)
 
     def test_badge_model_is_registered(self):
         """Test że BadgeModel jest zarejestrowany."""
         from django.contrib import admin
+
         assert admin.site.is_registered(BadgeModel)
 
     def test_badge_version_model_is_registered(self):
         """Test że BadgeVersionModel jest zarejestrowany."""
         from django.contrib import admin
+
         assert admin.site.is_registered(BadgeVersionModel)
 
 
@@ -251,6 +261,7 @@ class TestObjectRegionCacheInline:
     def test_inline_configuration(self):
         """Test konfiguracji inline'a."""
         from django.contrib.admin import AdminSite
+
         inline = ObjectRegionCacheInline(ObjectRegionCache, AdminSite())
         assert inline.model == ObjectRegionCache
         assert inline.extra == 0
@@ -259,6 +270,7 @@ class TestObjectRegionCacheInline:
     def test_inline_readonly_fields(self):
         """Test pól readonly."""
         from django.contrib.admin import AdminSite
+
         inline = ObjectRegionCacheInline(ObjectRegionCache, AdminSite())
         expected_readonly = ("region_level", "region_id", "region_name", "distance_meters")
         assert inline.readonly_fields == expected_readonly
@@ -266,6 +278,7 @@ class TestObjectRegionCacheInline:
     def test_inline_has_add_permission(self):
         """Test uprawnień do dodawania."""
         from django.contrib.admin import AdminSite
+
         inline = ObjectRegionCacheInline(ObjectRegionCache, AdminSite())
         assert inline.has_add_permission(None) is False
 
@@ -282,13 +295,13 @@ class TestRegionLevelFilter:
 
     def test_filter_lookups(self):
         """Test metody lookups."""
-        with patch('apps.badges.admin.ObjectRegionCache.objects') as mock_objects:
+        with patch("apps.badges.admin.ObjectRegionCache.objects") as mock_objects:
             mock_objects.values_list.return_value.distinct.return_value.order_by.return_value = ["Polska", "Czechy"]
             with patch.object(RegionLevelFilter, "lookups", return_value=[]):
                 filter_obj = RegionLevelFilter(None, {}, TouristObject, None)
-            
+
             lookups = filter_obj.lookups(None, None)
-            
+
             expected = [("Polska", "Polska"), ("Czechy", "Czechy")]
             assert lookups == expected
 
@@ -296,13 +309,13 @@ class TestRegionLevelFilter:
         """Test filtrowania querysetu z wartością."""
         with patch.object(RegionLevelFilter, "lookups", return_value=[]):
             filter_obj = RegionLevelFilter(None, {"region_cache": "Polska"}, TouristObject, None)
-        
+
         mock_queryset = Mock()
         mock_filtered = Mock()
         mock_queryset.filter.return_value.distinct.return_value = mock_filtered
-        
+
         result = filter_obj.queryset(None, mock_queryset)
-        
+
         assert result == mock_filtered
         mock_queryset.filter.assert_called_once_with(cached_regions__region_name=filter_obj.value())
 
@@ -310,10 +323,10 @@ class TestRegionLevelFilter:
         """Test filtrowania querysetu bez wartości."""
         with patch.object(RegionLevelFilter, "lookups", return_value=[]):
             filter_obj = RegionLevelFilter(None, {}, TouristObject, None)
-        
+
         mock_queryset = Mock()
         result = filter_obj.queryset(None, mock_queryset)
-        
+
         assert result == mock_queryset
 
 
@@ -330,7 +343,7 @@ class TestPendingMappingFilter:
         """Test metody lookups."""
         filter_obj = PendingMappingFilter(None, {}, OsmTypeMapping, None)
         lookups = filter_obj.lookups(None, None)
-        
+
         expected = (
             ("pending", "Oczekujące na decyzję (Inbox)"),
             ("mapped", "Zmapowane (Gotowe)"),
@@ -342,15 +355,15 @@ class TestPendingMappingFilter:
         """Test filtrowania na 'pending'."""
         filter_obj = PendingMappingFilter(None, {"status": "pending"}, OsmTypeMapping, None)
         filter_obj.value = Mock(return_value="pending")
-        
+
         mock_queryset = Mock()
         mock_filter1 = MagicMock()
         mock_filter2 = MagicMock()
         mock_queryset.filter.side_effect = [mock_filter1, mock_filter2]
         mock_filter1.__or__.return_value = "or_result"
-        
+
         result = filter_obj.queryset(None, mock_queryset)
-        
+
         mock_queryset.filter.assert_any_call(target_type__isnull=True, is_ignored=False)
         mock_queryset.filter.assert_any_call(target_type__exact="", is_ignored=False)
         assert mock_queryset.filter.call_count == 2
@@ -359,7 +372,7 @@ class TestPendingMappingFilter:
         """Test filtrowania na 'mapped'."""
         filter_obj = PendingMappingFilter(None, {"status": "mapped"}, OsmTypeMapping, None)
         filter_obj.value = Mock(return_value="mapped")
-        
+
         mock_queryset = Mock()
         mock_exclude1 = Mock()
         mock_exclude2 = Mock()
@@ -367,9 +380,9 @@ class TestPendingMappingFilter:
         mock_queryset.exclude.return_value = mock_exclude1
         mock_exclude1.exclude.return_value = mock_exclude2
         mock_exclude2.filter.return_value = mock_filter
-        
+
         result = filter_obj.queryset(None, mock_queryset)
-        
+
         mock_queryset.exclude.assert_called_once_with(target_type__isnull=True)
         mock_exclude1.exclude.assert_called_once_with(target_type__exact="")
         mock_exclude2.filter.assert_called_once_with(is_ignored=False)
@@ -378,23 +391,23 @@ class TestPendingMappingFilter:
         """Test filtrowania na 'ignored'."""
         filter_obj = PendingMappingFilter(None, {"status": "ignored"}, OsmTypeMapping, None)
         filter_obj.value = Mock(return_value="ignored")
-        
+
         mock_queryset = Mock()
         mock_filter = Mock()
         mock_queryset.filter.return_value = mock_filter
-        
+
         result = filter_obj.queryset(None, mock_queryset)
-        
+
         mock_queryset.filter.assert_called_once_with(is_ignored=True)
 
     def test_filter_queryset_no_value(self):
         """Test filtrowania bez wartości."""
         filter_obj = PendingMappingFilter(None, {}, OsmTypeMapping, None)
         filter_obj.value = Mock(return_value=None)
-        
+
         mock_queryset = Mock()
         result = filter_obj.queryset(None, mock_queryset)
-        
+
         assert result == mock_queryset
 
 
@@ -404,6 +417,7 @@ class TestOsmTypeMappingAdmin:
     def test_osm_type_mapping_admin_inheritance(self):
         """Test dziedziczenia OsmTypeMappingAdmin."""
         from django.contrib import admin
+
         assert issubclass(OsmTypeMappingAdmin, admin.ModelAdmin)
 
     def test_osm_type_mapping_admin_list_display(self):
@@ -437,16 +451,17 @@ class TestTouristObjectAdmin:
     def test_tourist_object_admin_form(self):
         """Test formularza admina."""
         from apps.badges.forms import TouristObjectAdminForm
+
         assert TouristObjectAdmin.form == TouristObjectAdminForm
 
     def test_tourist_object_admin_list_display(self):
         """Test pól list_display."""
-        expected = ("name", "type", "altitude", "osm_id", "code", "is_active")
+        expected = ("name", "type", "altitude", "osm_id", "status", "code", "is_active")
         assert TouristObjectAdmin.list_display == expected
 
     def test_tourist_object_admin_list_filter(self):
         """Test pól list_filter."""
-        expected_fields = ("is_active", "type", RegionLevelFilter)
+        expected_fields = ("status", "is_active", "type", RegionLevelFilter)
         assert TouristObjectAdmin.list_filter == expected_fields
 
     def test_tourist_object_admin_search_fields(self):
@@ -456,7 +471,7 @@ class TestTouristObjectAdmin:
 
     def test_tourist_object_admin_actions(self):
         """Test akcji admina."""
-        expected_actions = ["recalculate_regions_async", "add_to_badge_version", "show_ids_for_json"]
+        expected_actions = ["recalculate_regions_async", "add_to_badge_version", "show_ids_for_json", "mark_as_ready", "retry_osm_fetch", "run_proximity_scanner"]
         assert TouristObjectAdmin.actions == expected_actions
 
     def test_tourist_object_admin_modifiable(self):
@@ -479,7 +494,7 @@ class TestTouristObjectAdmin:
         """Test struktury fieldsets."""
         fieldsets = TouristObjectAdmin.fieldsets
         assert len(fieldsets) == 5
-        
+
         # Sprawdzamy tytuły sekcji
         titles = [fs[0] for fs in fieldsets]
         expected_titles = [
@@ -498,6 +513,7 @@ class TestOrganizerAdmin:
     def test_organizer_admin_inheritance(self):
         """Test dziedziczenia OrganizerAdmin."""
         from django.contrib import admin
+
         assert issubclass(OrganizerAdmin, admin.ModelAdmin)
 
     def test_organizer_admin_list_display(self):
@@ -522,6 +538,7 @@ class TestBadgeTierInline:
     def test_badge_tier_inline_configuration(self):
         """Test konfiguracji inline'a."""
         from django.contrib.admin import AdminSite
+
         inline = BadgeTierInline(BadgeTierModel, AdminSite())
         assert inline.model.__name__ == "BadgeTierModel"
         assert inline.extra == 1
