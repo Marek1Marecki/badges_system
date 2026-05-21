@@ -456,7 +456,7 @@ class TestTouristObjectAdmin:
 
     def test_tourist_object_admin_list_display(self):
         """Test pól list_display."""
-        expected = ("name", "type", "altitude", "osm_id", "status", "code", "is_active")
+        expected = ("name", "type", "altitude", "osm_id", "status", "code", "is_active", "last_sync_check")
         assert TouristObjectAdmin.list_display == expected
 
     def test_tourist_object_admin_list_filter(self):
@@ -471,7 +471,14 @@ class TestTouristObjectAdmin:
 
     def test_tourist_object_admin_actions(self):
         """Test akcji admina."""
-        expected_actions = ["recalculate_regions_async", "add_to_badge_version", "show_ids_for_json", "mark_as_ready", "retry_osm_fetch", "run_proximity_scanner"]
+        expected_actions = [
+            "recalculate_regions_async",
+            "add_to_badge_version",
+            "show_ids_for_json",
+            "mark_as_ready",
+            "retry_osm_fetch",
+            "run_proximity_scanner",
+        ]
         assert TouristObjectAdmin.actions == expected_actions
 
     def test_tourist_object_admin_modifiable(self):

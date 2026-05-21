@@ -7,7 +7,8 @@ odciążając główny wątek aplikacji webowej.
 from celery import shared_task
 from django.contrib.gis.geos import GeometryCollection, MultiPolygon, Point, Polygon
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import F, Q
+from django.utils.timezone import now
 
 from apps.badges.models import (
     CountryModel,
@@ -330,3 +331,98 @@ def scan_proximity_candidates_task() -> str:
                 created_count += 1
 
     return f"Skanowanie zakończone. Utworzono {created_count} nowych kandydujących par."
+
+
+@shared_task
+def run_osm_night_watchman_task(batch_size: int = 50) -> str:
+    """Nocny Skaner (Re-hydrator). Pobiera partię obiektów, by uaktualnić ich tagi
+    i ewentualnie zgłosić konflikty do Panelu Admina.
+    """
+    from apps.badges.models import OsmSyncConflict, TouristObject
+    from infrastructure.adapters.osm_adapter import OsmDataExtractor, OverpassClient
+
+    # 1. Pobieramy 'batch_size' obiektów, zaczynając od tych najdawniej sprawdzanych.
+    # Wymagają one posiadania osm_id (bo ręcznych i tak nie sprawdzimy).
+    # order_by('last_sync_check') sortuje NULLe najpierw, potem najstarsze daty.
+    objects_to_check = list(
+        TouristObject.objects.exclude(osm_id__isnull=True)
+        .exclude(osm_id="")
+        .order_by(F("last_sync_check").asc(nulls_first=True))[:batch_size]
+    )
+
+    if not objects_to_check:
+        return "Brak obiektów do synchronizacji."
+
+    osm_ids = [obj.osm_id for obj in objects_to_check]
+    client = OverpassClient()
+
+    # 2. Strzał masowy z obsługą twardych błędów API
+    from infrastructure.adapters.osm_adapter import OsmAdapterError
+
+    try:
+        osm_data_map = client.fetch_multiple_objects(osm_ids)
+    except OsmAdapterError as e:
+        # Serwer leży. Przerywamy całe zadanie. Nie aktualizujemy daty last_sync_check,
+        # żeby te same obiekty mogły spróbować jutro.
+        return f"PRZERWANO: Błąd połączenia z API OSM -> {str(e)}"
+
+    conflicts_created = 0
+    updated_silently = 0
+    current_time = now()
+
+    # 3. Analiza każdego obiektu z osobna
+    for obj in objects_to_check:
+        # Znaczymy, że go dzisiaj sprawdzaliśmy, by jutro wziął się za kolejne na liście!
+        obj.last_sync_check = current_time
+
+        osm_node = osm_data_map.get(obj.osm_id)
+
+        # PRZYPADEK A: DUCH (Obiekt zniknął z mapy!)
+        if not osm_node:
+            OsmSyncConflict.objects.get_or_create(
+                tourist_object=obj,
+                field_name="is_active",
+                defaults={
+                    "old_value": str(obj.is_active),
+                    "new_value": "False",  # Proponujemy miękkie usunięcie!
+                },
+            )
+            conflicts_created += 1
+            obj.save(update_fields=["last_sync_check"])
+            continue
+
+        # PRZYPADEK B: Analiza danych (The Smart Extractor)
+        # Zawsze i bez pytania aktualizujemy Data Lake (bo to brudnopis)
+        obj.osm_raw_tags = osm_node.tags
+        obj.osm_version = osm_node.version
+        obj.osm_timestamp = osm_node.timestamp
+
+        # Sprawdzamy Wysokość
+        ext_alt = OsmDataExtractor.extract_altitude(osm_node.tags)
+        if ext_alt is not None and ext_alt != obj.altitude:
+            # Wystąpił konflikt! Odkładamy do skrzynki.
+            OsmSyncConflict.objects.get_or_create(
+                tourist_object=obj,
+                field_name="altitude",
+                defaults={"old_value": str(obj.altitude), "new_value": str(ext_alt)},
+            )
+            conflicts_created += 1
+
+        # Sprawdzamy Link do Wikipedii
+        ext_wiki = OsmDataExtractor.extract_wikipedia_link(osm_node.tags)
+        if ext_wiki and ext_wiki != obj.wikipedia_link:
+            OsmSyncConflict.objects.get_or_create(
+                tourist_object=obj,
+                field_name="wikipedia_link",
+                defaults={"old_value": obj.wikipedia_link or "Brak", "new_value": ext_wiki},
+            )
+            conflicts_created += 1
+
+        # Zapisujemy zmiany ciche (Data Lake i Data Sprawdzenia)
+        obj.save(update_fields=["osm_raw_tags", "osm_version", "osm_timestamp", "last_sync_check"])
+        updated_silently += 1
+
+    return (
+        f"Stróż skończył. Obiekty: {len(objects_to_check)}. "
+        f"Konflikty: {conflicts_created}. Zaktualizowano cicho: {updated_silently}."
+    )

@@ -353,6 +353,12 @@ class TouristObject(gis_models.Model):
         verbose_name="Błąd asynchronicznego pobierania",
         help_text="Jeśli Celery napotka krytyczny błąd (np. obiekt nie istnieje), tu pojawi się przyczyna.",
     )
+    last_sync_check = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Ostatnia weryfikacja w OSM",
+        help_text="Data ostatniego sprawdzenia obiektu przez asynchronicznego stróża.",
+    )
 
     # Metadane
     created_at = gis_models.DateTimeField(auto_now_add=True)
@@ -639,3 +645,34 @@ class ProximityCandidate(models.Model):
         obj_b_display = f"{self.obj_b.name} [{obj_b_type}]"
 
         return f"{obj_a_display} <-> {obj_b_display} ({self.distance_meters:.0f}m)"
+
+
+class SyncConflictStatus(models.TextChoices):
+    PENDING = "PENDING", "Oczekujące na decyzję"
+    ACCEPTED = "ACCEPTED", "Zaakceptowane (Nadpisane)"
+    REJECTED = "REJECTED", "Odrzucone (Zachowano stare)"
+
+
+class OsmSyncConflict(models.Model):
+    """Skrzynka odbiorcza: Propozycje zmian z nocnego skanera OSM."""
+
+    tourist_object = models.ForeignKey(
+        TouristObject, on_delete=models.CASCADE, related_name="sync_conflicts", verbose_name="Obiekt"
+    )
+    field_name = models.CharField(max_length=50, verbose_name="Zmienione pole")
+    old_value = models.CharField(max_length=500, null=True, blank=True, verbose_name="Wartość w bazie")
+    new_value = models.CharField(max_length=500, null=True, blank=True, verbose_name="Propozycja z OSM")
+
+    status = models.CharField(
+        max_length=20, choices=SyncConflictStatus.choices, default=SyncConflictStatus.PENDING, verbose_name="Status"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "odznaki_osm_sync_conflict"
+        verbose_name = "Konflikt Danych OSM"
+        verbose_name_plural = "Konflikty Danych OSM"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.tourist_object.name}: {self.field_name} ({self.old_value} -> {self.new_value})"

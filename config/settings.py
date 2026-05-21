@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.gis",
     "django_jsonform",
+    'django_celery_beat',
     "leaflet",
     "tinymce",
     "apps.badges",
@@ -152,6 +153,8 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 # Strefa czasowa dla zadań opóźnionych
 CELERY_TIMEZONE = "Europe/Warsaw"
+# Mówimy Celery, by harmonogramy brało z bazy danych (Django Admin), a nie z kodu!
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 
 TINYMCE_DEFAULT_CONFIG = {

@@ -95,12 +95,14 @@ class TestTouristObjectAdminForm:
     @patch("apps.badges.forms.TouristObject.objects.values_list")
     def test_clean_manual_mode_with_all_required_fields(self, mock_values_list):
         mock_values_list.return_value.distinct.return_value = []
-        form = TouristObjectAdminForm(data={
-            "name": "Test Object",
-            "type": "Szczyt",
-            "status": "DRAFT",
-            "geom": Point(19.0, 50.0, srid=4326).wkt,
-        })
+        form = TouristObjectAdminForm(
+            data={
+                "name": "Test Object",
+                "type": "Szczyt",
+                "status": "DRAFT",
+                "geom": Point(19.0, 50.0, srid=4326).wkt,
+            }
+        )
         with patch.object(form, "validate_unique"):
             is_valid = form.is_valid()
         assert is_valid is True
@@ -126,11 +128,13 @@ class TestTouristObjectAdminForm:
     @patch("apps.badges.forms.TouristObject.objects.values_list")
     def test_clean_without_request_object(self, mock_values_list):
         mock_values_list.return_value.distinct.return_value = []
-        form = TouristObjectAdminForm(data={
-            "name": "Test Object",
-            "status": "DRAFT",
-            "geom": Point(19.0, 50.0, srid=4326).wkt,
-        })
+        form = TouristObjectAdminForm(
+            data={
+                "name": "Test Object",
+                "status": "DRAFT",
+                "geom": Point(19.0, 50.0, srid=4326).wkt,
+            }
+        )
         with patch.object(form, "validate_unique"):
             is_valid = form.is_valid()
         assert is_valid is True

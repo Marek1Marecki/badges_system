@@ -27,10 +27,12 @@ from apps.badges.models import (
     MesoregionModel,
     ObjectRegionCache,
     OrganizerModel,
+    OsmSyncConflict,
     OsmTypeMapping,
     ProvinceModel,
     ProximityCandidate,
     SubprovinceModel,
+    SyncConflictStatus,
     TouristObject,
     TouristRegionModel,
     VoivodeshipModel,
@@ -180,7 +182,7 @@ class TouristObjectAdmin(LeafletGeoAdmin):
     """Główny panel tworzenia punktów (Słownik Obiektów)."""
 
     form = TouristObjectAdminForm
-    list_display = ("name", "type", "altitude", "osm_id", "status", "code", "is_active")
+    list_display = ("name", "type", "altitude", "osm_id", "status", "code", "is_active", "last_sync_check")
     list_filter = ("status", "is_active", "type", RegionLevelFilter)
     search_fields = ("name", "alt_name", "osm_id", "code")
     actions = [
@@ -197,7 +199,7 @@ class TouristObjectAdmin(LeafletGeoAdmin):
         "DEFAULT_ZOOM": 5,
     }
     inlines = [ObjectRegionCacheInline]
-    readonly_fields = ("status", "osm_error", "local_names")
+    readonly_fields = ("status", "osm_error", "local_names", "last_sync_check")
 
     fieldsets = (
         (
@@ -233,7 +235,7 @@ class TouristObjectAdmin(LeafletGeoAdmin):
         (
             "Integracja z OSM (Data Lake)",
             {
-                "fields": ("osm_id", "osm_version", "osm_timestamp", "osm_raw_tags"),
+                "fields": ("osm_id", "osm_version", "osm_timestamp", "osm_raw_tags", "last_sync_check"),
                 "classes": ("collapse",),
             },
         ),
@@ -537,3 +539,49 @@ class ProximityCandidateAdmin(admin.ModelAdmin):
             ProximityCandidate.objects.filter(status="PENDING").filter(
                 Q(obj_a=child, obj_b_id__in=siblings_ids) | Q(obj_b=child, obj_a_id__in=siblings_ids)
             ).update(status="IGNORED")
+
+
+@admin.register(OsmSyncConflict)
+class OsmSyncConflictAdmin(admin.ModelAdmin):
+    list_display = ("tourist_object", "field_name", "old_value", "new_value", "status", "created_at")
+    list_filter = ("status", "field_name")
+    search_fields = ("tourist_object__name", "tourist_object__osm_id")
+
+    def has_add_permission(self, request) -> bool:
+        return False  # To roboty zgłaszają konflikty, nie ludzie!
+
+    actions = ["accept_changes", "reject_changes"]
+
+    @admin.action(description="AKCEPTUJ: Nadpisz nasze dane wartością z OSM")
+    def accept_changes(self, request, queryset):
+        """Nadpisuje dane w modelu TouristObject nową wartością."""
+        count = 0
+        for conflict in queryset.filter(status=SyncConflictStatus.PENDING):
+            obj = conflict.tourist_object
+            field = conflict.field_name
+            val = conflict.new_value
+
+            # Bezpieczne rzutowanie typów przed zapisem do bazy
+            if field == "altitude":
+                setattr(obj, field, int(val) if val else None)
+            elif field == "is_active":
+                # Gdy wykryjemy "Ducha" (usunięte z OSM)
+                setattr(obj, field, val == "True")
+            else:
+                setattr(obj, field, val)
+
+            # Zapisujemy tylko zmienione pole w obiekcie głównym
+            obj.save(update_fields=[field])
+
+            # Oznaczamy konflikt jako załatwiony
+            conflict.status = SyncConflictStatus.ACCEPTED
+            conflict.save(update_fields=["status"])
+            count += 1
+
+        self.message_user(request, f"Zaakceptowano {count} zmian i zaktualizowano obiekty główne.")
+
+    @admin.action(description="ODRZUĆ: Ignoruj zmiany z OSM (Zostaw nasze dane)")
+    def reject_changes(self, request, queryset):
+        """Odrzuca propozycję, pozostawiając stary stan bazy."""
+        count = queryset.filter(status=SyncConflictStatus.PENDING).update(status=SyncConflictStatus.REJECTED)
+        self.message_user(request, f"Odrzucono {count} propozycji. Nasze dane pozostały nienaruszone.")
