@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.gis",
     "django_jsonform",
-    'django_celery_beat',
+    "django_celery_beat",
     "leaflet",
     "tinymce",
     "apps.badges",

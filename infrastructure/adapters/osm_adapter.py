@@ -144,75 +144,85 @@ class OverpassClient:
             raise OsmAdapterError(f"Błąd parsowania danych z OSM: {e}") from e
 
     def fetch_multiple_objects(self, osm_ids: list[str], max_retries: int = 3) -> dict[str, OsmNodeDTO]:
-        """Pobiera zbiorczo obiekty z OSM (Bulk Fetching) dla optymalizacji ruchu.
-
-        Args:
-            osm_ids: Lista identyfikatorów, np. ['node/123', 'way/456'].
-
-        Returns:
-            Słownik mapujący osm_id na sparsowany obiekt OsmNodeDTO.
-        """
+        """Pobiera zbiorczo obiekty z OSM (Bulk Fetching) dla optymalizacji ruchu."""
         if not osm_ids:
             return {}
 
-        # Generowanie zapytań OverpassQL w jednej, dużej paczce
-        # Np. node(123); way(456);
         queries = []
         for osm_id in osm_ids:
             try:
                 osm_type, num_id = osm_id.strip().split("/")
                 queries.append(f"{osm_type}({num_id});")
             except ValueError:
-                continue  # Pomijamy błędne IDki przy masowym imporcie
+                continue
 
         if not queries:
             return {}
 
-        # Złożenie ostatecznego zapytania
-        # Używamy nawiasów ( ... ) w Overpass do zrobienia tzw. union (sklejenia wyników)
         query = f"[out:json];({''.join(queries)});out center meta;"
 
         import urllib.parse
         import urllib.request
 
-        data = urllib.parse.urlencode({"data": query}).encode("utf-8")
+        # Kodujemy zapytanie do użycia w adresie URL (dla metody GET)
+        encoded_query = urllib.parse.urlencode({"data": query})
+
+        last_exception: Exception | None = None
+        response_data = None
 
         for attempt in range(max_retries):
-            url = self.OVERPASS_URLS[attempt % len(self.OVERPASS_URLS)]
-            req = urllib.request.Request(url, data=data, method="POST")  # noqa: S310
+            # UŻYWAMY GET (doklejamy zapytanie do URL) JAK W POJEDYNCZYM POBIERANIU
+            base_url = self.OVERPASS_URLS[attempt % len(self.OVERPASS_URLS)]
+            url = f"{base_url}?{encoded_query}"
 
-            # MAGIA WAF BYPASS (Skopiowana z pojedynczego pobierania)
-            req.add_header(
-                "User-Agent",
-                (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                ),
-            )
-            req.add_header("Accept", "application/json, text/plain, */*")
-            req.add_header("Content-Type", "application/x-www-form-urlencoded")
-            req.add_header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
+            # Wysyłamy żądanie bez ciała (data=None) i bez jawnego wymuszania POST,
+            # by uniknąć zaporowych błędów 406.
+            req = urllib.request.Request(url, headers=self.HEADERS)  # noqa: S310
 
             try:
                 with urllib.request.urlopen(req, timeout=40.0) as response:  # noqa: S310
                     import json
 
-                    response_data = json.loads(response.read().decode("utf-8"))
+                    response_body = response.read().decode("utf-8")
+                    response_data = json.loads(response_body)
+                    logger.info("SUKCES! Pomyślnie pobrano paczkę danych.")
                     break
-            except Exception as e:
+
+            except urllib.error.HTTPError as e:
+                last_exception = e
                 import logging
 
                 logger = logging.getLogger(__name__)
-                logger.warning(f"Błąd przy masowym pobieraniu OSM (próba {attempt + 1}): {e}")
+                logger.warning(f"Błąd przy masowym pobieraniu OSM (próba {attempt + 1}): HTTP {e.code}")
 
-                import time
+                if e.code < 500:
+                    if e.code == 429:  # Zbyt wiele zapytań -> ignorujemy i ponawiamy
+                        pass
+                    elif e.code in (400, 404):
+                        raise OsmAdapterError(f"Odrzucono zapytanie masowe ({e.code})") from e
 
                 if attempt < max_retries - 1:
+                    import time
+
                     time.sleep(1.0 * (2**attempt))
                     continue
-            else:
-                # KLUCZOWA ZMIANA: Zamiast return {}, rzucamy jawny błąd!
-                raise OsmAdapterError("Wyczerpano próby połączenia w bulk_fetch.")
+
+            except (urllib.error.URLError, json.JSONDecodeError, TimeoutError) as e:
+                last_exception = e
+                import logging
+
+                logger = logging.getLogger(__name__)
+                logger.error(f"Błąd sieci/timeout przy masowym pobieraniu: {str(e)}")
+                if attempt < max_retries - 1:
+                    import time
+
+                    time.sleep(1.0 * (2**attempt))
+                    continue
+        else:
+            raise OsmAdapterError(f"Wyczerpano {max_retries} prób masowego pobierania. Ostatni błąd: {last_exception}")
+
+        if not response_data:
+            raise OsmAdapterError("Brak danych zwrotnych z OSM dla masowego zapytania.")
 
         elements = response_data.get("elements", [])
         results = {}
@@ -220,11 +230,12 @@ class OverpassClient:
         for el in elements:
             try:
                 dto = OsmNodeDTO.model_validate(el)
-                # Overpass API nie zwraca w obiekcie jego typu (node/way) jako prefiksu ID,
-                # musimy go sami dokleić, by klucz zgadzał się z naszym systemem.
                 key = f"{dto.type}/{dto.id}"
                 results[key] = dto
             except Exception as e:
+                import logging
+
+                logger = logging.getLogger(__name__)
                 logger.warning(f"Pominięto uszkodzony element z OSM w bulk fetch: {e}")
 
         return results

@@ -1,264 +1,260 @@
-"""Testy dla zadań Celery."""
+"""Testy dla zadań Celery.
 
-from unittest.mock import Mock, patch
+Po refaktoryzacji tasks.py jest cienkim wrapperem — mockujemy metody
+repozytoriów i use case'ów, nie ORM bezpośrednio.
 
-from django.contrib.gis.geos import Point, Polygon
+Wzorzec testowania:
+- patch na metodach repozytorium (infrastructure/adapters/)
+- weryfikacja że task wywołuje use case z poprawnymi argumentami
+- weryfikacja komunikatów zwrotnych
+"""
 
-from apps.badges.models import RegionLevelType, TouristObject, TouristRegionModel
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 from apps.badges.tasks import build_tourist_region_geometry_task, calculate_object_regions_task
+from infrastructure.adapters.persistence.region_cache_repo import RegionMatch, TouristObjectData, TouristRegionData
 
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _make_tourist_object_data(**kwargs) -> TouristObjectData:
+    """Fabryka TouristObjectData z sensownymi domyślnymi wartościami."""
+    defaults = {
+        "id": 1,
+        "name": "Test Peak",
+        "has_geom": True,
+        "geom": MagicMock(),
+        "osm_id": "123456",
+        "osm_raw_tags": {},
+        "local_names": {},
+        "alt_name": None,
+        "altitude": 1000.0,
+        "wikipedia_link": None,
+    }
+    defaults.update(kwargs)
+    return TouristObjectData(**defaults)
+
+
+def _make_tourist_region_data(**kwargs) -> TouristRegionData:
+    """Fabryka TouristRegionData z sensownymi domyślnymi wartościami."""
+    defaults = {"id": 1, "name": "Sudety"}
+    defaults.update(kwargs)
+    return TouristRegionData(**defaults)
+
+
+# ---------------------------------------------------------------------------
+# TestCalculateObjectRegionsTask
+# ---------------------------------------------------------------------------
 
 class TestCalculateObjectRegionsTask:
     """Testy zadania calculate_object_regions_task."""
 
-    @patch("apps.badges.tasks.TouristObject.objects.get")
-    def test_object_not_exists(self, mock_get):
-        mock_get.side_effect = TouristObject.DoesNotExist
-        result = calculate_object_regions_task(999)
+    def test_object_not_exists(self) -> None:
+        """Task zwraca komunikat błędu gdy obiekt nie istnieje."""
+        with patch(
+            "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.get_tourist_object",
+            return_value=None,
+        ):
+            result = calculate_object_regions_task(999)
+
         assert result == "Błąd: Obiekt o ID 999 nie istnieje."
 
-    @patch("apps.badges.tasks.TouristObject.objects.get")
-    def test_object_without_geometry(self, mock_get):
-        obj = Mock()
-        obj.name = "Test Object"
-        obj.geom = None
-        mock_get.return_value = obj
-        result = calculate_object_regions_task(1)
-        assert result == "Pominięto: Obiekt Test Object (ID: 1) nie ma geometrii."
+    def test_object_without_geometry(self) -> None:
+        """Task pomija obiekty bez geometrii."""
+        obj = _make_tourist_object_data(id=1, name="Test Object", has_geom=False)
 
-    @patch("apps.badges.tasks.transaction.atomic")
-    @patch("apps.badges.tasks.ObjectRegionCache.objects.bulk_create")
-    @patch("apps.badges.tasks.ObjectRegionCache.objects.filter")
-    @patch("django.contrib.gis.measure.D")
-    @patch("apps.badges.tasks.MesoregionModel.objects.filter")
-    @patch("apps.badges.tasks.MacroregionModel.objects.filter")
-    @patch("apps.badges.tasks.SubprovinceModel.objects.filter")
-    @patch("apps.badges.tasks.ProvinceModel.objects.filter")
-    @patch("apps.badges.tasks.VoivodeshipModel.objects.filter")
-    @patch("apps.badges.tasks.CountryModel.objects.filter")
-    @patch("apps.badges.tasks.TouristRegionModel.objects.filter")
-    @patch("apps.badges.tasks.TouristObject.objects.get")
-    def test_successful_calculation_with_regions(
-        self,
-        mock_get,
-        mock_tourist_filter,
-        mock_country_filter,
-        mock_voivodeship_filter,
-        mock_province_filter,
-        mock_subprovince_filter,
-        mock_macro_filter,
-        mock_meso_filter,
-        mock_d_class,
-        mock_cache_filter,
-        mock_bulk_create,
-        mock_atomic,
-    ):
-        obj = TouristObject(name="Test Peak", geom=Point(20.0, 50.0, srid=4326))
-        obj.local_names = {}
-        obj.osm_raw_tags = {}
-        obj.save = Mock()
-        mock_get.return_value = obj
+        with patch(
+            "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.get_tourist_object",
+            return_value=obj,
+        ):
+            result = calculate_object_regions_task(1)
 
-        region = Mock()
-        region.id = 1
-        region.name = "Test Region"
-        region.shape.intersects.return_value = True
-        for region_filter in [
-            mock_tourist_filter,
-            mock_country_filter,
-            mock_voivodeship_filter,
-            mock_province_filter,
-            mock_subprovince_filter,
-            mock_macro_filter,
-            mock_meso_filter,
-        ]:
-            region_filter.return_value = [region]
+        assert "Pominięto" in result
+        assert "Test Object" in result
 
-        cache_qs = Mock()
-        cache_qs.delete.return_value = None
-        mock_cache_filter.return_value = cache_qs
-        mock_d_class.return_value = Mock()
-        mock_atomic.return_value.__enter__ = Mock()
-        mock_atomic.return_value.__exit__ = Mock(return_value=None)
+    def test_successful_calculation_with_regions(self) -> None:
+        """Task przelicza regiony i zapisuje cache."""
+        obj = _make_tourist_object_data(id=1, name="Test Peak", has_geom=True)
+        matches = [
+            RegionMatch(region_level="country", region_id=1, region_name="Polska", distance_meters=0.0),
+            RegionMatch(region_level="voivodeship", region_id=2, region_name="Małopolska", distance_meters=0.0),
+        ]
 
-        result = calculate_object_regions_task(1)
-        assert "Sukces: Przeliczono obiekt 'Test Peak'" in result
-        assert "Znaleziono 7 regionów" in result
-        mock_bulk_create.assert_called_once()
+        with (
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.get_tourist_object",
+                return_value=obj,
+            ),
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.find_regions_for_point",
+                return_value=matches,
+            ),
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.replace_cache_for_object",
+            ) as mock_replace,
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.save_local_names",
+            ),
+        ):
+            result = calculate_object_regions_task(1)
 
-    @patch("apps.badges.tasks.transaction.atomic")
-    @patch("apps.badges.tasks.ObjectRegionCache.objects.bulk_create")
-    @patch("apps.badges.tasks.ObjectRegionCache.objects.filter")
-    @patch("django.contrib.gis.measure.D")
-    @patch("apps.badges.tasks.MesoregionModel.objects.filter")
-    @patch("apps.badges.tasks.MacroregionModel.objects.filter")
-    @patch("apps.badges.tasks.SubprovinceModel.objects.filter")
-    @patch("apps.badges.tasks.ProvinceModel.objects.filter")
-    @patch("apps.badges.tasks.VoivodeshipModel.objects.filter")
-    @patch("apps.badges.tasks.CountryModel.objects.filter")
-    @patch("apps.badges.tasks.TouristRegionModel.objects.filter")
-    @patch("apps.badges.tasks.TouristObject.objects.get")
-    def test_local_names_extraction(
-        self,
-        mock_get,
-        mock_tourist_filter,
-        mock_country_filter,
-        mock_voivodeship_filter,
-        mock_province_filter,
-        mock_subprovince_filter,
-        mock_macro_filter,
-        mock_meso_filter,
-        mock_d_class,
-        mock_cache_filter,
-        mock_bulk_create,
-        mock_atomic,
-    ):
-        obj = TouristObject(name="Rysy", geom=Point(20.0, 50.0, srid=4326))
-        obj.local_names = {"de": "Rysberg"}
-        obj.osm_raw_tags = {
-            "name:pl": "Rysy",
-            "name:cs": "Rysí hora",
-            "name:sk": "Rysy vrch",
-            "name:de": "Rysberg",
-            "name:fr": "Rysy",
-        }
-        obj.save = Mock()
-        mock_get.return_value = obj
+        assert "Sukces" in result
+        assert "Test Peak" in result
+        assert "2" in result
+        mock_replace.assert_called_once_with(1, matches)
 
-        for region_filter in [
-            mock_tourist_filter,
-            mock_country_filter,
-            mock_voivodeship_filter,
-            mock_province_filter,
-            mock_subprovince_filter,
-            mock_macro_filter,
-            mock_meso_filter,
-        ]:
-            region_filter.return_value = []
+    def test_local_names_extraction(self) -> None:
+        """Task wyodrębnia lokalne nazwy z tagów OSM i zapisuje je."""
+        obj = _make_tourist_object_data(
+            id=1,
+            name="Rysy",
+            has_geom=True,
+            local_names={"de": "Rysberg"},
+            osm_raw_tags={
+                "name:pl": "Rysy",
+                "name:cs": "Rysí hora",
+                "name:sk": "Rysy vrch",
+                "name:de": "Rysberg",
+                "name:fr": "Mont Rysy",  # fr nie jest w RELEVANT_LANGS
+            },
+        )
 
-        cache_qs = Mock()
-        cache_qs.delete.return_value = None
-        mock_cache_filter.return_value = cache_qs
-        mock_d_class.return_value = Mock()
-        mock_atomic.return_value.__enter__ = Mock()
-        mock_atomic.return_value.__exit__ = Mock(return_value=None)
+        with (
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.get_tourist_object",
+                return_value=obj,
+            ),
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.find_regions_for_point",
+                return_value=[],
+            ),
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.replace_cache_for_object",
+            ),
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.save_local_names",
+            ) as mock_save_names,
+        ):
+            calculate_object_regions_task(1)
 
-        calculate_object_regions_task(1)
+        # cs i sk są nowe — powinny być zapisane
+        # de już istnieje z tą samą wartością — nie powinno być zapisywane ponownie
+        # fr nie jest w RELEVANT_LANGS — ignorowane
+        mock_save_names.assert_called_once()
+        saved_names = mock_save_names.call_args[0][1]
+        assert saved_names["cs"] == "Rysí hora"
+        assert saved_names["sk"] == "Rysy vrch"
+        assert saved_names["de"] == "Rysberg"
+        assert "fr" not in saved_names
 
-        obj.save.assert_called_once_with(update_fields=["local_names"])
-        assert obj.local_names == {"de": "Rysberg", "cs": "Rysí hora", "sk": "Rysy vrch"}
-        mock_bulk_create.assert_not_called()
 
+# ---------------------------------------------------------------------------
+# TestBuildTouristRegionGeometryTask
+# ---------------------------------------------------------------------------
 
 class TestBuildTouristRegionGeometryTask:
     """Testy zadania build_tourist_region_geometry_task."""
 
-    @patch("apps.badges.tasks.TouristRegionModel.objects.get")
-    def test_region_not_exists(self, mock_get):
-        mock_get.side_effect = TouristRegionModel.DoesNotExist
-        result = build_tourist_region_geometry_task(999)
+    def test_region_not_exists(self) -> None:
+        """Task zwraca komunikat błędu gdy region nie istnieje."""
+        with patch(
+            "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.get_tourist_region",
+            return_value=None,
+        ):
+            result = build_tourist_region_geometry_task(999)
+
         assert result == "Błąd: Region turystyczny o ID 999 nie istnieje."
 
-    @patch("apps.badges.tasks.transaction.atomic")
-    @patch("apps.badges.tasks.ObjectRegionCache.objects.bulk_create")
-    @patch("apps.badges.tasks.ObjectRegionCache.objects.filter")
-    @patch("apps.badges.tasks.TouristRegionModel.objects.get")
-    def test_successful_geometry_building(self, mock_get, mock_cache_filter, mock_bulk_create, mock_atomic):
-        region = Mock()
-        region.id = 1
-        region.name = "Sudety"
-        region.provinces.all.return_value = []
-        region.subprovinces.all.return_value = []
-        region.macroregions.all.return_value = []
-        region.mesoregions.all.return_value = []
-        region.provinces.values_list.return_value = []
-        region.subprovinces.values_list.return_value = []
-        region.macroregions.values_list.return_value = []
-        region.mesoregions.values_list.return_value = []
-        region.save = Mock()
-        mock_get.return_value = region
+    def test_successful_geometry_building(self) -> None:
+        """Task buduje geometrię i przypisuje obiekty do regionu."""
+        region = _make_tourist_region_data(id=1, name="Sudety")
+        object_ids = [1, 2, 3]
 
-        cache_qs = Mock()
-        cache_qs.delete.return_value = None
-        cache_qs.values_list.return_value.distinct.return_value = [1, 2, 3]
-        mock_cache_filter.return_value = cache_qs
-        mock_atomic.return_value.__enter__ = Mock()
-        mock_atomic.return_value.__exit__ = Mock(return_value=None)
+        with (
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.get_tourist_region",
+                return_value=region,
+            ),
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.build_union_geometry",
+                return_value=None,
+            ),
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.find_object_ids_in_sub_regions",
+                return_value=object_ids,
+            ),
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.replace_tourist_region_entries",
+            ) as mock_replace,
+        ):
+            result = build_tourist_region_geometry_task(1)
 
-        result = build_tourist_region_geometry_task(1)
-        assert result == "Sukces: Przypisano 3 obiektów do Sudety."
-        mock_bulk_create.assert_called_once()
+        assert "Sukces" in result
+        assert "3" in result
+        assert "Sudety" in result
+        mock_replace.assert_called_once_with(
+            region_id=1,
+            region_name="Sudety",
+            object_ids=object_ids,
+        )
 
-    @patch("apps.badges.tasks.transaction.atomic")
-    @patch("apps.badges.tasks.ObjectRegionCache.objects.bulk_create")
-    @patch("apps.badges.tasks.ObjectRegionCache.objects.filter")
-    @patch("apps.badges.tasks.TouristRegionModel.objects.get")
-    def test_geometry_building_with_polygon(self, mock_get, mock_cache_filter, mock_bulk_create, mock_atomic):
-        region = Mock()
-        region.id = 1
-        region.name = "Test Region"
-        polygon = Polygon(((0, 0), (1, 0), (1, 1), (0, 1), (0, 0)))
-        item = Mock()
-        item.shape = polygon
+    def test_geometry_building_saves_when_geometry_exists(self) -> None:
+        """Task zapisuje geometrię gdy adapter ją zwraca."""
+        region = _make_tourist_region_data(id=1, name="Test Region")
+        mock_geometry = MagicMock()
 
-        region.provinces.all.return_value = [item]
-        region.subprovinces.all.return_value = []
-        region.macroregions.all.return_value = []
-        region.mesoregions.all.return_value = []
-        region.provinces.values_list.return_value = []
-        region.subprovinces.values_list.return_value = []
-        region.macroregions.values_list.return_value = []
-        region.mesoregions.values_list.return_value = []
-        region.save = Mock()
-        mock_get.return_value = region
-
-        cache_qs = Mock()
-        cache_qs.delete.return_value = None
-        cache_qs.values_list.return_value.distinct.return_value = []
-        mock_cache_filter.return_value = cache_qs
-        mock_atomic.return_value.__enter__ = Mock()
-        mock_atomic.return_value.__exit__ = Mock(return_value=None)
-
-        with patch("apps.badges.tasks.GeometryCollection") as mock_gc:
-            mock_gc.return_value.unary_union = polygon
+        with (
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.get_tourist_region",
+                return_value=region,
+            ),
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.build_union_geometry",
+                return_value=mock_geometry,
+            ),
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.save_region_geometry",
+            ) as mock_save_geom,
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.find_object_ids_in_sub_regions",
+                return_value=[],
+            ),
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.replace_tourist_region_entries",
+            ),
+        ):
             build_tourist_region_geometry_task(1)
-            region.save.assert_called_once_with(update_fields=["shape"])
-            mock_bulk_create.assert_not_called()
 
-    @patch("apps.badges.tasks.transaction.atomic")
-    @patch("apps.badges.tasks.ObjectRegionCache.objects.bulk_create")
-    @patch("apps.badges.tasks.ObjectRegionCache.objects.filter")
-    @patch("apps.badges.tasks.TouristRegionModel.objects.get")
-    def test_cache_entries_creation(self, mock_get, mock_cache_filter, mock_bulk_create, mock_atomic):
-        region = Mock()
-        region.id = 1
-        region.name = "Test Region"
-        region.provinces.all.return_value = []
-        region.subprovinces.all.return_value = []
-        region.macroregions.all.return_value = []
-        region.mesoregions.all.return_value = []
-        region.provinces.values_list.return_value = [1]
-        region.subprovinces.values_list.return_value = [2]
-        region.macroregions.values_list.return_value = [3]
-        region.mesoregions.values_list.return_value = [4]
-        region.save = Mock()
-        mock_get.return_value = region
+        mock_save_geom.assert_called_once_with(1, mock_geometry)
 
-        cache_qs = Mock()
-        cache_qs.delete.return_value = None
-        cache_qs.values_list.return_value.distinct.return_value = [1, 2, 3]
-        mock_cache_filter.return_value = cache_qs
-        mock_atomic.return_value.__enter__ = Mock()
-        mock_atomic.return_value.__exit__ = Mock(return_value=None)
+    def test_geometry_building_skips_save_when_no_geometry(self) -> None:
+        """Task nie wywołuje save_region_geometry gdy brak składowych."""
+        region = _make_tourist_region_data(id=1, name="Test Region")
 
-        build_tourist_region_geometry_task(1)
+        with (
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.get_tourist_region",
+                return_value=region,
+            ),
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.build_union_geometry",
+                return_value=None,
+            ),
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.save_region_geometry",
+            ) as mock_save_geom,
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.find_object_ids_in_sub_regions",
+                return_value=[],
+            ),
+            patch(
+                "infrastructure.adapters.persistence.region_cache_repo.RegionCacheRepository.replace_tourist_region_entries",
+            ),
+        ):
+            build_tourist_region_geometry_task(1)
 
-        entries = mock_bulk_create.call_args[0][0]
-        assert len(entries) == 3
-        for entry in entries:
-            assert entry.region_level == RegionLevelType.TOURIST_REGION
-            assert entry.region_id == 1
-            assert entry.region_name == "Test Region"
-            assert entry.distance_meters == 0.0
-            assert entry.tourist_object_id in [1, 2, 3]
-        assert mock_bulk_create.call_args[1]["ignore_conflicts"] is True
+        mock_save_geom.assert_not_called()

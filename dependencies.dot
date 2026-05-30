@@ -24,6 +24,10 @@ digraph G {
     "application.dto.ascent_dto" [fillcolor="lightgreen"];
     "application.exceptions" [fillcolor="lightgreen"];
     "application.use_cases" [fillcolor="lightgreen"];
+    "application.use_cases.build_tourist_region_geometry" [fillcolor="lightgreen"];
+    "application.use_cases.calculate_object_regions" [fillcolor="lightgreen"];
+    "application.use_cases.fetch_osm_data" [fillcolor="lightgreen"];
+    "application.use_cases.scan_proximity_candidates" [fillcolor="lightgreen"];
     "application.use_cases.verify_badge" [fillcolor="lightgreen"];
   }
 
@@ -32,16 +36,24 @@ digraph G {
     color=gray60;
     "application.ports" [fillcolor="khaki"];
     "application.ports.badge_repository_port" [fillcolor="khaki"];
+    "application.ports.clock_port" [fillcolor="khaki"];
   }
 
   subgraph cluster_infrastructure {
     label="infrastructure";
     color=gray60;
     "infrastructure" [fillcolor="orange"];
+    "infrastructure.adapters.clock" [fillcolor="orange"];
     "infrastructure.adapters.osm_adapter" [fillcolor="orange"];
+    "infrastructure.adapters.osm_repository" [fillcolor="orange"];
     "infrastructure.adapters.persistence" [fillcolor="orange"];
     "infrastructure.adapters.persistence.django_badge_repo" [fillcolor="orange"];
+    "infrastructure.adapters.persistence.region_cache_repo" [fillcolor="orange"];
+    "infrastructure.config" [fillcolor="orange"];
+    "infrastructure.config.app_settings" [fillcolor="orange"];
     "infrastructure.exceptions" [fillcolor="orange"];
+    "infrastructure.logging" [fillcolor="orange"];
+    "infrastructure.logging.log_config" [fillcolor="orange"];
     "infrastructure.schemas" [fillcolor="orange"];
     "infrastructure.schemas.badge_rules_schema" [fillcolor="orange"];
   }
@@ -78,6 +90,11 @@ digraph G {
 
   "application.dto.ascent_dto" -> "domain.value_objects.ascent";
   "application.ports.badge_repository_port" -> "domain.entities.badge_version";
+  "application.use_cases.build_tourist_region_geometry" -> "application.exceptions";
+  "application.use_cases.calculate_object_regions" -> "application.exceptions";
+  "application.use_cases.calculate_object_regions" -> "application.ports.clock_port";
+  "application.use_cases.fetch_osm_data" -> "application.exceptions";
+  "application.use_cases.fetch_osm_data" -> "application.ports.clock_port";
   "application.use_cases.verify_badge" -> "application.dto.ascent_dto";
   "application.use_cases.verify_badge" -> "application.exceptions";
   "application.use_cases.verify_badge" -> "application.ports.badge_repository_port";
@@ -87,7 +104,7 @@ digraph G {
   "apps.badges.admin" -> "apps.badges.tasks";
   "apps.badges.forms" -> "apps.badges.models";
   "apps.badges.models" -> "infrastructure.schemas.badge_rules_schema";
-  "apps.badges.tasks" -> "apps.badges.models";
+  "apps.badges.tasks" -> "application.exceptions";
   "apps.badges.tasks" -> "infrastructure.adapters.osm_adapter";
   "domain.entities.badge_version" -> "domain.exceptions";
   "domain.entities.badge_version" -> "domain.rules.badge_rules";
@@ -95,9 +112,14 @@ digraph G {
   "domain.rules.badge_rules" -> "domain.value_objects.ascent";
   "infrastructure.adapters.osm_adapter" -> "apps.badges.models";
   "infrastructure.adapters.osm_adapter" -> "infrastructure.exceptions";
+  "infrastructure.adapters.osm_repository" -> "apps.badges.models";
+  "infrastructure.adapters.osm_repository" -> "infrastructure.adapters.osm_adapter";
   "infrastructure.adapters.persistence.django_badge_repo" -> "application.ports.badge_repository_port";
   "infrastructure.adapters.persistence.django_badge_repo" -> "apps.badges.models";
   "infrastructure.adapters.persistence.django_badge_repo" -> "domain.entities.badge_version";
   "infrastructure.adapters.persistence.django_badge_repo" -> "domain.rules.badge_rules";
   "infrastructure.adapters.persistence.django_badge_repo" -> "domain.value_objects.ascent";
+  "infrastructure.adapters.persistence.region_cache_repo" -> "apps.badges.models";
+  "infrastructure.config" -> "infrastructure.config.app_settings";
+  "infrastructure.logging" -> "infrastructure.logging.log_config";
 }

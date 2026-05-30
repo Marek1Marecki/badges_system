@@ -199,7 +199,7 @@ class TouristObjectAdmin(LeafletGeoAdmin):
         "DEFAULT_ZOOM": 5,
     }
     inlines = [ObjectRegionCacheInline]
-    readonly_fields = ("status", "osm_error", "local_names", "last_sync_check")
+    readonly_fields = ("status", "osm_error", "local_names", "last_sync_check", "get_related_badges")
 
     fieldsets = (
         (
@@ -229,7 +229,7 @@ class TouristObjectAdmin(LeafletGeoAdmin):
         (
             "Ewidencja i Relacje",
             {
-                "fields": ("code", "parent_object"),
+                "fields": ("code", "parent_object", "get_related_badges"),
             },
         ),
         (
@@ -354,6 +354,28 @@ class TouristObjectAdmin(LeafletGeoAdmin):
         self.message_user(
             request, "Wysłano zadanie Skanera do Celery. Za kilka sekund sprawdź zakładkę 'Radar Klastrowania'."
         )
+
+    @admin.display(description="Wykorzystywany w odznakach")
+    def get_related_badges(self, obj: TouristObject) -> str:
+        """Wyświetla listę odznak, do których przypisany jest ten obiekt."""
+        from django.utils.html import format_html, format_html_join
+
+        if not obj.pk:
+            return "Obiekt jeszcze nie zapisany."
+
+        # Odpytujemy odwrotną relację ManyToMany.
+        # Używamy select_related, by pobrać nazwy odznak jednym zapytaniem SQL.
+        versions = obj.badgeversionmodel_set.select_related("badge").all()
+
+        if not versions:
+            return "Brak przypisań do jakiejkolwiek odznaki."
+
+        # Generujemy elegancką listę w HTML
+        items = ((f"{v.badge.name} ({v.version_code})",) for v in versions)
+        list_html = format_html_join("\n", "<li>{}</li>", items)
+
+        # Tłumimy błąd mypy (no-any-return) dla format_html
+        return format_html('<ul style="margin-left: 0; padding-left: 20px;">{}</ul>', list_html)  # type: ignore[no-any-return]
 
 
 @admin.register(OrganizerModel)

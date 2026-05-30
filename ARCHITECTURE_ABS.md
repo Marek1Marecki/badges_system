@@ -114,7 +114,7 @@ Wykaz usług działających w klastrze (Kontenery):
     5.  **Warstwa Sprzętowa i Danych (Push):** Monitory pasywne (Dead Man's Switch) audytujące nocny backup (`backup.sh`) oraz zajętość wirtualnego dysku WSL2 (`disk.sh`).
     6.  **Warstwa Certyfikatów:** Automatyczna weryfikacja ważności certyfikatów SSL/TLS.
     7.  **Zarządzanie Oknami Serwisowymi (SLA Protection):** Wdrożono natywne harmonogramy konserwacji (Maintenance Windows) skorelowane z zadaniami `cron` (cotygodniowy backup o 11:00 w niedzielę). Zapobiega to zjawisku szumu informacyjnego (Alert Fatigue).
-
+    8.  **Zewnętrzny Punkt Obserwacyjny (External Watchdog):** W celu wyeliminowania problemu "Kto pilnuje strażnika?" (tzw. Single Point of Failure na warstwie zasilania/łącza fizycznego), system lokalny wspierany jest przez zewnętrzną usługę chmurową UptimeRobot. Odpytuje ona publiczny adres domeny z zewnątrz klastra, gwarantując dostarczenie alertu Push na urządzenie mobilne administratora w sytuacji całkowitej utraty zasilania serwera domowego (Blackout) lub krytycznej awarii domowego łącza internetowego.
 ---
 
 ## 5. ⚙️ Warstwa SRE i Automatyzacji (absctl)

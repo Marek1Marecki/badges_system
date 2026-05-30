@@ -12,6 +12,7 @@ from domain.rules.badge_rules import (
     RequiresClubJoinDateRule,
     StartDateRule,
     TimeLimitRule,
+    GroupedAlternativesRule
 )
 from domain.value_objects.ascent import ActivityType, Ascent
 
@@ -461,3 +462,64 @@ class TestBadgeRule:
         """Test że BadgeRule jest klasą abstrakcyjną."""
         with pytest.raises(TypeError):
             BadgeRule()
+
+
+def test_requires_club_join_date_rule() -> None:
+    rule = RequiresClubJoinDateRule(club_join_date=date(2020, 1, 1))
+    valid_ascent = Ascent(peak_id=1, ascent_date=date(2020, 1, 2), activity=ActivityType.HIKING)
+    invalid_ascent = Ascent(peak_id=1, ascent_date=date(2019, 12, 31), activity=ActivityType.HIKING)
+
+    assert not rule.validate([valid_ascent])
+    assert len(rule.validate([invalid_ascent])) == 1
+
+
+def test_min_age_rule() -> None:
+    rule = MinAgeRule(min_age=10, birth_date=date(2010, 1, 1))
+    valid_ascent = Ascent(peak_id=1, ascent_date=date(2021, 1, 1), activity=ActivityType.HIKING)  # 11 lat
+    invalid_ascent = Ascent(peak_id=1, ascent_date=date(2019, 1, 1), activity=ActivityType.HIKING)  # 9 lat
+
+    assert not rule.validate([valid_ascent])
+    assert len(rule.validate([invalid_ascent])) == 1
+
+
+def test_start_date_rule() -> None:
+    rule = StartDateRule(start_date=date(2000, 1, 1))
+    valid_ascent = Ascent(peak_id=1, ascent_date=date(2001, 1, 1), activity=ActivityType.HIKING)
+    invalid_ascent = Ascent(peak_id=1, ascent_date=date(1999, 1, 1), activity=ActivityType.HIKING)
+
+    assert not rule.validate([valid_ascent])
+    assert len(rule.validate([invalid_ascent])) == 1
+
+
+def test_mandatory_objects_rule() -> None:
+    rule = MandatoryObjectsRule(mandatory_peak_ids=frozenset([1, 2]))
+    valid_ascents = [
+        Ascent(peak_id=1, ascent_date=date.today(), activity=ActivityType.HIKING),
+        Ascent(peak_id=2, ascent_date=date.today(), activity=ActivityType.HIKING),
+        Ascent(peak_id=3, ascent_date=date.today(), activity=ActivityType.HIKING),
+    ]
+    invalid_ascents = [
+        Ascent(peak_id=1, ascent_date=date.today(), activity=ActivityType.HIKING),
+        Ascent(peak_id=3, ascent_date=date.today(), activity=ActivityType.HIKING),
+    ]
+
+    assert not rule.validate(valid_ascents)
+    assert len(rule.validate(invalid_ascents)) == 1
+
+
+def test_grouped_alternatives_rule() -> None:
+    rule = GroupedAlternativesRule(
+        groups=(frozenset([1, 2]), frozenset([3, 4])),
+        min_groups_required=2
+    )
+    valid_ascents = [
+        Ascent(peak_id=1, ascent_date=date.today(), activity=ActivityType.HIKING),
+        Ascent(peak_id=3, ascent_date=date.today(), activity=ActivityType.HIKING)
+    ]
+    invalid_ascents = [
+        Ascent(peak_id=1, ascent_date=date.today(), activity=ActivityType.HIKING),
+        Ascent(peak_id=2, ascent_date=date.today(), activity=ActivityType.HIKING)
+    ]  # Oba wejścia z tej samej grupy!
+
+    assert not rule.validate(valid_ascents)
+    assert len(rule.validate(invalid_ascents)) == 1
