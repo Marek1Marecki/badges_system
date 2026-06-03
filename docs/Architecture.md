@@ -21,7 +21,7 @@ System Odznak Turystycznych PTTK to aplikacja webowa służąca do kompleksowego
 | **Backend** | Python + Django | `3.14` / `6.0.x`   | Django dostarcza wbudowany panel Admina z obsługą GIS (`django-leaflet`), co skraca czas wdrożenia narzędzi kuratorskich. Logika biznesowa izolowana w czystym Pythonie. |
 | **Baza danych** | PostgreSQL + PostGIS | `15.x` / `3.x`     | Absolutny standard dla analityki przestrzennej. Niezbędny do buforowania granic i operacji na poligonach (`ST_Union`, `ST_DWithin`). |
 | **Kolejka / Cache** | Redis | `7.x`              | Lekki i niezawodny broker komunikatów dla zadań asynchronicznych oraz magazyn wyników. |
-| **Zadania w tle** | Celery + Celery Beat | `>=5.4.3`          | Zarządzanie długotrwałymi zadaniami (masowy import z OSM) oraz uruchamianie "Nocnego Stróża" z użyciem ponawiania (Linear Backoff). |
+| **Zadania w tle** | Celery + Celery Beat | `>=5.6.x`          | Zarządzanie długotrwałymi zadaniami (masowy import z OSM) oraz uruchamianie "Nocnego Stróża" z użyciem ponawiania (Linear Backoff). |
 | **Zasilanie Danych**| Overpass API | —                  | Darmowe, potężne źródło surowych danych topograficznych z OpenStreetMap. |
 
 ---
@@ -86,16 +86,21 @@ System Odznak Turystycznych PTTK to aplikacja webowa służąca do kompleksowego
 
 | ADR | Decyzja | Implikacje dla kodu |
 |-----|---------|---------------------|
-| [ADR-001] | Django + Celery + PostGIS | Środowisko musi wspierać biblioteki GDAL/GEOS. Architektura musi izolować Django od Domeny. |
-| [ADR-002] | Geometria to transport | Obiekty PostGIS nigdy nie wchodzą do warstwy `domain/`. |
-| [ADR-003] | Wzorzec Strategii i JSONB | Konfiguracja reguł trzymana jako `JSONB` obsługiwana dynamicznym panelem w Administracji. |
+| [ADR-001] | Django + Celery + PostGIS | Architektura musi izolować Django ORM od Czystej Domeny. Zależność od GDAL. |
+| [ADR-002] | Geometria jako transport | Obiekty PostGIS (Point, MultiPolygon) nigdy nie wchodzą do warstwy `domain/`. |
+| [ADR-003] | Wzorzec Strategii i JSONB | Konfiguracja reguł trzymana jako `JSONB` i obsługiwana dynamicznym panelem (`oneOf`). |
 | [ADR-004] | Dwuwarstwowy import OSM | Baza posiada ukryty Data Lake (`osm_raw_tags`) oraz Twarde Kolumny (Data Override). |
-| [ADR-005] | CQRS dla geografii | Weryfikacja regionalna i wyświetlanie oparte na płaskiej tabeli `ObjectRegionCache`. |
-| [ADR-006] | Klastrowanie bliskości | Wdrożenie pola `parent_object` i Radar 150m (Skrzynka odbiorcza bez automatycznego łączenia). |
-| [ADR-007] | Hierarchia (Odznaka -> Wersja -> Stopień) | Gwarancja "Praw Nabytych" poprzez powiązanie turysty z niezmienną Wersją. |
-| [ADR-008] | Bitemporalność Obiektów | Ochrona historii wejść poprzez `existence_start`/`existence_end` (Krok 0 w fazie weryfikacji). |
-| [ADR-009] | Weryfikacja wejść jako Set Math | Weryfikacja to szybkie przecięcia zbiorów w RAM (`frozenset`), całkowicie odcięte od GIS. |
-
+| [ADR-005] | Płaski Model Odczytu CQRS | Weryfikacja regionalna i filtrowanie oparte na asynchronicznej, płaskiej tabeli `ObjectRegionCache`. |
+| [ADR-006] | Klastrowanie bliskości (Radar) | Zastosowanie pola `parent_object` zarządzanego przez asynchroniczną Skrzynkę Odbiorczą (Inbox). |
+| [ADR-007] | Hierarchia Odznak (Wersje) | Gwarancja "Praw Nabytych" poprzez powiązanie postępu z niezmienną Wersją regulaminu. |
+| [ADR-008] | Bitemporalność Obiektów | Ochrona historii wejść poprzez `existence_start` i `existence_end` (puste daty = brak limitu). |
+| [ADR-009] | Pool-based Set Verification | Weryfikacja to szybkie przecięcia zbiorów (`frozenset`) w RAM, odcięte od zapytań GIS. |
+| [ADR-010] | Dynamiczne kolorowanie mapy | `BadgeEligibilityService` redukuje stany na backendzie do 1 koloru; agresywny cache w Redis. |
+| [ADR-011] | Hybrydowy BBox na żądanie | Zapytania mapowe (Pan/Zoom) odpytują pre-filtr CQRS, a następnie docinają wynik przez `ST_Within`. |
+| [ADR-012] | Wildcard Geographic Rules | Reguły "terytorialne" bazują na `region_ids` wstrzykniętych w zhydrowanym DTO (Obejście R-01). |
+| [ADR-013] | Vector Tiles & Client-Side Styling | MVT tylko dla statycznej geometrii (anonimowe). GeoJSON z BBox tylko dla dynamicznych stanów (`peak_color`). |
+| [ADR-014] | Separacja Postępu od Logistyki | Domena wydaje wyrok `COMPLETED`, a proces śledzenia blachy to niezależny Kanban Turysty. |
+| [ADR-015] | Ranking Potencjału (100/n) | Asynchroniczny silnik liczący opłacalność celów z systemem Event-Driven Cache Invalidation. |
 *(Pełna dokumentacja decyzji dostępna w folderze `/docs/adr/`)*.
 
 ---

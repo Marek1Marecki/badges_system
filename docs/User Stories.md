@@ -1,150 +1,262 @@
+# User Stories
 
-User Stories
+> **Wersja:** 1.1  
+> **Data:** 2026-05-29  
+> **Właściciel:** Dominik / AI Architect  
+> **Status:** `approved` (Dla Fazy C: Użytkownik i Logistyka)
 
-    Wersja: 1.1
-    Data: 2026-05-29
-    Właściciel: Dominik / AI Architect
-    Status: approved (Dla Fazy C: Użytkownik i Logistyka)
+---
 
-Format stories
-code Text
+## Format stories
 
+```text
 Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
+```
 
-Priorytety
-Symbol	Znaczenie
-🔴 P0	Krytyczne — bez tego system nie działa
-🟠 P1	Wysokie — kluczowe dla MVP Fazy C
-🟡 P2	Średnie — ważne, ale można opóźnić
-🟢 P3	Niskie — nice-to-have (np. zaawansowana analityka)
-Epic 1: Profil Turysty i Kontekst Weryfikacji (Verification Context)
-US-C01 — Rejestracja i Wiek Turysty 🔴 P0
+### Priorytety
+| Symbol | Znaczenie |
+|--------|-----------|
+| 🔴 P0 | Krytyczne — bez tego system nie działa |
+| 🟠 P1 | Wysokie — kluczowe dla MVP Fazy C |
+| 🟡 P2 | Średnie — ważne, ale można opóźnić |
+| 🟢 P3 | Niskie — nice-to-have (np. zaawansowana analityka) |
 
-Story: Jako Turysta, chcę zdefiniować swoją datę urodzenia w profilu, aby system mógł poprawnie weryfikować odznaki posiadające ograniczenia wiekowe.
-Dotyczy encji: TouristProfile (Nowa), MinAgeRule, MaxAgeRule
-Powiązane invarianty: —
+---
 
-Kryteria akceptacji:
+## Epic 1: Profil Turysty i Kontekst Weryfikacji (Verification Context)
 
-    Model TouristProfile jest powiązany z modelem autoryzacyjnym Django (User) za pomocą relacji OneToOneField.
+### US-C01 — Rejestracja i Wiek Turysty 🔴 P0
+**Story:** Jako Turysta, chcę zdefiniować swoją datę urodzenia w profilu, aby system mógł poprawnie weryfikować odznaki posiadające ograniczenia wiekowe.
+**Dotyczy encji:** `TouristProfile` (Nowa), `MinAgeRule`, `MaxAgeRule`
+**Powiązane invarianty:** —
 
-    Profil przechowuje bezpiecznie birth_date.
+**Kryteria akceptacji:**
+- [ ] Model `TouristProfile` jest powiązany z modelem autoryzacyjnym Django (`User`) za pomocą relacji `OneToOneField`.
+- [ ] Profil przechowuje bezpiecznie `birth_date`.
+- [ ] Silnik Domenowy podczas ewaluacji otrzymuje prawdziwą datę z profilu zamiast dotychczasowego mocka w kodzie.
 
-    Silnik Domenowy podczas ewaluacji otrzymuje prawdziwą datę z profilu zamiast dotychczasowego mocka w kodzie.
+### US-C01b — Katalog i Wybór Odznak (Badge Discovery) 🟠 P1
+**Story:** Jako Turysta, chcę przeglądać listę wszystkich dostępnych odznak z możliwością filtrowania (np. według państwa lub głównego pasma), aby móc dodać interesujące mnie pozycje do mojej listy celów.
+**Dotyczy encji:** `BadgeModel` (Nowe pola: `country_scope`, `region_scope`), `UserBadgeProgress`
 
-US-C02 — Przynależność Klubowa (Data zapisu) 🟠 P1
+**Kryteria akceptacji:**
+- [ ] Model `BadgeModel` posiada twarde metadane terytorialne do filtrowania (np. Polska, Sudety), nadawane przez Administratora.
+- [ ] Turysta klika "Chcę zdobywać", co tworzy intencję (`UserBadgeProgress` ze statusem `NOT_STARTED` i pustym `version_id`).
 
-Story: Jako Turysta, chcę móc odnotować datę dołączenia do konkretnego Klubu (np. KGP), aby system zaliczał mi logi wejść zrobione dopiero po tej dacie.
-Dotyczy encji: ClubMembership (Nowa), OrganizerModel, RequiresClubJoinDateRule
+### US-C02 — Przynależność Klubowa (Data zapisu) 🟠 P1
+**Story:** Jako Turysta, chcę móc odnotować datę dołączenia do konkretnego Klubu (np. KGP), aby system zaliczał mi logi wejść zrobione dopiero po tej dacie.
+**Dotyczy encji:** `ClubMembership` (Nowa), `OrganizerModel`, `RequiresClubJoinDateRule`
 
-Kryteria akceptacji:
+**Kryteria akceptacji:**
+- [ ] Turysta może wybrać Organizatora z bazy i podać datę zapisu.
+- [ ] `VerifyBadgeUseCase` ignoruje wejścia starsze niż data członkostwa dla odznak wymagających tej reguły.
 
-    Turysta może wybrać Organizatora z bazy i podać datę zapisu.
+### US-C02b — Prawo do bycia zapomnianym (Usuwanie konta) 🟠 P1
+**Story:** Jako Turysta, chcę mieć możliwość trwałego i nieodwracalnego skasowania mojego konta wraz z całą historyczną bazą wejść, postępów i wgranych plików, aby zachować pełną kontrolę nad swoimi danymi osobowymi (zgodność z RODO).
+**Dotyczy encji:** `TouristProfile`, `AscentLog`, `UserBadgeProgress`, `VerificationRequest` (wszystkie encje powiązane z Userem).
 
-    VerifyBadgeUseCase ignoruje wejścia starsze niż data członkostwa dla odznak wymagających tej reguły.
+**Kryteria akceptacji:**
+- [ ] System wykonuje twarde usunięcie (Hard Delete) głównego konta użytkownika, co za pomocą więzów `CASCADE` w bazie zdejmuje całą jego historię z tabel.
+- [ ] Usługa obsługująca usuwanie konta **fizycznie usuwa pliki** (np. `proof_file` ze zdjęciami) z przestrzeni dyskowej/S3, nie pozostawiając sierot.
+- [ ] Usunięcie konta emituje zdarzenie (lub bezpośrednie wywołanie) czyszczące klucze przypisane do tego `user_id` w pamięci Redis (Cache Mapy i Rankingu Szczytów).
+- [ ] Operacja ta jest chroniona podwójnym potwierdzeniem (np. "Wpisz swoje hasło, aby potwierdzić").
 
-Epic 2: Dziennik Wejść i Złoty Zbiór (The Ascent Log)
-US-C03 — Logowanie Wejścia (Ascent) 🔴 P0
+---
 
-Story: Jako Turysta, chcę zapisać fakt wejścia na konkretny Obiekt Turystyczny, podając datę i aktywność (np. Pieszo/Rower), aby budować swoją historię górską.
-Dotyczy encji: AscentLog (Nowa), TouristObject
-Powiązane invarianty: T-01 (Bitemporalność obiektu)
+## Epic 2: Dziennik Wejść i Złoty Zbiór (The Ascent Log)
 
-Kryteria akceptacji:
+### US-C03 — Logowanie Wejścia (Ascent) 🔴 P0
+**Story:** Jako Turysta, chcę w najprostszy możliwy sposób zapisać fakt wejścia na konkretny Obiekt Turystyczny podając jedynie datę, aby błyskawicznie budować swoją historię górską.
+**Dotyczy encji:** `AscentLog` (Nowa), `TouristObject`
+**Powiązane invarianty:** T-01 (Bitemporalność obiektu)
 
-    Zapis logu wymaga podania tourist_object_id, date oraz activity_type.
+**Kryteria akceptacji:**
+- [ ] Zapis logu wymaga podania **wyłącznie** `tourist_object_id` oraz `date`.
+- [ ] Odrzucenie koncepcji deklarowania "aktywności" (np. pieszo/rower) dla maksymalnego uproszczenia UX.
+- [ ] System twardo odrzuca log (Fail-Fast), jeśli podana data nie mieści się w przedziale `existence_start` i `existence_end` obiektu (T-01).
 
-    System twardo odrzuca log (Fail-Fast), jeśli podana data nie mieści się w przedziale existence_start i existence_end obiektu (T-01).
+### US-C04 — Pamiątki z Wejść (Souvenir Photos) 🟢 P3
+**Story:** Jako Turysta, chcę opcjonalnie dodać do mojego logu wejścia prywatne zdjęcie (np. selfie z wierzchołka, widok), aby traktować aplikację jako mój osobisty pamiętnik z podróży.
+**Dotyczy encji:** `AscentLog`
 
-US-C04 — Dowody Wejścia (Załączniki) 🟠 P1
+**Kryteria akceptacji:**
+- [ ] Funkcja w 100% opcjonalna i wyłączona z rygorystycznego procesu weryfikacji odznak (dowodem ostatecznym pozostaje fizyczna książeczka).
+- [ ] Z uwagi na koszty magazynowania danych (Storage), funkcja odłożona na późniejsze fazy optymalizacji infrastruktury w chmurze (np. dodanie zewnętrznego S3).
 
-Story: Jako Turysta, chcę załączyć zdjęcie lub skan (np. pieczątki ze schroniska) do logu wejścia, aby weryfikator PTTK miał fizyczny dowód na moją obecność.
-Dotyczy encji: AscentLog
+---
 
-Kryteria akceptacji:
+## Epic 3: Silnik Postępu (Badge Progress)
 
-    Pola w bazie: proof_image (ImageField) oraz proof_file (FileField).
+### US-C05 — Świadomy wybór Regulaminu i Prawa Nabyte 🔴 P0
+**Story:** Jako Turysta z wieloletnią historią górską, chcę aby system domyślnie oceniał mnie według najnowszego regulaminu, ale automatycznie odblokowywał mi możliwość przejścia na starsze wersje regulaminu (Prawa Nabyte) na podstawie daty mojego najstarszego wejścia na szlak.
+**Dotyczy encji:** `UserBadgeProgress`, `BadgeVersionModel`, `AscentLog`
+**Powiązane invarianty:** P-01 (Prawa Nabyte)
 
-    Obsługiwane formaty: JPEG, PNG dla zdjęć; PDF dla skanów książeczek.
+**Kryteria akceptacji:**
+- [ ] Przy kliknięciu "Rozpocznij", turysta jest przypinany do aktualnie obowiązującej `BadgeVersion`.
+- [ ] Po dodaniu każdego logu, system ustala wiek najstarszego wejścia turysty. 
+- [ ] Jeśli najstarsze wejście jest starsze niż obecna wersja odznaki, aplikacja umożliwia turyście ręczne przełączenie się (`switch`) na starsze `BadgeVersion`, do których nabył prawa.
+- [ ] Przełączanie wersji jest możliwe i płynne tak długo, jak długo odznaka nie została dodana do Wniosku Weryfikacyjnego (`VerificationRequest`). Po utworzeniu wniosku, wersja w `UserBadgeProgress` zostaje zablokowana (Read-Only).
 
-    Twardy limit rozmiaru pliku: maksymalnie 5 MB (walidowane na poziomie Pydantic DTO oraz formularza).
+### US-C06 — Obliczanie Postępu (Set Math w Domenie) 🔴 P0
+**Story:** Jako Turysta, chcę zobaczyć na jakim jestem etapie (np. 12/25 szczytów), aby wiedzieć, ile brakuje mi do danego Stopnia odznaki.
+**Dotyczy encji:** `UserBadgeProgress`, `BadgeTierModel`, `VerifyBadgeUseCase`
+**Powiązane invarianty:** R-01, T-02
 
-    Przechowywanie w katalogu media/ascents/ (w środowisku deweloperskim na dysku lokalnym, gotowe na podpięcie django-storages / S3 dla produkcji).
+**Kryteria akceptacji:**
+- [ ] Przeliczanie statusów (`NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`) następuje **synchronicznie w locie (On-Demand)** podczas ładowania widoku (dla gwarancji *Immediate Consistency*). 
+- [ ] Ukończenie wymagań dla konkretnego `BadgeTierModel` oznacza ten stopień jako gotowy do Wniosku Weryfikacyjnego.
 
-Epic 3: Silnik Postępu (Badge Progress)
-US-C05 — Rozpoczęcie zdobywania Wersji Odznaki 🔴 P0
+### US-C09 — Kolejny Cykl Odznaki (Pętla Prestiżu) 🟠 P1
+**Story:** Jako Turysta, chcę rozpocząć ponowne zdobywanie tej samej odznaki (nowy cykl), aby móc zweryfikować ją po raz kolejny, używając wyłącznie nowych wejść.
+**Dotyczy encji:** `UserBadgeProgress` (Rozbudowa o `cycle_number`)
+**Powiązane edge cases:** EC-030
 
-Story: Jako Turysta, chcę rozpocząć zdobywanie Odznaki, aby system na zawsze przypisał mnie do obowiązującego w tym dniu regulaminu (Wersji).
-Dotyczy encji: UserBadgeProgress (Nowa), BadgeVersionModel
-Powiązane invarianty: P-01 (Prawa Nabyte)
+**Kryteria akceptacji:**
+- [ ] Dodanie pola `cycle_number` (domyślnie 1) do `UserBadgeProgress`.
+- [ ] Turysta może utworzyć nowy cykl TYLKO wtedy, gdy poprzedni cykl jest w statusie `COMPLETED`.
+- [ ] Wejścia wykorzystane do zamknięcia Cyklu 1 są odfiltrowywane i nie wchodzą do puli ewaluacyjnej Cyklu 2.
 
-Kryteria akceptacji:
+---
 
-    Utworzenie rekordu UserBadgeProgress z odpowiednim ID historycznej lub obecnej BadgeVersion.
+## Epic 4: Logistyka i Osobisty Kanban (Personal Fulfillment Tracker)
 
-    Data przypisania decyduje o tym, na jakich zasadach weryfikowany jest turysta.
+### US-C07 — Wejście do Logistyki (Automatyczny Inbox) 🟠 P1
+**Story:** Jako Turysta, chcę aby każda moja zdobyta odznaka (lub jej stopień) automatycznie trafiała na moją listę logistyczną, abym wiedział, które książeczki są gotowe do fizycznej wysyłki.
+**Dotyczy encji:** `UserBadgeProgress`, `BadgeTierModel`
+**Powiązane invarianty:** S-03 (Domena nie zna logistyki)
 
-US-C06 — Obliczanie Postępu (Set Math w Domenie) 🔴 P0
+**Kryteria akceptacji:**
+- [ ] Gdy Czysta Domena oceni dany stopień/wersję na `COMPLETED`, pozycja ta automatycznie pojawia się w widoku Logistyki (Kanban) ze statusem `WAITING_FOR_SEND`.
+- [ ] To Turysta (a nie system) grupuje je fizycznie w koperty w świecie rzeczywistym.
 
-Story: Jako Turysta, chcę zobaczyć na jakim jestem etapie (np. 12/25 szczytów), aby wiedzieć, ile brakuje mi do danego Stopnia odznaki.
-Dotyczy encji: UserBadgeProgress, BadgeTierModel, VerifyBadgeUseCase
-Powiązane invarianty: R-01, T-02
+### US-C08 — Osobista Maszyna Stanów i Alerty (Tracking) 🟠 P1
+**Story:** Jako Turysta, chcę ręcznie aktualizować statusy moich wysłanych odznak i otrzymywać ostrzeżenia o opóźnieniach, aby nie zgubić śladu po moich książeczkach weryfikacyjnych.
+**Dotyczy encji:** `UserBadgeProgress` (pola logistyczne: `logistic_status`, `sent_date`, `verified_date`, `received_date`)
 
-Kryteria akceptacji:
+**Kryteria akceptacji:**
+- [ ] Turysta samodzielnie przesuwa status na `WAITING_FOR_VERIFICATION` (podając datę wysyłki na poczcie).
+- [ ] System wyświetla alert ⚠️ (bez zadań w tle, wyliczany w locie w widoku), jeśli od daty wysyłki minęło > 30 dni.
+- [ ] Turysta zmienia status na `WAITING_FOR_RECEIVING` (gdy opłaci blachę / dostanie info z PTTK, podając datę).
+- [ ] System wyświetla alert ⚠️, jeśli od daty weryfikacji minęło > 30 dni, a listonosz nie przyniósł blachy.
+- [ ] Turysta klika `ALBUM` (stan terminalny) po fizycznym otrzymaniu odznaki.
 
-    Przeliczanie statusów (NOT_STARTED, IN_PROGRESS, COMPLETED) następuje synchronicznie w locie (On-Demand) podczas ładowania widoku (dla gwarancji Immediate Consistency).
+### US-C08b — Autoryzowana Korekta Błędów Logistycznych 🟠 P1
+**Story:** Jako Turysta, jeśli weryfikator PTTK zgłosił błąd w moim wpisie przypiętym do skompletowanej odznaki, chcę móc poprosić system o usunięcie "fałszywego" wejścia bez konieczności resetowania całego mojego konta.
+**Dotyczy encji:** `AscentLog`, `UserBadgeProgress`
+**Powiązane invarianty:** S-04
 
-    Ukończenie wymagań dla konkretnego BadgeTierModel oznacza ten stopień jako gotowy do Wniosku Weryfikacyjnego.
+**Kryteria akceptacji:**
+- [ ] Turysta nie może użyć standardowego przycisku "Usuń" dla zablokowanego logu.
+- [ ] Turysta posiada przycisk "Zgłoś pomyłkę / Cofy weryfikację" przy zamkniętym Cyklu odznaki.
+- [ ] Akcja ta degradowuje stan odznaki z `COMPLETED` do `IN_PROGRESS`, po czym "odpina" kłódkę ze wszystkich logów `AscentLog`, pozwalając turyście na usunięcie błędnego wejścia i uzupełnienie braków prawdziwą wycieczką.
 
-US-C09 — Kolejny Cykl Odznaki (Pętla Prestiżu) 🟠 P1
+---
 
-Story: Jako Turysta, chcę rozpocząć ponowne zdobywanie tej samej odznaki (nowy cykl), aby móc zweryfikować ją po raz kolejny, używając wyłącznie nowych wejść.
-Dotyczy encji: UserBadgeProgress (Rozbudowa o cycle_number)
-Powiązane edge cases: EC-030
+## Epic 5: Odkrywanie i Mapa (Map & Discovery)
 
-Kryteria akceptacji:
+### US-C10 — Globalna Mapa Celów (Global Map) 🟠 P1
+**Story:** Jako Turysta, chcę widzieć na jednej mapie wszystkie szczyty w Polsce pokolorowane na podstawie moich postępów we wszystkich aktywnych odznakach, abym wiedział, gdzie najbardziej opłaca mi się dziś pojechać.
+**Dotyczy encji:** `MapContext` (DTO), `BadgeEligibilityService` (Application Service)
+**Powiązane ADR:** ADR-010, ADR-011
 
-    Dodanie pola cycle_number (domyślnie 1) do UserBadgeProgress.
+**Kryteria akceptacji:**
+- [ ] Obiekty mają nadany jeden z 5 ujednoliconych stanów (Szary, Zielony, Czerwony, Niebieski, Pomarańczowy).
+- [ ] Obliczenia są buforowane w Redis (klucz per `user_id` + dzisiejsza data), aby zapytania działały poniżej 50ms.
+- [ ] API akceptuje Bounding Box (BBox) z mapy i zwraca tylko obiekty w widocznym oknie (Lazy Evaluation).
 
-    Turysta może utworzyć nowy cykl TYLKO wtedy, gdy poprzedni cykl jest w statusie COMPLETED.
+### US-C11 — Mapa Konkretnej Odznaki (Badge Map) 🟠 P1
+**Story:** Jako Turysta, chcę otworzyć szczegóły "Korony Sudetów" i widzieć mapę odfiltrowaną i pokolorowaną WYŁĄCZNIE przez pryzmat tej jednej odznaki.
+**Dotyczy encji:** `MapContext` (DTO)
 
-    Wejścia wykorzystane do zamknięcia Cyklu 1 są odfiltrowywane i nie wchodzą do puli ewaluacyjnej Cyklu 2.
+**Kryteria akceptacji:**
+- [ ] Obiekty spoza puli tej odznaki nie są przesyłane do przeglądarki.
+- [ ] Kolorowanie ignoruje postęp w innych odznakach (np. szczyt może być Czerwony dla tej mapy, mimo że globalnie jest Niebieski).
 
-Epic 4: Logistyka i Kanban (Verification & Fulfillment)
-US-C07 — Wniosek Weryfikacyjny (Verification Request) 🟠 P1
+### US-C12 — Nawigacja Regionalna (Mapy Pośrednie) 🟠 P1
+**Story:** Jako Turysta, chcę móc wygenerować mapę zawężoną do konkretnego poziomu geograficznego (np. tylko Państwo, tylko Makroregion, tylko Mezoregion), aby skupić się na celach w moim fizycznym zasięgu.
+**Kryteria akceptacji:**
+- [ ] Utworzenie dedykowanych widoków dla jednostek geograficznych.
+- [ ] Warstwa wektorowa (MVT) wyświetla klikalne poligony regionów sąsiadujących.
+- [ ] Kliknięcie w sąsiedni poligon na mapie dynamicznie przeładowuje kontekst aplikacji na nowy region (np. przejście z Beskidu Śląskiego do Małego).
 
-Story: Jako Turysta, chcę zebrać moje "ZDOBYTE" stopnie odznak z danego Oddziału PTTK w jedną "Paczkę" i wysłać je do fizycznej weryfikacji.
-Dotyczy encji: VerificationRequest (Nowa), UserBadgeProgress
-Powiązane edge cases: EC-030 (Odznaki Wielokrotne)
+### US-C13 — Płynny UX Mapy (Heatmapa i Klastrowanie) 🟠 P1
+**Story:** Jako Turysta, chcę aby przy dużym oddaleniu mapy obiekty scalały się w "mapę ciepła" (Heatmap), a przy przybliżeniu zamieniały w klikalne pinezki, aby uniknąć zasłonięcia ekranu tysiącami ikon.
+**Dotyczy:** Frontend (MapLibre GL JS), `UI_GUIDELINES.md`
+**Kryteria akceptacji:**
+- [ ] Wdrożenie warstwy `heatmap` w MapLibre widocznej dla `zoom < X`.
+- [ ] Wdrożenie warstwy `symbol` widocznej dla `zoom >= X`.
+- [ ] Kliknięcie pinezki otwiera natywny popup (Tooltip) ze skróconym opisem i linkiem do szczegółów. Obliczenia wizualne obciążają wyłącznie urządzenie klienckie.
 
-Kryteria akceptacji:
+### US-C14 — Detale Obiektu i Radar 2 km 🟡 P2
+**Story:** Jako Turysta, wchodząc na stronę konkretnego obiektu, chcę widzieć mapę celów znajdujących się w promieniu 2 km od niego, aby optymalnie zaplanować moją wycieczkę.
+**Kryteria akceptacji:**
+- [ ] Strona ze szczegółami obiektu (`TouristObject`).
+- [ ] Na stronie osadzona jest mini-mapa wyrenderowana na podstawie szybkiego zapytania `ST_DWithin` (2000m) z bazy PostGIS.
+- [ ] Na liście uwzględniona jest dynamiczna kolorystyka obiektów (czy już je zdobyłem).
 
-    Użytkownik tworzy wniosek agregujący wiele zdobytych odznak z danego Cyklu.
+### US-C15 — Wybór Podkładu Mapowego (Basemap Switcher) 🟢 P3
+**Story:** Jako Turysta, chcę mieć możliwość przełączania podkładu mapy (np. na Mapy.cz, OpenStreetMap, mapę turystyczną), aby móc lepiej orientować się w terenie szlaków górskich.
+**Kryteria akceptacji:**
+- [ ] Implementacja standardowego widżetu wyboru warstw rastrowych w UI MapLibre.
+- [ ] (Zależność operacyjna) Uzyskanie i bezpieczne zmagazynowanie darmowych kluczy API dostawców w `AppSettings`.
 
-    Wniosek bezwzględnie wymaga wgranego dokumentu, jeśli jakakolwiek odznaka we wniosku ma BadgeModel.is_booklet_required = True.
+### US-C16 — Ranking Potencjału Obiektów (Min-Maxing) 🟠 P1
+**Story:** Jako Turysta, chcę widzieć punktację "opłacalności" niezdobytych przeze mnie szczytów (oraz sumę punktów dla całych regionów), aby optymalnie zaplanować wycieczkę, która najbardziej przybliży mnie do zdobycia blach.
+**Dotyczy encji:** `BadgeEligibilityService` (App Layer), Redis Cache
+**Powiązane ADR:** ADR-015
 
-US-C08 — Maszyna Stanów Logistyki 🟠 P1
+**Kryteria akceptacji:**
+- [ ] Szczyt punktuje według wzoru `Σ (100 / n_pozostałych)`. Wynik to liczba całkowita.
+- [ ] Wynik ignoruje odznaki, które na dzisiejszą datę są odrzucane przez domeny (np. złe okno czasowe).
+- [ ] Turysta może wyświetlić ranking topowych szczytów dla wybranego przez CQRS regionu (np. "Najbardziej opłacalne w Sudetach").
+- [ ] Turysta może wyświetlić zagregowany ranking całych regionów (Suma potencjału wszystkich szczytów z danego pasma górskiego).
 
-Story: Jako Turysta i Administrator, chcemy widzieć, na jakim etapie logistycznym jest paczka z odznakami, aby zarządzać procesem wysyłki.
-Dotyczy encji: VerificationRequest
+---
 
-Kryteria akceptacji:
+## Epic 6: Automatyzacja Administracyjna (Data Stewardship)
 
-    Jednokierunkowa maszyna stanów: WAITING_FOR_SEND → WAITING_FOR_VERIFICATION → WAITING_FOR_RECEIVING → ALBUM.
+### US-A01 — Radar Aktualności Odznak (News Scraper) 🔴 P1
+**Story:** Jako Administrator, chcę, aby system automatycznie i cyklicznie monitorował zewnętrzne portale turystyczne (np. odznaki.org) w poszukiwaniu nowych odznak i zmian w regulaminach, aby oszczędzić czas na ręcznym śledzeniu nowości.
+**Dotyczy encji:** `BadgeNewsItem` (Nowa encja techniczna, Skrzynka Odbiorcza)
+**Powiązane zasady:** Wymóg Fail-Silently (Ciche niepowodzenie w przypadku zmiany struktury HTML zewnętrznej strony).
 
-    System archiwizuje daty przejść (timestampy) dla każdego statusu.
+**Kryteria akceptacji:**
+- [ ] Celery Beat codziennie uruchamia zadanie skanujące (Web Scraping).
+- [ ] Mechanizm twardej deduplikacji (np. `unique=True` dla URL artykułu lub jego hasha) gwarantuje, że do bazy trafiają wyłącznie nowe informacje.
+- [ ] W panelu Django Admin powstaje dedykowany Inbox z aktualnościami, posiadający statusy: "Nieprzeczytane" / "Przeczytane".
+- [ ] Administrator posiada akcję masową "Oznacz jako przeczytane", po której użyciu powiadomienia znikają z domyślnego widoku, zostając zarchiwizowane w bazie.
 
-Mapa zależności
-Story	Opis skrócony	Blokuje	Zablokowana przez
-US-C01	Profil i Wiek	US-C02, US-C06	—
-US-C03	Logowanie Wejścia	US-C06, US-C04	US-C01
-US-C04	Załączniki do Wejść	—	US-C03
-US-C05	Zapis na Odznakę	US-C06, US-C07	US-C01
-US-C06	Silnik Postępu	US-C07, US-C09	US-C01, US-C03, US-C05
-US-C09	Pętla Prestiżu (Cykle)	—	US-C06
-US-C07	Wniosek Weryfikacyjny	US-C08	US-C06, US-C05
-US-C08	Maszyna Stanów Kanban	—	US-C07
-Historia zmian
-Wersja	Data	Autor	Opis zmiany
-1.0	2026-05-29	Dominik / AI Architect	Pierwsza wersja (Faza C).
-1.1	2026-05-29	AI Architect	Uzupełnienie Mapy Zależności. Doprecyzowanie synchronicznego triggera US-C06 (Immediate Consistency), dodanie US-C09 (Pętla Prestiżu / EC-030).
+---
+
+## Mapa zależności
+
+| Story | Opis skrócony | Blokuje | Zablokowana przez |
+|-------|---------------|---------|-------------------|
+| **US-C01** | Profil i Wiek | US-C02, US-C06 | — |
+| **US-C01b**| Katalog i Wybór Odznak| US-C05 | — |
+| **US-C02** | Przynależność Klubowa | — | US-C01 |
+| **US-C02b**| Prawo do bycia zapomnianym | — | US-C01 |
+| **US-C03** | Logowanie Wejścia | US-C06, US-C04 | US-C01 |
+| **US-C04** | Załączniki do Wejść | — | US-C03 |
+| **US-C05** | Zapis na Odznakę | US-C06, US-C07 | US-C01, US-C01b |
+| **US-C06** | Silnik Postępu | US-C07, US-C09, US-C10 | US-C01, US-C03, US-C05 |
+| **US-C09** | Pętla Prestiżu (Cykle)| — | US-C06 |
+| **US-C07** | Osobisty Kanban (Inbox)| US-C08 | US-C06, US-C05 |
+| **US-C08** | Maszyna Stanów Logistyki| — | US-C07 |
+| **US-C10** | Globalna Mapa | US-C11, US-C12, US-C13, US-C15 | US-C06 |
+| **US-C11** | Mapa Odznaki | — | US-C10 |
+| **US-C12** | Nawigacja Regionalna | — | US-C10 |
+| **US-C13** | Płynny UX (Heatmap) | — | US-C10 |
+| **US-C14** | Detale i Radar 2 km | — | — |
+| **US-C15** | Wybór Podkładów | — | US-C10 |
+| **US-C16** | Ranking Potencjału (100/n) | — | US-C06 |
+| **US-A01** | Radar Aktualności (Scraper)| — | — |
+
+---
+
+## Historia zmian
+| Wersja | Data | Autor | Opis zmiany |
+|--------|------|-------|-------------|
+| 1.0 | 2026-05-29 | Dominik / AI Architect | Pierwsza wersja (Faza C). |
+| 1.1 | 2026-05-29 | AI Architect | Uzupełnienie Mapy Zależności. Doprecyzowanie synchronicznego triggera US-C06 (Immediate Consistency), dodanie US-C09 (Pętla Prestiżu / EC-030). |

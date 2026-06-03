@@ -74,14 +74,19 @@ W obecnej fazie (Faza A/B), polecenia wysyłane do kolejki Redis muszą być pro
 ## 2. Zdarzenia Planowane dla Użytkowników (Faza C - Pub/Sub)
 
 ### `BadgeVersionCompleted`
-**Kiedy publikowane:** Gdy Czysta Domena potwierdzi, że turysta spełnił 100% matematycznych wymogów dla ostatniego (lub jedynego) Stopnia w wybranej wersji regulaminu.
+**Kiedy publikowane:** Gdy Czysta Domena potwierdzi, że turysta spełnił 100% matematycznych wymogów dla odznaki.
 **Konsumenci (Planowani):** `LogisticsKanbanService`
-**Akcja:** Odblokowanie turyście opcji wygenerowania i wysłania `VerificationRequest` (Wniosku Weryfikacyjnego) do placówki PTTK.
+**Akcja:** Odblokowanie turyście opcji manipulowania polami logistycznymi (`logistic_status`) dla danego rekordu w jego interfejsie.
 
-### `VerificationRequestApproved`
-**Kiedy publikowane:** Gdy Przodownik PTTK w panelu (Tablicy Kanban) kliknie zatwierdzenie wniosku i nada status "Odznaka Weryfikowana / Wysłana".
-**Konsumenci (Planowani):** Moduł powiadomień (NotificationService).
-**Akcja:** Wysyłka e-maila / Push Notification do użytkownika ("Twoja blacha jest w drodze!").
+### `LogisticsStatusAdvanced`
+**Kiedy publikowane:** Gdy turysta ręcznie przesunie status odznaki (np. poda datę wysłania przesyłki do PTTK).
+**Konsumenci:** —
+**Akcja:** Ograniczenie interfejsowe – zablokowanie możliwości modyfikacji/usuwania logów `AscentLog` podpiętych pod ten zamknięty Cykl odznaki.
+
+### `UserProgressStateChanged` (Aktualizacja Rankingu)
+**Kiedy publikowane:** Kiedy stan turysty lub otaczających go reguł ulegnie zmianie. Wyzwalane przez: log wejścia, zmianę obserwowanych odznak, osiągnięcie progu wiekowego (urodziny), otwarcie/zamknięcie okna czasowego z regulaminu, lub zmianę struktury obiektu turystycznego przez Admina.
+**Konsumenci:** `PoiScoringService` (Cache Manager)
+**Akcja:** Usunięcie (Inwalidacja) wpisów z pamięci Redis dla dotkniętych użytkowników, co wymusza asynchroniczne lub leniwe przeliczenie Rankingu Potencjału Obiektów (Score `100/n`) przy następnym żądaniu mapy.
 
 ---
 

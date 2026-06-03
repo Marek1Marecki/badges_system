@@ -19,12 +19,12 @@ Aplikacja służąca do autorytatywnego katalogowania górskich obiektów geogra
 
 ## Tech stack
 
-| Warstwa | Technologia | Wersja                          |
-|---------|-------------|---------------------------------|
-| Backend | Python / Django | `3.14.x` / `6.0.x`              |
-| Frontend | HTMX + MapLibre GL JS | `1.9.11` / `3.6.2`              |
-| Baza | PostgreSQL + PostGIS | `15.x` / `3.x`                  |
-| Cache & Kolejka| Redis + Celery | `7.x` / `>=5.6.3`               |
+| Warstwa | Technologia | Wersja                           |
+|---------|-------------|----------------------------------|
+| Backend | Python / Django | `3.14.x` / `6.0.x`               |
+| Frontend | HTMX + MapLibre GL JS | `1.9.11` / `3.6.2`               |
+| Baza | PostgreSQL + PostGIS | `15.x` / `3.x`                   |
+| Cache & Kolejka| Redis + Celery | `7.x` / `>=5.6.x`                |
 | Lintery | uv, ruff, mypy, import-linter | `>0.2` (Zablokowane w `uv.lock`) |
 
 ---
@@ -62,20 +62,26 @@ Pełny model w `DOMAIN_MODEL.md`.
 
 ## Invarianty — NIGDY NIE NARUSZAJ
 
-Poniższe reguły muszą być zachowane zawsze. Generując kod, który je dotyka — dodaj asercję lub test. Pełny opis i testy w `INVARIANTS.md`.
+Poniższe reguły muszą być zachowane zawsze. Generując kod, który je dotyka — dodaj asercję lub test. Pełny opis w `INVARIANTS.md`.
 
 | ID | Reguła |
 |----|--------|
-| T-01 | **Bitemporality:** Wejście na obiekt (`Ascent`) w dniu X jest niemożliwe, jeśli obiekt posiada `existence_start > X` lub `existence_end < X`. |
-| T-02 | **ClockPort:** Nigdy nie wywołuj `datetime.now()` w `domain/` i `application/`. Zawsze wstrzykuj zegar! |
+| T-01 | **Bitemporality:** Wejście na obiekt w dniu X jest odrzucane, jeśli obiekt posiada `existence_start > X` lub `existence_end < X`. |
+| T-02 | **ClockPort:** Zakaz `datetime.now()` w `domain/` i `application/`. Wstrzykuj zegar! |
 | R-01 | **Set Math:** Czysta Domena nie używa GIS. Weryfikacja operuje na zbiorach `frozenset[int]`. |
-| R-02 | **Fail-Fast:** Adapter hydrujący JSONB musi rzucać `ValueError` dla nieznanej/uszkodzonej reguły. Brak cichego pomijania. |
+| R-02 | **Fail-Fast:** Adapter hydrujący JSONB musi rzucać `ValueError` dla nieznanej/uszkodzonej reguły. |
+| R-03 | **Wildcard Rules:** Reguły geograficzne (np. zliczające Beskidy) bazują na `region_ids` wstrzykniętych w DTO. |
 | D-01 | `order` w `BadgeTier` musi być unikalny dla danej `BadgeVersion`. |
-| D-02 | **Data Override:** Automat OSM (`OsmDataExtractor`) nigdy nie nadpisuje pól ręcznie wypełnionych przez Admina. |
+| D-02 | **Data Override:** Automat OSM nigdy nie nadpisuje pól ręcznie wypełnionych przez Admina. |
 | S-01 | Status obiektu idzie tylko w przód: `DRAFT` → `FETCHING_OSM` → `READY/ERROR`. |
-| S-02 | Obiekt w `ERROR` wymaga interwencji człowieka — skaner z Celery go ignoruje (Ochrona przed Poison Pills). |
-| P-01 | Pula `pool_peaks` aktywnej wersji odznaki jest niemutowalna (Prawa Nabyte turystów). |
+| S-02 | Obiekt w `ERROR` wymaga interwencji człowieka — skaner z Celery go ignoruje. |
+| S-03 | **Separacja:** Domena operuje na `COMPLETED`. Logistyka (`WAITING_FOR_SEND`) nie wchodzi do domeny. |
+| P-01 | Pula `pool_peaks` aktywnej wersji odznaki jest niemutowalna. |
+| P-02 | **Ascent Consumption:** Wejścia użyte do zamknięcia Cyklu 1 nie mogą wziąć udziału w Cyklu 2. |
 | C-01 | Relacja klastrów (`parent_object`) nie może tworzyć cykli (A->B->A). |
+| M-01 | **MVT vs GeoJSON:** Kafelki MVT są anonimowe. Kolory statusu (np. zielony) przesyłaj tylko w GeoJSON. |
+| M-02 | **Debounce:** Odpytywanie BBox z mapy (`/api/map-objects`) wymaga minimum 300ms opóźnienia. |
+| M-03 | **Read-Only Admin:** Poligony regionów w Django Adminie muszą mieć `modifiable = False`. |
 
 ---
 
@@ -107,15 +113,21 @@ Zabrania się usuwania istniejących komentarzy ludzkich podczas refaktoryzacji.
 
 | ADR | Decyzja | Implikacje dla kodu |
 |-----|---------|---------------------|
-| ADR-001 | Django + Celery + PostGIS | Architektura musi izolować Django ORM od Domeny. |
-| ADR-002 | Geometria jako Transport | Typy GEOS (Point) nigdy nie wchodzą do warstwy `domain/`. |
-| ADR-003 | JSONB Rules Engine | Konfiguracja reguł zapisana w bazie jako JSONB (Wzorzec Strategii). |
-| ADR-004 | Dwuwarstwowe dane OSM | Baza ma ukryte `osm_raw_tags` oraz Twarde Kolumny z walidacją nadpisań. |
-| ADR-005 | Płaski CQRS (Geografia) | Używamy `ObjectRegionCache` dla filtrów, omijając ciężkie GIS query. |
-| ADR-006 | Klastry (Proximity Radar)| Asynchroniczna Skrzynka Odbiorcza dla Par 150m, akceptacja ręczna. |
-| ADR-007 | Hierarchia Odznak | Ochrona Praw Nabytych: `Badge -> BadgeVersion -> BadgeTier`. |
-| ADR-008 | Bitemporalność | Ochrona cyklu życia obiektów (puste daty = brak limitu). |
-| ADR-009 | Pool-based Set Verification | Domena ocenia wejścia używając `set.intersection`, nie zapytań GIS. |
+| ADR-001 | Django + Celery + PostGIS | Architektura musi izolować Django ORM od Czystej Domeny. Zależność od GDAL. |
+| ADR-002 | Geometria jako transport | Obiekty PostGIS (Point, MultiPolygon) nigdy nie wchodzą do warstwy `domain/`. |
+| ADR-003 | Wzorzec Strategii i JSONB | Konfiguracja reguł trzymana jako `JSONB` i obsługiwana dynamicznym panelem (`oneOf`). |
+| ADR-004 | Dwuwarstwowy import OSM | Baza posiada ukryty Data Lake (`osm_raw_tags`) oraz Twarde Kolumny (Data Override). |
+| ADR-005 | Płaski Model Odczytu CQRS | Weryfikacja regionalna i filtrowanie oparte na asynchronicznej, płaskiej tabeli `ObjectRegionCache`. |
+| ADR-006 | Klastrowanie bliskości (Radar) | Zastosowanie pola `parent_object` zarządzanego przez asynchroniczną Skrzynkę Odbiorczą (Inbox). |
+| ADR-007 | Hierarchia Odznak (Wersje) | Gwarancja "Praw Nabytych" poprzez powiązanie postępu z niezmienną Wersją regulaminu. |
+| ADR-008 | Bitemporalność Obiektów | Ochrona historii wejść poprzez `existence_start` i `existence_end` (puste daty = brak limitu). |
+| ADR-009 | Pool-based Set Verification | Weryfikacja to szybkie przecięcia zbiorów (`frozenset`) w RAM, odcięte od zapytań GIS. |
+| ADR-010 | Dynamiczne kolorowanie mapy | `BadgeEligibilityService` redukuje stany na backendzie do 1 koloru; agresywny cache w Redis. |
+| ADR-011 | Hybrydowy BBox na żądanie | Zapytania mapowe (Pan/Zoom) odpytują pre-filtr CQRS, a następnie docinają wynik przez `ST_Within`. |
+| ADR-012 | Wildcard Geographic Rules | Reguły "terytorialne" bazują na `region_ids` wstrzykniętych w zhydrowanym DTO (Obejście R-01). |
+| ADR-013 | Vector Tiles & Client-Side Styling| MVT tylko dla statycznej geometrii (anonimowe). GeoJSON z BBox tylko dla dynamicznych stanów (`peak_color`). |
+| ADR-014 | Separacja Postępu od Logistyki | Domena wydaje wyrok `COMPLETED`, a proces śledzenia blachy to niezależny Kanban Turysty. |
+| ADR-015 | Ranking Potencjału (100/n) | Asynchroniczny silnik liczący opłacalność celów z systemem Event-Driven Cache Invalidation. |
 
 ---
 

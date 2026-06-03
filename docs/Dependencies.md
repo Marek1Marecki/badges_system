@@ -27,6 +27,14 @@
 
 ---
 
+## Panel Administracyjny i UI
+
+| Pakiet | Wersja | Licencja | Powód wyboru |
+|--------|--------|----------|--------------|
+| `django-unfold` | `>=0.35.0` | MIT | Nakładka na interfejs Django Admina. Wprowadza nowoczesny UX (Tailwind CSS, responsywność, dark mode) bez naruszania natywnych widoków klas ModelAdmin (kompatybilność z Leaflet/HTMX). Wdrażana jako alternatywa dla budowania własnego, kosztownego CMS-a w React/Vue. |
+
+---
+
 ## Zewnętrzne API i usługi (Third-Party Services)
 
 Architektura zakłada minimalizację zewnętrznych zależności sieciowych, w szczególności w trakcie żądań HTTP użytkownika (tzw. hot path). 
@@ -48,6 +56,7 @@ Architektura zakłada minimalizację zewnętrznych zależności sieciowych, w sz
 | `pydantic` | `>=2.8.0` | MIT | Niezrównana weryfikacja i walidacja danych dla DTO (`application/dto/`) oraz adapterów (np. `OsmNodeDTO`). Odrzuca błędne struktury na granicach systemu. | `dataclasses` (Brak wbudowanej, zagnieżdżonej walidacji wejść). |
 | `pydantic-settings` | `>=2.4.0` | MIT | Centralne źródło prawdy dla środowiska. Gwarantuje walidację typów dla konfiguracji w warstwie `bootstrap`. | `os.getenv` w kodzie (Zakazane kontraktem). |
 | `python-dateutil` | `>=2.9.0` | Apache-2.0 | Zaawansowana obsługa czasu. **UWAGA (Domain Purity):** Używana wyłącznie w warstwie `infrastructure/` (np. przez adaptery kalendarzowe). W procesie refaktoryzacji biblioteka ta została usunięta z `domain/rules`, by zachować czystość 100% `stdlib`. | Wbudowany `datetime.replace` (użyty ostatecznie w Czystej Domenie dla lat przestępnych). |
+
 ### Geografia i Panel Administracyjny
 
 | Pakiet | Wersja | Licencja | Powód wyboru | Alternatywy rozważane |
@@ -56,13 +65,14 @@ Architektura zakłada minimalizację zewnętrznych zależności sieciowych, w sz
 | `django-jsonform`| `>=2.22.0`| MIT | Pozwala na dynamiczne renderowanie formularzy w Django Adminie na podstawie JSON Schema. To fundament do wprowadzania naszych Reguł Biznesowych. | Zwykłe pola tekstowe JSON (Fatalny UX dla administratora). |
 | `django-tinymce` | `>=4.1.0` | MIT | Bogaty edytor WYSIWYG. Używany wyłącznie dla pola `BadgeVersionModel.rules_text` do bezpiecznego formatowania historycznych treści regulaminów PTTK jako read-only archiwum (bez ingerencji w weryfikację). | — |
 
-### Zasilanie Asynchroniczne (Data Ops)
+### Zasilanie Asynchroniczne i Scraping (Data Ops)
 
 | Pakiet | Wersja | Licencja | Powód wyboru |
 |--------|--------|----------|--------------|
-| `celery` | `>=5.6.3` | BSD | Standard branżowy do offloadowania ciężkich operacji (PostGIS, strzały do API OSM) z głównego wątku HTTP. |
+| `celery` | `>=5.6.3` | BSD | Standard branżowy do offloadowania ciężkich operacji (PostGIS, strzały do API) z wątku HTTP. |
 | `redis` | `>=5.0.0` | MIT | Szybki i sprawdzony broker dla Celery oraz backend dla wyników (`result_backend`). |
-| `django-celery-beat`| `>=2.6.0` | BSD | Umożliwia dynamiczne definiowanie harmonogramów (Nocny Stróż OSM) z poziomu interfejsu graficznego Django Admina. |
+| `django-celery-beat`| `>=2.6.0` | BSD | Umożliwia dynamiczne definiowanie harmonogramów (Nocny Stróż, Skaner Aktualności) z poziomu interfejsu graficznego. |
+| `beautifulsoup4` | `>=4.12.0`| MIT | Niezbędna do parsowania struktury HTML z zewnętrznych stron (Web Scraping dla Radaru Aktualności). Użycie wyrażeń regularnych do HTML jest błędem projektowym — BS4 gwarantuje odporność na drobne zmiany struktury DOM. |
 
 ### Obserwowalność (Observability)
 
@@ -78,8 +88,8 @@ Wchodząc w etap logowania wejść (`AscentLog`) i obsługi klientów mobilnych,
 
 | Pakiet | Cel | Status |
 |--------|-----|--------|
-| `Pillow` | Obsługa weryfikacji i konwersji załączników (dowodów w postaci zdjęć w `AscentLog`). | **Oczekuje na instalację.** |
-| `django-ninja` *LUB* `djangorestframework` | Wystawienie endpointów REST dla aplikacji mobilnej z twardym formatowaniem `RFC 7807` dla błędów. | **Do decyzji (Wymagany nowy dokument ADR-010).** |
+| `Pillow` | Obsługa weryfikacji i konwersji załączników. | **Oczekuje na instalację.** |
+| `[Brak biblioteki MVT]` | Generowanie Kafelków Wektorowych będzie zrealizowane natywnie poprzez funkcję wbudowaną PostGIS (`ST_AsMVT`), wywoływaną za pomocą Django `Func` lub `RawSQL`. Odrzucamy zewnętrzne paczki (np. `django-vectortiles`), aby zminimalizować narzut technologiczny dla prostej wizualizacji regionów. | **Decyzja z ADR-013.** |
 
 ---
 

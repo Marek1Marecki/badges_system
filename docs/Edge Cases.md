@@ -29,7 +29,6 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 - Problem rozwiązany strukturalnie przez Linear Backoff Retry na maszynie asynchronicznej (maksymalnie 15 prób, zgodnie z definicją w Tasku).
 **Test:** `test_successful_fetch_uses_get_method` (zaimplementowane przez `httpx`/`urllib` mocking).
 
-
 ### EC-002 — Nieskończona pętla Nocnego Stróża i martwe węzły (Ghost Nodes)
 **Obszar:** `application/use_cases/fetch_osm_data.py` (`RunOsmNightWatchmanUseCase`)  
 **Odkryty:** 2026-05-22 przy testowaniu harmonogramów Celery.  
@@ -37,6 +36,13 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 **Opis:** Obiekt w OSM, który nie był edytowany przez społeczność np. od 10 lat, ma wciąż stary `timestamp`. Jeśli system aktualizuje bazę tylko w momencie wykrycia "nowej daty w OSM", obiekty te nigdy nie schodzą z kolejki "do sprawdzenia" i Nocny Stróż utyka w nieskończonej pętli zapytań o te same 100 szczytów każdej nocy.  
 **Rozwiązanie / workaround:** Kolumna `last_sync_check` (Data ostatniego sprawdzenia). Niezależnie od tego, czy tagi w OSM uległy zmianie czy nie, po każdym zapytaniu system nadpisuje czas lokalnego rekordu, spychając go na sam koniec kolejki. Dodatkowo, jeśli z paczki 100 węzłów powróci tylko 99, ten jeden zaginiony zostaje autorytatywnie zgłoszony do `OsmSyncConflict` jako obiekt prawdopodobnie zniszczony/usunięty z map świata.  
 **Test:** `test_watchman_ghost_node_detection_and_queue_rotation`
+
+### EC-003 — Blokowanie kafelków mapy w panelu Admina (Tile Usage Policy)
+**Obszar:** `config/settings.py`, `apps/badges/admin.py`  
+**Odkryty:** Podczas konfiguracji widżetu `django-leaflet`.  
+**Status:** `resolved`  
+**Opis:** Serwery kafelków (Tile Servers) OpenStreetMap rygorystycznie egzekwują zasady użycia i blokują żądania z przeglądarek, które nie wysyłają nagłówka `Referer`. Domyślna polityka bezpieczeństwa Django (`same-origin`) ukrywa ten nagłówek przy odpytywaniu zewnętrznych domen, co skutkuje brakiem podkładu mapowego w panelu Administratora (wyświetla się grafika "Access blocked").  
+**Rozwiązanie / workaround:** Do globalnej konfiguracji projektu `config/settings.py` dodano wymuszenie luźniejszej polityki: `SECURE_REFERRER_POLICY = "origin-when-cross-origin"`. Zezwala to przeglądarce na wysłanie pochodzenia do serwerów kafelkowych, odblokowując mapę bez łamania globalnego bezpieczeństwa aplikacji.
 
 ---
 
@@ -99,6 +105,47 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 **Rozwiązanie / workaround:** Wymagane jest dodanie walidacji na poziomie formularza oraz ewentualnie metody `clean()` modelu `TouristObject`, zapobiegającej przypisaniu na rodzica obiektu, który już znajduje się w drzewie potomków. System musi twardo odrzucić taką próbę (zgodnie z Invariantem C-01).  
 **Test:** `[brakuje, TODO - test_EC022_cyclic_parent_assignment_raises_validation_error]`
 
+### EC-024 — Keszowanie QuerySetów w formularzach Admina (Puste Dropdowny)
+**Obszar:** `apps/badges/admin.py` / `apps/badges/forms.py`  
+**Odkryty:** Przy implementacji akcji masowego przypisywania szczytów do odznak (Action Form).  
+**Status:** `resolved`  
+**Opis:** Definiowanie pola `ModelChoiceField(queryset=Model.objects.all())` bezpośrednio w ciele klasy formularza powoduje ewaluację zapytania w momencie ładowania modułu (startu serwera Gunicorn/Runserver). Jeśli administrator doda nowy rekord do bazy bez restartowania serwera, nowy rekord nie pojawi się w rozwijanej liście formularza (zjawisko Stale Data).  
+**Rozwiązanie / workaround:** Żelazna zasada Django: dynamiczne QuerySety w formularzach muszą być przypisywane wewnątrz metody `__init__`.
+
+### EC-025 — Surowy kod HTML zamiast widżetu w panelu Admina (Autoescaping)
+**Obszar:** `apps/badges/forms.py` (Custom Widgets)  
+**Odkryty:** Podczas implementacji dynamicznego pola `<datalist>` dla typów obiektów OSM.  
+**Status:** `resolved`  
+**Opis:** Przy nadpisywaniu metody `render()` niestandardowego widżetu formularza, zwykła konkatenacja ciągów znaków (stringów) zawierających tagi HTML powoduje, że wbudowany w Django mechanizm *Autoescape* zamienia znaki `<` i `>` na encje HTML (`&lt;`). W efekcie na ekranie wyświetla się surowy kod zamiast kontrolki. Obejście tego za pomocą `mark_safe()` jest niebezpieczne (XSS) i łamie reguły lintera (Bandit).  
+**Rozwiązanie / workaround:** Zastosowano `django.utils.html.format_html` oraz `format_html_join`. Funkcje te bezpiecznie budują drzewo HTML, automatycznie escapując jedynie zmienne użytkownika, a tagi HTML traktując jako bezpieczne, co natywnie rozwiązuje problem renderowania bez uciszania linterów.
+
+### EC-026 — Walidacja obiektów wprowadzanych całkowicie ręcznie (bez OSM i PTTK Code)
+**Obszar:** `apps/badges/forms.py` (`TouristObjectAdminForm`)  
+**Odkryty:** Podczas testowania formularza zapisu.  
+**Status:** `resolved`  
+**Opis:** Obiekty wprowadzane "z palca" (bez zasilania z `osm_id`) muszą posiadać twardo zdefiniowaną przez administratora nazwę i geometrię (punkt na mapie), aby baza danych była spójna. Z drugiej strony, system obsługuje obiekty, które posiadają kod ewidencyjny (pole `code`, np. PTTK-SCH-01), ale nie ma ich w OSM.  
+**Rozwiązanie / workaround:** Zaimplementowano logikę miękkiej walidacji. Formularz twardo blokuje (`add_error`) brak nazwy i geometrii, gdy brak `osm_id`. Jednocześnie formularz jedynie **ostrzega** (`messages.info`), jeśli użytkownik nie podał ani `osm_id`, ani `code`. Zabrania się zamieniania tego ostrzeżenia na twardy błąd, gdyż zablokowałoby to dodawanie obiektów nieformalnych (np. "Skałka pod dębem"), które nie posiadają oficjalnej ewidencji.
+
+### EC-027 — Brak obsługi widżetów M2M (filter_horizontal) wewnątrz pól JSONB
+**Obszar:** `infrastructure/schemas/badge_rules_schema.py`, `django_badge_repo.py`  
+**Odkryty:** Podczas projektowania reguły `MultiPoolRequirementRule` (Zasada Wiaderek).  
+**Status:** `resolved`  
+**Opis:** Biblioteka `django-jsonform` nie pozwala na osadzanie potężnych, natywnych widżetów Django (takich jak `filter_horizontal`) wewnątrz generowanych przez nią pół formularza JSONB. Sprawia to, że administrator chcący przypisać 50 szczytów do specyficznego "wiaderka" reguły musiałby szukać i wpisywać ich identyfikatory (ID) w tablicę JSON ręcznie, co jest niedopuszczalne z punktu widzenia UX.  
+**Rozwiązanie / workaround:** Zrezygnowano z typu `array` w schemacie JSON dla tej reguły na rzecz typu `string`. W panelu `TouristObjectAdmin` wdrożono niestandardową akcję pomocniczą `show_ids_for_json`, która po odfiltrowaniu i zaznaczeniu szczytów przez Admina zwraca zielony alert z wygenerowanym ciągiem znaków (np. `"45, 12, 105"`). Administrator kopiuje ten ciąg (`Ctrl+C`) i wkleja do pola tekstowego w schemacie JSON (`Ctrl+V`). Adapter bazy danych (`django_badge_repo.py`) posiada dedykowaną logikę parsowania tego stringa w locie na zbiór `frozenset[int]`. *Zabrania się refaktoryzacji tego parsowania w celu wymuszenia czystych typów Array w JSONie, gdyż zniszczy to ten przepływ pracy (Workflow).*
+
+### EC-028 — Błąd "got multiple values for keyword argument 'readonly_fields'"
+**Obszar:** `apps/badges/admin.py` (Konfiguracja `fieldsets`)  
+**Odkryty:** Podczas reorganizacji panelu `TouristObjectAdmin` po wprowadzeniu statusów asynchronicznych.  
+**Status:** `resolved`  
+**Opis:** Próba przypisania klucza `"readonly_fields"` wewnątrz definicji sekcji w krotce `fieldsets` (np. obok kluczy `"fields"`, `"classes"`) powoduje natychmiastowy błąd `TypeError` przy renderowaniu widoku przez Django.  
+**Rozwiązanie / workaround:** Zmienna `readonly_fields` musi być definiowana wyłącznie jako atrybut na poziomie samej klasy dziedziczącej po `ModelAdmin`. Następnie te same nazwy pól należy normalnie umieścić w liście `"fields"` wewnątrz `fieldsets`. Django samo zorientuje się, że ma je wyrenderować jako zablokowane.
+
+### EC-029 — Konflikt typowania Mypy przy generowaniu HTML w Adminie (SafeString)
+**Obszar:** `apps/badges/admin.py` (Dekoratory `@admin.display`)  
+**Status:** `resolved`  
+**Opis:** Funkcje renderujące własny HTML (za pomocą `format_html`) są oznaczane jako zwracające `-> str`. Jednak `format_html` pod maską zwraca obiekt `SafeString` (zabezpieczony przed XSS), co Mypy interpretuje jako `Any` i zgłasza błąd `[no-any-return]`.  
+**Rozwiązanie / workaround:** Zabrania się rzutowania na zwykły string `str(format_html(...))`, gdyż niszczy to flagę bezpieczeństwa. Należy użyć `# type: ignore[no-any-return]`.
+
 ---
 
 ## 4. Weryfikacja i Postęp Turysty (Faza C)
@@ -112,6 +159,24 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 **Opis:** Odznaka jest często zdobywana przez turystów wielokrotnie (tzw. Pętle Prestiżu, np. druga i trzecia "KGP"). Nasz aktualny silnik oceny w Czystej Domenie operuje na zbiorach matematycznych (`set`), które "połykają" duplikaty. Jeśli system bada wszystkie wejścia w życiu turysty, zignoruje fakt, że turysta chce zdobyć odznakę drugi raz na nowych wejściach. System obecnie odpowiada jedynie na pytanie: *"Czy w całej historii logów Jana Kowalskiego istnieje wystarczająco unikalnych szczytów do tej odznaki?"*.  
 **Rozwiązanie / workaround:** Zbiór wszystkich wejść (`AscentLog`) przekazywanych do Use Case'a weryfikacji będzie musiał być uprzednio filtrowany przez `UserContext`. Wejścia "zużyte" do zamknięcia i weryfikacji Cyklu nr 1 dla danej odznaki nie mogą zostać przekazane do weryfikacji w Cyklu nr 2. Odznaka w modelu progresu użytkownika zostanie rozszerzona o pojęcie Edycji/Cyklu.  
 **Test:** `[brakuje, TODO - test_EC030_completed_cycle_ascents_are_excluded_from_new_cycle]`
+
+---
+
+## 5. Repozytorium i CI/CD (Operacje)
+
+### EC-040 — Pułapka domyślnych szablonów `.gitignore` (Utrata plików kontraktowych)
+**Obszar:** `.gitignore`, CI/CD Pipeline  
+**Odkryty:** Podczas pierwszego commitu inicjalizującego repozytorium.  
+**Status:** `resolved`  
+**Opis:** Popularne w internecie szablony pliku `.gitignore` dla Pythona często domyślnie wykluczają pliki takie jak `.python-version`, `.dockerignore`, a generatory mogą zignorować pliki blokujące (lockfiles) takie jak `uv.lock`. Dodanie takiego szablonu do projektu powoduje niewypchnięcie tych plików na serwer, co natychmiast łamie pipeline CI/CD (brak spójności wersji Pythona, brak zamrożonych zależności) lub powoduje wgranie 2-gigabajtowego folderu `.venv` do obrazu Dockera produkcyjnego.  
+**Rozwiązanie / workaround:** Zdefiniowano twardy nakaz commitowania plików kontrolnych. Pliki `.dockerignore`, `.python-version`, `uv.lock` oraz katalog `.github/` **zawsze** muszą być śledzone przez system Git. Ewentualne próby ich zignorowania zostaną wyłapane przez awarię kontraktu CI.
+
+### EC-041 — "Leniwe" omijanie linterów przez agentów LLM (C408, E501)
+**Obszar:** Agenci LLM, Linter `ruff` (Pipeline CI)  
+**Odkryty:** Podczas implementacji reguł `GroupedAlternativesRule` z użyciem pustych list.  
+**Status:** `resolved`  
+**Opis:** Modele generujące kod (LLM) mogą czasami napotkać trudności z wygenerowaniem optymalnej składni Pythona (np. dławienie się na znakach `[]` i zastępowanie ich przez wywołania `list()`). Gdy linter `ruff` (C408) słusznie zgłosi błąd nieoptymalnego kodu, agenci mają silną tendencję do "uciszania" ostrzeżenia poprzez wstawianie komentarzy typu `# noqa: C408` zamiast naprawy samej logiki. Zjawisko to maskuje dług techniczny w projekcie.  
+**Rozwiązanie / workaround:** Ustanowiono twardą zasadę w Protokołach Agenta (`.cursorrules` i `AGENT_SPEC.md`): Agenci mają bezwzględny zakaz uciszania linterów strukturalnych (jak `C`, `E`, `F`) za pomocą komentarzy `noqa` (z wyjątkiem jawnie uwarunkowanych wyjątków z grupy `S` - Security, jak w przypadku celowego użycia `mark_safe`). Jakikolwiek kod ignorujący linter z powodu wygody modelu musi zostać odrzucony podczas Code Review.
 
 ---
 

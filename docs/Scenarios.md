@@ -96,27 +96,23 @@
 ### SCN-002 — Weryfikacja hierarchii Odznak Zależnych (Drzewko Technologii)
 
 **Obszar:** `verify_badge`, `domain/rules`  
-**Powiązane invarianty:** R-01  
+**Powiązane invarianty:** R-01, S-03  
 **Powiązane edge cases:** EC-030  
-**Aktorzy:** Turysta, Przodownik PTTK (Admin)  
+**Aktorzy:** Turysta  
 
 **Warunki wstępne:**
 - Turysta zdobywa "Koronę Sudetów" (KS) i "Sudeckiego Włóczykija" (SW).
 - "SW" w swoich regułach posiada `PrerequisiteBadgeRule(required_badge_code="KS")`.
-- Turysta posiada status `COMPLETED` w domenie dla "KS", ale fizyczna blacha nie została jeszcze mu nadana.
+- Turysta posiada status `COMPLETED` w domenie dla "KS", ale fizycznie nie ogarnął jeszcze jej wysyłki (nie kupił blachy).
 
 **Kroki:**
 1. Turysta otwiera postęp dla "SW", a system synchronicznie odpytuje `VerifyBadgeUseCase`.
-   → Domena zgłasza, że pula szczytów się zgadza.
-   → `VerifyBadgeUseCase` wywołuje port: `UserProgressRepositoryPort.get_badge_logistics_status(user_id, "KS")`.
-   → Wynikiem nie jest `ALBUM` (ani odpowiedni status akceptacji weryfikacyjnej).
-   → Weryfikacja staje na 100% zablokowana i silnik NIE nadaje statusu `COMPLETED` dla "SW".
-2. Turysta wysyła książeczkę dla "KS" do weryfikacji. Przodownik PTTK w tablicy Kanban zmienia stan "KS" na `ALBUM`.
-3. Turysta ponownie ładuje widok "SW".
-   → `get_badge_logistics_status` zwraca poprawny stan dla "KS".
-   → System przyznaje "SW" status `COMPLETED`.
+   → Domena zgłasza, że pula szczytów dla SW się zgadza.
+   → `VerifyBadgeUseCase` sprawdza status domenowy dla odznaki "KS". 
+   → Zgodnie z **Inwariantem S-03**, Domena weryfikuje TYLKO status matematyczny (czy "KS" to `COMPLETED`), całkowicie ignorując stan logistyczny (czy "KS" wisi w trackerze turysty jako `WAITING_FOR_SEND` czy `ALBUM`).
+   → Warunek `PrerequisiteBadgeRule` jest spełniony. System przyznaje "SW" status `COMPLETED`.
 
-**Stan końcowy:** "Sudecki Włóczykij" gotowy do stworzenia Wniosku Weryfikacyjnego.  
+**Stan końcowy:** Osiągnięcia matematyczne nie są blokowane przez papierologię. Turysta ma "SW" gotowego do wysyłki.  
 
 ---
 
@@ -145,29 +141,29 @@
 
 ---
 
-### SCN-011 — Wniosek Zbiorczy i Wymóg Książeczki
+### SCN-011 — Osobisty Tracker i Wymóg Książeczki (Personal Kanban)
 
-**Obszar:** `verification_requests`  
-**Powiązane invarianty:** S-01 (Kierunek stanów)  
+**Obszar:** `user_progress_logistics`  
+**Powiązane invarianty:** S-01 (Kierunek stanów), S-03  
 **Powiązane edge cases:** —  
-**Aktorzy:** Turysta, Przodownik PTTK  
+**Aktorzy:** Turysta  
 
 **Warunki wstępne:**
-- Turysta posiada 3 odznaki w statusie postępu `COMPLETED` z tego samego regionu.
-- Jedna z odznak posiada flagę na poziomie bazy: `BadgeModel.is_booklet_required = True`.
-- Turysta nie wgrał dotąd do systemu pliku PDF z potwierdzeniami (`UserBooklet`).
+- Turysta posiada odznakę w statusie postępu `COMPLETED`.
+- Odznaka posiada flagę na poziomie bazy: `BadgeModel.is_booklet_required = True`.
+- Turysta nie wgrał dotąd do systemu pliku PDF z własnym potwierdzeniem (`UserBooklet`).
 
 **Kroki:**
-1. Turysta agreguje 3 odznaki w widoku koszyka i klika "Wyślij Wniosek do Weryfikacji".
-   → API weryfikacyjne zwraca 422 Unprocessable Entity z komunikatem o braku wymaganej książeczki dla konkretnej odznaki.
-2. Turysta wgrywa PDF swojej fizycznej książeczki i ponawia request.
-   → System tworzy jeden zbiorczy `VerificationRequest` i nadaje mu status `WAITING_FOR_VERIFICATION`.
-3. Przodownik PTTK zatwierdza wniosek w panelu.
-   → Zmiana stanu na `WAITING_FOR_RECEIVING` z zapisem timestampu akcji.
-4. Próba wykonania żądania API przez złośliwego użytkownika (Hacker) próbującego wymusić zmianę z `WAITING_FOR_RECEIVING` z powrotem na `WAITING_FOR_SEND`.
-   → Wyrzucenie błędu `IllegalStateTransitionError` na poziomie weryfikacji tranzycji FSM.
+1. Turysta klika przycisk "Zaznacz jako wysłane do weryfikacji" w swoim panelu Kanban.
+   → System API zwraca 422 Unprocessable Entity z komunikatem o braku wgranej kopii książeczki dla tej odznaki.
+2. Turysta wgrywa PDF swojej fizycznej książeczki i ponawia request `PATCH /logistics`.
+   → System przyjmuje datę podaną przez turystę i zmienia status na `WAITING_FOR_VERIFICATION`.
+3. Turysta po miesiącu otrzymuje blachę pocztą i klika "Wepnij do Albumu".
+   → Zmiana stanu na `ALBUM` z zapisem timestampu akcji.
+4. Próba wykonania żądania API przez złośliwego użytkownika (Hacker) próbującego wymusić zmianę z `ALBUM` z powrotem na `WAITING_FOR_SEND`.
+   → Wyrzucenie błędu `IllegalStateTransitionError` na poziomie weryfikacji przejść FSM (Maszyny Stanów).
 
-**Stan końcowy:** Bezpieczna, jednokierunkowa wędrówka procesu od wniosku po tablicę logistyczną zakończona zatwierdzeniem.
+**Stan końcowy:** Turysta ma zorganizowaną "szufladę" w aplikacji, nie polegając na pamięci.
 
 ---
 

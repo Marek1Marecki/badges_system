@@ -68,6 +68,14 @@ Aby chronić czystość architektury (Domain Purity), następujące byty **nie n
 - Kolejność stopni (`order`) musi być bezwzględnie unikalna w ramach jednej Wersji Odznaki *(→ Invariant D-01)*.
 - **Semantyka NULL:** Jeśli `required_peaks_count` wynosi `None` (lub jest puste), system przyjmuje regułę biznesową: "Wymagane jest zdobycie 100% (wszystkich) obiektów z puli `pool_peaks` zdefiniowanej w Wersji Odznaki".
 
+### Jak działa Algorytm Weryfikacji (Wzorzec Sita i Obserwatora)
+> **Zasada implementacyjna (Mental Model dla deweloperów):**  
+> 1. **`BadgeVersion` działa jak SITO (Sieve).** 
+>    Gdy system weryfikuje turystę, bierze wszystkie jego wejścia z historii i "przesypuje" je przez `BadgeVersion`. Wersja przepuszcza tylko te szczyty, które są w jej `pool_peaks`, a następnie odpala swoje reguły (np. wycina zbiory niespełniające limitu czasu, aktywności czy okna jubileuszowego). Wynikiem pracy Sita jest zbiór **w 100% poprawnych, zwalidowanych wejść**.
+> 2. **`BadgeTier` (Stopnie) to bezstanowi OBSERWATORZY (Observers).** 
+>    Stopnie nie mają własnych reguł domenowych. One tylko "stoją z boku", patrzą na zbiór, który wyleciał z Sita, i sprawdzają jego długość. 
+>    *Przykład:* Sito wypluło 12 ważnych wejść. Stopień Brązowy pyta: *"Czy >= 10?" -> TAK (COMPLETED)*. Stopień Srebrny pyta: *"Czy >= 25?" -> NIE (IN_PROGRESS, 12/25)*. Dzięki temu jeden szczyt zalicza się równocześnie do wszystkich stopni bez konieczności duplikowania wejść.
+
 ---
 
 ## 3. Katalog Obiektów i Geografia (Infrastructure & CQRS)
@@ -93,21 +101,33 @@ Aby chronić czystość architektury (Domain Purity), następujące byty **nie n
 
 ## 4. Kontekst Weryfikacji (Value Objects Czystej Domeny)
 
-### `Ascent` (Wejście)
-**Opis:** Abstrakcja reprezentująca log z wejścia turysty. Przekazywana do Czystej Domeny.
-
+### `AscentContextDTO` (Zhydrowane Wejście)
+**Opis:** Abstrakcja logu z wejścia turysty. Przekazywana do Czystej Domeny.
 | Atrybut | Typ domenowy | Wymagany | Opis |
 |---------|--------------|----------|------|
-| `peak_id` | `int` | Tak | Musi logicznie odpowiadać `TouristObject.id` |
-| `ascent_date` | `date` | Tak | Weryfikowana przez domyślne reguły czasowe |
-| `activity` | `enum (ActivityType)`| Tak | Sposób zdobycia (HIKING, CYCLING) |
+| `peak_id` | `int` | Tak | Logiczne ID z `TouristObject` |
+| `ascent_date` | `date` | Tak | Weryfikowana przez domyślne reguły |
+| `region_ids` | `frozenset[int]` | Tak | Zasilone przez CQRS Cache *(→ Invariant R-03)* |
+*(Uwaga: Parametr `activity` wycięty jako YAGNI).*
+
+### `VerificationContext` (Kontekst Weryfikacyjny)
+**Opis:** Kluczowy obiekt pełniący funkcję "pomostu" pomiędzy bezstanową domeną a stanem konkretnego turysty. Zgodnie z zasadą oddzielenia Wzorca (Blueprint) od Stanu Użytkownika (User State), wstrzykuje on do metody `validate()` reguł biznesowych wszystkie parametry osobiste wymagane do ewaluacji (np. daty z profilu).
+
+| Atrybut (Planowane Faza C)| Typ domenowy | Opis (Uzasadnienie) |
+|---------------------------|--------------|---------------------|
+| `evaluation_time` | `datetime` | Zastępuje `datetime.now()` gwarantując determinizm w testach (T-02). |
+| `tourist_birth_date` | `date` | Zastępuje zaślepkę `TD-02` dla `MinAgeRule` i `MaxAgeRule`. |
+| `club_join_dates` | `dict[str, date]` | Zastępuje zaślepkę `TD-02` dla `RequiresClubJoinDateRule`. Mapa kodów klubów na datę zapisu turysty. |
+
+**Reguła biznesowa:** Czysta domena nigdy nie pyta bezpośrednio o te dane (np. nie uderza do bazy `TouristProfile`). Warstwa Aplikacji (Use Case) odpowiada za zbudowanie tego kontekstu przed wywołaniem metody `.evaluate()`.
 
 ---
 
 ## 5. Encje planowane (Faza C - Kontekst Użytkownika)
-*Te encje powstaną w kolejnym etapie, by zamknąć pętlę systemu:*
-- **`AscentLog`**: Trwały zapis w bazie faktu wejścia turysty na obiekt, poddany przed zapisanem weryfikacji bitemporalnej (T-01).
-- **`UserBadgeProgress`**: Tabela mapująca Turystę do konkretnej `BadgeVersion`. Zapisuje datę rozpoczęcia zdobywania i aktualizuje stan (`IN_PROGRESS`, `COMPLETED`) po wyliczeniu go przez `VerifyBadgeUseCase`.
+
+- **`AscentLog`**: Trwały zapis w bazie faktu wejścia na obiekt, weryfikowany bitemporalnie (T-01). Opcjonalnie posiada załączone zdjęcie-pamiątkę (`proof_file`).
+- **`UserBadgeProgress`**: Tabela łącząca Turystę z konkretną `BadgeVersion`. Zapisuje status domenowy (`NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`).
+    - Posiada wbudowaną sekcję Pól Logistycznych (Personal Kanban): `logistic_status`, `sent_date`, `verified_date`, `received_date` zarządzaną ręcznie przez Użytkownika. Odrzucono koncepcję centralnego agregatu B2B.
 
 ---
 

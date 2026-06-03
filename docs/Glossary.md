@@ -89,6 +89,16 @@
 | **NIE jest** | Nie jest logiką uwarunkowaną kodem Pythona (brak "IF rocznik = 2006"). Jest realizowana relacyjnie poprzez niezmienne przypisanie turysty do konkretnego ID rekordu w `BadgeVersionModel`. |
 | **Używany w** | `UserBadgeProgress` (Faza C), `ADR-007` |
 
+### Archive Pattern (Wzorzec Archiwum)
+
+| | |
+|---|---|
+| **Definicja** | Rozdzielenie źródeł regulaminu na dwa pola: `official_link` oraz `rules_link` w modelu `BadgeVersion`. Zabezpiecza system przed zjawiskiem tzw. *Link Rot* (wymierania linków na stronach PTTK po latach). |
+| **Alias** | Link oficjalny vs Link archiwalny |
+| **Przykład** | `official_link` prowadzi do strony oddziału Wałbrzyskiego (która może wygasnąć). `rules_link` prowadzi do nienaruszalnego zbiorczego archiwum regulaminów (np. msw-pttk.org.pl). |
+| **NIE jest** | `rules_link` nie jest źródłem prawdy dla odznaki bieżącej, służy wyłącznie dowodzeniu poprawności historycznej przy starych regulaminach. |
+| **Używany w** | `BadgeVersionModel.official_link`, `BadgeVersionModel.rules_link` |
+
 ---
 
 ## 2. Katalog i Geografia (Catalog & Geography)
@@ -122,6 +132,16 @@
 | **Przykład** | `{"historic": "ruins", "name:pl": "Zamek"}` |
 | **NIE jest** | Nie jest źródłem danych bezpośrednio wyświetlanych turyście (z wyjątkiem zdenormalizowanego pola `local_names`). |
 | **Używany w** | `TouristObject.osm_raw_tags`, `ADR-004` |
+
+### Regional Whitelist (Biała Lista Języków)
+
+| | |
+|---|---|
+| **Definicja** | Odgórnie zdefiniowana lista kodów językowych (np. `pl`, `cs`, `sk`, `de`), z której korzysta ekstraktor przy wyciąganiu nazw lokalnych z Data Lake. |
+| **Alias** | `local_names` |
+| **Przykład** | Śnieżka otrzyma `{"de": "Schneekoppe", "cs": "Sněžka"}`, nawet jeśli algorytm PostGIS nie stwierdził fizycznej styczności z granicą państwa. |
+| **NIE jest** | Ekstrakcja ta nie polega na logicznej walidacji przestrzennej względem granic państw. |
+| **Używany w** | `TouristObject.local_names`, `CalculateObjectRegionsUseCase` |
 
 ### Existence Window (Okno Czasowe Istnienia)
 
@@ -166,6 +186,21 @@
 ---
 
 ## 3. Procesy Asynchroniczne i Infrastruktura (Data Ops)
+
+### Personal Kanban (Osobisty Tracker Logistyki)
+
+| | |
+|---|---|
+| **Definicja** | Wizualna maszyna stanów w UI Turysty służąca mu wyłącznie jako "przypominajka" o wysłanych książeczkach pocztą (`WAITING_FOR_VERIFICATION`, `ALBUM`). |
+| **Alias** | Tracker, Logistyka |
+| **NIE jest** | System NIE komunikuje się z organizatorami PTTK. Odznaka oznaczona jako "w weryfikacji" nie jest widoczna dla żadnego urzędnika. |
+
+### Ascent (Wejście / Log wejścia)
+
+| | |
+|---|---|
+| **Definicja** | Historyczny fakt obycia wycieczki na obiekt przez turystę, zawierający **wyłącznie datę**. Podlega ewaluacji przez Czystą Domenę. Może posiadać wgraną pamiątkową fotografię. |
+| **NIE jest** | Z systemu całkowicie usunięto sprawdzanie "Typu aktywności" (Pieszo/Rower) w ramach redukcji długu UX (YAGNI). |
 
 ### Night Watchman (Nocny Stróż OSM)
 
@@ -217,6 +252,16 @@
 | **NIE jest** | - |
 | **Używany w** | Invariant D-02, `TouristObjectAdminForm`, `OsmRepository` |
 
+### Type Mapping Inbox (Słownik Mapowań OSM)
+
+| | |
+|---|---|
+| **Definicja** | Mechanizm filtrujący (Whitelist) zapobiegający "śmietnikowi tagów". Wykrywa nowe, nieznane tagi klasyfikujące z OSM (np. `tower:type=observation`) i umieszcza je w kolejce do ręcznego zmapowania przez Administratora na znormalizowany typ obiektu PTTK (np. "Wieża widokowa"). |
+| **Alias** | `OsmTypeMapping`, Słownik Typów |
+| **Przykład** | Reguła: Jeśli OSM ma `natural=peak`, system z automatu ustawia typ na "Szczyt". |
+| **NIE jest** | Nie jest skrzynką konfliktów danych (`OsmSyncConflict`), która rozwiązuje konflikty wartości (np. różnica wysokości). Słownik Mapowań rozwiązuje konflikty *schematu* (klasyfikacji). |
+| **Używany w** | `OsmTypeMapping`, `OsmDataExtractor.determine_type()` |
+
 ---
 
 ## 4. Użytkownik i Weryfikacja (Faza C - User Context)
@@ -251,25 +296,68 @@
 | **NIE jest** | Nie jest to tożsame z nową "Wersją Regulaminu" (turysta powtarza tę samą wersję odznaki na tych samych zasadach). |
 | **Używany w** | Faza C, `EDGE_CASES.md` (EC-030) |
 
+### Dynamic POI Score (Potencjał Obiektu)
+
+| | |
+|---|---|
+| **Definicja** | Całkowitoliczbowa wartość punktowa (`100/n`) określająca opłacalność zdobycia danego obiektu turystycznego dla konkretnego turysty w danym dniu. `100 pkt` jest ekwiwalentem domknięcia jednej odznaki. |
+| **Alias** | Ranking, Punkty, Opłacalność |
+| **Przykład** | Turysta potrzebuje jeszcze 2 szczytów do KGP i 4 do Korony Tatr. Szczyt należący do obu tych odznak jest warty `50 + 25 = 75` punktów. |
+| **NIE jest** | Nie jest wartością stałą. Wartość tego samego szczytu może wynieść 0 punktów w lecie, jeśli jedna z odznak wymaga zdobycia go zimą. Zmienia się wraz z kalendarzem i postępem turysty. |
+| **Używany w** | `ADR-015`, US-C16, `BadgeEligibilityService` |
+
 ### ALBUM (Stan Logistyczny)
 
 | | |
 |---|---|
-| **Definicja** | Terminalny (ostateczny) status w Maszynie Stanów Wniosku Weryfikacyjnego (VerificationRequest). Oznacza, że turysta fizycznie odebrał pocztą zweryfikowaną odznakę (blachę) z rąk PTTK i "wpiął ją do swojego albumu".
-| **Alias** | Zakończone, Dostarczone, Odebrane
-| **Przykład** | Zmiana z WAITING_FOR_RECEIVING -> ALBUM.
-| **NIE jest** | Nie jest statusem weryfikacji wewnątrz Czystej Domeny (gdzie odpowiednikiem ostatecznym jest COMPLETED w UserBadgeProgress). Jest wyłącznie potwierdzeniem fizycznego łańcucha dostaw.
-| **Używany w** | VerificationRequest.status, US-C08 (Maszyna Stanów Logistyki)
+| **Definicja** | Terminalny (ostateczny) status w osobistej maszynie stanów śledzenia przesyłki. Oznacza, że turysta fizycznie otrzymał blachę i umieścił ją w swoich prywatnych zbiorach. |
+| **Alias** | Zakończone, Dostarczone, Odebrane |
+| **NIE jest** | System NIE komunikuje się z PTTK. Osiągnięcie statusu ALBUM to wyłącznie potwierdzenie, że listonosz dostarczył turyście przesyłkę. |
 
-### Verification Request (Wniosek Weryfikacyjny)
+---
+
+## 5. Wzorce Architektoniczne (Architecture Patterns)
+
+Ta sekcja mapuje uniwersalne wzorce inżynierii oprogramowania na ich **konkretną implementację** w tym projekcie. Chroni to system przed wprowadzaniem obcych frameworków przez agentów LLM.
+
+### Strategy Pattern (Wzorzec Strategii)
 
 | | |
 |---|---|
-| **Definicja** | Pakiet (koszyk), do którego turysta wrzuca zdobyte przez siebie stopnie odznak (mające status `COMPLETED`) i zgłasza je systemowo do Przodownika PTTK celem papierowej weryfikacji i otrzymania fizycznej blachy. Działa w oparciu o Tablicę Kanban i maszynę stanów. |
-| **Alias** | Wniosek, Logistyka |
-| **Przykład** | Zgłoszenie Srebrnej i Złotej odznaki w jednej paczce. |
-| **NIE jest** | - |
-| **Używany w** | `VerificationRequest`, Kanban Logistyki (Faza C) |
+| **Definicja** | Wzorzec behawioralny pozwalający na definiowanie rodziny algorytmów (reguł) i ich wymienną ewaluację w locie. W naszym systemie polega to na odtwarzaniu klas dziedziczących po `BadgeRule` z konfiguracji JSONB w bazie danych. |
+| **Używany w** | `domain/rules/`, `ADR-003` |
+
+### Factory Registry (Słownik Fabryk / Rejestr)
+
+| | |
+|---|---|
+| **Definicja** | Sztywny, wbudowany w kod słownik mapujący nazwę tekstową reguły z JSON-a (np. `"MinAgeRule"`) na bezpieczną, sprawdzającą typy funkcję budującą dany obiekt domenowy. |
+| **Alias** | `RULE_BUILDERS` |
+| **Cel** | Pełni funkcję bariery `Fail-Fast` (Invariant R-02). Chroni Czystą Domenę przed złośliwym lub uszkodzonym JSON-em z bazy danych (Insecure Deserialization). |
+| **Używany w** | `infrastructure/adapters/persistence/django_badge_repo.py` |
+
+### Application Service vs Domain Service (Usługa Aplikacyjna)
+
+| | |
+|---|---|
+| **Definicja** | W tym projekcie, jeśli usługa musi weryfikować "aktualny czas" (wymaga wstrzyknięcia `ClockPort`) lub pobierać dane z bazy, jest **Usługą Aplikacyjną** (żyje w `application/`). Domena (Czysty Python) pozostaje bezstanowa i operuje tylko na tym, co dostanie w parametrach. |
+| **Przykład** | `BadgeEligibilityService` to usługa aplikacyjna (bo sprawdza dzisiejszą datę dla mapy), a `VerifyBadgeUseCase` to orkiestrator. |
+| **Używany w** | `application/services/`, `ADR-010`, Invariant T-02 |
+
+### Archive Pattern (Wzorzec Archiwum)
+
+| | |
+|---|---|
+| **Definicja** | Rozdzielenie źródeł regulaminu w modelu na dwa niezależne adresy URL w celu ochrony przed tzw. *Link Rot* (wymieraniem linków). |
+| **Implementacja** | `official_link` prowadzi do strony oddziału PTTK (która może wygasnąć). `rules_link` prowadzi do nienaruszalnego archiwum chroniącego prawowitość starych Wersji Odznak. |
+| **Używany w** | `BadgeVersionModel` |
+
+### Temporal Modeling (Modelowanie Czasowe)
+
+| | |
+|---|---|
+| **Definicja** | Zbiorcze określenie na nasze podejście do obsługi upływającego czasu. W tym projekcie dzieli się na dwa konkretne wzorce: **Bitemporalność** (fizyczny czas istnienia obiektów w terenie - `existence_start`/`end`) oraz **Prawa Nabyte** (izolacja wymagań odznak za pomocą relacji do zamrożonej w czasie `BadgeVersionModel`). |
+| **Używany w** | `ADR-007`, `ADR-008`, `AscentLog` |
 
 ---
 
@@ -280,4 +368,3 @@
 | 1.0 | 2026-05-28 | Dominik / AI Architect | Zdefiniowanie fundamentalnych pojęć po zakończeniu Faz A i B. |
 | 1.1 | 2026-05-28 | AI Architect | Ujednolicenie nagłówków do formatu bilingwalnego `Eng (Pl)`. Dodanie 5 pojęć krytycznych dla infrastruktury i Praw Nabytych (Existence Window, Ghost Node, Grandfather Clause, Organizer, Verification Cycle). |
 | 1.2 | 2026-05-30 | Dominik / AI Architect | Dodanie `Publication Consent` (Zgody na publikację). |
-|

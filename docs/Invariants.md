@@ -1,10 +1,10 @@
 # Invariants — niezmienniki systemu
 
-> **Wersja:** 1.1  
-> **Data:** 2026-05-27  
+> **Wersja:** 2.0  
+> **Data:** 2026-06-01  
 > **Właściciel:** Dominik / AI Architect  
 >
-> Każdy invariant to reguła biznesowa i architektoniczna, której naruszenie oznacza fatalny błąd systemu. Należy je bezwzględnie egzekwować podczas pisania Use Case'ów i modyfikacji bazy danych.
+> Każdy invariant to reguła biznesowa i architektoniczna, której naruszenie oznacza fatalny błąd systemu. Należy je bezwzględnie egzekwować podczas pisania Use Case'ów, modyfikacji bazy danych i projektowania Frontendu.
 
 ---
 
@@ -12,116 +12,137 @@
 
 | Symbol | Znaczenie |
 |--------|-----------|
-| 🔴 KRYTYCZNY | Naruszenie powoduje uszkodzenie danych, utratę historii lub błędy bezpieczeństwa |
-| 🟠 WYSOKI | Naruszenie powoduje błędne zachowanie widoczne dla użytkownika |
-| 🟡 ŚREDNI | Naruszenie powoduje degradację funkcji, ale system działa |
+| 🔴 KRYTYCZNY | Naruszenie powoduje uszkodzenie danych, utratę historii, wyciek informacji lub pad serwera (np. OOM). |
+| 🟠 WYSOKI | Naruszenie powoduje błędne zachowanie widoczne dla użytkownika lub znaczący spadek wydajności. |
+| 🟡 ŚREDNI | Naruszenie powoduje degradację funkcji w tle (np. zatkanie kolejki Celery). |
 
 ---
 
 ## Grupa T — Czas i Bitemporalność
 
 ### T-01 — Cykl życia obiektu (Bitemporality) 🔴 KRYTYCZNY
-**Treść:** Wejście na obiekt (`Ascent`) w dniu *X* jest niemożliwe logicznie i fizycznie, jeśli obiekt w tym czasie nie istniał fizycznie.  
+**Treść:** Zalogowanie wejścia na obiekt (`Ascent`) w dniu *X* jest niemożliwe logicznie i fizycznie, jeśli obiekt w tym czasie nie istniał.  
 Semantyka `NULL` (puste = dowolne):
 - `existence_start = NULL` → obiekt istnieje od zawsze
 - `existence_end = NULL` → obiekt istnieje bezterminowo  
-
-**Uzasadnienie:** System operuje na historii PTTK. Spalenie schroniska (`existence_end`) w 2015 roku unieważnia wpisy z 2018 r., ale w 100% chroni prawa osób, które zdobyły je w 2010 r.
+**Uzasadnienie:** Chroni historię. Zburzenie schroniska w 2023 unieważnia wejścia z 2024, ale chroni prawa zdobywców z 2010 r.
 **Gdzie egzekwować:** 
-- Use Case: `VerifyBadgeUseCase` (Faza C) – sprawdzane jako Krok 0 przed regułami.
-- Test: `test_T01_ascent_outside_existence_window_is_rejected`
+- Use Case: `application/use_cases/verify_badge.py` (Krok 0 przed ewaluacją domeny).
 
 ### T-02 — Determinizm Czasu (ClockPort) 🔴 KRYTYCZNY
-**Treść:** `domain/` oraz `application/use_cases/` nigdy nie mogą wywoływać `datetime.now()` ani `timezone.now()`.
-**Uzasadnienie:** Testowanie reguł zależnych od czasu (np. czy minęły 3 lata limitu) wymaga "zamrożenia" czasu. Każdy Use Case wymagający pojęcia "teraz" musi przyjmować wstrzykniętą instancję `ClockPort`.
+**Treść:** Kod w `domain/` oraz `application/` NIGDY nie może wywoływać `datetime.now()` ani `timezone.now()`.
+**Uzasadnienie:** Testowanie reguł zależnych od czasu (np. `TimeLimitRule`) wymaga "zamrożenia" czasu. "Teraz" musi być dostarczone z zewnątrz.
 **Gdzie egzekwować:** 
 - Linter: `audit_contracts.py` oraz `ruff banned-api`.
-- Test: `test_T02_domain_logic_uses_injected_clock`
+- Testy: Wstrzykiwanie `FakeClock`.
 
 ---
 
 ## Grupa R — Reguły i Architektura Domeny
 
 ### R-01 — Matematyka Zbiorów zamiast GIS (Pool-based Set Verification) 🔴 KRYTYCZNY
-**Treść:** Czysta Domena weryfikująca odznaki (`BadgeVersionDomain`) **nie wie** co to współrzędne GPS, PostGIS, czy `ST_DWithin`. Weryfikacja musi polegać na operacjach algebry zbiorów na identyfikatorach.
-**Uzasadnienie:** Gwarantuje błyskawiczną weryfikację rzędu `O(1) / O(N)` i całkowicie oddziela proces decyzyjny PTTK od analityki przestrzennej.
+**Treść:** Czysta Domena weryfikująca odznaki **nie wie** co to współrzędne, PostGIS, czy `ST_DWithin`. Weryfikacja to operacje algebry zbiorów na `frozenset[int]`.
+**Uzasadnienie:** Gwarantuje błyskawiczną weryfikację $O(1) / O(N)$ i całkowicie oddziela proces decyzyjny PTTK od analityki przestrzennej (ADR-009).
 **Gdzie egzekwować:** 
 - Linter: `import-linter` (zakaz `django.contrib.gis` w domenie).
-- Test: `test_R01_evaluate_uses_set_intersection_only`
 
 ### R-02 — Fail-Fast dla Fabryk Reguł (Hydracja z JSONB) 🟠 WYSOKI
-**Treść:** Jeśli adapter (`django_badge_repo`) znajdzie w JSONie bazy nieznaną regułę lub regułę z brakującym wymaganym parametrem (np. brak wymogu wieku dla `MinAgeRule`), musi twardo rzucić `ValueError`.
-**Uzasadnienie:** Ciche pominięcie uszkodzonej reguły skutkowałoby przyznaniem np. odznaki "Tylko dla 18+" ośmioletniemu dziecku. System musi zablokować weryfikację skażonego regulaminu.
+**Treść:** Jeśli adapter wczytujący reguły z JSONB napotka nieznaną regułę lub brak parametru (np. puste `min_age`), musi twardo rzucić `ValueError`.
+**Uzasadnienie:** Ciche pominięcie błędu skutkowałoby np. przyznaniem odznaki "Tylko dla dorosłych" ośmiolatkowi.
 **Gdzie egzekwować:** 
 - Baza: `infrastructure/adapters/persistence/django_badge_repo.py` (`RULE_BUILDERS`).
-- Test: `test_R02_invalid_rule_json_raises_value_error`
+
+### R-03 — Wildcard Rules opierają się na wstrzykniętych ID, nie na bazie 🟠 WYSOKI
+**Treść:** Reguły otwarte geograficznie (np. wymagające X szczytów z Beskidu bez precyzowania puli) muszą dokonywać oceny na podstawie wstępnie wyliczonego zbioru `region_ids` wstrzykniętego przez obiekt `AscentContextDTO`. Domena **nigdy nie odpytuje** infrastruktury.
+**Uzasadnienie:** Pozwala obsłużyć elastyczne regulaminy (ADR-012) bez łamania czystości domeny (R-01).
 
 ---
 
-## Grupa D — Dane i Integralność Administracyjna
+## Grupa D — Dane i Integralność
 
 ### D-01 — Unikalność kolejności stopni (Tiers) 🔴 KRYTYCZNY
-**Treść:** W ramach jednej Wersji Regulaminu (`version_id`), wartość pola `order` (Kolejność zdobywania) musi być bezwzględnie unikalna.
-**Uzasadnienie:** Dwa stopnie z numerem `order=1` zniszczą algorytm wyliczania postępu (Progress Bar) u Turysty.
+**Treść:** W ramach jednej Wersji Regulaminu, pole `order` (Kolejność zdobywania) musi być bezwzględnie unikalne.
+**Uzasadnienie:** Dwa stopnie z `order=1` zniszczą algorytm wyliczania Progress Baru u Turysty.
 **Gdzie egzekwować:** 
-- Constraint DB: `UniqueConstraint` w `BadgeTierModel`.
-- Walidator: `BadgeTierInlineFormSet`.
-- Test: `test_D01_duplicate_tier_order_raises_integrity_error`
+- Baza: `UniqueConstraint` w `BadgeTierModel`.
+- Formularze: `BadgeTierInlineFormSet`.
 
 ### D-02 — Złoty Standard ponad Automatyką (Data Overrides) 🟠 WYSOKI
-**Treść:** Ekstraktor OSM zasilający model z Data Lake nigdy nie może nadpisać pól w Złotym Standardzie (np. `name`, `altitude`), jeśli Administrator wpisał tam własną, nienullową wartość.
-**Uzasadnienie:** Ręczna edycja oznacza ingerencję autorytatywną. Nadpisanie jej przez nocnego stróża to utrata danych.
+**Treść:** Ekstraktor OSM zasilający bazę z Data Lake nigdy nie nadpisuje Twardych Kolumn (np. `name`, `altitude`), jeśli Administrator wpisał tam własną wartość.
+**Uzasadnienie:** Ręczna edycja oznacza ingerencję autorytatywną (Human-in-the-loop). Nadpisanie to utrata danych.
 **Gdzie egzekwować:** 
-- Formularz Admina: `TouristObjectAdminForm.clean()`.
 - Adapter: `OsmRepository.update_object_from_osm()`.
-- Test: `test_D02_data_override_protects_curated_fields`
+
+### D-03 — Prawo do publikacji wizerunku (Publication Consent) 🟠 WYSOKI
+**Treść:** System nie ma prawa przesyłać na zewnątrz (przez API lub HTML) ścieżek do grafik odznak klubowych (`club_badge_image`) oraz oficjalnych książeczek PTTK, dla których powiązany Organizator posiada ustawioną flagę `has_publication_consent = False`.
+**Uzasadnienie:** Ochrona praw autorskich PTTK i zabezpieczenie przed roszczeniami w przypadku braku formalnej zgody oddziału.
+**Gdzie egzekwować:** 
+- Serializatory DTO API (Faza C).
+- Widoki pobierania mediów w Django.
 
 ---
 
-## Grupa S — Stany i Cykl Życia Obiektu
+## Grupa S — Stany, Cykle Życia i Logistyka (Faza C)
 
-### S-01 — Kierunkowość przepływu statusu 🟠 WYSOKI
-**Treść:** `TouristObject.status` może przechodzić tylko w przód: `DRAFT` → `FETCHING_OSM` → `READY` lub `ERROR`. Cofnięcie do `DRAFT` jest niedozwolone architektonicznie.
-**Uzasadnienie:** Zapewnienie jednokierunkowego cyklu życia chroni przed nieskończonymi pętlami asynchronicznego pobierania i zduplikowanymi taskami w Celery.
-**Gdzie egzekwować:** 
-- Adapter/Model: `OsmRepository.update_object_from_osm()`.
-- Test: `test_S01_invalid_status_transition_raises_error`
+### S-01 — Kierunkowość zasilania z OSM 🟡 ŚREDNI
+**Treść:** Status obiektu przechodzi tylko w przód: `DRAFT` → `FETCHING_OSM` → `READY` lub `ERROR`. Cofnięcie ręczne do `DRAFT` jest niedozwolone.
+**Uzasadnienie:** Chroni przed wpadnięciem w nieskończoną pętlę Celery.
 
-### S-02 — Ochrona przed Poison Pills (ERROR State) 🟡 ŚREDNI
-**Treść:** Obiekt ze statusem `ERROR` (np. uwalony przez trwale zablokowane API dla tego węzła) nie może być automatycznie zresetowany i ponowiony przez nocnego workera.
-**Uzasadnienie:** Obiekt w tym statusie wymaga autorytatywnej manualnej interwencji admina (np. korekty błędnego `osm_id`), by nie zapychać kolejki `Celery Beat` martwymi żądaniami.
+### S-02 — Ochrona przed "Zatrutą Pigułką" (Poison Pills w API) 🟡 ŚREDNI
+**Treść:** Obiekt ze statusem `ERROR` (np. przez trwale uszkodzone ID z OSM) nie może być automatycznie ponawiany przez Nocnego Stróża.
+**Uzasadnienie:** Zapobiega to zapychaniu kolejki martwymi żądaniami. Wymaga kliknięcia przez Admina (Akcja *Retry*).
+
+### S-03 — Czysta separacja Logistyki od Domeny (Kanban vs Math) 🔴 KRYTYCZNY
+**Treść:** Silnik Domenowy ewaluuje wyłącznie fakty matematyczne: `NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`. Logistyka pocztowa i weryfikacyjna (`WAITING_FOR_SEND`, `ALBUM`) to oddzielny agregat (`VerificationRequest`), który nie ma wstępu do `domain/` (ADR-014).
+**Uzasadnienie:** Turysta może zebrać 5 odznak o statusie `COMPLETED` w ciągu roku i wysłać je jako JEDEN wniosek weryfikacyjny w grudniu. Mieszanie tych stanów niszczy UX.
 **Gdzie egzekwować:** 
-- Use Case: `FetchOsmDataUseCase` i `RunOsmNightWatchmanUseCase` (ignorowanie obiektów `ERROR`).
-- Test: `test_S02_error_status_stops_automatic_retries`
+- Linter: `import-linter` (zakaz importu modeli logistycznych do Czystej Domeny).
+
+### S-04 — Niemutowalność Zużytych Wejść (Ascent Locking) 🔴 KRYTYCZNY 
+**Treść:** Turysta traci prawo do edycji, ukrywania lub usunięcia rekordu `AscentLog`, jeśli dany rekord został już wykorzystany do spełnienia warunków Wersji Odznaki w cyklu, który osiągnął stan `COMPLETED`. 
+**Furtka Korekcyjna (Escalation):** W przypadku wyłapania oszustwa (lub pomyłki) w logach historycznych przez weryfikatora PTTK przy fizycznym sprawdzaniu, weryfikator (poza Czystą Domeną) może usunąć powiązanie lub rekord `AscentLog`. System musi wtedy synchronicznie cofnąć status `UserBadgeProgress` z `COMPLETED` z powrotem na `IN_PROGRESS`, blokując tym samym proces logistyczny.
+**Uzasadnienie:** Zapobiega oszustwom typu "Użyj-Zmień-Użyj", gwarantując twardość zdobytych osiągnięć.
+**Gdzie egzekwować:**
+- Zapytania do bazy na poziomie API: `DELETE /api/v1/ascents/{id}` (Wyrzuca `403 Forbidden` z informacją o zablokowaniu).
 
 ---
 
-## Grupa P — Pule Szczytów i Prawa Nabyte
+## Grupa P — Pule, Prawa Nabyte i Prestiż
 
-### P-01 — Niemutowalność aktywnej Puli Szczytów (Immutability) 🔴 KRYTYCZNY
-**Treść:** Zbiór `pool_peaks` dla `BadgeVersionModel`, do którego podpięty jest choć jeden aktywny turysta, jest całkowicie niemutowalny.
-**Uzasadnienie:** Każda zmiana puli z mocą wsteczną modyfikuje warunki umowy z turystą (łamanie Praw Nabytych). Każda zmiana wykazu szczytów wymusza utworzenie nowej `BadgeVersionModel`.
+### P-01 — Niemutowalność Aktywnej Wersji Odznaki 🔴 KRYTYCZNY
+**Treść:** Pula szczytów (`pool_peaks`) i zbiór reguł dla danej Wersji Odznaki stają się niemutowalne (Read-Only) w momencie przypisania do nich pierwszego Turysty.
+**Uzasadnienie:** Żelazna ochrona Praw Nabytych turysty. Organizator może stworzyć nową wersję z nową datą obowiązywania, ale nigdy nie może zmienić reguł w trakcie gry.
 **Gdzie egzekwować:** 
-- Walidator Admina: `BadgeVersionAdmin.save_model()` lub `save_m2m()` (Faza C).
-- Test: `test_P01_active_version_pool_is_immutable`
+- Walidatory: Django Admin blokujący modyfikację wierszy posiadających podpiętych użytkowników.
+
+### P-02 — Konsumpcja Wejść i Pętle Prestiżu (Ascent Consumption) 🔴 KRYTYCZNY
+**Treść:** Gdy Turysta zdobywa odznakę wielokrotnie (Rozpoczyna Cykl 2), żadne z jego wejść użytych do osiągnięcia statusu `COMPLETED` w Cyklu 1 nie może wziąć udziału w ewaluacji Cyklu 2 (ADR-007 / Edge Case 030).
+**Uzasadnienie:** Ochrona przed nadużyciami. 100 wejść może zamknąć np. 3 cykle, ale wejście to zasób "zużywalny".
+**Gdzie egzekwować:** 
+- Use Case: `application/use_cases/verify_badge.py` (Filtrowanie przekazywanych wejść do Domeny względem timestampu zamknięcia poprzedniego cyklu).
 
 ---
 
-## Grupa C — Klastry i Hierarchia Przestrzenna
+## Grupa C — Geometria, Klastry i Infrastruktura Mapowa (Faza C/D)
 
-### C-01 — Brak Cykli w Grafie Klastrów 🔴 KRYTYCZNY
-**Treść:** Relacja `parent_object` nie może tworzyć pętli (cykli) w grafie (np. A jest rodzicem B, a B staje się rodzicem A). Żaden obiekt nie może być własnym przodkiem.
-**Uzasadnienie:** Naruszenie wygeneruje błędy przy budowaniu widoków frontendowych lub nieskończoną pętlę przy odpytywaniu bazy na okoliczność "Dzieci klastra" przez Use Case.
+### C-01 — Brak Cykli w Grafie Relacji Rodzic-Dziecko 🔴 KRYTYCZNY
+**Treść:** Relacja `parent_object` nie może stworzyć pętli (np. A jest rodzicem B, a B rodzicem A).
+**Uzasadnienie:** Naruszenie wywoła rekurencję bez wyjścia i przepełni pamięć (Stack Overflow) w API i Celery.
 **Gdzie egzekwować:** 
-- Use Case: `ResolveProximityCandidateUseCase` (Logika Auto-Resolve).
-- Formularz Admina: Własna metoda `clean()` modelu `TouristObject`.
-- Test: `test_C01_cyclic_parent_dependency_raises_validation_error`
+- Use Case: Logika Auto-Resolve w `Proximity Scanner` oraz walidatory w Django Adminie dla `TouristObject`.
 
----
+### M-01 — Zasada Hermetyzacji Warstw Mapy (MVT vs GeoJSON) 🔴 KRYTYCZNY
+**Treść:** Kafelki Wektorowe (MVT) używane do map muszą być **w 100% zanonimizowane (User-Agnostic)** i statyczne (np. same granice regionów), aby mogły być zakechowane globalnie na CDN. Wszelkie statusy zależne od turysty (np. szczyt zaliczony, zablokowany - `PeakColor`) muszą być przesyłane **osobno** przez lekką, dynamiczną warstwę GeoJSON punktów (ADR-013).
+**Uzasadnienie:** Połączenie stanu turysty z ciężką geometrią poligonów spowoduje eksplozję rozmiaru pamięci Cache i zarżnie bazę PostGIS przy próbie dynamicznego docinania wektorów dla każdego usera z osobna.
 
-## Historia zmian
+### M-02 — Zabezpieczenie przed Map Spammingiem (Debounce) 🟠 WYSOKI
+**Treść:** Każde zapytanie przestrzenne wywoływane ruchem mapy w aplikacji turysty (np. pobieranie punktów przez BBox) musi być obłożone opóźnieniem rzędu min. `300ms` (Debounce) po zakończeniu ruchu (`moveend`).
+**Uzasadnienie:** Ochrona puli połączeń bazy danych. Bez tego frontend "zbombardowałby" backend setkami zapytań SQL podczas jednego, ciągłego machnięcia palcem po ekranie smartfona.
+**Gdzie egzekwować:** 
+- Frontend: `UI_GUIDELINES.md` i kod JavaScript.
 
-| Wersja | Data | Autor | Opis zmiany |
-|--------|------|-------|-------------|
-| 1.0 | 2026-05-27 | Dominik / AI Architect | Pierwsza wersja (Grupy T, R, D) |
-| 1.1 | 2026-05-27 | AI Architect | Dodano Grupy S (Stany), P (Pule), C (Klastry). Standaryzacja formatu "Gdzie egzekwować" i poziomu krytyczności |
+### M-03 — Zakaz edycji ciężkich geometrii w przeglądarce 🔴 KRYTYCZNY
+**Treść:** Poligony i MultiPoligony terytoriów (Kraje, Makroregiony, Regiony Turystyczne po `ST_Union`) renderowane w Django Adminie muszą mieć kategorycznie nałożony parametr `modifiable = False` w Leaflecie.
+**Uzasadnienie:** Próba renderowania edytora wektorowego dla poligonu posiadającego 25 000 wierzchołków na 100% zablokuje, a następnie wysadzi (Out of Memory) przeglądarkę Administratora. Dopuszczalna jest jedynie edycja prostych punktów (`PointField`).
+**Gdzie egzekwować:** 
+- Kod: Klasy dziedziczące po `LeafletGeoAdmin`.

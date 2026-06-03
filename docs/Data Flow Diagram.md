@@ -50,8 +50,7 @@ Administrator PTTK definiuje nowy szczyt w panelu, używając wyłącznie `osm_i
 1. `osm_raw_tags` — pełny dump z Overpass bezstratnie ląduje w JSONB.
 2. `name` — wyciągana priorytetowo z `name:pl`, faworyzując polskie nazwy.
 3. `geom` — dla wielokątów z OSM (Schroniska / Zamki) przeprowadzana jest transformacja `out center meta;` na centroid, ignorując setki punktów łamanych.
-4. `local_names` — ekstrakcja opóźniona w Worker 2; na podstawie `ST_DWithin` wyciągane są nazwy dla państw ościennych (np. węgierskie i czeskie tylko tam, gdzie to fizycznie sensowne przestrzennie).
-
+4. `local_names` — ekstrakcja opóźniona w Worker 2 (po CQRS). Używa **Regionalnej Białej Listy (Regional Whitelist)**. Celowo zrezygnowano z uwarunkowania języków od fizycznej granicy (np. szukania `name:cs` tylko wtedy, gdy `ST_DWithin` wykaże styczność z Czechami), ponieważ maskowało to ważne historycznie nazwy (np. niemieckie nazwy dla szczytów Sudetów leżących w całości w Polsce) oraz było podatne na błędy buforów przestrzennych bazy. Wyciągane są wszystkie tagi z ustalonej listy języków środkowoeuropejskich.
 ---
 
 ## Przepływ 2: Nocny Stróż i Konflikty (Night Watchman Sync)
@@ -170,6 +169,65 @@ Turysta wysyła wniosek o weryfikację. Silnik Domenowy sprawdza jego matematycz
 ### Dane chronione (Invarianty)
 1. `VerifyBadgeUseCase` nigdy nie wykonuje zapytań GIS (`ST_DWithin`). Pracuje na zamkniętych zbiorach `frozenset[int]` *(Invariant R-01)*.
 2. Odrzucenie reguły (np. brak wieku, zły termin) przerywa weryfikację całego stopnia (Fail-Fast).
+
+---
+
+## Przepływ 6: Osobisty Ranking Potencjału (POI Scoring Engine)
+
+### Opis
+Algorytm `100/n` oceniający opłacalność szczytów dla turysty wyliczany jest asynchronicznie, omijając kosztowne zapytania podczas przesuwania mapy.
+
+### Diagram
+
+```text
+[Zdarzenia Inwalidujące] (np. Nowy log wejścia, Zmiana subskrypcji odznak, Zmiana daty po północy)
+    │ ⇢ {UserProgressStateChanged}
+    ▼
+[Celery Worker]
+    ├──► {PoiScoringService} — Wylicza 100/n dla każdego niezdobytego szczytu.
+    │        ├── Odpytuje `BadgeEligibilityService` (odrzuca szczyty ze złym oknem czasowym).
+    │        └── {Zredukowany słownik: {peak_id: score}}
+    │
+    └──► [Redis Cache] — Zapisuje słownik pod kluczem `user_score:{id}` z TTL 24h.
+
+[Turysta (HTMX / MapLibre)]
+    │ {GET /api/v1/map/objects?bbox=...}
+    ▼
+[Django API]
+    ├──► Pobiera BBox z [PostGIS].
+    └──► Odbija BBox o słownik z [Redis Cache].
+    └──► Zwraca wyliczony na gorąco GeoJSON z kolorem i rankingiem w ułamku sekundy.
+```
+
+---
+
+## Przepływ 7: Radar Aktualności Odznak (Web Scraping)
+
+### Opis
+Niezależny proces infrastrukturalny monitorujący zewnętrzne serwisy w poszukiwaniu zmian w regulaminach i nowych odznakach. Gwarantuje dostarczenie wiedzy na biurko Administratora z użyciem dedykowanego Inboxu, redukując "szum" poprzez twardą deduplikację.
+
+### Diagram
+
+```text
+[Celery Beat] (np. 8:00 rano)
+    │ ⇢ {fetch_badge_news_task}
+    ▼
+[Celery Worker (Scraper)]
+    ├──► [Zewnętrzna witryna, np. odznaki.org] → {Surowy HTML}
+    ├──► [BeautifulSoup4] — Parsowanie DOM, wyciąganie linków i tytułów
+    │
+    ├──► Deduplikacja (Czy URL już istnieje w bazie?)
+    │        ├── (TAK) → Zignoruj
+    │        └── (NIE) ▼
+    │
+    ├──► (DB: BadgeNewsItem) — Zapis ze statusem "Nieprzeczytane"
+    │
+[Administrator]
+    │ Loguje się do Panelu, przegląda Inbox "Radar Aktualności"
+    ▼
+[Django Admin]
+    └──► (DB: BadgeNewsItem) — Oznaczenie jako "Przeczytane" (Archiwizacja)
+```
 
 ---
 

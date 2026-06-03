@@ -96,6 +96,7 @@ Zanim uznasz, że napisałeś poprawny test dla Invariantu (np. `TimeLimitRule`)
 ### Zakazane
 - **Mockowanie wewnętrznej logiki:** Nigdy nie mockuj klas wewnątrz tego samego modułu (np. nie mockuj `BadgeVersionDomain.evaluate` testując `VerifyBadgeUseCase`). W Use Case testujesz realne współdziałanie Domeny, używając Fake Adapterów z `tests/fakes/`.
 - **`datetime.now()` w testach:** Zawsze używaj `FakeClock.DEFAULT_TIME` lub explicit zdefiniowanej daty statycznej z `tzinfo`. Test uruchomiony za 5 lat musi dać ten sam wynik co dziś.
+- **Kruche asercje (Brittle Tests):** Przy testowaniu rozszerzalnych schematów lub list z konfiguracji (np. `RULES_SCHEMA`), kategorycznie zakazuje się używania asercji długości całkowitej (np. `assert len(choices) == 5`). Taki test psuje się przy dodaniu nowej funkcjonalności. Należy testować *obecność* konkretnego klucza (np. `assert "MinAgeRule" in [c["value"] for c in choices]`).
 
 ### Wymagane
 - Każda nowa klasa dziedzicząca po `BadgeRule` musi mieć minimum dwa testy: `test_rule_name_success` oraz `test_rule_name_failure`.
