@@ -10,7 +10,7 @@ from django.contrib.admin import (
     helpers,  # Do przekazania kontekstu akcji
 )
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import F, Q
 from django.forms.models import BaseInlineFormSet
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
@@ -507,11 +507,57 @@ class TouristRegionAdmin(ReadOnlyMapAdmin):
         self.message_user(request, "Wysłano zadania generowania do Celery.")
 
 
+class ResolutionDirectionFilter(SimpleListFilter):
+    """Niestandardowy filtr w bocznym menu do wyłapywania kierunku klastrowania."""
+
+    title = "Kierunek połączenia (Dla Rozwiązanych)"
+    parameter_name = "direction"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("A_PARENT", "A jest Rodzicem (A ➔ B)"),
+            ("B_PARENT", "B jest Rodzicem (A ⬅ B)"),
+        )
+
+    def queryset(self, request, queryset):
+        # Używamy funkcji F() aby baza sama porównała dwie kolumny w locie!
+        if self.value() == "A_PARENT":
+            return queryset.filter(obj_b__parent_object=F("obj_a"))
+        if self.value() == "B_PARENT":
+            return queryset.filter(obj_a__parent_object=F("obj_b"))
+        return queryset
+
+
 @admin.register(ProximityCandidate)
 class ProximityCandidateAdmin(ModelAdmin):
-    list_display = ("get_obj_a_info", "get_obj_b_info", "distance_meters", "status", "created_at")
-    list_filter = ("status",)
+    # ZMIANA 1: Zamiast "status", używamy nowej metody "get_detailed_status"
+    list_display = ("get_obj_a_info", "get_obj_b_info", "distance_meters", "get_detailed_status", "created_at")
+
+    # ZMIANA 2: Dodajemy nasz nowy filtr obok standardowego
+    list_filter = ("status", ResolutionDirectionFilter)
     search_fields = ("obj_a__name", "obj_b__name")
+
+    # ZMIANA 3: Optymalizacja N+1 zapytań (Dobra praktyka dla wydajności panelu)
+    def get_queryset(self, request):
+        """Pobieramy obiekty powiązane z góry, by nie obciążać bazy w każdej linijce."""
+        qs = super().get_queryset(request)
+        return qs.select_related("obj_a", "obj_b")
+
+    # ZMIANA 4: Nowa metoda wyświetlająca status
+    @admin.display(description="Status / Relacja")
+    def get_detailed_status(self, obj: ProximityCandidate) -> str:
+        """Dynamicznie określa relację na podstawie faktycznego stanu w bazie."""
+        # Jeśli para jest oznaczona jako rozwiązana, sprawdzamy kto ostatecznie jest rodzicem
+        if obj.status == "RESOLVED":
+            # Ponieważ zastosowaliśmy select_related wyżej, odwołanie do ID nie obciąża bazy!
+            if obj.obj_b.parent_object_id == obj.obj_a_id:
+                return "✔ Połączone (A jest Rodzicem)"
+            elif obj.obj_a.parent_object_id == obj.obj_b_id:
+                return "✔ Połączone (B jest Rodzicem)"
+            return "✔ Rozwiązane (Zmieniono ręcznie poza radarem)"
+
+        # Dla PENDING i IGNORED zwracamy standardową, czytelną etykietę z modelu
+        return str(obj.get_status_display())
 
     @admin.display(description="Obiekt A (Lewy)")
     def get_obj_a_info(self, obj: ProximityCandidate) -> str:

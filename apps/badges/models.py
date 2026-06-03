@@ -1,6 +1,7 @@
 """Modele Django (Active Record) dla infrastruktury odznak."""
 
 from django.contrib.gis.db import models as gis_models
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django_jsonform.models.fields import JSONField
@@ -374,6 +375,47 @@ class TouristObject(gis_models.Model):
         alt_str = f" ({self.altitude}m)" if self.altitude else ""
         status_str = "" if self.is_active else " [NIE ISTNIEJE]"
         return str(f"{self.name}{alt_str} [{self.type}]{status_str}")
+
+    def clean(self) -> None:
+        """Zabezpieczenie Invariantu C-01: Wymuszenie struktury Płaskiej Gwiazdy."""
+        super().clean()
+
+        if self.parent_object_id is not None:
+            # 1. Zabezpieczenie przed oczywistą pętlą: A -> A
+            if self.id == self.parent_object_id:
+                raise ValidationError({"parent_object": "Obiekt nie może być własnym rodzicem."})
+
+            # 2. Zabezpieczenie: Rodzic nie może zostać Dzieckiem
+            if self.id and self.child_objects.exists():
+                raise ValidationError(
+                    {
+                        "parent_object": (
+                            "Ten obiekt jest już Rodzicem dla innych obiektów. "
+                            "Zgodnie z regułą Płaskiej Gwiazdy, nie możesz przypisać mu "
+                            "obiektu nadrzędnego (nie twórz drzew wielopoziomowych)."
+                        )
+                    }
+                )
+
+            # 3. Zabezpieczenie: Dziecko nie może stać się nowym Rodzicem
+            if (
+                hasattr(self, "parent_object")
+                and self.parent_object
+                and self.parent_object.parent_object_id is not None
+            ):
+                raise ValidationError(
+                    {
+                        "parent_object": (
+                            "Wybrany obiekt nadrzędny sam jest już przypisany do innego Rodzica. "
+                            "Wybierz jako Rodzica główny obiekt klastra (węzeł centralny)."
+                        )
+                    }
+                )
+
+    def save(self, *args, **kwargs) -> None:
+        """Wymuszenie twardej walidacji przy każdym zapisie (również z Akcji Admina i Celery)."""
+        self.clean()  # <--- To rozwiązuje problem omijania walidacji!
+        super().save(*args, **kwargs)
 
 
 # ==========================================================

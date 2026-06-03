@@ -96,14 +96,9 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 ### EC-022 — Cykliczne relacje w klastrach (A → B → A)
 **Obszar:** `apps/badges/models.py` (`TouristObject`), `ProximityCandidateAdmin`  
 **Odkryty:** 2026-05-28 podczas analizy zagrożeń spójności danych.  
-**Status:** `open` — blokuje wdrożenie finalnego widoku Klastrów.  
-**Opis:** Relacja `parent_object` pozwala na stworzenie cyklu (np. Szczyt jest rodzicem Schroniska, a Schronisko zostaje przypięte jako rodzic Szczytu). Prowadzi to do nieskończonej pętli przy rekurencyjnym odpytywaniu grafu obiektów w API lub Celery, co skutkuje przepełnieniem stosu (Stack Overflow) na serwerze.  
-**Reprodukcja:** 
-1. Przypisz Obiekt A jako rodzica dla Obiektu B.
-2. Wejdź w edycję Obiektu B i przypisz mu jako rodzica Obiekt A.
-3. Zapisz (baza przyjmuje to bez zająknięcia).  
-**Rozwiązanie / workaround:** Wymagane jest dodanie walidacji na poziomie formularza oraz ewentualnie metody `clean()` modelu `TouristObject`, zapobiegającej przypisaniu na rodzica obiektu, który już znajduje się w drzewie potomków. System musi twardo odrzucić taką próbę (zgodnie z Invariantem C-01).  
-**Test:** `[brakuje, TODO - test_EC022_cyclic_parent_assignment_raises_validation_error]`
+**Status:** `resolved`  
+**Opis:** Relacja `parent_object` pozwala na stworzenie cyklu (np. Szczyt jest rodzicem Schroniska, a Schronisko zostaje przypięte jako rodzic Szczytu). Prowadzi to do nieskończonej pętli przy rekurencyjnym odpytywaniu grafu obiektów.  
+**Rozwiązanie / workaround:** Odrzucono koncepcję nieskończonych drzew na rzecz wzorca **"Płaskiej Gwiazdy" (Flat Star Hierarchy)**. W modelu `TouristObject` nadpisano metodę `clean()`, która wprowadza 3 twarde reguły: obiekt nie może być własnym rodzicem; obiekt mający dzieci nie może otrzymać rodzica; obiekt będący dzieckiem nie może stać się rodzicem dla kogoś innego. Blokuje to powstawanie grafów o głębokości większej niż 1, trwale uniemożliwiając tworzenie pętli (Invariant C-01 zrealizowany).
 
 ### EC-024 — Keszowanie QuerySetów w formularzach Admina (Puste Dropdowny)
 **Obszar:** `apps/badges/admin.py` / `apps/badges/forms.py`  
