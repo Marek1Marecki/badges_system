@@ -55,6 +55,7 @@ dependencies = [
     { name = "django-jsonform" },
     { name = "django-leaflet" },
     { name = "django-tinymce" },
+    { name = "django-unfold" },
     { name = "httpx" },
     { name = "loguru" },
     { name = "pillow" },
@@ -84,6 +85,7 @@ requires-dist = [
     { name = "django-jsonform", specifier = ">=2.23.2" },
     { name = "django-leaflet", specifier = ">=0.33.0" },
     { name = "django-tinymce", specifier = ">=5.0.0" },
+    { name = "django-unfold", specifier = ">=0.95.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "loguru", specifier = ">=0.7.0" },
     { name = "pillow", specifier = ">=12.2.0" },
@@ -344,6 +346,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/0a/71/e9556c8bc1d99c0cb4081af0abc6440d7cf53c87b6c7da7b117f2de24881/django_tinymce-5.0.0.tar.gz", hash = "sha256:6257669ed596accf5fa967ff3061276b2c5352baac1bbc658fcd8252b12ca38a", size = 1161002, upload-time = "2025-10-21T19:25:25.831Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/21/22/b7b9299b40995b524bb2f6d61ae55bd690858630ff5e0ba9a06210313195/django_tinymce-5.0.0-py3-none-any.whl", hash = "sha256:c2e9c5efd2cc6c036f4c57e602b133180433e2bd1513b897089d3c4fb4e20579", size = 1400312, upload-time = "2025-10-21T19:25:24.113Z" },
+]
+
+[[package]]
+name = "django-unfold"
+version = "0.95.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/48/70/a3a06119433590a0a669a2bf3bc4291c616ce8a35d6df450124cba30d71c/django_unfold-0.95.0.tar.gz", hash = "sha256:cd8cc588860082ff901e767f3017a5dcf2f067a1d97e559d2548e3f28892840a", size = 1125640, upload-time = "2026-06-01T13:07:07.203Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/94/9b/115bb09f62ee99fdbb2fa701603feb4dddaba91eeeb1ed694c8dab0c8559/django_unfold-0.95.0-py3-none-any.whl", hash = "sha256:9f5c31113ad5c18f3a4e8f26a619c582e0a0950c1f4033d3cbe2435ff9f82a46", size = 1253231, upload-time = "2026-06-01T13:07:08.7Z" },
 ]
 
 [[package]]

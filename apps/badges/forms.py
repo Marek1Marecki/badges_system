@@ -3,12 +3,13 @@
 from django import forms
 from django.contrib import messages
 from django.utils.html import format_html, format_html_join
+from unfold.widgets import UnfoldAdminTextInputWidget
 
 from apps.badges.models import TouristObject
 
 
 # 1. TWORZYMY WIDŻET DATALIST (Dropdown, w którym można pisać własny tekst)
-class DatalistTextInput(forms.TextInput):
+class DatalistTextInput(UnfoldAdminTextInputWidget):
     def __init__(self, datalist, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.datalist = datalist

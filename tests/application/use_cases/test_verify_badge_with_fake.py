@@ -25,6 +25,7 @@ from tests.fakes.badge_repository import FakeBadgeRepository
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def repo() -> FakeBadgeRepository:
     """Świeże, puste repozytorium dla każdego testu."""
@@ -63,12 +64,11 @@ def _make_request(
 # Testy: badge not found
 # ---------------------------------------------------------------------------
 
+
 class TestVerifyBadgeNotFound:
     """Use case rzuca UseCaseError gdy odznaka nie istnieje."""
 
-    def test_raises_when_badge_code_not_in_repo(
-        self, use_case: VerifyBadgeUseCase
-    ) -> None:
+    def test_raises_when_badge_code_not_in_repo(self, use_case: VerifyBadgeUseCase) -> None:
         request = _make_request(badge_code="NIEISTNIEJACA", version_code="2024")
         with pytest.raises(UseCaseError, match="NIEISTNIEJACA"):
             use_case.execute(request)
@@ -83,9 +83,7 @@ class TestVerifyBadgeNotFound:
         with pytest.raises(UseCaseError, match="KGP"):
             use_case.execute(request)
 
-    def test_error_message_contains_badge_code(
-        self, use_case: VerifyBadgeUseCase
-    ) -> None:
+    def test_error_message_contains_badge_code(self, use_case: VerifyBadgeUseCase) -> None:
         request = _make_request(badge_code="KGP", version_code="2024")
         with pytest.raises(UseCaseError) as exc_info:
             use_case.execute(request)
@@ -95,6 +93,7 @@ class TestVerifyBadgeNotFound:
 # ---------------------------------------------------------------------------
 # Testy: weryfikacja pozytywna
 # ---------------------------------------------------------------------------
+
 
 class TestVerifyBadgeSuccess:
     """Use case zwraca verified=True gdy reguły są spełnione."""
@@ -112,9 +111,7 @@ class TestVerifyBadgeSuccess:
         assert result["verified"] is True
         assert "Gratulacje" in str(result["message"])
 
-    def test_evaluate_called_with_domain_ascents(
-        self, use_case: VerifyBadgeUseCase, repo: FakeBadgeRepository
-    ) -> None:
+    def test_evaluate_called_with_domain_ascents(self, use_case: VerifyBadgeUseCase, repo: FakeBadgeRepository) -> None:
         """Use case konwertuje DTO na obiekty domenowe przed przekazaniem do evaluate."""
         badge_version = MagicMock()
         repo.add(badge_version, code="TEST", version="2024")
@@ -145,6 +142,7 @@ class TestVerifyBadgeSuccess:
 # ---------------------------------------------------------------------------
 # Testy: weryfikacja negatywna
 # ---------------------------------------------------------------------------
+
 
 class TestVerifyBadgeFailure:
     """Use case zwraca verified=False gdy reguły nie są spełnione."""
@@ -181,6 +179,7 @@ class TestVerifyBadgeFailure:
 # ---------------------------------------------------------------------------
 # Testy: FakeBadgeRepository
 # ---------------------------------------------------------------------------
+
 
 class TestFakeBadgeRepository:
     """Testy samego FakeBadgeRepository — weryfikacja narzędzia testowego."""

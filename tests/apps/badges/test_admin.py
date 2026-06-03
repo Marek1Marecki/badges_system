@@ -2,7 +2,8 @@
 
 from unittest.mock import MagicMock, Mock, patch
 
-from leaflet.admin import LeafletGeoAdmin
+from leaflet.admin import LeafletGeoAdminMixin
+from unfold.admin import ModelAdmin
 
 from apps.badges.admin import (
     AddToBadgeForm,
@@ -44,8 +45,9 @@ class TestReadOnlyMapAdmin:
     """Weryfikacja konfiguracji mapy tylko do odczytu (Leaflet)."""
 
     def test_read_only_map_admin_inheritance(self) -> None:
-        """Sprawdza, czy panel dziedziczy po poprawnej klasie Leaflet."""
-        assert issubclass(ReadOnlyMapAdmin, LeafletGeoAdmin), "Musi dziedziczyć po LeafletGeoAdmin"
+        """Sprawdza, czy panel dziedziczy po poprawnych klasach Leaflet/Unfold."""
+        assert issubclass(ReadOnlyMapAdmin, LeafletGeoAdminMixin), "Musi dziedziczyć po LeafletGeoAdminMixin"
+        assert issubclass(ReadOnlyMapAdmin, ModelAdmin), "Musi dziedziczyć po ModelAdmin z Unfold"
 
     def test_read_only_map_admin_widget_config(self) -> None:
         """Sprawdza, czy edycja poligonów jest zablokowana i ustawiono środek mapy."""
@@ -444,9 +446,10 @@ class TestOsmTypeMappingAdmin:
 class TestTouristObjectAdmin:
     """Testy admina TouristObject."""
 
-    def test_tourist_object_admin_inheritance(self):
+    def test_tourist_object_admin_inheritance(self) -> None:
         """Test dziedziczenia TouristObjectAdmin."""
-        assert issubclass(TouristObjectAdmin, LeafletGeoAdmin)
+        assert issubclass(TouristObjectAdmin, LeafletGeoAdminMixin), "Musi dziedziczyć po LeafletGeoAdminMixin"
+        assert issubclass(TouristObjectAdmin, ModelAdmin), "Musi dziedziczyć po ModelAdmin z Unfold"
 
     def test_tourist_object_admin_form(self):
         """Test formularza admina."""

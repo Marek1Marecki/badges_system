@@ -15,7 +15,8 @@ from django.forms.models import BaseInlineFormSet
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.utils.html import format_html
-from leaflet.admin import LeafletGeoAdmin
+from leaflet.admin import LeafletGeoAdminMixin
+from unfold.admin import ModelAdmin, TabularInline
 
 from apps.badges.forms import TouristObjectAdminForm
 from apps.badges.models import (
@@ -60,7 +61,7 @@ class AddToBadgeForm(forms.Form):
         self.fields["badge_version"].queryset = BadgeVersionModel.objects.select_related("badge").all()
 
 
-class ReadOnlyMapAdmin(LeafletGeoAdmin):
+class ReadOnlyMapAdmin(LeafletGeoAdminMixin, ModelAdmin):
     """Bazowa klasa admina pokazująca kształty GIS tylko do odczytu."""
 
     modifiable = False
@@ -103,7 +104,7 @@ class MesoregionAdmin(ReadOnlyMapAdmin):
     search_fields = ("name", "code")
 
 
-class ObjectRegionCacheInline(admin.TabularInline):
+class ObjectRegionCacheInline(TabularInline):
     model = ObjectRegionCache
     extra = 0
     readonly_fields = ("region_level", "region_id", "region_name", "distance_meters")
@@ -170,7 +171,7 @@ class PendingMappingFilter(admin.SimpleListFilter):
 
 
 @admin.register(OsmTypeMapping)
-class OsmTypeMappingAdmin(admin.ModelAdmin):
+class OsmTypeMappingAdmin(ModelAdmin):
     list_display = ("osm_key", "osm_value", "target_type", "is_ignored")
     list_editable = ("target_type", "is_ignored")  # Pozwala wpisywać tekst bezpośrednio na liście!
     list_filter = (PendingMappingFilter, "osm_key")
@@ -178,7 +179,7 @@ class OsmTypeMappingAdmin(admin.ModelAdmin):
 
 
 @admin.register(TouristObject)
-class TouristObjectAdmin(LeafletGeoAdmin):
+class TouristObjectAdmin(LeafletGeoAdminMixin, ModelAdmin):
     """Główny panel tworzenia punktów (Słownik Obiektów)."""
 
     form = TouristObjectAdminForm
@@ -379,7 +380,7 @@ class TouristObjectAdmin(LeafletGeoAdmin):
 
 
 @admin.register(OrganizerModel)
-class OrganizerAdmin(admin.ModelAdmin):
+class OrganizerAdmin(ModelAdmin):
     list_display = ("name", "is_booklet_required", "has_publication_consent", "club_rules_link")
     # Dodano filtr boczny (szybkie szukanie tych bez zgody)
     list_filter = (
@@ -390,7 +391,7 @@ class OrganizerAdmin(admin.ModelAdmin):
 
 
 @admin.register(BadgeModel)
-class BadgeAdmin(admin.ModelAdmin):
+class BadgeAdmin(ModelAdmin):
     """Panel zarządzania samymi odznakami (nazwy)."""
 
     list_display = ("name", "code", "organizer", "is_booklet_required")
@@ -422,7 +423,7 @@ class BadgeTierInlineFormSet(BaseInlineFormSet):
                 orders.add(order_val)
 
 
-class BadgeTierInline(admin.TabularInline):
+class BadgeTierInline(TabularInline):
     """Wbudowany formularz pozwalający zdefiniować stopnie prosto z widoku Wersji Odznaki."""
 
     model = BadgeTierModel
@@ -432,8 +433,17 @@ class BadgeTierInline(admin.TabularInline):
 
 
 @admin.register(BadgeVersionModel)
-class BadgeVersionAdmin(admin.ModelAdmin):
+class BadgeVersionAdmin(ModelAdmin):
     """Panel Wersji Odznaki (Tu przypinamy szczyty i definiujemy stopnie)."""
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        """Ochrona pola z regułami przed zniszczeniem przez Unfold."""
+        if db_field.name == "rules":
+            # Wywołujemy natywną metodę pola, CAŁKOWICIE POMIJAJĄC mechanizmy Unfolda.
+            # Dzięki temu django-jsonform odzyskuje kontrolę i renderuje swój kreator reguł.
+            return db_field.formfield(**kwargs)
+
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
         """KWARANTANNA: W puli odznak pokazujemy TYLKO obiekty gotowe, by Admin nie zepsuł reguł."""
@@ -498,7 +508,7 @@ class TouristRegionAdmin(ReadOnlyMapAdmin):
 
 
 @admin.register(ProximityCandidate)
-class ProximityCandidateAdmin(admin.ModelAdmin):
+class ProximityCandidateAdmin(ModelAdmin):
     list_display = ("get_obj_a_info", "get_obj_b_info", "distance_meters", "status", "created_at")
     list_filter = ("status",)
     search_fields = ("obj_a__name", "obj_b__name")
@@ -564,7 +574,7 @@ class ProximityCandidateAdmin(admin.ModelAdmin):
 
 
 @admin.register(OsmSyncConflict)
-class OsmSyncConflictAdmin(admin.ModelAdmin):
+class OsmSyncConflictAdmin(ModelAdmin):
     list_display = ("tourist_object", "field_name", "old_value", "new_value", "status", "created_at")
     list_filter = ("status", "field_name")
     search_fields = ("tourist_object__name", "tourist_object__osm_id")

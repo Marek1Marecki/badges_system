@@ -448,17 +448,11 @@ def test_mandatory_objects_rule() -> None:
 
 
 def test_grouped_alternatives_rule() -> None:
-    rule = GroupedAlternativesRule(
-        groups=(frozenset([1, 2]), frozenset([3, 4])),
-        min_groups_required=2
-    )
-    valid_ascents = [
-        Ascent(peak_id=1, ascent_date=date.today()),
-        Ascent(peak_id=3, ascent_date=date.today())
-    ]
+    rule = GroupedAlternativesRule(groups=(frozenset([1, 2]), frozenset([3, 4])), min_groups_required=2)
+    valid_ascents = [Ascent(peak_id=1, ascent_date=date.today()), Ascent(peak_id=3, ascent_date=date.today())]
     invalid_ascents = [
         Ascent(peak_id=1, ascent_date=date.today()),
-        Ascent(peak_id=2, ascent_date=date.today())
+        Ascent(peak_id=2, ascent_date=date.today()),
     ]  # Oba wejścia z tej samej grupy!
 
     assert not rule.validate(valid_ascents)

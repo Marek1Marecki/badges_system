@@ -18,6 +18,7 @@ from infrastructure.adapters.persistence.region_cache_repo import RegionMatch, T
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_tourist_object_data(**kwargs) -> TouristObjectData:
     """Fabryka TouristObjectData z sensownymi domyślnymi wartościami."""
     defaults = {
@@ -46,6 +47,7 @@ def _make_tourist_region_data(**kwargs) -> TouristRegionData:
 # ---------------------------------------------------------------------------
 # TestCalculateObjectRegionsTask
 # ---------------------------------------------------------------------------
+
 
 class TestCalculateObjectRegionsTask:
     """Testy zadania calculate_object_regions_task."""
@@ -152,6 +154,7 @@ class TestCalculateObjectRegionsTask:
 # ---------------------------------------------------------------------------
 # TestBuildTouristRegionGeometryTask
 # ---------------------------------------------------------------------------
+
 
 class TestBuildTouristRegionGeometryTask:
     """Testy zadania build_tourist_region_geometry_task."""

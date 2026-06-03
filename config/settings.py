@@ -38,6 +38,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    "unfold",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -163,4 +164,28 @@ TINYMCE_DEFAULT_CONFIG = {
     "menubar": True,
     "plugins": "advlist autolink lists link image charmap print preview anchor searchreplace visualblocks code fullscreen insertdatetime media table paste code help wordcount",
     "toolbar": "undo redo | formatselect | bold italic backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help",
+}
+
+
+# ==========================================
+# DJANGO UNFOLD (Modern Admin Theme)
+# ==========================================
+UNFOLD = {
+    "SITE_TITLE": "Badges Admin",
+    "SITE_HEADER": "System Odznak Turystycznych",
+    "SITE_URL": "/",
+    "COLORS": {
+        "primary": {
+            "50": "#f0f9ff",
+            "100": "#e0f2fe",
+            "200": "#bae6fd",
+            "300": "#7dd3fc",
+            "400": "#38bdf8",
+            "500": "#0ea5e9",
+            "600": "#0284c7",
+            "700": "#0369a1",
+            "800": "#075985",
+            "900": "#0c4a6e",
+        },
+    },
 }

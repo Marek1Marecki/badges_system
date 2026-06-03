@@ -2,8 +2,6 @@
 
 from datetime import date
 
-import pytest
-
 from domain.value_objects.ascent import Ascent
 
 
