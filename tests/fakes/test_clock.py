@@ -4,9 +4,7 @@ FakeClock jest używany we wszystkich testach use case'ów wymagających czasu.
 Te testy weryfikują że sam FakeClock działa poprawnie jako narzędzie testowe.
 """
 
-from datetime import datetime, timedelta, timezone
-
-import pytest
+from datetime import UTC, datetime, timedelta
 
 from tests.fakes.clock import FakeClock
 
@@ -19,7 +17,7 @@ class TestFakeClock:
         assert clock.now() == FakeClock.DEFAULT_TIME
 
     def test_returns_fixed_time_when_given(self) -> None:
-        fixed = datetime(2025, 1, 15, 8, 30, 0, tzinfo=timezone.utc)
+        fixed = datetime(2025, 1, 15, 8, 30, 0, tzinfo=UTC)
         clock = FakeClock(fixed_time=fixed)
         assert clock.now() == fixed
 
@@ -55,4 +53,4 @@ class TestFakeClock:
         assert clock.now() == original + timedelta(hours=2)
 
     def test_default_time_is_utc(self) -> None:
-        assert FakeClock.DEFAULT_TIME.tzinfo == timezone.utc
+        assert FakeClock.DEFAULT_TIME.tzinfo == UTC

@@ -9,7 +9,6 @@ from application.ports.badge_repository_port import BadgeRepositoryPort
 from apps.badges.models import BadgeVersionModel
 from domain.entities.badge_version import BadgeVersionDomain
 from domain.rules.badge_rules import (
-    ActivityRule,
     BadgeRule,
     DateWindowRule,
     GroupedAlternativesRule,
@@ -23,7 +22,6 @@ from domain.rules.badge_rules import (
     SubPoolRequirement,
     TimeLimitRule,
 )
-from domain.value_objects.ascent import ActivityType
 
 logger = logging.getLogger(__name__)
 
@@ -31,14 +29,6 @@ logger = logging.getLogger(__name__)
 # =====================================================================
 # FABRYKI REGUŁ (Hydracja z formatu JSON)
 # =====================================================================
-
-
-def _build_activity_rule(data: dict[str, Any]) -> ActivityRule:
-    raw_activities = data.get("allowed_activities")
-    if not raw_activities:
-        raise ValueError("ActivityRule wymaga listy 'allowed_activities'.")
-    activities = {ActivityType(act) for act in raw_activities}
-    return ActivityRule(allowed_activities=activities)
 
 
 def _build_time_limit_rule(data: dict[str, Any]) -> TimeLimitRule:
@@ -156,7 +146,6 @@ def _build_multi_pool_rule(data: dict[str, Any]) -> MultiPoolRequirementRule:
 
 # Rejestr przypisujący nazwę reguły w JSON do funkcji ją budującej
 RULE_BUILDERS: dict[str, Callable[[dict[str, Any]], BadgeRule]] = {
-    "ActivityRule": _build_activity_rule,
     "TimeLimitRule": _build_time_limit_rule,
     "RequiresClubJoinDateRule": _build_club_join_rule,
     "MinAgeRule": _build_min_age_rule,

@@ -7,18 +7,6 @@ RULES_SCHEMA = {
         "oneOf": [
             {
                 "type": "dict",
-                "title": "Ograniczenie Aktywności",
-                "keys": {
-                    "type": {"type": "string", "widget": "hidden", "default": "ActivityRule"},
-                    "allowed_activities": {
-                        "type": "array",
-                        "title": "Dozwolone aktywności",
-                        "items": {"type": "string", "choices": ["HIKING", "CYCLING", "SKIING"]},
-                    },
-                },
-            },
-            {
-                "type": "dict",
                 "title": "Limit Czasowy",
                 "keys": {
                     "type": {"type": "string", "widget": "hidden", "default": "TimeLimitRule"},

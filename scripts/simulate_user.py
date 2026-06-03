@@ -55,8 +55,8 @@ def run_simulation() -> None:
         badge_code="KPB",
         version_code="v2024",
         ascents=[
-            AscentInputDTO(peak_id=babia_id, ascent_date=date(2023, 5, 10), activity="HIKING"),
-            AscentInputDTO(peak_id=skrzyczne_id, ascent_date=date(2024, 8, 15), activity="CYCLING"),
+            AscentInputDTO(peak_id=babia_id, ascent_date=date(2023, 5, 10)),
+            AscentInputDTO(peak_id=skrzyczne_id, ascent_date=date(2024, 8, 15)),
         ],
     )
 
@@ -75,7 +75,7 @@ def run_simulation() -> None:
         version_code="v2024",
         ascents=[
             # Anna weszła tylko na Babią i to na nartach (SKIING)
-            AscentInputDTO(peak_id=babia_id, ascent_date=date(2024, 1, 15), activity="SKIING"),
+            AscentInputDTO(peak_id=babia_id, ascent_date=date(2024, 1, 15)),
         ],
     )
 

@@ -5,75 +5,15 @@ from datetime import date
 import pytest
 
 from domain.rules.badge_rules import (
-    ActivityRule,
     BadgeRule,
+    GroupedAlternativesRule,
     MandatoryObjectsRule,
     MinAgeRule,
     RequiresClubJoinDateRule,
     StartDateRule,
     TimeLimitRule,
-    GroupedAlternativesRule
 )
-from domain.value_objects.ascent import ActivityType, Ascent
-
-
-class TestActivityRule:
-    """Testy klasy ActivityRule."""
-
-    def test_validate_all_valid_activities(self):
-        """Test walidacji z wszystkimi dozwolonymi aktywnościami."""
-        rule = ActivityRule(allowed_activities={ActivityType.HIKING, ActivityType.CYCLING})
-
-        ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2023, 6, 1), activity=ActivityType.CYCLING),
-        ]
-
-        errors = rule.validate(ascents)
-        assert errors == []
-
-    def test_validate_with_invalid_activity(self):
-        """Test walidacji z niedozwoloną aktywnością."""
-        rule = ActivityRule(allowed_activities={ActivityType.HIKING})
-
-        ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2023, 6, 1), activity=ActivityType.CYCLING),
-        ]
-
-        errors = rule.validate(ascents)
-        assert len(errors) == 1
-        assert "Aktywność CYCLING jest niedozwolona" in errors[0]
-
-    def test_validate_multiple_invalid_activities(self):
-        """Test walidacji z wieloma niedozwolonymi aktywnościami."""
-        rule = ActivityRule(allowed_activities={ActivityType.HIKING})
-
-        ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.CYCLING),
-            Ascent(peak_id=2, ascent_date=date(2023, 6, 1), activity=ActivityType.SKIING),
-        ]
-
-        errors = rule.validate(ascents)
-        assert len(errors) == 2
-        assert "Aktywność CYCLING jest niedozwolona" in errors[0]
-        assert "Aktywność SKIING jest niedozwolona" in errors[1]
-
-    def test_validate_empty_ascents_list(self):
-        """Test walidacji z pustą listą wejść."""
-        rule = ActivityRule(allowed_activities={ActivityType.HIKING})
-
-        errors = rule.validate([])
-        assert errors == []
-
-    def test_validate_single_allowed_activity(self):
-        """Test walidacji z pojedynczą dozwoloną aktywnością."""
-        rule = ActivityRule(allowed_activities={ActivityType.SKIING})
-
-        ascents = [Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.SKIING)]
-
-        errors = rule.validate(ascents)
-        assert errors == []
+from domain.value_objects.ascent import Ascent
 
 
 class TestTimeLimitRule:
@@ -84,8 +24,8 @@ class TestTimeLimitRule:
         rule = TimeLimitRule(limit_in_years=2)
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2024, 6, 1), activity=ActivityType.HIKING),
+            Ascent(peak_id=1, ascent_date=date(2023, 1, 1)),
+            Ascent(peak_id=2, ascent_date=date(2024, 6, 1)),
         ]
 
         errors = rule.validate(ascents)
@@ -96,8 +36,8 @@ class TestTimeLimitRule:
         rule = TimeLimitRule(limit_in_years=1)
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2024, 1, 1), activity=ActivityType.HIKING),
+            Ascent(peak_id=1, ascent_date=date(2023, 1, 1)),
+            Ascent(peak_id=2, ascent_date=date(2024, 1, 1)),
         ]
 
         errors = rule.validate(ascents)
@@ -108,8 +48,8 @@ class TestTimeLimitRule:
         rule = TimeLimitRule(limit_in_years=1)
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2022, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2023, 6, 1), activity=ActivityType.HIKING),
+            Ascent(peak_id=1, ascent_date=date(2022, 1, 1)),
+            Ascent(peak_id=2, ascent_date=date(2023, 6, 1)),
         ]
 
         errors = rule.validate(ascents)
@@ -128,7 +68,7 @@ class TestTimeLimitRule:
         """Test walidacji z pojedynczym wejściem."""
         rule = TimeLimitRule(limit_in_years=1)
 
-        ascents = [Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING)]
+        ascents = [Ascent(peak_id=1, ascent_date=date(2023, 1, 1))]
 
         errors = rule.validate(ascents)
         assert errors == []
@@ -138,8 +78,8 @@ class TestTimeLimitRule:
         rule = TimeLimitRule(limit_in_years=1)
 
         ascents = [
-            Ascent(peak_id=2, ascent_date=date(2023, 6, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
+            Ascent(peak_id=2, ascent_date=date(2023, 6, 1)),
+            Ascent(peak_id=1, ascent_date=date(2023, 1, 1)),
         ]
 
         errors = rule.validate(ascents)
@@ -150,8 +90,8 @@ class TestTimeLimitRule:
         rule = TimeLimitRule(limit_in_years=0)
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
+            Ascent(peak_id=1, ascent_date=date(2023, 1, 1)),
+            Ascent(peak_id=2, ascent_date=date(2023, 1, 1)),
         ]
 
         errors = rule.validate(ascents)
@@ -162,8 +102,8 @@ class TestTimeLimitRule:
         rule = TimeLimitRule(limit_in_years=10)
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2010, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2019, 12, 30), activity=ActivityType.HIKING),
+            Ascent(peak_id=1, ascent_date=date(2010, 1, 1)),
+            Ascent(peak_id=2, ascent_date=date(2019, 12, 30)),
         ]
 
         errors = rule.validate(ascents)
@@ -178,8 +118,8 @@ class TestRequiresClubJoinDateRule:
         rule = RequiresClubJoinDateRule()
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2020, 6, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2021, 1, 15), activity=ActivityType.CYCLING),
+            Ascent(peak_id=1, ascent_date=date(2020, 6, 1)),
+            Ascent(peak_id=2, ascent_date=date(2021, 1, 15)),
         ]
 
         errors = rule.validate(ascents)
@@ -190,8 +130,8 @@ class TestRequiresClubJoinDateRule:
         rule = RequiresClubJoinDateRule()
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2019, 6, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2020, 6, 1), activity=ActivityType.CYCLING),
+            Ascent(peak_id=1, ascent_date=date(2019, 6, 1)),
+            Ascent(peak_id=2, ascent_date=date(2020, 6, 1)),
         ]
 
         errors = rule.validate(ascents)
@@ -206,9 +146,9 @@ class TestRequiresClubJoinDateRule:
         rule = RequiresClubJoinDateRule()
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2018, 5, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2019, 3, 15), activity=ActivityType.CYCLING),
-            Ascent(peak_id=3, ascent_date=date(2020, 2, 1), activity=ActivityType.SKIING),
+            Ascent(peak_id=1, ascent_date=date(2018, 5, 1)),
+            Ascent(peak_id=2, ascent_date=date(2019, 3, 15)),
+            Ascent(peak_id=3, ascent_date=date(2020, 2, 1)),
         ]
 
         errors = rule.validate(ascents)
@@ -233,7 +173,7 @@ class TestRequiresClubJoinDateRule:
         """Test walidacji z wejściem dokładnie w dacie dołączenia."""
         rule = RequiresClubJoinDateRule()
 
-        ascents = [Ascent(peak_id=1, ascent_date=date(2020, 1, 1), activity=ActivityType.HIKING)]
+        ascents = [Ascent(peak_id=1, ascent_date=date(2020, 1, 1))]
 
         errors = rule.validate(ascents)
         assert errors == []
@@ -247,8 +187,8 @@ class TestMinAgeRule:
         rule = MinAgeRule(min_age=8)
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 6, 1), activity=ActivityType.HIKING),  # 8 lat
-            Ascent(peak_id=2, ascent_date=date(2024, 1, 15), activity=ActivityType.CYCLING),  # 9 lat
+            Ascent(peak_id=1, ascent_date=date(2023, 6, 1)),  # 8 lat
+            Ascent(peak_id=2, ascent_date=date(2024, 1, 15)),  # 9 lat
         ]
 
         errors = rule.validate(ascents)
@@ -259,8 +199,8 @@ class TestMinAgeRule:
         rule = MinAgeRule(min_age=10)
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2022, 6, 1), activity=ActivityType.HIKING),  # 7 lat
-            Ascent(peak_id=2, ascent_date=date(2024, 6, 1), activity=ActivityType.CYCLING),  # 9 lat
+            Ascent(peak_id=1, ascent_date=date(2022, 6, 1)),  # 7 lat
+            Ascent(peak_id=2, ascent_date=date(2024, 6, 1)),  # 9 lat
         ]
 
         errors = rule.validate(ascents)
@@ -279,7 +219,7 @@ class TestMinAgeRule:
         rule = MinAgeRule(min_age=8)
 
         # Dzień przed 8. urodzinami
-        ascents_before = [Ascent(peak_id=1, ascent_date=date(2022, 12, 31), activity=ActivityType.HIKING)]
+        ascents_before = [Ascent(peak_id=1, ascent_date=date(2022, 12, 31))]
         errors = rule.validate(ascents_before)
         assert len(errors) == 1
         assert (
@@ -288,7 +228,7 @@ class TestMinAgeRule:
         )
 
         # W dniu 8. urodzin
-        ascents_on = [Ascent(peak_id=2, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING)]
+        ascents_on = [Ascent(peak_id=2, ascent_date=date(2023, 1, 1))]
         errors = rule.validate(ascents_on)
         assert errors == []
 
@@ -303,7 +243,7 @@ class TestMinAgeRule:
         """Test walidacji z zerowym minimalnym wiekiem."""
         rule = MinAgeRule(min_age=0)
 
-        ascents = [Ascent(peak_id=1, ascent_date=date(2018, 6, 1), activity=ActivityType.HIKING)]  # 3 lat
+        ascents = [Ascent(peak_id=1, ascent_date=date(2018, 6, 1))]  # 3 lat
 
         errors = rule.validate(ascents)
         assert errors == []
@@ -317,8 +257,8 @@ class TestStartDateRule:
         rule = StartDateRule(start_date=date(2020, 6, 1))
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2020, 6, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2021, 1, 15), activity=ActivityType.CYCLING),
+            Ascent(peak_id=1, ascent_date=date(2020, 6, 1)),
+            Ascent(peak_id=2, ascent_date=date(2021, 1, 15)),
         ]
 
         errors = rule.validate(ascents)
@@ -329,8 +269,8 @@ class TestStartDateRule:
         rule = StartDateRule(start_date=date(2020, 6, 1))
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2019, 6, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2020, 6, 1), activity=ActivityType.CYCLING),
+            Ascent(peak_id=1, ascent_date=date(2019, 6, 1)),
+            Ascent(peak_id=2, ascent_date=date(2020, 6, 1)),
         ]
 
         errors = rule.validate(ascents)
@@ -345,9 +285,9 @@ class TestStartDateRule:
         rule = StartDateRule(start_date=date(2020, 6, 1))
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2018, 5, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2019, 3, 15), activity=ActivityType.CYCLING),
-            Ascent(peak_id=3, ascent_date=date(2020, 6, 1), activity=ActivityType.SKIING),
+            Ascent(peak_id=1, ascent_date=date(2018, 5, 1)),
+            Ascent(peak_id=2, ascent_date=date(2019, 3, 15)),
+            Ascent(peak_id=3, ascent_date=date(2020, 6, 1)),
         ]
 
         errors = rule.validate(ascents)
@@ -372,7 +312,7 @@ class TestStartDateRule:
         """Test walidacji z wejściem dokładnie w dacie startowej."""
         rule = StartDateRule(start_date=date(2020, 6, 1))
 
-        ascents = [Ascent(peak_id=1, ascent_date=date(2020, 6, 1), activity=ActivityType.HIKING)]
+        ascents = [Ascent(peak_id=1, ascent_date=date(2020, 6, 1))]
 
         errors = rule.validate(ascents)
         assert errors == []
@@ -386,10 +326,10 @@ class TestMandatoryObjectsRule:
         rule = MandatoryObjectsRule(mandatory_peak_ids={1, 2, 3})
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2023, 2, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=3, ascent_date=date(2023, 3, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=4, ascent_date=date(2023, 4, 1), activity=ActivityType.HIKING),  # dodatkowy
+            Ascent(peak_id=1, ascent_date=date(2023, 1, 1)),
+            Ascent(peak_id=2, ascent_date=date(2023, 2, 1)),
+            Ascent(peak_id=3, ascent_date=date(2023, 3, 1)),
+            Ascent(peak_id=4, ascent_date=date(2023, 4, 1)),  # dodatkowy
         ]
 
         errors = rule.validate(ascents)
@@ -400,8 +340,8 @@ class TestMandatoryObjectsRule:
         rule = MandatoryObjectsRule(mandatory_peak_ids={1, 2, 3, 4})
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=3, ascent_date=date(2023, 3, 1), activity=ActivityType.HIKING),
+            Ascent(peak_id=1, ascent_date=date(2023, 1, 1)),
+            Ascent(peak_id=3, ascent_date=date(2023, 3, 1)),
         ]
 
         errors = rule.validate(ascents)
@@ -413,8 +353,8 @@ class TestMandatoryObjectsRule:
         rule = MandatoryObjectsRule(mandatory_peak_ids={1, 2, 3})
 
         ascents = [
-            Ascent(peak_id=4, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=5, ascent_date=date(2023, 2, 1), activity=ActivityType.HIKING),
+            Ascent(peak_id=4, ascent_date=date(2023, 1, 1)),
+            Ascent(peak_id=5, ascent_date=date(2023, 2, 1)),
         ]
 
         errors = rule.validate(ascents)
@@ -434,8 +374,8 @@ class TestMandatoryObjectsRule:
         rule = MandatoryObjectsRule(mandatory_peak_ids=set())
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2023, 2, 1), activity=ActivityType.HIKING),
+            Ascent(peak_id=1, ascent_date=date(2023, 1, 1)),
+            Ascent(peak_id=2, ascent_date=date(2023, 2, 1)),
         ]
 
         errors = rule.validate(ascents)
@@ -446,9 +386,9 @@ class TestMandatoryObjectsRule:
         rule = MandatoryObjectsRule(mandatory_peak_ids={1, 2})
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=1, ascent_date=date(2023, 2, 1), activity=ActivityType.HIKING),  # duplikat
-            Ascent(peak_id=2, ascent_date=date(2023, 3, 1), activity=ActivityType.HIKING),
+            Ascent(peak_id=1, ascent_date=date(2023, 1, 1)),
+            Ascent(peak_id=1, ascent_date=date(2023, 2, 1)),  # duplikat
+            Ascent(peak_id=2, ascent_date=date(2023, 3, 1)),
         ]
 
         errors = rule.validate(ascents)
@@ -466,8 +406,8 @@ class TestBadgeRule:
 
 def test_requires_club_join_date_rule() -> None:
     rule = RequiresClubJoinDateRule(club_join_date=date(2020, 1, 1))
-    valid_ascent = Ascent(peak_id=1, ascent_date=date(2020, 1, 2), activity=ActivityType.HIKING)
-    invalid_ascent = Ascent(peak_id=1, ascent_date=date(2019, 12, 31), activity=ActivityType.HIKING)
+    valid_ascent = Ascent(peak_id=1, ascent_date=date(2020, 1, 2))
+    invalid_ascent = Ascent(peak_id=1, ascent_date=date(2019, 12, 31))
 
     assert not rule.validate([valid_ascent])
     assert len(rule.validate([invalid_ascent])) == 1
@@ -475,8 +415,8 @@ def test_requires_club_join_date_rule() -> None:
 
 def test_min_age_rule() -> None:
     rule = MinAgeRule(min_age=10, birth_date=date(2010, 1, 1))
-    valid_ascent = Ascent(peak_id=1, ascent_date=date(2021, 1, 1), activity=ActivityType.HIKING)  # 11 lat
-    invalid_ascent = Ascent(peak_id=1, ascent_date=date(2019, 1, 1), activity=ActivityType.HIKING)  # 9 lat
+    valid_ascent = Ascent(peak_id=1, ascent_date=date(2021, 1, 1))  # 11 lat
+    invalid_ascent = Ascent(peak_id=1, ascent_date=date(2019, 1, 1))  # 9 lat
 
     assert not rule.validate([valid_ascent])
     assert len(rule.validate([invalid_ascent])) == 1
@@ -484,8 +424,8 @@ def test_min_age_rule() -> None:
 
 def test_start_date_rule() -> None:
     rule = StartDateRule(start_date=date(2000, 1, 1))
-    valid_ascent = Ascent(peak_id=1, ascent_date=date(2001, 1, 1), activity=ActivityType.HIKING)
-    invalid_ascent = Ascent(peak_id=1, ascent_date=date(1999, 1, 1), activity=ActivityType.HIKING)
+    valid_ascent = Ascent(peak_id=1, ascent_date=date(2001, 1, 1))
+    invalid_ascent = Ascent(peak_id=1, ascent_date=date(1999, 1, 1))
 
     assert not rule.validate([valid_ascent])
     assert len(rule.validate([invalid_ascent])) == 1
@@ -494,13 +434,13 @@ def test_start_date_rule() -> None:
 def test_mandatory_objects_rule() -> None:
     rule = MandatoryObjectsRule(mandatory_peak_ids=frozenset([1, 2]))
     valid_ascents = [
-        Ascent(peak_id=1, ascent_date=date.today(), activity=ActivityType.HIKING),
-        Ascent(peak_id=2, ascent_date=date.today(), activity=ActivityType.HIKING),
-        Ascent(peak_id=3, ascent_date=date.today(), activity=ActivityType.HIKING),
+        Ascent(peak_id=1, ascent_date=date.today()),
+        Ascent(peak_id=2, ascent_date=date.today()),
+        Ascent(peak_id=3, ascent_date=date.today()),
     ]
     invalid_ascents = [
-        Ascent(peak_id=1, ascent_date=date.today(), activity=ActivityType.HIKING),
-        Ascent(peak_id=3, ascent_date=date.today(), activity=ActivityType.HIKING),
+        Ascent(peak_id=1, ascent_date=date.today()),
+        Ascent(peak_id=3, ascent_date=date.today()),
     ]
 
     assert not rule.validate(valid_ascents)
@@ -513,12 +453,12 @@ def test_grouped_alternatives_rule() -> None:
         min_groups_required=2
     )
     valid_ascents = [
-        Ascent(peak_id=1, ascent_date=date.today(), activity=ActivityType.HIKING),
-        Ascent(peak_id=3, ascent_date=date.today(), activity=ActivityType.HIKING)
+        Ascent(peak_id=1, ascent_date=date.today()),
+        Ascent(peak_id=3, ascent_date=date.today())
     ]
     invalid_ascents = [
-        Ascent(peak_id=1, ascent_date=date.today(), activity=ActivityType.HIKING),
-        Ascent(peak_id=2, ascent_date=date.today(), activity=ActivityType.HIKING)
+        Ascent(peak_id=1, ascent_date=date.today()),
+        Ascent(peak_id=2, ascent_date=date.today())
     ]  # Oba wejścia z tej samej grupy!
 
     assert not rule.validate(valid_ascents)

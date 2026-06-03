@@ -21,7 +21,6 @@ from application.exceptions import UseCaseError
 from application.use_cases.verify_badge import VerifyBadgeUseCase
 from tests.fakes.badge_repository import FakeBadgeRepository
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -130,7 +129,6 @@ class TestVerifyBadgeSuccess:
         # Sprawdzamy że to obiekty domenowe, nie DTO
         assert hasattr(domain_ascents[0], "peak_id")
         assert hasattr(domain_ascents[0], "ascent_date")
-        assert hasattr(domain_ascents[0], "activity")
 
     def test_empty_ascents_list_is_passed_to_evaluate(
         self, use_case: VerifyBadgeUseCase, repo: FakeBadgeRepository

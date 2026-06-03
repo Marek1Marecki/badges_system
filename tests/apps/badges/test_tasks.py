@@ -11,11 +11,8 @@ Wzorzec testowania:
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from apps.badges.tasks import build_tourist_region_geometry_task, calculate_object_regions_task
 from infrastructure.adapters.persistence.region_cache_repo import RegionMatch, TouristObjectData, TouristRegionData
-
 
 # ---------------------------------------------------------------------------
 # Helpers

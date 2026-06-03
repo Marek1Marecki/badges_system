@@ -28,7 +28,7 @@ class TestRulesSchema:
         assert "oneOf" in items
 
         oneOf = items["oneOf"]
-        assert len(oneOf) == 11
+        assert len(oneOf) == 10
 
         # Check that each rule type has the expected structure
         for rule_def in oneOf:
@@ -39,10 +39,6 @@ class TestRulesSchema:
     def test_rule_type_choices(self):
         """Test wyborów typu reguły."""
         oneOf = RULES_SCHEMA["items"]["oneOf"]
-
-        # Find ActivityRule
-        activity_rule = next(rule for rule in oneOf if rule["keys"]["type"]["default"] == "ActivityRule")
-        assert activity_rule["title"] == "Ograniczenie Aktywności"
 
         # Find TimeLimitRule
         time_limit_rule = next(rule for rule in oneOf if rule["keys"]["type"]["default"] == "TimeLimitRule")
@@ -75,21 +71,6 @@ class TestRulesSchema:
         # Find DateWindowRule
         date_window_rule = next(rule for rule in oneOf if rule["keys"]["type"]["default"] == "DateWindowRule")
         assert date_window_rule["title"] == "Zamknięte Okno Czasowe (np. Jubileusz)"
-
-    def test_allowed_activities_field(self):
-        """Test pola dozwolonych aktywności."""
-        oneOf = RULES_SCHEMA["items"]["oneOf"]
-        activity_rule = next(rule for rule in oneOf if rule["keys"]["type"]["default"] == "ActivityRule")
-
-        activities_field = activity_rule["keys"]["allowed_activities"]
-        assert activities_field["type"] == "array"
-        assert activities_field["title"] == "Dozwolone aktywności"
-
-        items = activities_field["items"]
-        assert items["type"] == "string"
-        assert "HIKING" in items["choices"]
-        assert "CYCLING" in items["choices"]
-        assert "SKIING" in items["choices"]
 
     def test_limit_in_years_field(self):
         """Test pola limitu lat."""

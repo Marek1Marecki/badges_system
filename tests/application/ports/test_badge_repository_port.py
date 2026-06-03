@@ -2,8 +2,6 @@
 
 from application.ports.badge_repository_port import BadgeRepositoryPort
 from domain.entities.badge_version import BadgeVersionDomain
-from domain.rules.badge_rules import ActivityRule
-from domain.value_objects.ascent import ActivityType
 
 
 class TestBadgeRepositoryPort:
@@ -52,7 +50,7 @@ class TestBadgeRepositoryPort:
                 if badge_code == "TEST" and version_code == "v1":
                     return BadgeVersionDomain(
                         version_id="v1",
-                        rules=[ActivityRule(allowed_activities={ActivityType.HIKING})],
+                        rules=[],
                         pool_peak_ids={1, 2, 3},
                         required_count=2,
                     )

@@ -7,8 +7,8 @@ import pytest
 
 from domain.entities.badge_version import BadgeVersionDomain
 from domain.exceptions import ValidationError
-from domain.rules.badge_rules import ActivityRule, TimeLimitRule
-from domain.value_objects.ascent import ActivityType, Ascent
+from domain.rules.badge_rules import TimeLimitRule
+from domain.value_objects.ascent import Ascent
 
 
 class TestBadgeVersionDomain:
@@ -17,7 +17,6 @@ class TestBadgeVersionDomain:
     def test_evaluate_success_with_valid_ascents(self):
         """Test pomyślnej ewaluacji z poprawnymi wejściami."""
         rules = [
-            ActivityRule(allowed_activities={ActivityType.HIKING}),
             TimeLimitRule(limit_in_years=2),
         ]
         pool_peak_ids = {1, 2, 3}
@@ -29,8 +28,8 @@ class TestBadgeVersionDomain:
         )
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2023, 6, 1), activity=ActivityType.HIKING),
+            Ascent(peak_id=1, ascent_date=date(2023, 1, 1)),
+            Ascent(peak_id=2, ascent_date=date(2023, 6, 1)),
         ]
 
         # Should not raise any exception
@@ -49,34 +48,16 @@ class TestBadgeVersionDomain:
         )
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2023, 6, 1), activity=ActivityType.HIKING),
+            Ascent(peak_id=1, ascent_date=date(2023, 1, 1)),
+            Ascent(peak_id=2, ascent_date=date(2023, 6, 1)),
         ]
 
         with pytest.raises(ValidationError, match="Wymagano 3 szczytów, masz 2"):
             badge_version.evaluate(ascents)
 
-    def test_evaluate_fails_with_rule_violations(self):
-        """Test błędu przy naruszeniu reguł."""
-        rules = [ActivityRule(allowed_activities={ActivityType.HIKING})]
-        badge_version = BadgeVersionDomain(
-            version_id="v1",
-            rules=rules,
-            pool_peak_ids={1, 2},
-            required_count=2,
-        )
-
-        ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2023, 6, 1), activity=ActivityType.CYCLING),
-        ]
-
-        with pytest.raises(ValidationError, match="Aktywność CYCLING jest niedozwolona"):
-            badge_version.evaluate(ascents)
-
     def test_evaluate_ignores_peaks_outside_pool(self):
         """Test ignorowania szczytów spoza puli."""
-        rules = [ActivityRule(allowed_activities={ActivityType.HIKING})]
+        rules = []
         badge_version = BadgeVersionDomain(
             version_id="v1",
             rules=rules,
@@ -85,8 +66,8 @@ class TestBadgeVersionDomain:
         )
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=99, ascent_date=date(2023, 6, 1), activity=ActivityType.CYCLING),
+            Ascent(peak_id=1, ascent_date=date(2023, 1, 1)),
+            Ascent(peak_id=99, ascent_date=date(2023, 6, 1)),
         ]
 
         # Should not raise because only peak_id=1 is in the pool and has valid activity
@@ -95,7 +76,6 @@ class TestBadgeVersionDomain:
     def test_evaluate_with_multiple_rule_errors(self):
         """Test akumulacji wielu błędów reguł."""
         rules = [
-            ActivityRule(allowed_activities={ActivityType.HIKING}),
             TimeLimitRule(limit_in_years=1),
         ]
         badge_version = BadgeVersionDomain(
@@ -106,15 +86,14 @@ class TestBadgeVersionDomain:
         )
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2022, 1, 1), activity=ActivityType.CYCLING),
-            Ascent(peak_id=2, ascent_date=date(2023, 6, 1), activity=ActivityType.HIKING),
+            Ascent(peak_id=1, ascent_date=date(2022, 1, 1)),
+            Ascent(peak_id=2, ascent_date=date(2023, 6, 1)),
         ]
 
         with pytest.raises(ValidationError) as exc_info:
             badge_version.evaluate(ascents)
 
         error_message = str(exc_info.value)
-        assert "Aktywność CYCLING jest niedozwolona" in error_message
         assert "Przekroczono limit czasu" in error_message
 
     def test_evaluate_with_empty_ascents_list(self):
@@ -134,7 +113,7 @@ class TestBadgeVersionDomain:
 
     def test_evaluate_with_duplicate_peaks(self):
         """Test ewaluacji z duplikatami szczytów."""
-        rules = [ActivityRule(allowed_activities={ActivityType.HIKING})]
+        rules = []
         badge_version = BadgeVersionDomain(
             version_id="v1",
             rules=rules,
@@ -143,9 +122,9 @@ class TestBadgeVersionDomain:
         )
 
         ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=1, ascent_date=date(2023, 6, 1), activity=ActivityType.HIKING),
-            Ascent(peak_id=2, ascent_date=date(2023, 9, 1), activity=ActivityType.HIKING),
+            Ascent(peak_id=1, ascent_date=date(2023, 1, 1)),
+            Ascent(peak_id=1, ascent_date=date(2023, 6, 1)),
+            Ascent(peak_id=2, ascent_date=date(2023, 9, 1)),
         ]
 
         # Should succeed because we have both required peaks (1 and 2)

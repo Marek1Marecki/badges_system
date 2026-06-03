@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import date
 
-from domain.value_objects.ascent import ActivityType, Ascent
+from domain.value_objects.ascent import Ascent
 
 
 class BadgeRule(ABC):
@@ -25,28 +25,6 @@ class BadgeRule(ABC):
     def _format_rejection(ascent: Ascent, reason: str) -> str:
         """Helper ujednolicający komunikaty o odrzuceniu konkretnego wejścia."""
         return f"Wejście na obiekt (ID: {ascent.peak_id}, Data: {ascent.ascent_date}) odrzucone: {reason}."
-
-
-@dataclass(frozen=True)
-class ActivityRule(BadgeRule):
-    """Reguła ograniczająca typ dozwolonych aktywności."""
-
-    allowed_activities: set[ActivityType]
-
-    def validate(self, ascents: list[Ascent]) -> list[str]:
-        """Sprawdza, czy wszystkie wejścia mają dozwoloną aktywność.
-
-        Args:
-            ascents: Lista wejść do sprawdzenia.
-
-        Returns:
-            Lista komunikatów o błędach.
-        """
-        errors = []
-        for ascent in ascents:
-            if ascent.activity not in self.allowed_activities:
-                errors.append(self._format_rejection(ascent, f"Aktywność {ascent.activity.value} jest niedozwolona"))
-        return errors
 
 
 @dataclass(frozen=True)

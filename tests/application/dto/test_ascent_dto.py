@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 
 from application.dto.ascent_dto import AscentInputDTO, VerifyBadgeRequestDTO
-from domain.value_objects.ascent import ActivityType, Ascent
+from domain.value_objects.ascent import Ascent
 
 
 class TestAscentInputDTO:
@@ -13,37 +13,25 @@ class TestAscentInputDTO:
 
     def test_valid_ascent_input_dto(self):
         """Test tworzenia poprawnego DTO."""
-        dto = AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1), activity="HIKING")
+        dto = AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1))
 
         assert dto.peak_id == 1
         assert dto.ascent_date == date(2023, 1, 1)
-        assert dto.activity == "HIKING"
 
     def test_to_domain_conversion(self):
         """Test konwersji na obiekt domenowy."""
-        dto = AscentInputDTO(peak_id=42, ascent_date=date(2023, 6, 15), activity="CYCLING")
+        dto = AscentInputDTO(peak_id=42, ascent_date=date(2023, 6, 15))
 
         domain_ascent = dto.to_domain()
 
         assert isinstance(domain_ascent, Ascent)
         assert domain_ascent.peak_id == 42
         assert domain_ascent.ascent_date == date(2023, 6, 15)
-        assert domain_ascent.activity == ActivityType.CYCLING
-
-    def test_to_domain_with_all_activity_types(self):
-        """Test konwersji dla wszystkich typów aktywności."""
-        activities = ["HIKING", "CYCLING", "SKIING"]
-
-        for activity_str in activities:
-            dto = AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1), activity=activity_str)
-
-            domain_ascent = dto.to_domain()
-            assert domain_ascent.activity == ActivityType(activity_str)
 
     def test_validation_peak_id_must_be_positive(self):
         """Test walidacji - peak_id musi być dodatni."""
         with pytest.raises(ValueError) as exc_info:
-            AscentInputDTO(peak_id=0, ascent_date=date(2023, 1, 1), activity="HIKING")
+            AscentInputDTO(peak_id=0, ascent_date=date(2023, 1, 1))
 
         assert "peak_id" in str(exc_info.value)
         assert "greater than 0" in str(exc_info.value)
@@ -51,31 +39,23 @@ class TestAscentInputDTO:
     def test_validation_peak_id_cannot_be_negative(self):
         """Test walidacji - peak_id nie może być ujemny."""
         with pytest.raises(ValueError):
-            AscentInputDTO(peak_id=-1, ascent_date=date(2023, 1, 1), activity="HIKING")
+            AscentInputDTO(peak_id=-1, ascent_date=date(2023, 1, 1))
 
     def test_validation_with_large_peak_id(self):
         """Test walidacji z dużym peak_id."""
-        dto = AscentInputDTO(peak_id=999999, ascent_date=date(2023, 1, 1), activity="HIKING")
+        dto = AscentInputDTO(peak_id=999999, ascent_date=date(2023, 1, 1))
 
         assert dto.peak_id == 999999
         domain_ascent = dto.to_domain()
         assert domain_ascent.peak_id == 999999
 
-    def test_to_domain_with_invalid_activity_type(self):
-        """Test konwersji z nieprawidłowym typem aktywności."""
-        dto = AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1), activity="INVALID_ACTIVITY")
-
-        with pytest.raises(ValueError, match="INVALID_ACTIVITY"):
-            dto.to_domain()
-
     def test_dto_is_immutable(self):
         """Test że DTO jest immutable."""
-        dto = AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1), activity="HIKING")
+        dto = AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1))
 
         # Pydantic models are mutable by default, but we can test the structure
         assert hasattr(dto, "peak_id")
         assert hasattr(dto, "ascent_date")
-        assert hasattr(dto, "activity")
 
 
 class TestVerifyBadgeRequestDTO:
@@ -84,8 +64,8 @@ class TestVerifyBadgeRequestDTO:
     def test_valid_verify_badge_request_dto(self):
         """Test tworzenia poprawnego żądania weryfikacji."""
         ascents = [
-            AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1), activity="HIKING"),
-            AscentInputDTO(peak_id=2, ascent_date=date(2023, 6, 1), activity="CYCLING"),
+            AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1)),
+            AscentInputDTO(peak_id=2, ascent_date=date(2023, 6, 1)),
         ]
 
         request = VerifyBadgeRequestDTO(badge_code="BADGE001", version_code="v1", ascents=ascents)
@@ -94,7 +74,6 @@ class TestVerifyBadgeRequestDTO:
         assert request.version_code == "v1"
         assert len(request.ascents) == 2
         assert request.ascents[0].peak_id == 1
-        assert request.ascents[1].activity == "CYCLING"
 
     def test_request_with_empty_ascents_list(self):
         """Test żądania z pustą listą wejść."""
@@ -106,16 +85,15 @@ class TestVerifyBadgeRequestDTO:
 
     def test_request_with_single_ascent(self):
         """Test żądania z pojedynczym wejściem."""
-        ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1), activity="SKIING")]
+        ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1))]
 
         request = VerifyBadgeRequestDTO(badge_code="BADGE001", version_code="v1", ascents=ascents)
 
         assert len(request.ascents) == 1
-        assert request.ascents[0].activity == "SKIING"
 
     def test_request_with_different_badge_codes(self):
         """Test żądania z różnymi kodami odznak."""
-        ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1), activity="HIKING")]
+        ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1))]
 
         badge_codes = ["BADGE001", "CROWN", "SUMMIT", "123"]
         version_codes = ["v1", "v2", "latest", "1.0"]
@@ -127,28 +105,11 @@ class TestVerifyBadgeRequestDTO:
                 assert request.badge_code == badge_code
                 assert request.version_code == version_code
 
-    def test_request_with_multiple_ascents_different_types(self):
-        """Test żądania z wieloma wejściami różnych typów."""
-        ascents = [
-            AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1), activity="HIKING"),
-            AscentInputDTO(peak_id=2, ascent_date=date(2023, 2, 1), activity="CYCLING"),
-            AscentInputDTO(peak_id=3, ascent_date=date(2023, 3, 1), activity="SKIING"),
-            AscentInputDTO(peak_id=4, ascent_date=date(2023, 4, 1), activity="HIKING"),
-        ]
-
-        request = VerifyBadgeRequestDTO(badge_code="BADGE001", version_code="v1", ascents=ascents)
-
-        assert len(request.ascents) == 4
-        activities = [ascent.activity for ascent in request.ascents]
-        assert "HIKING" in activities
-        assert "CYCLING" in activities
-        assert "SKIING" in activities
-
     def test_request_with_edge_case_dates(self):
         """Test żądania z datami granicznymi."""
         ascents = [
-            AscentInputDTO(peak_id=1, ascent_date=date(1900, 1, 1), activity="HIKING"),
-            AscentInputDTO(peak_id=2, ascent_date=date(2100, 12, 31), activity="CYCLING"),
+            AscentInputDTO(peak_id=1, ascent_date=date(1900, 1, 1)),
+            AscentInputDTO(peak_id=2, ascent_date=date(2100, 12, 31)),
         ]
 
         request = VerifyBadgeRequestDTO(badge_code="BADGE001", version_code="v1", ascents=ascents)
@@ -158,7 +119,7 @@ class TestVerifyBadgeRequestDTO:
 
     def test_request_with_empty_strings(self):
         """Test żądania z pustymi stringami."""
-        ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1), activity="HIKING")]
+        ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1))]
 
         request = VerifyBadgeRequestDTO(badge_code="", version_code="", ascents=ascents)
 
