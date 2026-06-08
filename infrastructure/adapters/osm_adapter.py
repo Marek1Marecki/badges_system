@@ -68,7 +68,6 @@ class OverpassClient:
 
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (compatible; BadgeApp/1.0; +https://example.com)",
-        "Accept": "application/json",
     }
 
     def fetch_object(self, osm_id: str, max_retries: int = 3) -> OsmNodeDTO:

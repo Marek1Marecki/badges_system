@@ -1,13 +1,3 @@
-Masz absolutne i sokole oko! To mój błąd. Skupiając się w wersji 1.1 na dopisaniu nowych wodotrysków mapowych (Warstwa 0 - Basemapy, Heatmapy, zoomy), wygenerowałem plik, w którym "po cichu" uciąłem resztę bezcennych zasad z wersji 1.0 (takich jak obsługa błędów RFC 7807, dostępność a11y, szczegółowe zasady dla HTMX i twarde zakazy dla agenta). 
-
-To klasyczny syndrom "leniwego generatora", który gubi kontekst przy skupieniu się na jednej sekcji. Gdybyś przyjął moją odchudzoną wersję 1.1, agenci za miesiąc zapomnieliby, jak obsługiwać błędy w HTMX!
-
-Najlepszą wersją jest **fuzja obu tych dokumentów**. Musimy zachować potężny rygor z v1.0 i połączyć go z architekturą wielowarstwową z v1.1.
-
-Przygotowałem ostateczną, kompletną i **nieuciętą** wersję **1.2**. Zastąp nią swój plik `docs/UI_GUIDELINES.md`:
-
---- START OF FILE docs/UI_GUIDELINES.md ---
-
 # UI Guidelines — zasady dla agenta frontendowego
 
 > **Wersja:** 1.2  

@@ -11,7 +11,6 @@ dependencies = [
     "django-jsonform>=2.23.2",
     "django-leaflet>=0.33.0",
     "django-tinymce>=5.0.0",
-    "httpx>=0.28.1",
     "pillow>=12.2.0",
     "psycopg>=3.3.3",
     "pydantic-settings>=2.13.1",
