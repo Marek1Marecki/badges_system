@@ -22,11 +22,14 @@ digraph G {
     "application" [fillcolor="lightgreen"];
     "application.dto" [fillcolor="lightgreen"];
     "application.dto.ascent_dto" [fillcolor="lightgreen"];
+    "application.dto.user_context_dto" [fillcolor="lightgreen"];
+    "application.dto.verify_badge_dto" [fillcolor="lightgreen"];
     "application.exceptions" [fillcolor="lightgreen"];
     "application.use_cases" [fillcolor="lightgreen"];
     "application.use_cases.build_tourist_region_geometry" [fillcolor="lightgreen"];
     "application.use_cases.calculate_object_regions" [fillcolor="lightgreen"];
     "application.use_cases.fetch_osm_data" [fillcolor="lightgreen"];
+    "application.use_cases.log_ascent" [fillcolor="lightgreen"];
     "application.use_cases.scan_proximity_candidates" [fillcolor="lightgreen"];
     "application.use_cases.verify_badge" [fillcolor="lightgreen"];
   }
@@ -37,6 +40,7 @@ digraph G {
     "application.ports" [fillcolor="khaki"];
     "application.ports.badge_repository_port" [fillcolor="khaki"];
     "application.ports.clock_port" [fillcolor="khaki"];
+    "application.ports.user_progress_port" [fillcolor="khaki"];
   }
 
   subgraph cluster_infrastructure {
@@ -89,13 +93,20 @@ digraph G {
   }
 
   "application.dto.ascent_dto" -> "domain.value_objects.ascent";
+  "application.dto.verify_badge_dto" -> "application.dto.ascent_dto";
   "application.ports.badge_repository_port" -> "domain.entities.badge_version";
+  "application.ports.user_progress_port" -> "application.dto.ascent_dto";
+  "application.ports.user_progress_port" -> "application.dto.user_context_dto";
   "application.use_cases.build_tourist_region_geometry" -> "application.exceptions";
   "application.use_cases.calculate_object_regions" -> "application.exceptions";
   "application.use_cases.calculate_object_regions" -> "application.ports.clock_port";
   "application.use_cases.fetch_osm_data" -> "application.exceptions";
   "application.use_cases.fetch_osm_data" -> "application.ports.clock_port";
-  "application.use_cases.verify_badge" -> "application.dto.ascent_dto";
+  "application.use_cases.log_ascent" -> "application.dto.ascent_dto";
+  "application.use_cases.log_ascent" -> "application.exceptions";
+  "application.use_cases.log_ascent" -> "application.ports.clock_port";
+  "application.use_cases.log_ascent" -> "application.ports.user_progress_port";
+  "application.use_cases.verify_badge" -> "application.dto.verify_badge_dto";
   "application.use_cases.verify_badge" -> "application.exceptions";
   "application.use_cases.verify_badge" -> "application.ports.badge_repository_port";
   "application.use_cases.verify_badge" -> "domain.exceptions";

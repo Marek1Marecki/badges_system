@@ -180,7 +180,10 @@ Algorytm `100/n` oceniający opłacalność szczytów dla turysty wyliczany jest
 ### Diagram
 
 ```text
-[Zdarzenia Inwalidujące] (np. Nowy log wejścia, Zmiana subskrypcji odznak, Zmiana daty po północy)
+[Zdarzenia Inwalidujące]
+    ├── (Turysta: Zalogowanie wejścia przez LogAscentUseCase)
+    ├── (Turysta: Zmiana subskrypcji odznak przez StartBadgeProgressUseCase)
+    └── (System: Zmiana daty po północy - Celery Beat)    
     │ ⇢ {UserProgressStateChanged}
     ▼
 [Celery Worker]

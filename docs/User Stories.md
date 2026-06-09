@@ -43,6 +43,15 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 - [ ] Model `BadgeModel` posiada twarde metadane terytorialne do filtrowania (np. Polska, Sudety), nadawane przez Administratora.
 - [ ] Turysta klika "Chcę zdobywać", co tworzy intencję (`UserBadgeProgress` ze statusem `NOT_STARTED` i pustym `version_id`).
 
+### US-C01c — Pakiety Subskrypcyjne i Limity (Freemium Quotas) 🟠 P1
+**Story:** Jako Właściciel Aplikacji, chcę przypisywać turystom pakiety subskrypcyjne (np. Free, Pro, Max), które nakładają limity na użycie infrastruktury, aby system mógł zarabiać na swoje utrzymanie.
+**Dotyczy encji:** `TouristProfile`, `TouristQuotaContext` (w warstwie aplikacji)
+
+**Kryteria akceptacji:**
+- [ ] Profil turysty posiada przypisany poziom subskrypcji.
+- [ ] System definiuje limity (np. max liczba zdjęć do logu `proof_file`, max liczba jednocześnie subskrybowanych odznak ze statusem `IN_PROGRESS`).
+- [ ] Odrzucenie akcji z powodu wyczerpania limitu rzuca błąd aplikacyjny `400 Bad Request` z jasnym komunikatem zachęcającym do rozszerzenia pakietu.
+
 ### US-C02 — Przynależność Klubowa (Data zapisu) 🟠 P1
 **Story:** Jako Turysta, chcę móc odnotować datę dołączenia do konkretnego Klubu (np. KGP), aby system zaliczał mi logi wejść zrobione dopiero po tej dacie.
 **Dotyczy encji:** `ClubMembership` (Nowa), `OrganizerModel`, `RequiresClubJoinDateRule`

@@ -4,8 +4,38 @@ from datetime import date
 
 import pytest
 
-from application.dto.ascent_dto import AscentInputDTO, VerifyBadgeRequestDTO
+from application.dto.ascent_dto import AscentDTO, AscentInputDTO
+from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
 from domain.value_objects.ascent import Ascent
+
+
+class TestAscentDTO:
+    """Testy zhydrowanego DTO wejścia używanego przez porty aplikacyjne."""
+
+    def test_valid_ascent_dto_with_region_ids(self):
+        """Test tworzenia snapshotu wejścia z ID regionów CQRS."""
+        dto = AscentDTO(peak_id=1, ascent_date=date(2023, 1, 1), region_ids=frozenset({10, 20}))
+
+        assert dto.peak_id == 1
+        assert dto.ascent_date == date(2023, 1, 1)
+        assert dto.region_ids == frozenset({10, 20})
+
+    def test_region_ids_default_to_empty_frozenset(self):
+        """Test bezpiecznej wartości domyślnej dla wejścia bez zhydrowanych regionów."""
+        dto = AscentDTO(peak_id=1, ascent_date=date(2023, 1, 1))
+
+        assert dto.region_ids == frozenset()
+
+    def test_to_domain_conversion_ignores_infrastructure_region_ids(self):
+        """Test konwersji do domeny bez przecieku danych CQRS."""
+        dto = AscentDTO(peak_id=42, ascent_date=date(2023, 6, 15), region_ids=frozenset({7}))
+
+        domain_ascent = dto.to_domain()
+
+        assert isinstance(domain_ascent, Ascent)
+        assert domain_ascent.peak_id == 42
+        assert domain_ascent.ascent_date == date(2023, 6, 15)
+        assert not hasattr(domain_ascent, "region_ids")
 
 
 class TestAscentInputDTO:

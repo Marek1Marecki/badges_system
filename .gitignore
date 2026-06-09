@@ -47,6 +47,7 @@ venv.bak/
 # 3. Sekrety i konfiguracje lokalne (KRYTYCZNE)
 # --------------------------------------------
 .env
+.env.example
 .env.dev
 .env.prod
 .env.local

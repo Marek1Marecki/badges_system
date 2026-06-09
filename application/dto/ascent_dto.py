@@ -2,9 +2,30 @@
 
 from datetime import date
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from domain.value_objects.ascent import Ascent
+
+
+class AscentDTO(BaseModel):
+    """Zhydrowany snapshot wejścia turysty używany przez porty aplikacyjne.
+
+    `region_ids` są płaskimi ID z CQRS, dzięki czemu przyszłe reguły wildcard
+    mogą działać bez importowania GIS lub odpytywania infrastruktury w domenie.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    peak_id: int = Field(gt=0)
+    ascent_date: date
+    region_ids: frozenset[int] = Field(default_factory=frozenset)
+
+    def to_domain(self) -> Ascent:
+        """Konwertuje snapshot na Value Object rozumiany przez obecną domenę."""
+        return Ascent(
+            peak_id=self.peak_id,
+            ascent_date=self.ascent_date,
+        )
 
 
 class AscentInputDTO(BaseModel):
@@ -19,11 +40,3 @@ class AscentInputDTO(BaseModel):
             peak_id=self.peak_id,
             ascent_date=self.ascent_date,
         )
-
-
-class VerifyBadgeRequestDTO(BaseModel):
-    """Żądanie weryfikacji postępu zdobywania odznaki."""
-
-    badge_code: str
-    version_code: str
-    ascents: list[AscentInputDTO]

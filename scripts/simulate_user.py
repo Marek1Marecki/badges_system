@@ -17,7 +17,8 @@ def run_simulation() -> None:
     """Uruchamia symulację użytkowników zdobywających odznakę."""
     # Importy wewnątrz funkcji rozwiązują błąd E402 (Ruff) i gwarantują,
     # że Django jest gotowe do udostępnienia modeli aplikacji.
-    from application.dto.ascent_dto import AscentInputDTO, VerifyBadgeRequestDTO
+    from application.dto.ascent_dto import AscentInputDTO
+    from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
     from application.use_cases.verify_badge import VerifyBadgeUseCase
     from apps.badges.models import TouristObject
     from infrastructure.adapters.persistence.django_badge_repo import DjangoBadgeRepository
@@ -74,7 +75,7 @@ def run_simulation() -> None:
         badge_code="KPB",
         version_code="v2024",
         ascents=[
-            # Anna weszła tylko na Babią i to na nartach (SKIING)
+            # Anna weszła tylko na Babią
             AscentInputDTO(peak_id=babia_id, ascent_date=date(2024, 1, 15)),
         ],
     )

@@ -11,3 +11,11 @@ class ApplicationException(Exception):
 
 class UseCaseError(ApplicationException):
     """Błąd orkiestracji podczas wykonywania przypadku użycia."""
+
+
+class BitemporalTimeError(ApplicationException):
+    """Naruszenie bitemporalnego cyklu życia obiektu turystycznego."""
+
+
+class ConflictError(ApplicationException):
+    """Błąd w przypadku konfliktu danych (np. duplikat logu lub błąd przejścia stanu)."""

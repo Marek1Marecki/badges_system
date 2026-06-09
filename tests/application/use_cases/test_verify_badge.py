@@ -5,7 +5,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from application.dto.ascent_dto import AscentInputDTO, VerifyBadgeRequestDTO
+from application.dto.ascent_dto import AscentInputDTO
+from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
 from application.exceptions import UseCaseError
 from application.use_cases.verify_badge import VerifyBadgeUseCase
 from domain.exceptions import ValidationError

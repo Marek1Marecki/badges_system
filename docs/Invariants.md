@@ -36,6 +36,12 @@ Semantyka `NULL` (puste = dowolne):
 - Linter: `audit_contracts.py` oraz `ruff banned-api`.
 - Testy: Wstrzykiwanie `FakeClock`.
 
+### T-03 — Zakaz Logowania Przyszłości (Future-Proofing) 🔴 KRYTYCZNY
+**Treść:** Turysta nie może zarejestrować wejścia (`AscentLog`) na obiekt z datą późniejszą niż dzisiejsza (czas lokalny turysty lub serwera).
+**Uzasadnienie:** Uniemożliwienie oszustw "na zapas" oraz zabezpieczenie przed wpadaniem logów w luki bitemporalne (T-01), których stan na przyszłość mógłby zostać zmieniony przez administratora.
+**Gdzie egzekwować:** 
+- Use Case: `LogAscentUseCase` z użyciem `ClockPort.now().date()`.
+
 ---
 
 ## Grupa R — Reguły i Architektura Domeny
@@ -79,6 +85,13 @@ Semantyka `NULL` (puste = dowolne):
 **Gdzie egzekwować:** 
 - Serializatory DTO API (Faza C).
 - Widoki pobierania mediów w Django.
+
+### D-04 — Idempotentność Zapisów Turysty (Upsert) 🟠 WYSOKI
+**Treść:** Zapisywanie logów wejść (`AscentLog`) i innych akcji turysty musi być idempotentne. Ponowna próba zapisu wejścia na ten sam `peak_id` przez tego samego `user_id` w tej samej dacie (`ascent_date`) nie może tworzyć zduplikowanego rekordu w bazie.
+**Uzasadnienie:** Użytkownicy aplikacji mobilnych (ze względu na złą jakość sieci w górach) mogą generować zduplikowane żądania HTTP (tzw. Double Submit). Baza danych lub Use Case muszą cicho połknąć duplikat (np. ignorując go) lub odrzucić go błędem `409 Conflict`, zapobiegając puchnięciu tabel.
+**Gdzie egzekwować:** 
+- Baza: `UniqueConstraint` w modelu `AscentLog`.
+- Adapter: Flaga `ignore_conflicts=True` w bulk_create / get_or_create.
 
 ---
 

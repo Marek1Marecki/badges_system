@@ -16,7 +16,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from application.dto.ascent_dto import AscentInputDTO, VerifyBadgeRequestDTO
+from application.dto.ascent_dto import AscentInputDTO
+from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
 from application.exceptions import UseCaseError
 from application.use_cases.verify_badge import VerifyBadgeUseCase
 from tests.fakes.badge_repository import FakeBadgeRepository

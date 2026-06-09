@@ -65,6 +65,7 @@ Ten dokument to zbiór **instrukcji briefingowych** — per obszar, per typ zada
 **Zakazane:**
 - Bezpośredni import i wywołanie `apps.badges.models` (ORM) lub zadań z `tasks.py`.
 - Zwracanie obiektów bazy danych na zewnątrz Use Case'a. Zwracaj DTO.
+- **Dynamiczne walidatory czasu w Pydantic DTO.** Zakazuje się używania `@field_validator` w Pydantic do oceny reguł zależnych od czasu "teraz" (np. walidacja czy data z requestu nie jest z przyszłości). Data w walidatorze modelu Pydantic staje się "zamrożona" podczas uruchomienia procesu lub prowadzi do naruszenia Invariantu T-02. Logika uwarunkowana czasem "dzisiaj" należy wyłącznie do Use Case'a w oparciu o wstrzyknięty `ClockPort`.
 
 ---
 

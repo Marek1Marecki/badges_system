@@ -25,8 +25,11 @@ VALID_MINIMAL = {
 # ---------------------------------------------------------------------------
 
 
-def test_default_debug_is_false() -> None:
-    settings = AppSettings(**VALID_MINIMAL)
+def test_default_debug_is_false(monkeypatch) -> None:
+    # Izolujemy od terminala
+    monkeypatch.delenv("DEBUG", raising=False)
+    # Przekazujemy _env_file=None ORAZ Twoje piękne minimalne dane wejściowe
+    settings = AppSettings(_env_file=None, **VALID_MINIMAL)
     assert settings.debug is False
 
 

@@ -1,6 +1,6 @@
 """Przypadek użycia: Weryfikacja wejść na poczet odznaki."""
 
-from application.dto.ascent_dto import VerifyBadgeRequestDTO
+from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
 from application.exceptions import UseCaseError
 from application.ports.badge_repository_port import BadgeRepositoryPort
 from domain.exceptions import ValidationError
