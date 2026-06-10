@@ -1,149 +1,72 @@
-"""Testy dla przypadku użycia weryfikacji odznaki."""
+"""Testy jednostkowe dla VerifyBadgeUseCase (z użyciem mocków)."""
 
-from datetime import date
-from unittest.mock import Mock
+from unittest.mock import MagicMock
 
 import pytest
 
-from application.dto.ascent_dto import AscentInputDTO
 from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
 from application.exceptions import UseCaseError
 from application.use_cases.verify_badge import VerifyBadgeUseCase
-from domain.exceptions import ValidationError
+from tests.fakes.clock import FakeClock
+
+
+def _dto() -> VerifyBadgeRequestDTO:
+    return VerifyBadgeRequestDTO(user_id=1, badge_code="KGP", cycle_number=1)
 
 
 class TestVerifyBadgeUseCase:
-    """Testy klasy VerifyBadgeUseCase."""
+    def test_init_with_repositories(self) -> None:
+        uc = VerifyBadgeUseCase(MagicMock(), MagicMock(), MagicMock(), MagicMock(), FakeClock())
+        assert uc._clock is not None
 
-    def test_init_with_repository(self):
-        """Test inicjalizacji z repozytorium."""
-        mock_repository = Mock()
-        use_case = VerifyBadgeUseCase(mock_repository)
-        assert use_case._repository == mock_repository
+    def test_execute_raises_when_no_progress(self) -> None:
+        progress_repo = MagicMock()
+        progress_repo.get_progress.return_value = None
+        uc = VerifyBadgeUseCase(progress_repo, MagicMock(), MagicMock(), MagicMock(), FakeClock())
 
-    def test_execute_successful_verification(self):
-        """Test pomyślnej weryfikacji."""
-        mock_repository = Mock()
-        mock_badge_version = Mock()
-        mock_badge_version.evaluate.return_value = None
-        mock_repository.get_badge_version.return_value = mock_badge_version
+        with pytest.raises(UseCaseError, match="nie subskrybuje"):
+            uc.execute(_dto())
 
-        use_case = VerifyBadgeUseCase(mock_repository)
+    def test_execute_returns_not_started_when_no_version_anchored(self) -> None:
+        progress_repo = MagicMock()
+        progress = MagicMock()
+        progress.version_id = None
+        progress_repo.get_progress.return_value = progress
 
-        request = VerifyBadgeRequestDTO(
-            badge_code="BADGE001",
-            version_code="v1",
-            ascents=[
-                AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1)),
-                AscentInputDTO(peak_id=2, ascent_date=date(2023, 6, 1)),
-            ],
-        )
+        uc = VerifyBadgeUseCase(progress_repo, MagicMock(), MagicMock(), MagicMock(), FakeClock())
+        result = uc.execute(_dto())
 
-        result = use_case.execute(request)
+        assert result["status"] == "NOT_STARTED"
+        assert result["verified"] is False
+
+    def test_execute_evaluates_domain_successfully(self) -> None:
+        progress_repo = MagicMock()
+        progress = MagicMock()
+        progress.version_id = 99
+        progress.progress_id = 123
+        progress.domain_status = "IN_PROGRESS"
+        progress_repo.get_progress.return_value = progress
+        progress_repo.get_active_progresses.return_value = []
+
+        badge_repo = MagicMock()
+        badge_version = MagicMock()
+        badge_version.evaluate.return_value = {
+            "verified": True,
+            "status": "COMPLETED",
+            "errors": [],
+            "valid_ascents_count": 5,
+        }
+        badge_repo.get_badge_version_by_id.return_value = badge_version
+
+        ascent_repo = MagicMock()
+        ascent_repo.get_unconsumed_ascents.return_value = []
+
+        profile_repo = MagicMock()
+        profile_repo.get_profile.return_value = None
+
+        uc = VerifyBadgeUseCase(progress_repo, ascent_repo, profile_repo, badge_repo, FakeClock())
+        result = uc.execute(_dto())
 
         assert result["verified"] is True
-        assert result["message"] == "Gratulacje! Odznaka przyznana."
-        mock_repository.get_badge_version.assert_called_once_with("BADGE001", "v1")
-        mock_badge_version.evaluate.assert_called_once()
-
-    def test_execute_with_validation_error(self):
-        """Test weryfikacji z błędem walidacji."""
-        mock_repository = Mock()
-        mock_badge_version = Mock()
-        mock_badge_version.evaluate.side_effect = ValidationError("Insufficient peaks")
-        mock_repository.get_badge_version.return_value = mock_badge_version
-
-        use_case = VerifyBadgeUseCase(mock_repository)
-
-        request = VerifyBadgeRequestDTO(
-            badge_code="BADGE001",
-            version_code="v1",
-            ascents=[
-                AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1)),
-            ],
-        )
-
-        result = use_case.execute(request)
-
-        assert result["verified"] is False
-        assert result["message"] == "Insufficient peaks"
-        mock_repository.get_badge_version.assert_called_once_with("BADGE001", "v1")
-        mock_badge_version.evaluate.assert_called_once()
-
-    def test_execute_with_badge_not_found(self):
-        """Test weryfikacji gdy odznaka nie zostanie znaleziona."""
-        mock_repository = Mock()
-        mock_repository.get_badge_version.return_value = None
-
-        use_case = VerifyBadgeUseCase(mock_repository)
-
-        request = VerifyBadgeRequestDTO(badge_code="NONEXISTENT", version_code="v1", ascents=[])
-
-        with pytest.raises(UseCaseError, match="Nie znaleziono odznaki: NONEXISTENT \\(v1\\)"):
-            use_case.execute(request)
-
-        mock_repository.get_badge_version.assert_called_once_with("NONEXISTENT", "v1")
-
-    def test_execute_with_empty_ascents_list(self):
-        """Test weryfikacji z pustą listą wejść."""
-        mock_repository = Mock()
-        mock_badge_version = Mock()
-        mock_badge_version.evaluate.side_effect = ValidationError("Wymagano 1 szczytów, masz 0")
-        mock_repository.get_badge_version.return_value = mock_badge_version
-
-        use_case = VerifyBadgeUseCase(mock_repository)
-
-        request = VerifyBadgeRequestDTO(badge_code="BADGE001", version_code="v1", ascents=[])
-
-        result = use_case.execute(request)
-
-        assert result["verified"] is False
-        assert "Wymagano 1 szczytów, masz 0" in result["message"]
-
-    def test_execute_with_multiple_validation_errors(self):
-        """Test weryfikacji z wieloma błędami walidacji."""
-        mock_repository = Mock()
-        mock_badge_version = Mock()
-        mock_badge_version.evaluate.side_effect = ValidationError("Error 1 | Error 2")
-        mock_repository.get_badge_version.return_value = mock_badge_version
-
-        use_case = VerifyBadgeUseCase(mock_repository)
-
-        request = VerifyBadgeRequestDTO(
-            badge_code="BADGE001",
-            version_code="v1",
-            ascents=[
-                AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1)),
-            ],
-        )
-
-        result = use_case.execute(request)
-
-        assert result["verified"] is False
-        assert result["message"] == "Error 1 | Error 2"
-
-    def test_execute_dto_to_domain_conversion(self):
-        """Test konwersji DTO na obiekty domenowe."""
-        mock_repository = Mock()
-        mock_badge_version = Mock()
-        mock_badge_version.evaluate.return_value = None
-        mock_repository.get_badge_version.return_value = mock_badge_version
-
-        use_case = VerifyBadgeUseCase(mock_repository)
-
-        request = VerifyBadgeRequestDTO(
-            badge_code="BADGE001",
-            version_code="v1",
-            ascents=[
-                AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1)),
-                AscentInputDTO(peak_id=2, ascent_date=date(2023, 6, 1)),
-            ],
-        )
-
-        use_case.execute(request)
-
-        # Verify that evaluate was called with domain objects
-        call_args = mock_badge_version.evaluate.call_args[0][0]
-        assert len(call_args) == 2
-        assert call_args[0].peak_id == 1
-        assert call_args[1].peak_id == 2
+        assert result["status"] == "COMPLETED"
+        progress_repo.update_domain_status.assert_called_once_with(123, "COMPLETED")

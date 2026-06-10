@@ -25,6 +25,7 @@ class AscentDTO(BaseModel):
         return Ascent(
             peak_id=self.peak_id,
             ascent_date=self.ascent_date,
+            region_ids=self.region_ids,  # <--- DODANO PRZEKAZYWANIE REGIONÓW
         )
 
 

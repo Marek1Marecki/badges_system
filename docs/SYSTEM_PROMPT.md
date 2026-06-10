@@ -147,6 +147,7 @@ Zabrania się usuwania istniejących komentarzy ludzkich podczas refaktoryzacji.
 |----|------|----------------|
 | TD-01 | Cykliczne relacje: `parent_object` nie jest walidowane przed grafami A->B->A. | Podczas optymalizacji formularzy Admina (Invariant C-01). |
 | TD-02 | Weryfikacja wiekowa (`MinAgeRule`) i daty klubu (`RequiresClubJoinDateRule`) używają zahardkodowanych zaślepek z `date(2015,1,1)`. | **W Fazie C**, przy implementacji `UserContext`. |
+| TD-03 | Błędna hydracja progu (`required_count=len(pool_peaks)` w adapterze). Psuje to weryfikację odznak wielostopniowych i typu "Wybierz X z Y". Próg powinien być pobierany z `BadgeTier`. | Przed oddaniem API weryfikacyjnego na front (Edge Case EC-031). |
 
 ---
 

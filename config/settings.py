@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "leaflet",
     "tinymce",
     "apps.badges",
+    "apps.tourists",
 ]
 
 MIDDLEWARE = [

@@ -75,3 +75,11 @@ class UserProgressRepositoryPort(Protocol):
     def update_logistic_status(self, progress_id: int, logistic_status: str, status_date: date) -> None:
         """Zapisuje przesunięcie odznaki w Osobistym Trackerze (np. WAITING_FOR_SEND)."""
         ...
+
+    def get_completed_badge_codes(self, user_id: int) -> frozenset[str]:
+        """Zwraca kody odznak ze statusem COMPLETED (optymalizacja dla PrerequisiteBadgeRule)."""
+        ...
+
+    def get_progress_by_id(self, user_id: int, progress_id: int) -> BadgeProgressDTO | None:
+        """Pobiera konkretny snapshot postępu po jego ID (weryfikując właściciela)."""
+        ...

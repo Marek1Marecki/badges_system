@@ -45,7 +45,7 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 
 ### US-C01c — Pakiety Subskrypcyjne i Limity (Freemium Quotas) 🟠 P1
 **Story:** Jako Właściciel Aplikacji, chcę przypisywać turystom pakiety subskrypcyjne (np. Free, Pro, Max), które nakładają limity na użycie infrastruktury, aby system mógł zarabiać na swoje utrzymanie.
-**Dotyczy encji:** `TouristProfile`, `TouristQuotaContext` (w warstwie aplikacji)
+**Dotyczy encji:** `TouristProfile`, `TouristProfileDTO` (Limity przenoszone w głównym kontekście turysty)
 
 **Kryteria akceptacji:**
 - [ ] Profil turysty posiada przypisany poziom subskrypcji.
@@ -107,14 +107,13 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 - [ ] Jeśli najstarsze wejście jest starsze niż obecna wersja odznaki, aplikacja umożliwia turyście ręczne przełączenie się (`switch`) na starsze `BadgeVersion`, do których nabył prawa.
 - [ ] Przełączanie wersji jest możliwe i płynne tak długo, jak długo odznaka nie została dodana do Wniosku Weryfikacyjnego (`VerificationRequest`). Po utworzeniu wniosku, wersja w `UserBadgeProgress` zostaje zablokowana (Read-Only).
 
-### US-C06 — Obliczanie Postępu (Set Math w Domenie) 🔴 P0
+### US-C06 — Silnik Postępu (Set Math w Domenie) 🔴 P0
 **Story:** Jako Turysta, chcę zobaczyć na jakim jestem etapie (np. 12/25 szczytów), aby wiedzieć, ile brakuje mi do danego Stopnia odznaki.
 **Dotyczy encji:** `UserBadgeProgress`, `BadgeTierModel`, `VerifyBadgeUseCase`
-**Powiązane invarianty:** R-01, T-02
 
 **Kryteria akceptacji:**
-- [ ] Przeliczanie statusów (`NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`) następuje **synchronicznie w locie (On-Demand)** podczas ładowania widoku (dla gwarancji *Immediate Consistency*). 
-- [ ] Ukończenie wymagań dla konkretnego `BadgeTierModel` oznacza ten stopień jako gotowy do Wniosku Weryfikacyjnego.
+- [ ] Przeliczanie statusu dla pojedynczej odznaki następuje **synchronicznie w locie (On-Demand)** podczas ładowania jej widoku detali, gwarantując turystom *Immediate Consistency*.
+- [ ] Przeliczanie masowe (Ranking POI 100/n z US-C16 dla całej mapy) jest delegowane do asynchronicznych zadań **Celery** (Event-Driven), aby nie blokować UI serwera.
 
 ### US-C09 — Kolejny Cykl Odznaki (Pętla Prestiżu) 🟠 P1
 **Story:** Jako Turysta, chcę rozpocząć ponowne zdobywanie tej samej odznaki (nowy cykl), aby móc zweryfikować ją po raz kolejny, używając wyłącznie nowych wejść.
@@ -242,12 +241,13 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 
 | Story | Opis skrócony | Blokuje | Zablokowana przez |
 |-------|---------------|---------|-------------------|
-| **US-C01** | Profil i Wiek | US-C02, US-C06 | — |
+| **US-C01** | Profil i Wiek | US-C02, US-C01c, US-C06 | — |
 | **US-C01b**| Katalog i Wybór Odznak| US-C05 | — |
+| **US-C01c**| Pakiety Freemium | US-C03, US-C04 | US-C01 |
 | **US-C02** | Przynależność Klubowa | — | US-C01 |
-| **US-C02b**| Prawo do bycia zapomnianym | — | US-C01 |
-| **US-C03** | Logowanie Wejścia | US-C06, US-C04 | US-C01 |
-| **US-C04** | Załączniki do Wejść | — | US-C03 |
+| **US-C02b**| Prawo do bycia zapomnianym| — | US-C01 |
+| **US-C03** | Logowanie Wejścia | US-C06, US-C04 | US-C01, US-C01c |
+| **US-C04** | Załączniki do Wejść | — | US-C03, US-C01c |
 | **US-C05** | Zapis na Odznakę | US-C06, US-C07 | US-C01, US-C01b |
 | **US-C06** | Silnik Postępu | US-C07, US-C09, US-C10 | US-C01, US-C03, US-C05 |
 | **US-C09** | Pętla Prestiżu (Cykle)| — | US-C06 |

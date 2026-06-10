@@ -1,0 +1,81 @@
+"""Testy jednostkowe dla procesu subskrypcji i praw nabytych."""
+
+from datetime import date
+from unittest.mock import MagicMock
+
+import pytest
+
+from application.exceptions import UseCaseError
+from application.use_cases.start_badge_progress import StartBadgeProgressUseCase
+from tests.fakes.clock import FakeClock
+from tests.fakes.user_progress_repository import FakeTouristRepository
+
+
+class TestStartBadgeProgressUseCase:
+    """Testuje logikę zakotwiczania regulaminu (US-C05) i limitów (US-C01c)."""
+
+    def test_starts_progress_with_current_date_when_no_ascents(self) -> None:
+        repo = FakeTouristRepository()
+        # Zabezpieczenie przed limitem Freemium
+        repo.profiles[1] = MagicMock(max_active_badges=10, active_plan="PRO")
+
+        badge_repo = MagicMock()
+        badge_repo.get_version_id_for_date.return_value = 42
+        clock = FakeClock()
+
+        uc = StartBadgeProgressUseCase(
+            progress_repository=repo,
+            ascent_repository=repo,
+            profile_repository=repo,  # <--- DODANO WSTRZYKNIĘCIE PROFILU
+            badge_repository=badge_repo,
+            clock=clock,
+        )
+
+        progress_id = uc.execute(user_id=1, badge_code="KGP")
+
+        assert progress_id == 1
+        assert repo.progresses[1].version_id == 42
+        badge_repo.get_version_id_for_date.assert_called_once_with("KGP", clock.now().date())
+
+    def test_starts_progress_with_oldest_ascent_date_grandfathering(self) -> None:
+        repo = FakeTouristRepository()
+        repo.profiles[1] = MagicMock(max_active_badges=10)
+        repo.save_ascent(1, 10, date(2015, 6, 1))
+
+        badge_repo = MagicMock()
+        badge_repo.get_version_id_for_date.return_value = 10
+        clock = FakeClock()
+
+        uc = StartBadgeProgressUseCase(repo, repo, repo, badge_repo, clock)  # 3x repo
+
+        progress_id = uc.execute(user_id=1, badge_code="KGP")
+
+        badge_repo.get_version_id_for_date.assert_called_once_with("KGP", date(2015, 6, 1))
+        assert repo.progresses[progress_id].version_id == 10
+
+    def test_raises_error_when_no_version_exists(self) -> None:
+        repo = FakeTouristRepository()
+        repo.profiles[1] = MagicMock(max_active_badges=10)
+
+        badge_repo = MagicMock()
+        badge_repo.get_version_id_for_date.return_value = None
+
+        uc = StartBadgeProgressUseCase(repo, repo, repo, badge_repo, FakeClock())
+
+        with pytest.raises(UseCaseError, match="Brak opublikowanej wersji regulaminu"):
+            uc.execute(user_id=1, badge_code="KGP")
+
+    def test_raises_error_when_freemium_limit_exceeded(self) -> None:
+        repo = FakeTouristRepository()
+        # Turysta ma limit 1 odznaki
+        repo.profiles[1] = MagicMock(max_active_badges=1, active_plan="FREE")
+        # I symulujemy, że już zdobywa jedną odznakę
+        repo.start_progress(1, "INNA_ODZNAKA", 99)
+
+        badge_repo = MagicMock()
+        badge_repo.get_version_id_for_date.return_value = 42
+
+        uc = StartBadgeProgressUseCase(repo, repo, repo, badge_repo, FakeClock())
+
+        with pytest.raises(UseCaseError, match="Osiągnąłeś limit jednocześnie zdobywanych odznak"):
+            uc.execute(user_id=1, badge_code="KGP")

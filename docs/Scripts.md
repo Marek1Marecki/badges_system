@@ -39,9 +39,9 @@ Skrypty wspierające programistów w testowaniu usług zewnętrznych lub symulow
 * **Kiedy używać:** Niezastąpione narzędzie przy awariach pobierania danych w Django Admin. Jeśli maszyna asynchroniczna zrzuca obiekt w tryb `ERROR`, używamy tego skryptu do debugowania, "co dokładnie zwracają Niemcy", i testowania skuteczności nagłówków User-Agent.
 
 ### `simulate_user.py`
-* **Uruchomienie:** `uv run python scripts/simulate_user.py`
-* **Co robi:** Integracyjny "Poligon Doświadczalny". Ładuje z bazy prawdziwe szczyty (Babia Góra, Skrzyczne), buduje w pamięci fikcyjne dzienniki wejść turystów i przepuszcza je w locie przez `VerifyBadgeUseCase`. Omija panel admina i interfejs HTTP.
-* **Kiedy używać:** Do testowania nowo zaprojektowanych Wzorców Strategii (np. reguł okna czasowego) na żywym organizmie i istniejącej bazie, zanim zbudowane zostaną widoki dla użytkowników w Fazie C.
+* **Uruchomienie:** `uv run python -m scripts.simulate_user`
+* **Uwaga architektoniczna:** Skrypt musi być uruchamiany poprzez flagę modułu `-m` z głównego katalogu projektu, aby Python poprawnie podpiął ścieżki do kontenera DI (`bootstrap`).
+* **Co robi:** Integracyjny "Poligon Doświadczalny". Ładuje z bazy prawdziwe szczyty, buduje w pamięci fikcyjne dzienniki wejść turystów i przepuszcza je przez `VerifyBadgeUseCase`.
 
 ---
 

@@ -119,4 +119,3 @@ class TestLogAscentUseCase:
             use_case.execute(user_id=1, dto=_dto(date(2024, 6, 1)))
 
         ascent_repo.save_ascent.assert_not_called()
-        

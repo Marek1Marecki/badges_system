@@ -1,38 +1,98 @@
-"""Przypadek użycia: Weryfikacja wejść na poczet odznaki."""
+"""Przypadek użycia: Weryfikacja zdobycia odznaki (Silnik Postępu).
+
+Zgodnie z US-C06: Oblicza postęp On-Demand.
+Zgodnie z P-02 (EC-030): Odfiltrowuje zużyte wejścia z poprzednich cykli.
+Zgodnie z TD-02: Wstrzykuje wiek i kluby turysty do Czystej Domeny.
+"""
+
+from typing import Any
 
 from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
 from application.exceptions import UseCaseError
 from application.ports.badge_repository_port import BadgeRepositoryPort
-from domain.exceptions import ValidationError
+from application.ports.clock_port import ClockPort
+from application.ports.user_progress_port import (
+    AscentLogRepositoryPort,
+    TouristProfileRepositoryPort,
+    UserProgressRepositoryPort,
+)
+from domain.value_objects.verification_context import VerificationContext
 
 
 class VerifyBadgeUseCase:
-    """Orkiestruje proces sprawdzania logów turysty względem regulaminu."""
+    """Orkiestruje ostateczny proces weryfikacji odznaki w oparciu o stan bazy."""
 
-    def __init__(self, repository: BadgeRepositoryPort) -> None:
-        """Inicjalizuje przypadek użycia.
+    def __init__(
+        self,
+        progress_repository: UserProgressRepositoryPort,
+        ascent_repository: AscentLogRepositoryPort,
+        profile_repository: TouristProfileRepositoryPort,
+        badge_repository: BadgeRepositoryPort,
+        clock: ClockPort,
+    ) -> None:
+        """Wstrzykuje repozytoria portów oraz deterministyczny zegar."""
+        self._progress_repo = progress_repository
+        self._ascent_repo = ascent_repository
+        self._profile_repo = profile_repository
+        self._badge_repo = badge_repository
+        self._clock = clock
 
-        Args:
-            repository: Wstrzyknięty adapter komunikujący się z bazą danych.
-        """
-        self._repository = repository
+    def execute(self, request: VerifyBadgeRequestDTO) -> dict[str, Any]:
+        """Przeprowadza weryfikację logów wejść z bazy danych."""
+        # 1. Pobieramy "Zakotwiczenie" turysty (Prawa Nabyte)
+        progress = self._progress_repo.get_progress(
+            user_id=request.user_id, badge_code=request.badge_code, cycle_number=request.cycle_number
+        )
+        if not progress:
+            raise UseCaseError(f"Turysta nie subskrybuje odznaki {request.badge_code}.")
 
-    def execute(self, request: VerifyBadgeRequestDTO) -> dict[str, str | bool]:
-        """Uruchamia weryfikację.
+        if not progress.version_id:
+            return {"verified": False, "status": "NOT_STARTED", "errors": [], "valid_ascents_count": 0}
 
-        Zwraca status weryfikacji lub informacje o błędach.
-        """
-        badge_version = self._repository.get_badge_version(request.badge_code, request.version_code)
-
+        # 2. Pobieramy Czystą Domenę z bazy
+        badge_version = self._badge_repo.get_badge_version_by_id(progress.version_id)
         if not badge_version:
-            raise UseCaseError(f"Nie znaleziono odznaki: {request.badge_code} ({request.version_code})")
+            raise UseCaseError("Regulamin przypisany do tej odznaki nie istnieje w bazie.")
 
-        domain_ascents = [dto.to_domain() for dto in request.ascents]
+        # 3. Pobieramy profil turysty (Wiek, Kluby)
+        profile = self._profile_repo.get_profile(request.user_id)
+        birth_date = profile.birth_date if profile else None
+        club_dates = profile.club_join_dates if profile else {}
 
-        try:
-            badge_version.evaluate(domain_ascents)
-        except ValidationError as e:
-            # Tłumaczymy błąd domenowy na bezpieczny wynik biznesowy
-            return {"verified": False, "message": str(e)}
+        # 4. Ustalamy "Ocięcie" logów dla Pętli Prestiżu (Invariant P-02)
+        cutoff_date = None
+        if request.cycle_number > 1:
+            prev_cycle = self._progress_repo.get_progress(request.user_id, request.badge_code, request.cycle_number - 1)
+            # Jeśli poprzedni cykl jest zamknięty, odcinamy stare logi po dacie zamknięcia
+            if prev_cycle and prev_cycle.logistic_status_date:
+                cutoff_date = prev_cycle.logistic_status_date
 
-        return {"verified": True, "message": "Gratulacje! Odznaka przyznana."}
+        # 5. Pobieramy "Niezużyte" logi z bazy
+        ascents_dto = self._ascent_repo.get_unconsumed_ascents(
+            user_id=request.user_id,
+            badge_code=request.badge_code,
+            cutoff_date=cutoff_date,
+        )
+        domain_ascents = [dto.to_domain() for dto in ascents_dto]
+
+        # 6. Budujemy kontekst weryfikacyjny (Wstrzyknięcie Czasu i Stanu)
+        context = VerificationContext(
+            evaluation_time=self._clock.now(),
+            tourist_birth_date=birth_date,
+            club_join_dates=club_dates,
+            completed_badge_codes=self._get_completed_badges(request.user_id),
+        )
+
+        # 7. EWALUACJA W CZYSTEJ DOMENIE
+        result = badge_version.evaluate(domain_ascents, context)
+
+        # 8. Zapisujemy zmaterializowany wynik w bazie, jeśli status uległ zmianie
+        new_status = result["status"]
+        if new_status != progress.domain_status:
+            self._progress_repo.update_domain_status(progress.progress_id, new_status)
+
+        return result
+
+    def _get_completed_badges(self, user_id: int) -> frozenset[str]:
+        """Pobiera kody odznak, które turysta ukończył."""
+        return self._progress_repo.get_completed_badge_codes(user_id)

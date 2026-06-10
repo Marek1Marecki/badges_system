@@ -155,6 +155,12 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 **Rozwiązanie / workaround:** Zbiór wszystkich wejść (`AscentLog`) przekazywanych do Use Case'a weryfikacji będzie musiał być uprzednio filtrowany przez `UserContext`. Wejścia "zużyte" do zamknięcia i weryfikacji Cyklu nr 1 dla danej odznaki nie mogą zostać przekazane do weryfikacji w Cyklu nr 2. Odznaka w modelu progresu użytkownika zostanie rozszerzona o pojęcie Edycji/Cyklu.  
 **Test:** `[brakuje, TODO - test_EC030_completed_cycle_ascents_are_excluded_from_new_cycle]`
 
+### EC-031 — Próg wejść (required_count) zaszyty w Wersji zamiast w Stopniu
+**Obszar:** `infrastructure/adapters/persistence/django_badge_repo.py` (`_hydrate_version`)  
+**Status:** `open` (Dług Technologiczny TD-03)  
+**Opis:** Podczas hydracji `BadgeVersionDomain` adapter przypisuje `required_count=len(pool_peaks)`. Jest to poprawne wyłącznie dla odznak jednostopniowych, w których należy zdobyć 100% szczytów z puli. Dla odznak typu "Zdobądź 20 z 50" lub wielostopniowych, to `BadgeTier` przechowuje rzeczywisty próg.  
+**Rozwiązanie / workaround:** Do czasu przebudowy Use Case'a tak, by wstrzykiwał progi ze Stopni (Tiers) do Czystej Domeny, weryfikacja takich odznak poprawnie policzy `valid_ascents_count`, ale pole `verified` fałszywie zwróci `False`. Konieczna refaktoryzacja w Fazie C.
+
 ---
 
 ## 5. Repozytorium i CI/CD (Operacje)

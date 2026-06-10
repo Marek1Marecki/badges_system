@@ -1,90 +1,45 @@
-"""Skrypt symulujący weryfikację odznaki turysty (Integration Test)."""
+"""Poligon doświadczalny symulujący zachowanie turysty (Faza C)."""
 
 import os
 import sys
-from datetime import date
 
-# 1. Inicjalizacja środowiska Django (niezbędne, by użyć ORM w skrypcie)
+# Inicjalizacja Django
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
-import django
+import django  # noqa: E402
 
 django.setup()
 
+from application.dto.verify_badge_dto import VerifyBadgeRequestDTO  # noqa: E402
+from bootstrap import get_container  # noqa: E402
+
 
 def run_simulation() -> None:
-    """Uruchamia symulację użytkowników zdobywających odznakę."""
-    # Importy wewnątrz funkcji rozwiązują błąd E402 (Ruff) i gwarantują,
-    # że Django jest gotowe do udostępnienia modeli aplikacji.
-    from application.dto.ascent_dto import AscentInputDTO
-    from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
-    from application.use_cases.verify_badge import VerifyBadgeUseCase
-    from apps.badges.models import TouristObject
-    from infrastructure.adapters.persistence.django_badge_repo import DjangoBadgeRepository
+    """Przykładowe wywołanie weryfikacji przez kontener DI."""
+    print("=" * 60)
+    print("SYMULATOR FAZY C: WERYFIKACJA ODZNAKI")
+    print("=" * 60)
 
-    # Pobieramy ID obiektów z bazy (TouristObject), by dopasować logi turysty
+    # 1. Pobieramy gotowy, okablowany Use Case z kontenera
+    container = get_container()
+    verify_badge_use_case = container["verify_badge"]
+
+    # 2. Tworzymy żądanie dla hipotetycznego turysty o ID = 1
+    dto = VerifyBadgeRequestDTO(user_id=1, badge_code="KGP", cycle_number=1)
+
+    print(f"Wysyłam żądanie weryfikacji: {dto}")
+
+    # 3. Wykonanie weryfikacji
     try:
-        babia = TouristObject.objects.filter(name__icontains="Babia").first()
-        skrzyczne = TouristObject.objects.filter(name__icontains="Skrzyczne").first()
-
-        if not babia or not skrzyczne:
-            print("Najpierw dodaj Babią Górę i Skrzyczne w panelu Admina!")
-            return
-
-        babia_id = babia.id
-        skrzyczne_id = skrzyczne.id
-
+        result = verify_badge_use_case.execute(dto)
+        print(f"\n✅ WYNIK WERYFIKACJI:\n{result}")
     except Exception as e:
-        print(f"Wystąpił błąd przy pobieraniu obiektów: {e}")
-        return
+        # Błąd jest jak najbardziej spodziewany, jeśli w bazie nie masz usera o ID 1
+        # lub turysta ten nie rozpoczął jeszcze zdobywania KGP!
+        print(f"\n⚠️ PRZERWANO (Spodziewany wyjątek biznesowy):\n{e}")
 
-    print("--- ROZPOCZĘCIE WERYFIKACJI ---")
-
-    # Tworzymy nasz port i wstrzykujemy go do Use Case'u
-    repo = DjangoBadgeRepository()
-    use_case = VerifyBadgeUseCase(repository=repo)
-
-    # UWAGA: Upewnij się, że masz w bazie Odznakę "KPB" i Wersję "v2024"
-    # do której w panelu Admina (w Stopniu!) przypiąłeś Babią Górę i Skrzyczne.
-
-    # ==========================================
-    # SCENARIUSZ 1: Turysta poprawny
-    # ==========================================
-    print(f"\n[Scenariusz 1] Jan Kowalski: Wszystko poprawnie (Babia ID: {babia_id}, Skrzyczne ID: {skrzyczne_id})")
-    request_jan = VerifyBadgeRequestDTO(
-        badge_code="KPB",
-        version_code="v2024",
-        ascents=[
-            AscentInputDTO(peak_id=babia_id, ascent_date=date(2023, 5, 10)),
-            AscentInputDTO(peak_id=skrzyczne_id, ascent_date=date(2024, 8, 15)),
-        ],
-    )
-
-    try:
-        result_jan = use_case.execute(request_jan)
-        print(f"Wynik Jana: {result_jan}")
-    except Exception as e:
-        print(f"Błąd uruchamiania scenariusza 1: {e}")
-
-    # ==========================================
-    # SCENARIUSZ 2: Turysta narusza reguły (Narty i brak obiektu)
-    # ==========================================
-    print("\n[Scenariusz 2] Anna Nowak: Narty i brak 1 obiektu")
-    request_anna = VerifyBadgeRequestDTO(
-        badge_code="KPB",
-        version_code="v2024",
-        ascents=[
-            # Anna weszła tylko na Babią
-            AscentInputDTO(peak_id=babia_id, ascent_date=date(2024, 1, 15)),
-        ],
-    )
-
-    try:
-        result_anna = use_case.execute(request_anna)
-        print(f"Wynik Anny: {result_anna}")
-    except Exception as e:
-        print(f"Błąd uruchamiania scenariusza 2: {e}")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

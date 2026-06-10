@@ -36,7 +36,7 @@ class BadgeProgressDTO(BaseModel):
     progress_id: int
     user_id: int
     badge_code: str
-    version_id: int
+    version_id: int | None
     cycle_number: int
 
     # Stany Domenowe (Matematyczne)

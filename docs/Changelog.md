@@ -10,10 +10,23 @@
 
 ## [Unreleased]
 
-### Dodano
-- Planowanie Fazy C: Modele `TouristProfile`, `AscentLog`, `UserBadgeProgress` oraz `VerificationRequest` (Kanban Logistyki).
-
 ---
+
+## [0.3.0] - 2026-06-10
+
+### Kontekst wydania
+**Faza C — Rdzeń Użytkownika (Turysty) i Czysta Weryfikacja.** Utworzono modele dla turystów, wdrożono ochronę bitemporalną i sfinalizowano Czystą Domenę do sprawdzania odznak z uwzględnieniem praw nabytych.
+
+### Dodano
+- **Modele B2C:** `TouristProfile`, `AscentLog`, `UserBadgeProgress` izolowane od bazy PTTK.
+- **Prawa Nabyte (Lazy Binding):** System dynamicznie zakotwicza regulamin w dacie pierwszego wejścia (US-C05).
+- **Event-Driven Score Invalidation:** Mechanizm inwalidacji buforów (Redis) przy nowych logach (przygotowanie pod Ranking).
+- **Personal Kanban:** Logistyka książeczek odseparowana od Domeny Matematycznej w myśl Invariantu S-03.
+- **System Freemium:** Ochrona limitów odznak wspierana przez Profile Turysty.
+
+### Zmieniono
+- Czysta Domena została wzbogacona o wstrzykiwany `VerificationContext` (wiek, kluby, czas ewaluacji), całkowicie usuwając dług techniczny `TD-02`.
+- Przepisano skrypty `make check` by chroniły przed użyciem `datetime.now()` oraz niszczącym rzutowaniem w Adminie (SafeString).
 
 ## [0.2.0] - 2026-05-29
 

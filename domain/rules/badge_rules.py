@@ -5,17 +5,19 @@ from dataclasses import dataclass
 from datetime import date
 
 from domain.value_objects.ascent import Ascent
+from domain.value_objects.verification_context import VerificationContext
 
 
 class BadgeRule(ABC):
     """Bazowy interfejs dla wszystkich reguł."""
 
     @abstractmethod
-    def validate(self, ascents: list[Ascent]) -> list[str]:
+    def validate(self, ascents: list[Ascent], context: VerificationContext) -> list[str]:
         """Zwraca listę błędów. Pusta lista oznacza spełnienie reguły.
 
         Args:
             ascents: Lista wejść na szczyty.
+            context: Kontekst weryfikacyjny.
 
         Returns:
             Lista błędów w postaci ciągów znaków.
@@ -33,11 +35,12 @@ class TimeLimitRule(BadgeRule):
 
     limit_in_years: int
 
-    def validate(self, ascents: list[Ascent]) -> list[str]:
+    def validate(self, ascents: list[Ascent], context: VerificationContext) -> list[str]:
         """Sprawdza czas między pierwszym a ostatnim wejściem.
 
         Args:
             ascents: Lista wejść do sprawdzenia.
+            context: Kontekst weryfikacyjny (niewykorzystywany w tej regule).
 
         Returns:
             Lista komunikatów o błędach w przypadku przekroczenia czasu.
@@ -74,26 +77,25 @@ class RequiresClubJoinDateRule(BadgeRule):
     klubu mogą być zaliczone na poczet tej odznaki.
     """
 
-    # TODO: Faza C - Gdy pojawi się model Turysty, usuniemy ten domyślny parametr
-    # i wymusimy jego podawanie w momencie wywoływania reguły przez UseCase.
-    club_join_date: date = date(2020, 1, 1)
-
-    def validate(self, ascents: list[Ascent]) -> list[str]:
+    def validate(self, ascents: list[Ascent], context: VerificationContext) -> list[str]:
         """Sprawdza, czy wejścia są późniejsze niż data dołączenia do klubu.
 
         Args:
             ascents: Lista wejść do sprawdzenia.
+            context: Kontekst z datami dołączenia turysty do klubów.
 
         Returns:
             Lista komunikatów o błędach dla wejść sprzed daty dołączenia.
         """
+        if not context.club_join_dates:
+            return ["Wymagana przynależność do klubu, a profil turysty nie posiada żadnej."]
+
+        earliest_join_date = min(context.club_join_dates.values())
         errors = []
         for ascent in ascents:
-            if ascent.ascent_date < self.club_join_date:
+            if ascent.ascent_date < earliest_join_date:
                 errors.append(
-                    self._format_rejection(
-                        ascent, f"wejście odbyło się przed dołączeniem do klubu ({self.club_join_date})"
-                    )
+                    self._format_rejection(ascent, f"wejście przed dołączeniem do klubu ({earliest_join_date})")
                 )
         return errors
 
@@ -107,26 +109,30 @@ class MinAgeRule(BadgeRule):
     """
 
     min_age: int
-    # TODO: Faza C - Zastąpić wstrzykiwaniem daty z kontekstu prawdziwego Turysty.
-    birth_date: date = date(2015, 1, 1)
 
-    def validate(self, ascents: list[Ascent]) -> list[str]:
+    def validate(self, ascents: list[Ascent], context: VerificationContext) -> list[str]:
         """Sprawdza, czy wiek w dniu wejścia spełnia minimalny próg.
 
         Args:
             ascents: Lista wejść do sprawdzenia.
+            context: Kontekst z datą urodzenia turysty.
 
         Returns:
             Lista komunikatów o błędach dla wejść poniżej wymaganego wieku.
         """
+        if not context.tourist_birth_date:
+            return ["Wymagany minimalny wiek, a profil turysty nie posiada zdefiniowanej daty urodzenia."]
+
         errors = []
         for ascent in ascents:
             age_at_ascent = (
                 ascent.ascent_date.year
-                - self.birth_date.year
-                - ((ascent.ascent_date.month, ascent.ascent_date.day) < (self.birth_date.month, self.birth_date.day))
+                - context.tourist_birth_date.year
+                - (
+                    (ascent.ascent_date.month, ascent.ascent_date.day)
+                    < (context.tourist_birth_date.month, context.tourist_birth_date.day)
+                )
             )
-
             if age_at_ascent < self.min_age:
                 errors.append(
                     self._format_rejection(
@@ -145,11 +151,12 @@ class StartDateRule(BadgeRule):
 
     start_date: date
 
-    def validate(self, ascents: list[Ascent]) -> list[str]:
+    def validate(self, ascents: list[Ascent], context: VerificationContext) -> list[str]:
         """Sprawdza, czy wejścia są późniejsze niż data wejścia regulaminu.
 
         Args:
             ascents: Lista wejść do sprawdzenia.
+            context: Kontekst weryfikacyjny (niewykorzystywany w tej regule).
 
         Returns:
             Lista komunikatów o błędach dla wejść sprzed daty startowej.
@@ -176,11 +183,12 @@ class MandatoryObjectsRule(BadgeRule):
 
     mandatory_peak_ids: frozenset[int]  # Zamrożony zbiór dla pełnej niemutowalności
 
-    def validate(self, ascents: list[Ascent]) -> list[str]:
+    def validate(self, ascents: list[Ascent], context: VerificationContext) -> list[str]:
         """Sprawdza, czy turysta zdobył wszystkie obowiązkowe obiekty.
 
         Args:
             ascents: Lista wszystkich wejść turysty.
+            context: Kontekst weryfikacyjny (niewykorzystywany w tej regule).
 
         Returns:
             Lista komunikatów o brakujących obowiązkowych szczytach lub pusta lista.
@@ -214,18 +222,11 @@ class GroupedAlternativesRule(BadgeRule):
     # Ile wiaderek (grup) trzeba zaliczyć (z każdego min. 1 obiekt)
     min_groups_required: int
 
-    def validate(self, ascents: list[Ascent]) -> list[str]:
+    def validate(self, ascents: list[Ascent], context: VerificationContext) -> list[str]:
         """Zlicza, ile grup (wiaderek) zawiera przynajmniej jedno zdobyte wejście."""
         climbed_peak_ids = {ascent.peak_id for ascent in ascents}
 
-        groups_completed = 0
-
-        # Sprawdzamy każde wiaderko:
-        for group in self.groups:
-            # Przecięcie zbiorów (intersection). Jeśli nie jest puste,
-            # to znaczy, że w tym wiaderku zdobyliśmy chociaż 1 szczyt!
-            if group.intersection(climbed_peak_ids):
-                groups_completed += 1
+        groups_completed = sum(1 for group in self.groups if group.intersection(climbed_peak_ids))
 
         if groups_completed < self.min_groups_required:
             return [
@@ -246,7 +247,7 @@ class PrerequisiteBadgeRule(BadgeRule):
 
     required_badge_code: str
 
-    def validate(self, ascents: list[Ascent]) -> list[str]:
+    def validate(self, ascents: list[Ascent], context: VerificationContext) -> list[str]:
         """Validate ascents for required badge rule.
 
         This rule requires verification of tourist's badge history, which is not
@@ -255,14 +256,13 @@ class PrerequisiteBadgeRule(BadgeRule):
 
         Args:
             ascents: List of ascents to validate
+            context: Verification context containing completed badge codes
 
         Returns:
             Empty list (no validation errors at this level)
         """
-        # TODO: Faza C - Ta reguła wymaga VerificationContext (Dostępu do historii Turysty).
-        # Na poziomie walidacji samych wejść (Ascents) zwracamy pustą listę,
-        # ponieważ turysta ma prawo kolekcjonować szczyty równolegle.
-        # Weryfikacja posiadania innej odznaki odbędzie się na poziomie przyznawania stopnia.
+        if self.required_badge_code not in context.completed_badge_codes:
+            return [f"Brak wymaganej ukończonej odznaki: {self.required_badge_code}"]
         return []
 
 
@@ -276,7 +276,7 @@ class DateWindowRule(BadgeRule):
     start_date: date
     end_date: date
 
-    def validate(self, ascents: list[Ascent]) -> list[str]:
+    def validate(self, ascents: list[Ascent], context: VerificationContext) -> list[str]:
         """Validate that ascents occurred within the specified date window.
 
         Checks if each ascent date falls between start_date and end_date (inclusive).
@@ -284,6 +284,7 @@ class DateWindowRule(BadgeRule):
 
         Args:
             ascents: List of ascents to validate
+            context: Verification context containing additional information
 
         Returns:
             List of validation error messages for ascents outside the date window
@@ -292,11 +293,7 @@ class DateWindowRule(BadgeRule):
         for ascent in ascents:
             if not (self.start_date <= ascent.ascent_date <= self.end_date):
                 errors.append(
-                    self._format_rejection(
-                        ascent,
-                        f"wejście ({ascent.ascent_date}) odbyło się poza wyznaczonym oknem "
-                        f"jubileuszowym ({self.start_date} - {self.end_date})",
-                    )
+                    self._format_rejection(ascent, f"wejście poza oknem ({self.start_date} - {self.end_date})")
                 )
         return errors
 
@@ -306,24 +303,29 @@ class MaxAgeRule(BadgeRule):
     """Reguła maksymalnego wieku (np. dla odznak dziecięcych i młodzieżowych)."""
 
     max_age: int
-    # TODO: Faza C - Zastąpić wstrzykiwaniem daty z kontekstu prawdziwego Turysty.
-    birth_date: date = date(2015, 1, 1)
 
-    def validate(self, ascents: list[Ascent]) -> list[str]:
+    def validate(self, ascents: list[Ascent], context: VerificationContext) -> list[str]:
         """Weryfikuje, czy w dniu wejścia turysta nie przekroczył maksymalnego wieku.
 
         Args:
             ascents: Lista wejść turysty na szczyty.
+            context: Kontekst weryfikacyjny zawierający informacje o turysty.
 
         Returns:
             Lista komunikatów o błędach w przypadku przekroczenia dozwolonego wieku.
         """
+        if not context.tourist_birth_date:
+            return ["Wymagany maksymalny wiek, a profil turysty nie posiada zdefiniowanej daty urodzenia."]
+
         errors = []
         for ascent in ascents:
             age_at_ascent = (
                 ascent.ascent_date.year
-                - self.birth_date.year
-                - ((ascent.ascent_date.month, ascent.ascent_date.day) < (self.birth_date.month, self.birth_date.day))
+                - context.tourist_birth_date.year
+                - (
+                    (ascent.ascent_date.month, ascent.ascent_date.day)
+                    < (context.tourist_birth_date.month, context.tourist_birth_date.day)
+                )
             )
 
             # Odrzucamy wejścia, gdy turysta jest "za stary" na tę odznakę
@@ -356,27 +358,49 @@ class MultiPoolRequirementRule(BadgeRule):
 
     pools: tuple[SubPoolRequirement, ...]
 
-    def validate(self, ascents: list[Ascent]) -> list[str]:
+    def validate(self, ascents: list[Ascent], context: VerificationContext) -> list[str]:
         """Weryfikuje, czy zdobyto odpowiednią liczbę obiektów z każdego podzbiorów.
 
         Args:
             ascents: Lista wejść na szczyty.
+            context: Kontekst weryfikacyjny zawierający informacje o turysty.
 
         Returns:
             Lista komunikatów o błędach (niespełnionych wymogach dla podzbiorów)
             lub pusta lista, jeśli wszystkie wymogi zostały spełnione.
         """
         errors = []
-        climbed_peak_ids = {ascent.peak_id for ascent in ascents}
-
+        climbed_peak_ids = {a.peak_id for a in ascents}
         for pool in self.pools:
-            # Sprawdzamy część wspólną wejść i konkretnego podzbioru
             climbed_in_pool = climbed_peak_ids.intersection(pool.peak_ids)
-
             if len(climbed_in_pool) < pool.required_count:
                 name_str = f" z grupy '{pool.name}'" if pool.name else " z wymaganej grupy"
                 errors.append(
-                    f"Wymagano min. {pool.required_count} obiektów{name_str}, zdobyto tylko {len(climbed_in_pool)}."
+                    f"Wymagano min. {pool.required_count} obiektów{name_str}, zdobyto {len(climbed_in_pool)}."
                 )
-
         return errors
+
+
+@dataclass(frozen=True)
+class RegionCountRule(BadgeRule):
+    """Reguła typu Wildcard (ADR-012). Zlicza szczyty na podstawie regionów CQRS."""
+
+    region_id: int
+    required_count: int
+
+    def validate(self, ascents: list[Ascent], context: VerificationContext) -> list[str]:
+        """Weryfikuje minimalną liczbę wejść przypisanych do wskazanego regionu CQRS.
+
+        Args:
+            ascents: Lista wejść turysty, potencjalnie z region_ids.
+            context: Kontekst weryfikacyjny (niewykorzystywany w tej regule).
+
+        Returns:
+            Lista komunikatów o błędach, gdy liczba wejść z regionu jest za mała.
+        """
+        valid_ascents = [a for a in ascents if self.region_id in a.region_ids]
+        if len(valid_ascents) < self.required_count:
+            return [
+                f"Wymagano {self.required_count} obiektów z regionu {self.region_id}, zdobyto {len(valid_ascents)}."
+            ]
+        return []

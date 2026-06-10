@@ -1,60 +1,76 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1760" height="1470" viewBox="0 0 1760 1470">
+<svg xmlns="http://www.w3.org/2000/svg" width="1760" height="1794" viewBox="0 0 1760 1794">
 <defs>
   <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
     <path d="M 0 0 L 10 5 L 0 10 z" fill="#5b6470" />
   </marker>
 </defs>
 <rect width="100%" height="100%" fill="#f7f7f5" />
-<rect x="40" y="40" width="256" height="472" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
+<rect x="40" y="40" width="256" height="526" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
 <text x="58" y="64" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#26313d">domain</text>
-<rect x="320" y="40" width="256" height="742" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
+<rect x="320" y="40" width="256" height="850" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
 <text x="338" y="64" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#26313d">application</text>
 <rect x="600" y="40" width="256" height="256" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
 <text x="618" y="64" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#26313d">ports</text>
-<rect x="880" y="40" width="256" height="796" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
+<rect x="880" y="40" width="256" height="850" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
 <text x="898" y="64" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#26313d">infrastructure</text>
-<rect x="1160" y="40" width="256" height="1390" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
+<rect x="1160" y="40" width="256" height="1714" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
 <text x="1178" y="64" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#26313d">interface</text>
 <path d="M 558.0 206.0 C 733.0 206.0, -117.0 476.0, 58.0 476.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
-<path d="M 558.0 314.0 C 635.0 314.0, 261.0 206.0, 338.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 838.0 152.0 C 1111.0 152.0, -215.0 206.0, 58.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 838.0 260.0 C 1013.0 260.0, 163.0 206.0, 338.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 838.0 260.0 C 1013.0 260.0, 163.0 260.0, 338.0 260.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 558.0 476.0 C 635.0 476.0, 261.0 368.0, 338.0 368.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 476.0 C 606.0 476.0, 570.0 260.0, 618.0 260.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 558.0 530.0 C 635.0 530.0, 261.0 368.0, 338.0 368.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
-<path d="M 558.0 530.0 C 606.0 530.0, 570.0 206.0, 618.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 558.0 584.0 C 635.0 584.0, 261.0 368.0, 338.0 368.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 558.0 584.0 C 606.0 584.0, 570.0 206.0, 618.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
-<path d="M 558.0 638.0 C 635.0 638.0, 261.0 206.0, 338.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 558.0 638.0 C 635.0 638.0, 261.0 368.0, 338.0 368.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 558.0 638.0 C 606.0 638.0, 570.0 206.0, 618.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
-<path d="M 558.0 638.0 C 606.0 638.0, 570.0 260.0, 618.0 260.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
-<path d="M 558.0 746.0 C 635.0 746.0, 261.0 314.0, 338.0 314.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
-<path d="M 558.0 746.0 C 635.0 746.0, 261.0 368.0, 338.0 368.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
-<path d="M 558.0 746.0 C 606.0 746.0, 570.0 152.0, 618.0 152.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
-<path d="M 558.0 746.0 C 733.0 746.0, -117.0 260.0, 58.0 260.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 692.0 C 635.0 692.0, 261.0 206.0, 338.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 692.0 C 635.0 692.0, 261.0 368.0, 338.0 368.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 692.0 C 606.0 692.0, 570.0 206.0, 618.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 692.0 C 606.0 692.0, 570.0 260.0, 618.0 260.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 800.0 C 635.0 800.0, 261.0 368.0, 338.0 368.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 800.0 C 606.0 800.0, 570.0 152.0, 618.0 152.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 800.0 C 606.0 800.0, 570.0 206.0, 618.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 800.0 C 606.0 800.0, 570.0 260.0, 618.0 260.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 854.0 C 635.0 854.0, 261.0 314.0, 338.0 314.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 854.0 C 635.0 854.0, 261.0 368.0, 338.0 368.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 854.0 C 606.0 854.0, 570.0 152.0, 618.0 152.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 854.0 C 606.0 854.0, 570.0 206.0, 618.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 854.0 C 606.0 854.0, 570.0 260.0, 618.0 260.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 558.0 854.0 C 733.0 854.0, -117.0 530.0, 58.0 530.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 1398.0 206.0 C 1475.0 206.0, 1101.0 314.0, 1178.0 314.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 1398.0 206.0 C 1475.0 206.0, 1101.0 1232.0, 1178.0 1232.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 1398.0 206.0 C 1475.0 206.0, 1101.0 1286.0, 1178.0 1286.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 1398.0 314.0 C 1475.0 314.0, 1101.0 1232.0, 1178.0 1232.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
-<path d="M 1398.0 1232.0 C 1573.0 1232.0, 723.0 800.0, 898.0 800.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1398.0 1232.0 C 1573.0 1232.0, 723.0 854.0, 898.0 854.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 1398.0 1286.0 C 1769.0 1286.0, -33.0 368.0, 338.0 368.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 1398.0 1286.0 C 1573.0 1286.0, 723.0 206.0, 898.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
-<path d="M 278.0 206.0 C 355.0 206.0, -19.0 260.0, 58.0 260.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1398.0 1502.0 C 1475.0 1502.0, 1101.0 1718.0, 1178.0 1718.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1398.0 1664.0 C 1475.0 1664.0, 1101.0 1718.0, 1178.0 1718.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1398.0 1718.0 C 1475.0 1718.0, 1101.0 1232.0, 1178.0 1232.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 278.0 206.0 C 355.0 206.0, -19.0 368.0, 58.0 368.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 278.0 206.0 C 355.0 206.0, -19.0 476.0, 58.0 476.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 278.0 206.0 C 355.0 206.0, -19.0 530.0, 58.0 530.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 278.0 368.0 C 355.0 368.0, -19.0 476.0, 58.0 476.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 278.0 368.0 C 355.0 368.0, -19.0 530.0, 58.0 530.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 1118.0 206.0 C 1166.0 206.0, 1130.0 1232.0, 1178.0 1232.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
-<path d="M 1118.0 206.0 C 1195.0 206.0, 821.0 584.0, 898.0 584.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1118.0 206.0 C 1195.0 206.0, 821.0 638.0, 898.0 638.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 1118.0 260.0 C 1166.0 260.0, 1130.0 1232.0, 1178.0 1232.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 1118.0 260.0 C 1195.0 260.0, 821.0 206.0, 898.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 1118.0 368.0 C 1293.0 368.0, 443.0 152.0, 618.0 152.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 1118.0 368.0 C 1166.0 368.0, 1130.0 1232.0, 1178.0 1232.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 1118.0 368.0 C 1489.0 368.0, -313.0 206.0, 58.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 1118.0 368.0 C 1489.0 368.0, -313.0 368.0, 58.0 368.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1118.0 422.0 C 1391.0 422.0, 65.0 206.0, 338.0 206.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1118.0 422.0 C 1391.0 422.0, 65.0 260.0, 338.0 260.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1118.0 422.0 C 1293.0 422.0, 443.0 260.0, 618.0 260.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 1118.0 422.0 C 1166.0 422.0, 1130.0 1232.0, 1178.0 1232.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
-<path d="M 1118.0 476.0 C 1195.0 476.0, 821.0 530.0, 898.0 530.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
-<path d="M 1118.0 638.0 C 1195.0 638.0, 821.0 692.0, 898.0 692.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1118.0 422.0 C 1166.0 422.0, 1130.0 1718.0, 1178.0 1718.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1118.0 476.0 C 1166.0 476.0, 1130.0 1232.0, 1178.0 1232.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1118.0 530.0 C 1195.0 530.0, 821.0 584.0, 898.0 584.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 1118.0 692.0 C 1195.0 692.0, 821.0 746.0, 898.0 746.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <rect x="338" y="80" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
 <text x="350" y="103" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application</text>
 <rect x="338" y="134" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
@@ -78,17 +94,21 @@
 <rect x="338" y="404" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
 <text x="350" y="427" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases</text>
 <rect x="338" y="458" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
-<text x="350" y="481" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases.build_tourist_region_geometry</text>
+<text x="350" y="481" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases.advance_logistic_status</text>
 <rect x="338" y="512" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
-<text x="350" y="535" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases.calculate_object_regions</text>
+<text x="350" y="535" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases.build_tourist_region_geometry</text>
 <rect x="338" y="566" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
-<text x="350" y="589" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases.fetch_osm_data</text>
+<text x="350" y="589" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases.calculate_object_regions</text>
 <rect x="338" y="620" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
-<text x="350" y="643" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases.log_ascent</text>
+<text x="350" y="643" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases.fetch_osm_data</text>
 <rect x="338" y="674" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
-<text x="350" y="697" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases.scan_proximity_candidates</text>
+<text x="350" y="697" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases.log_ascent</text>
 <rect x="338" y="728" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
-<text x="350" y="751" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases.verify_badge</text>
+<text x="350" y="751" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases.scan_proximity_candidates</text>
+<rect x="338" y="782" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
+<text x="350" y="805" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases.start_badge_progress</text>
+<rect x="338" y="836" width="220" height="36" rx="10" fill="lightgreen" stroke="#7f8a96" stroke-width="1.2" />
+<text x="350" y="859" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">application.use_cases.verify_badge</text>
 <rect x="1178" y="80" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
 <text x="1190" y="103" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps</text>
 <rect x="1178" y="134" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
@@ -139,6 +159,18 @@
 <text x="1190" y="1345" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.badges.tests</text>
 <rect x="1178" y="1376" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
 <text x="1190" y="1399" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.badges.views</text>
+<rect x="1178" y="1430" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="1453" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.tourists</text>
+<rect x="1178" y="1484" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="1507" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.tourists.admin</text>
+<rect x="1178" y="1538" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="1561" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.tourists.apps</text>
+<rect x="1178" y="1592" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="1615" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.tourists.migrations</text>
+<rect x="1178" y="1646" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="1669" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.tourists.migrations.0001_initial</text>
+<rect x="1178" y="1700" width="220" height="36" rx="10" fill="pink" stroke="#7f8a96" stroke-width="1.2" />
+<text x="1190" y="1723" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">apps.tourists.models</text>
 <rect x="58" y="80" width="220" height="36" rx="10" fill="lightblue" stroke="#7f8a96" stroke-width="1.2" />
 <text x="70" y="103" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">domain</text>
 <rect x="58" y="134" width="220" height="36" rx="10" fill="lightblue" stroke="#7f8a96" stroke-width="1.2" />
@@ -155,6 +187,8 @@
 <text x="70" y="427" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">domain.value_objects</text>
 <rect x="58" y="458" width="220" height="36" rx="10" fill="lightblue" stroke="#7f8a96" stroke-width="1.2" />
 <text x="70" y="481" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">domain.value_objects.ascent</text>
+<rect x="58" y="512" width="220" height="36" rx="10" fill="lightblue" stroke="#7f8a96" stroke-width="1.2" />
+<text x="70" y="535" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">domain.value_objects.verification_context</text>
 <rect x="898" y="80" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
 <text x="910" y="103" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure</text>
 <rect x="898" y="134" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
@@ -168,19 +202,21 @@
 <rect x="898" y="350" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
 <text x="910" y="373" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.adapters.persistence.django_badge_repo</text>
 <rect x="898" y="404" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
-<text x="910" y="427" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.adapters.persistence.region_cache_repo</text>
+<text x="910" y="427" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.adapters.persistence.django_tourist_repo</text>
 <rect x="898" y="458" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
-<text x="910" y="481" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.config</text>
+<text x="910" y="481" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.adapters.persistence.region_cache_repo</text>
 <rect x="898" y="512" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
-<text x="910" y="535" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.config.app_settings</text>
+<text x="910" y="535" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.config</text>
 <rect x="898" y="566" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
-<text x="910" y="589" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.exceptions</text>
+<text x="910" y="589" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.config.app_settings</text>
 <rect x="898" y="620" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
-<text x="910" y="643" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.logging</text>
+<text x="910" y="643" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.exceptions</text>
 <rect x="898" y="674" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
-<text x="910" y="697" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.logging.log_config</text>
+<text x="910" y="697" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.logging</text>
 <rect x="898" y="728" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
-<text x="910" y="751" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.schemas</text>
+<text x="910" y="751" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.logging.log_config</text>
 <rect x="898" y="782" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
-<text x="910" y="805" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.schemas.badge_rules_schema</text>
+<text x="910" y="805" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.schemas</text>
+<rect x="898" y="836" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
+<text x="910" y="859" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure.schemas.badge_rules_schema</text>
 </svg>

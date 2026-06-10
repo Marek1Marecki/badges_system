@@ -1,47 +1,52 @@
-"""Testy jednostkowe dla kontenera DI.
+"""Testy dla warstwy bootstrap."""
 
-Sprawdzamy że kontener poprawnie buduje use case'y i że reset_container()
-zapewnia izolację między testami.
+from unittest.mock import patch
 
-Testy NIE uderzają w bazę — używają FakeBadgeRepository (priorytet 4).
-Do czasu powstania fakes/ sprawdzamy tylko strukturę kontenera.
-"""
-
-import pytest
-
-from application.use_cases.verify_badge import VerifyBadgeUseCase
-from bootstrap import build_container, get_container, reset_container
+from bootstrap.container import configure_app, get_container, reset_container
 
 
-@pytest.fixture(autouse=True)
-def clean_container() -> None:
-    """Resetuje kontener przed każdym testem — izolacja stanu globalnego."""
+# Patchujemy u źródła (w modułach infrastruktury), a nie w module bootstrap,
+# ponieważ importy w configure_app są lokalne (wewnątrz funkcji).
+@patch("infrastructure.logging.configure_logging")
+@patch("infrastructure.config.AppSettings")
+def test_configure_app(mock_settings, mock_logging) -> None:
+    mock_settings.return_value.log_json = True
+    mock_settings.return_value.log_level = "DEBUG"
+
+    configure_app()
+
+    mock_logging.assert_called_once_with(json_mode=True, level="DEBUG")
+
+
+def test_container_singleton() -> None:
+    # Resetujemy kontener, by mieć czysty stan
     reset_container()
-    yield
+
+    # Wywołujemy PRAWDZIWY kontener (konstruktory naszych klas są bezpieczne i nie pytają bazy!)
+    container1 = get_container()
+    container2 = get_container()
+
+    # Weryfikacja wzorca Singleton
+    assert container1 is container2
+
+    # Weryfikacja czy kontener wygenerował i zarejestrował wszystkie nasze Use Case'y
+    expected_use_cases = [
+        "verify_badge",
+        "fetch_osm_data",
+        "calculate_object_regions",
+        "build_tourist_region_geometry",
+        "scan_proximity_candidates",
+        "run_osm_night_watchman",
+        "log_ascent",
+        "start_badge_progress",
+    ]
+
+    for uc in expected_use_cases:
+        assert uc in container1
+
+
+def test_reset_container() -> None:
+    c1 = get_container()
     reset_container()
-
-
-@pytest.mark.integration
-def test_build_container_returns_verify_badge_use_case() -> None:
-    """Kontener zawiera klucz 'verify_badge' z poprawnym typem."""
-    container = build_container()
-    assert "verify_badge" in container
-    assert isinstance(container["verify_badge"], VerifyBadgeUseCase)
-
-
-@pytest.mark.integration
-def test_get_container_is_lazy_singleton() -> None:
-    """get_container() zwraca ten sam obiekt przy kolejnych wywołaniach."""
-    container_first = get_container()
-    container_second = get_container()
-    assert container_first is container_second
-
-
-@pytest.mark.integration
-def test_reset_container_clears_singleton() -> None:
-    """reset_container() wymusza odbudowanie kontenera przy następnym wywołaniu."""
-    container_first = get_container()
-    reset_container()
-    container_second = get_container()
-    # Po resecie to nowy obiekt — nie ten sam
-    assert container_first is not container_second
+    c2 = get_container()
+    assert c1 is not c2

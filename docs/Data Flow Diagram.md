@@ -146,24 +146,24 @@ Turysta wysyła wniosek o weryfikację. Silnik Domenowy sprawdza jego matematycz
 
 ```text
 [Turysta]
-    │ {VerifyBadgeRequestDTO: ascents[]}
+    │ {GET /api/v1/progress/badges/42}
     ▼
 [API Gateway]
     │
     ▼
 [VerifyBadgeUseCase]
-    ├──► [DjangoBadgeRepository]
-    │        ├──► (DB: BadgeVersionModel) — Pobranie Puli i Reguł
-    │        └──► (DB: BadgeTierModel) — Pobranie progów stopni
-    │        │ {BadgeVersionDomain (Aggregate)}
+    ├──► [UserProgressRepositoryPort] — Pobranie zakotwiczonego version_id
+    ├──► [BadgeRepositoryPort]
+    │        ├──► (DB: BadgeVersionModel) — Pobranie po ID (get_badge_version_by_id)
+    │        └──► {BadgeVersionDomain (Aggregate)}
     │        ▼
     ├──► [Czysta Domena]
     │        ├── [Set Math] — climbed_peak_ids.intersection(pool_peaks)
-    │        ├── [Strategy Pattern] — ewaluacja MinAgeRule, TimeLimitRule
-    │        │ {ValidationResult / DomainException}
+    │        ├── [Strategy Pattern] — ewaluacja z użyciem VerificationContext
+    │        │ {Słownik z wynikiem Verified}
     │        ▼
-    ├──► Zapis do (DB: UserBadgeProgress)
-    └──► Zwrócenie odpowiedzi do Turysty
+    ├──► Zapis do (DB: UserBadgeProgress) — Zmaterializowany Snapshot
+    └──► Zwrócenie odpowiedzi JSON do Turysty
 ```
 
 ### Dane chronione (Invarianty)

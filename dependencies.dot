@@ -14,6 +14,7 @@ digraph G {
     "domain.rules.badge_rules" [fillcolor="lightblue"];
     "domain.value_objects" [fillcolor="lightblue"];
     "domain.value_objects.ascent" [fillcolor="lightblue"];
+    "domain.value_objects.verification_context" [fillcolor="lightblue"];
   }
 
   subgraph cluster_application {
@@ -26,11 +27,13 @@ digraph G {
     "application.dto.verify_badge_dto" [fillcolor="lightgreen"];
     "application.exceptions" [fillcolor="lightgreen"];
     "application.use_cases" [fillcolor="lightgreen"];
+    "application.use_cases.advance_logistic_status" [fillcolor="lightgreen"];
     "application.use_cases.build_tourist_region_geometry" [fillcolor="lightgreen"];
     "application.use_cases.calculate_object_regions" [fillcolor="lightgreen"];
     "application.use_cases.fetch_osm_data" [fillcolor="lightgreen"];
     "application.use_cases.log_ascent" [fillcolor="lightgreen"];
     "application.use_cases.scan_proximity_candidates" [fillcolor="lightgreen"];
+    "application.use_cases.start_badge_progress" [fillcolor="lightgreen"];
     "application.use_cases.verify_badge" [fillcolor="lightgreen"];
   }
 
@@ -52,6 +55,7 @@ digraph G {
     "infrastructure.adapters.osm_repository" [fillcolor="orange"];
     "infrastructure.adapters.persistence" [fillcolor="orange"];
     "infrastructure.adapters.persistence.django_badge_repo" [fillcolor="orange"];
+    "infrastructure.adapters.persistence.django_tourist_repo" [fillcolor="orange"];
     "infrastructure.adapters.persistence.region_cache_repo" [fillcolor="orange"];
     "infrastructure.config" [fillcolor="orange"];
     "infrastructure.config.app_settings" [fillcolor="orange"];
@@ -90,13 +94,20 @@ digraph G {
     "apps.badges.tasks" [fillcolor="pink"];
     "apps.badges.tests" [fillcolor="pink"];
     "apps.badges.views" [fillcolor="pink"];
+    "apps.tourists" [fillcolor="pink"];
+    "apps.tourists.admin" [fillcolor="pink"];
+    "apps.tourists.apps" [fillcolor="pink"];
+    "apps.tourists.migrations" [fillcolor="pink"];
+    "apps.tourists.migrations.0001_initial" [fillcolor="pink"];
+    "apps.tourists.models" [fillcolor="pink"];
   }
 
   "application.dto.ascent_dto" -> "domain.value_objects.ascent";
-  "application.dto.verify_badge_dto" -> "application.dto.ascent_dto";
   "application.ports.badge_repository_port" -> "domain.entities.badge_version";
   "application.ports.user_progress_port" -> "application.dto.ascent_dto";
   "application.ports.user_progress_port" -> "application.dto.user_context_dto";
+  "application.use_cases.advance_logistic_status" -> "application.exceptions";
+  "application.use_cases.advance_logistic_status" -> "application.ports.user_progress_port";
   "application.use_cases.build_tourist_region_geometry" -> "application.exceptions";
   "application.use_cases.calculate_object_regions" -> "application.exceptions";
   "application.use_cases.calculate_object_regions" -> "application.ports.clock_port";
@@ -106,10 +117,16 @@ digraph G {
   "application.use_cases.log_ascent" -> "application.exceptions";
   "application.use_cases.log_ascent" -> "application.ports.clock_port";
   "application.use_cases.log_ascent" -> "application.ports.user_progress_port";
+  "application.use_cases.start_badge_progress" -> "application.exceptions";
+  "application.use_cases.start_badge_progress" -> "application.ports.badge_repository_port";
+  "application.use_cases.start_badge_progress" -> "application.ports.clock_port";
+  "application.use_cases.start_badge_progress" -> "application.ports.user_progress_port";
   "application.use_cases.verify_badge" -> "application.dto.verify_badge_dto";
   "application.use_cases.verify_badge" -> "application.exceptions";
   "application.use_cases.verify_badge" -> "application.ports.badge_repository_port";
-  "application.use_cases.verify_badge" -> "domain.exceptions";
+  "application.use_cases.verify_badge" -> "application.ports.clock_port";
+  "application.use_cases.verify_badge" -> "application.ports.user_progress_port";
+  "application.use_cases.verify_badge" -> "domain.value_objects.verification_context";
   "apps.badges.admin" -> "apps.badges.forms";
   "apps.badges.admin" -> "apps.badges.models";
   "apps.badges.admin" -> "apps.badges.tasks";
@@ -117,10 +134,14 @@ digraph G {
   "apps.badges.models" -> "infrastructure.schemas.badge_rules_schema";
   "apps.badges.tasks" -> "application.exceptions";
   "apps.badges.tasks" -> "infrastructure.adapters.osm_adapter";
-  "domain.entities.badge_version" -> "domain.exceptions";
+  "apps.tourists.admin" -> "apps.tourists.models";
+  "apps.tourists.migrations.0001_initial" -> "apps.tourists.models";
+  "apps.tourists.models" -> "apps.badges.models";
   "domain.entities.badge_version" -> "domain.rules.badge_rules";
   "domain.entities.badge_version" -> "domain.value_objects.ascent";
+  "domain.entities.badge_version" -> "domain.value_objects.verification_context";
   "domain.rules.badge_rules" -> "domain.value_objects.ascent";
+  "domain.rules.badge_rules" -> "domain.value_objects.verification_context";
   "infrastructure.adapters.osm_adapter" -> "apps.badges.models";
   "infrastructure.adapters.osm_adapter" -> "infrastructure.exceptions";
   "infrastructure.adapters.osm_repository" -> "apps.badges.models";
@@ -129,6 +150,11 @@ digraph G {
   "infrastructure.adapters.persistence.django_badge_repo" -> "apps.badges.models";
   "infrastructure.adapters.persistence.django_badge_repo" -> "domain.entities.badge_version";
   "infrastructure.adapters.persistence.django_badge_repo" -> "domain.rules.badge_rules";
+  "infrastructure.adapters.persistence.django_tourist_repo" -> "application.dto.ascent_dto";
+  "infrastructure.adapters.persistence.django_tourist_repo" -> "application.dto.user_context_dto";
+  "infrastructure.adapters.persistence.django_tourist_repo" -> "application.ports.user_progress_port";
+  "infrastructure.adapters.persistence.django_tourist_repo" -> "apps.badges.models";
+  "infrastructure.adapters.persistence.django_tourist_repo" -> "apps.tourists.models";
   "infrastructure.adapters.persistence.region_cache_repo" -> "apps.badges.models";
   "infrastructure.config" -> "infrastructure.config.app_settings";
   "infrastructure.logging" -> "infrastructure.logging.log_config";
