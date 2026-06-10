@@ -7,7 +7,7 @@ from typing import Any
 
 from application.ports.badge_repository_port import BadgeRepositoryPort
 from apps.badges.models import BadgeVersionModel
-from domain.entities.badge_version import BadgeVersionDomain
+from domain.entities.badge_version import BadgeTierDomain, BadgeVersionDomain
 from domain.rules.badge_rules import (
     BadgeRule,
     DateWindowRule,
@@ -223,9 +223,22 @@ class DjangoBadgeRepository(BadgeRepositoryPort):
                     f"Błąd hydracji reguły '{rule_type}' dla wersji '{badge_code}/{version_model.version_code}': {e}"
                 ) from e
 
+        # ZMIANA (TD-03 Zamknięte): Pobieramy Stopnie z bazy danych!
+        from apps.badges.models import BadgeTierModel
+
+        tier_models = BadgeTierModel.objects.filter(version=version_model).order_by("order")
+
+        domain_tiers = []
+        for tm in tier_models:
+            # Implementacja logiki "Puste znaczy wszystkie z puli"
+            req_count = tm.required_peaks_count if tm.required_peaks_count is not None else len(pool_peaks)
+            domain_tiers.append(
+                BadgeTierDomain(tier_id=tm.id, name=str(tm.name), required_count=req_count, order=tm.order)
+            )
+
         return BadgeVersionDomain(
             version_id=version_model.id,
             rules=domain_rules,
             pool_peak_ids=frozenset(pool_peaks),
-            required_count=len(pool_peaks),
+            tiers=domain_tiers,  # <--- Zamiast pojedynczego required_count
         )

@@ -1,136 +1,85 @@
-"""Testy dla agregatów domenowych."""
+"""Testy dla agregatu BadgeVersionDomain."""
 
-from datetime import date, datetime
-from unittest.mock import Mock
+from datetime import UTC, date, datetime
+from unittest.mock import MagicMock
 
-from domain.entities.badge_version import BadgeVersionDomain
-from domain.rules.badge_rules import TimeLimitRule
+import pytest
+
+from domain.entities.badge_version import BadgeTierDomain, BadgeVersionDomain
 from domain.value_objects.ascent import Ascent
 from domain.value_objects.verification_context import VerificationContext
 
 
+@pytest.fixture
+def ctx() -> VerificationContext:
+    """Domyślny, zamrożony kontekst dla testów."""
+    return VerificationContext(
+        evaluation_time=datetime(2026, 6, 1, tzinfo=UTC),
+        tourist_birth_date=date(1990, 1, 1),
+    )
+
+
+def _tiers(req: int) -> list[BadgeTierDomain]:
+    return [BadgeTierDomain(tier_id=1, name="Standard", required_count=req, order=1)]
+
+
 class TestBadgeVersionDomain:
-    """Testy klasy BadgeVersionDomain."""
+    def test_evaluate_success_with_valid_ascents(self, ctx: VerificationContext) -> None:
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1, 2]), tiers=_tiers(2))
+        ascents = [Ascent(peak_id=1, ascent_date=date.today()), Ascent(peak_id=2, ascent_date=date.today())]
 
-    def test_evaluate_success_with_valid_ascents(self):
-        """Test pomyślnej ewaluacji z poprawnymi wejściami."""
-        rules = [
-            TimeLimitRule(limit_in_years=2),
-        ]
-        pool_peak_ids = {1, 2, 3}
-        badge_version = BadgeVersionDomain(
-            version_id="v1",
-            rules=rules,
-            pool_peak_ids=pool_peak_ids,
-            required_count=2,
-        )
+        result = domain.evaluate(ascents, ctx)
 
-        ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1)),
-            Ascent(peak_id=2, ascent_date=date(2023, 6, 1)),
-        ]
-        context = VerificationContext(evaluation_time=datetime(2023, 6, 1))
+        assert result["verified"] is True
+        assert result["status"] == "COMPLETED"
+        assert result["tiers"][0]["status"] == "COMPLETED"
 
-        # Should not raise any exception
-        badge_version.evaluate(ascents, context)
+    def test_evaluate_fails_with_insufficient_peaks(self, ctx: VerificationContext) -> None:
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1, 2]), tiers=_tiers(2))
+        ascents = [Ascent(peak_id=1, ascent_date=date.today())]
 
-    def test_evaluate_fails_with_insufficient_peaks(self):
-        """Test błędu przy niewystarczającej liczbie szczytów."""
-        rules = [Mock()]
-        rules[0].validate.return_value = []
+        result = domain.evaluate(ascents, ctx)
 
-        badge_version = BadgeVersionDomain(
-            version_id="v1",
-            rules=rules,
-            pool_peak_ids={1, 2, 3},
-            required_count=3,
-        )
-
-        ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1)),
-            Ascent(peak_id=2, ascent_date=date(2023, 6, 1)),
-        ]
-        context = VerificationContext(evaluation_time=datetime(2023, 6, 1))
-
-        result = badge_version.evaluate(ascents, context)
         assert result["verified"] is False
         assert result["status"] == "IN_PROGRESS"
 
-    def test_evaluate_ignores_peaks_outside_pool(self):
-        """Test ignorowania szczytów spoza puli."""
-        rules = []
-        badge_version = BadgeVersionDomain(
-            version_id="v1",
-            rules=rules,
-            pool_peak_ids={1, 2},
-            required_count=1,
-        )
+    def test_evaluate_ignores_peaks_outside_pool(self, ctx: VerificationContext) -> None:
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1, 2]), tiers=_tiers(2))
+        ascents = [Ascent(peak_id=1, ascent_date=date.today()), Ascent(peak_id=3, ascent_date=date.today())]
 
-        ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1)),
-            Ascent(peak_id=99, ascent_date=date(2023, 6, 1)),
-        ]
-        context = VerificationContext(evaluation_time=datetime(2023, 6, 1))
+        result = domain.evaluate(ascents, ctx)
 
-        # Should not raise because only peak_id=1 is in the pool and has valid activity
-        badge_version.evaluate(ascents, context)
-
-    def test_evaluate_with_multiple_rule_errors(self):
-        """Test akumulacji wielu błędów reguł."""
-        rules = [
-            TimeLimitRule(limit_in_years=1),
-        ]
-        badge_version = BadgeVersionDomain(
-            version_id="v1",
-            rules=rules,
-            pool_peak_ids={1, 2},
-            required_count=2,
-        )
-
-        ascents = [
-            Ascent(peak_id=1, ascent_date=date(2022, 1, 1)),
-            Ascent(peak_id=2, ascent_date=date(2023, 6, 1)),
-        ]
-        context = VerificationContext(evaluation_time=datetime(2023, 6, 1))
-
-        result = badge_version.evaluate(ascents, context)
         assert result["verified"] is False
-        assert len(result["errors"]) > 0
-        assert any("limit czasu" in error.lower() for error in result["errors"])
+        assert result["valid_ascents_count"] == 1
 
-    def test_evaluate_with_empty_ascents_list(self):
-        """Test ewaluacji z pustą listą wejść."""
-        rules = [Mock()]
-        rules[0].validate.return_value = []
+    def test_evaluate_with_multiple_rule_errors(self, ctx: VerificationContext) -> None:
+        rule1, rule2 = MagicMock(), MagicMock()
+        rule1.validate.return_value = ["Błąd 1"]
+        rule2.validate.return_value = ["Błąd 2"]
 
-        badge_version = BadgeVersionDomain(
-            version_id="v1",
-            rules=rules,
-            pool_peak_ids={1, 2, 3},
-            required_count=1,
+        domain = BadgeVersionDomain(
+            version_id="v1", rules=[rule1, rule2], pool_peak_ids=frozenset([1]), tiers=_tiers(1)
         )
-        context = VerificationContext(evaluation_time=datetime(2023, 1, 1))
+        ascents = [Ascent(peak_id=1, ascent_date=date.today())]
 
-        result = badge_version.evaluate([], context)
+        result = domain.evaluate(ascents, ctx)
+
+        assert result["verified"] is False
+        assert "Błąd 1" in result["errors"]
+
+    def test_evaluate_with_empty_ascents_list(self, ctx: VerificationContext) -> None:
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1]), tiers=_tiers(1))
+
+        result = domain.evaluate([], ctx)
+
         assert result["verified"] is False
         assert result["status"] == "NOT_STARTED"
 
-    def test_evaluate_with_duplicate_peaks(self):
-        """Test ewaluacji z duplikatami szczytów."""
-        rules = []
-        badge_version = BadgeVersionDomain(
-            version_id="v1",
-            rules=rules,
-            pool_peak_ids={1, 2},
-            required_count=2,
-        )
+    def test_evaluate_with_duplicate_peaks(self, ctx: VerificationContext) -> None:
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1]), tiers=_tiers(2))
+        ascents = [Ascent(peak_id=1, ascent_date=date.today()), Ascent(peak_id=1, ascent_date=date.today())]
 
-        ascents = [
-            Ascent(peak_id=1, ascent_date=date(2023, 1, 1)),
-            Ascent(peak_id=1, ascent_date=date(2023, 6, 1)),
-            Ascent(peak_id=2, ascent_date=date(2023, 9, 1)),
-        ]
-        context = VerificationContext(evaluation_time=datetime(2023, 9, 1))
+        result = domain.evaluate(ascents, ctx)
 
-        # Should succeed because we have both required peaks (1 and 2)
-        badge_version.evaluate(ascents, context)
+        assert result["verified"] is False
+        assert result["valid_ascents_count"] == 1

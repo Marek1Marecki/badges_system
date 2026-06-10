@@ -15,19 +15,25 @@
 ## [0.3.0] - 2026-06-10
 
 ### Kontekst wydania
-**Faza C — Rdzeń Użytkownika (Turysty) i Czysta Weryfikacja.** Utworzono modele dla turystów, wdrożono ochronę bitemporalną i sfinalizowano Czystą Domenę do sprawdzania odznak z uwzględnieniem praw nabytych.
+**Faza C (Core) — Kontekst Użytkownika, Prawa Nabyte i Osobisty Kanban.** 
+Zakończono budowę bezstanowego silnika Czystej Domeny oraz warstwy orkiestracji (Use Cases) dla logiki turysty, całkowicie izolując ją od frameworka webowego.
 
 ### Dodano
-- **Modele B2C:** `TouristProfile`, `AscentLog`, `UserBadgeProgress` izolowane od bazy PTTK.
-- **Prawa Nabyte (Lazy Binding):** System dynamicznie zakotwicza regulamin w dacie pierwszego wejścia (US-C05).
-- **Event-Driven Score Invalidation:** Mechanizm inwalidacji buforów (Redis) przy nowych logach (przygotowanie pod Ranking).
-- **Personal Kanban:** Logistyka książeczek odseparowana od Domeny Matematycznej w myśl Invariantu S-03.
-- **System Freemium:** Ochrona limitów odznak wspierana przez Profile Turysty.
+- **Modele B2C:** Wdrożono `TouristProfile`, `AscentLog` oraz `UserBadgeProgress` z całkowitym odseparowaniem od administracyjnej bazy PTTK.
+- **Prawa Nabyte (Lazy Binding):** Wdrożono `StartBadgeProgressUseCase`, który dynamicznie zakotwicza regulamin w dacie najstarszego wejścia (US-C05).
+- **Personal Kanban:** Logistyka książeczek odseparowana od Domeny Matematycznej w myśl Invariantu S-03 (`AdvanceLogisticStatusUseCase`).
+- **System Freemium:** Wdrożono autoryzację limitów (Quotas) dla kont w `LogAscentUseCase`.
+- **Modern UI:** Zastąpiono domyślny wygląd Django Admina biblioteką `django-unfold` (Tailwind CSS) przy zachowaniu integracji z `django-leaflet`.
 
 ### Zmieniono
-- Czysta Domena została wzbogacona o wstrzykiwany `VerificationContext` (wiek, kluby, czas ewaluacji), całkowicie usuwając dług techniczny `TD-02`.
-- Przepisano skrypty `make check` by chroniły przed użyciem `datetime.now()` oraz niszczącym rzutowaniem w Adminie (SafeString).
+- Czysta Domena została wzbogacona o wstrzykiwany `VerificationContext` (wiek, kluby, czas ewaluacji), całkowicie usuwając dług techniczny `TD-02` (zahardkodowane daty w regułach).
+- Domena ocenia teraz postęp na poziomie Stopni (`BadgeTierDomain`), co zlikwidowało błąd weryfikacji odznak wielostopniowych (usunięto dług `TD-03`).
+- Całkowicie wycięto `ActivityType` (Pieszo/Rower) w ramach redukcji długu UX (YAGNI).
 
+### Naprawiono
+- Ochrona Bitemporalna (Invariant T-01) oraz blokada "logowania przyszłości" (T-03) twardo egzekwowane przed zapisem logu.
+- Ochrona przed duplikatami wejść (Idempotentny Upsert) w adapterze PostGIS.
+- Błąd "UnboundLocalError" i 406 Not Acceptable u Nocnego Stróża OSM wyeliminowany przez wymuszenie zapytań `GET` i fałszowanie nagłówków Chrome.
 ## [0.2.0] - 2026-05-29
 
 ### Kontekst wydania

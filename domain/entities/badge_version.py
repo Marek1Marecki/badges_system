@@ -1,7 +1,7 @@
 """Agregat domenowy Wersji Odznaki.
 
-Odpowiada za ewaluację zgłoszonych wejść (Sito Domenowe) względem puli
-oraz reguł biznesowych zdefiniowanych w tej wersji regulaminu.
+Odpowiada za ewaluację zgłoszonych wejść (Sito Domenowe) względem puli,
+reguł biznesowych zdefiniowanych w tej wersji regulaminu oraz progów stopni.
 """
 
 from dataclasses import dataclass
@@ -13,23 +13,28 @@ from domain.value_objects.verification_context import VerificationContext
 
 
 @dataclass(frozen=True)
+class BadgeTierDomain:
+    """Definicja stopnia odznaki (Kamień Milowy) wewnątrz domeny."""
+
+    tier_id: int
+    name: str
+    required_count: int
+    order: int
+
+
+@dataclass(frozen=True)
 class BadgeVersionDomain:
     """Sito weryfikacyjne dla konkretnego rocznika regulaminu."""
 
     version_id: str | int
     rules: list[BadgeRule]
     pool_peak_ids: frozenset[int]
-    required_count: int | None = None
+    tiers: list[BadgeTierDomain]  # <--- ZMIANA: Lista stopni zamiast jednego inta
 
     def evaluate(self, ascents: list[Ascent], context: VerificationContext) -> dict[str, Any]:
         """Ocenia matematyczny postęp turysty w tej wersji odznaki.
 
-        Args:
-            ascents: Historia wejść turysty (przefiltrowana z już zużytych cykli).
-            context: Kontekst z wiekiem turysty i datą ewaluacji.
-
-        Returns:
-            Słownik ze statusem weryfikacji.
+        Zwraca ogólny status oraz szczegółową listę postępów dla każdego stopnia.
         """
         # 1. Sito przestrzenne (Odrzucenie szczytów spoza Menu)
         if self.pool_peak_ids:
@@ -47,28 +52,54 @@ class BadgeVersionDomain:
 
         errors = []
 
-        # 2. Sito Reguł Biznesowych (Wzorzec Strategii + Wstrzyknięty Kontekst!)
+        # 2. Sito Reguł Biznesowych (Wzorzec Strategii)
         for rule in self.rules:
             rule_errors = rule.validate(unique_ascents, context)
             errors.extend(rule_errors)
 
+        climbed_count = len(unique_ascents)
+
         if errors:
             return {
                 "verified": False,
-                "status": "NOT_STARTED" if not unique_ascents else "IN_PROGRESS",
+                "status": "NOT_STARTED" if climbed_count == 0 else "IN_PROGRESS",
                 "errors": errors,
-                "valid_ascents_count": len(unique_ascents),
+                "valid_ascents_count": climbed_count,
+                "tiers": [],
             }
 
-        # 3. Ewaluacja Ilościowa (Stopnie)
-        climbed_count = len(unique_ascents)
-        target = self.required_count if self.required_count is not None else len(self.pool_peak_ids)
-        is_completed = climbed_count >= target
+        # 3. Ewaluacja Stopni (Tiers)
+        sorted_tiers = sorted(self.tiers, key=lambda t: t.order)
+        evaluated_tiers = []
+        all_completed = True
+
+        if sorted_tiers:
+            for t in sorted_tiers:
+                t_completed = climbed_count >= t.required_count
+                if not t_completed:
+                    all_completed = False
+
+                evaluated_tiers.append(
+                    {
+                        "tier_id": t.tier_id,
+                        "name": t.name,
+                        "status": "COMPLETED"
+                        if t_completed
+                        else ("IN_PROGRESS" if climbed_count > 0 else "NOT_STARTED"),
+                        "required_count": t.required_count,
+                    }
+                )
+        else:
+            # Fallback bezpieczeństwa: jeśli admin zapomniał dodać stopnie, wymaga 100% puli
+            target = len(self.pool_peak_ids)
+            all_completed = climbed_count >= target
+
+        global_status = "COMPLETED" if all_completed else ("IN_PROGRESS" if climbed_count > 0 else "NOT_STARTED")
 
         return {
-            "verified": is_completed,
-            "status": "COMPLETED" if is_completed else ("IN_PROGRESS" if climbed_count > 0 else "NOT_STARTED"),
+            "verified": all_completed,
+            "status": global_status,
             "errors": [],
             "valid_ascents_count": climbed_count,
-            "required_count": target,
+            "tiers": evaluated_tiers,
         }

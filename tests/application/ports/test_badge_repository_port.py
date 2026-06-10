@@ -1,24 +1,25 @@
 """Testy dla portów repozytorium."""
 
+from datetime import date
 from application.ports.badge_repository_port import BadgeRepositoryPort
-from domain.entities.badge_version import BadgeVersionDomain
+from domain.entities.badge_version import BadgeTierDomain, BadgeVersionDomain
 
 
 class TestBadgeRepositoryPort:
     """Testy interfejsu BadgeRepositoryPort."""
 
-    def test_badge_repository_port_is_protocol(self):
+    def test_badge_repository_port_is_protocol(self) -> None:
         """Test że BadgeRepositoryPort jest protokołem."""
         from typing import Protocol
 
         assert issubclass(BadgeRepositoryPort, Protocol)
 
-    def test_badge_repository_port_has_get_badge_version_method(self):
+    def test_badge_repository_port_has_get_badge_version_method(self) -> None:
         """Test że port ma metodę get_badge_version."""
         assert hasattr(BadgeRepositoryPort, "get_badge_version")
         assert callable(getattr(BadgeRepositoryPort, "get_badge_version", None))
 
-    def test_get_badge_version_method_signature(self):
+    def test_get_badge_version_method_signature(self) -> None:
         """Test sygnatury metody get_badge_version."""
         import inspect
 
@@ -32,7 +33,7 @@ class TestBadgeRepositoryPort:
         assert params["badge_code"].annotation is str
         assert params["version_code"].annotation is str
 
-    def test_get_badge_version_return_type(self):
+    def test_get_badge_version_return_type(self) -> None:
         """Test typu zwracanego przez get_badge_version."""
         import inspect
 
@@ -42,7 +43,7 @@ class TestBadgeRepositoryPort:
         # Should return BadgeVersionDomain or None
         assert return_annotation == BadgeVersionDomain | None
 
-    def test_concrete_implementation_can_be_created(self):
+    def test_concrete_implementation_can_be_created(self) -> None:
         """Test że można stworzyć konkretną implementację portu."""
 
         class ConcreteBadgeRepository:
@@ -51,9 +52,15 @@ class TestBadgeRepositoryPort:
                     return BadgeVersionDomain(
                         version_id="v1",
                         rules=[],
-                        pool_peak_ids={1, 2, 3},
-                        required_count=2,
+                        pool_peak_ids=frozenset([1, 2, 3]),
+                        tiers=[BadgeTierDomain(tier_id=1, name="Standard", required_count=2, order=1)],
                     )
+                return None
+
+            def get_version_id_for_date(self, badge_code: str, target_date: date) -> int | None:
+                return None
+
+            def get_badge_version_by_id(self, version_id: int) -> BadgeVersionDomain | None:
                 return None
 
         # This should not raise any errors
@@ -70,7 +77,7 @@ class TestBadgeRepositoryPort:
         result_none = repository.get_badge_version("NONEXISTENT", "v1")
         assert result_none is None
 
-    def test_protocol_compatibility_check(self):
+    def test_protocol_compatibility_check(self) -> None:
         """Test sprawdzania zgodności z protokołem."""
 
         class IncompleteRepository:
@@ -78,6 +85,10 @@ class TestBadgeRepositoryPort:
 
         class CompleteRepository:
             def get_badge_version(self, badge_code: str, version_code: str) -> BadgeVersionDomain | None:
+                return None
+            def get_version_id_for_date(self, badge_code: str, target_date: date) -> int | None:
+                return None
+            def get_badge_version_by_id(self, version_id: int) -> BadgeVersionDomain | None:
                 return None
 
         # Incomplete repository should not be compatible
@@ -88,11 +99,15 @@ class TestBadgeRepositoryPort:
         complete = CompleteRepository()
         assert hasattr(complete, "get_badge_version")
 
-    def test_method_can_be_called_with_different_parameters(self):
+    def test_method_can_be_called_with_different_parameters(self) -> None:
         """Test wywołania metody z różnymi parametrami."""
 
         class MockRepository:
             def get_badge_version(self, badge_code: str, version_code: str) -> BadgeVersionDomain | None:
+                return None
+            def get_version_id_for_date(self, badge_code: str, target_date: date) -> int | None:
+                return None
+            def get_badge_version_by_id(self, version_id: int) -> BadgeVersionDomain | None:
                 return None
 
         repository = MockRepository()
@@ -110,20 +125,17 @@ class TestBadgeRepositoryPort:
             result = repository.get_badge_version(badge_code, version_code)
             assert result is None
 
-    def test_protocol_defines_interface_correctly(self):
+    def test_protocol_defines_interface_correctly(self) -> None:
         """Test że protokół poprawnie definiuje interfejs."""
-        # The fact that we can use it as a type hint and it has the correct method
-        # signature is sufficient to verify the protocol is defined correctly
         assert hasattr(BadgeRepositoryPort, "get_badge_version")
 
         # Test it can be used in type annotations
         def test_function(repo: BadgeRepositoryPort) -> None:
             pass
 
-        # This should not raise any errors
         assert test_function.__annotations__ is not None
 
-    def test_protocol_can_be_used_as_type_hint(self):
+    def test_protocol_can_be_used_as_type_hint(self) -> None:
         """Test że protokół może być używany jako type hint."""
 
         def function_that_uses_repository(repository: BadgeRepositoryPort) -> BadgeVersionDomain | None:
@@ -131,17 +143,30 @@ class TestBadgeRepositoryPort:
 
         class TestRepository:
             def get_badge_version(self, badge_code: str, version_code: str) -> BadgeVersionDomain | None:
-                return BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=set(), required_count=0)
+                return BadgeVersionDomain(
+                    version_id="v1",
+                    rules=[],
+                    pool_peak_ids=frozenset(),
+                    tiers=[BadgeTierDomain(tier_id=1, name="Standard", required_count=0, order=1)]
+                )
+            def get_version_id_for_date(self, badge_code: str, target_date: date) -> int | None:
+                return None
+            def get_badge_version_by_id(self, version_id: int) -> BadgeVersionDomain | None:
+                return None
 
         repo = TestRepository()
         result = function_that_uses_repository(repo)
         assert isinstance(result, BadgeVersionDomain)
 
-    def test_protocol_supports_runtime_checking(self):
+    def test_protocol_supports_runtime_checking(self) -> None:
         """Test że protokół wspiera sprawdzanie w runtime."""
 
         class CompleteRepository:
             def get_badge_version(self, badge_code: str, version_code: str) -> BadgeVersionDomain | None:
+                return None
+            def get_version_id_for_date(self, badge_code: str, target_date: date) -> int | None:
+                return None
+            def get_badge_version_by_id(self, version_id: int) -> BadgeVersionDomain | None:
                 return None
 
         class IncompleteRepository:
@@ -150,6 +175,5 @@ class TestBadgeRepositoryPort:
         complete = CompleteRepository()
         incomplete = IncompleteRepository()
 
-        # Both should be usable as BadgeRepositoryPort (Protocol is structural)
         assert hasattr(complete, "get_badge_version")
         assert not hasattr(incomplete, "get_badge_version")
