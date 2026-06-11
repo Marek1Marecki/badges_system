@@ -106,6 +106,12 @@ class PoiScoringService:
             if not badge_version.pool_peak_ids:
                 continue
 
+            # PERF (Performance Warning): O(pool_size * reguły).
+            # Ewaluacja całego agregatu dla każdego szczytu "na sucho".
+            # Przy 3 aktywnych odznakach (po 200 szczytów) = 600 pełnych iteracji domenowych.
+            # Akceptowalne dla workerów w tle (Asynchronia). Jeśli czas wzrośnie > 5s,
+            # rozważyć optymalizację algorytmów Set Math wewnątrz samych Reguł.
+
             # 2. Symulacja dla każdego szczytu z Puli
             for peak_id in badge_version.pool_peak_ids:
                 color = "GRAY"

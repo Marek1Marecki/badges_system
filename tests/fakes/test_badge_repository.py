@@ -35,4 +35,3 @@ def test_fake_badge_repository_gets_version_for_date() -> None:
 
     # Dla nieznanej odznaki
     assert repo.get_version_id_for_date("INNA", date(2025, 1, 1)) is None
-    

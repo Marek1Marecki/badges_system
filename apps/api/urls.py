@@ -16,5 +16,5 @@ urlpatterns = [
     # Odznaki
     path("v1/badges/<str:badge_code>/subscribe/", BadgeSubscribeView.as_view(), name="badge_subscribe"),
     path("v1/badges/<str:badge_code>/progress/", BadgeProgressView.as_view(), name="badge_progress"),
-    path("v1/map/objects", MapObjectsView.as_view(), name="map_objects"),
+    path("v1/map/objects/", MapObjectsView.as_view(), name="map_objects"),
 ]

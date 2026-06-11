@@ -15,8 +15,12 @@ class TestFakeTouristRepository:
 
         # Wstrzykujemy mocka profilu
         repo.profiles[99] = TouristProfileDTO(
-            user_id=99, email="test@test", nickname="Test",
-            active_plan="PRO", max_photos_per_ascent=5, max_active_badges=10
+            user_id=99,
+            email="test@test",
+            nickname="Test",
+            active_plan="PRO",
+            max_photos_per_ascent=5,
+            max_active_badges=10,
         )
 
         profile = repo.get_profile(99)
@@ -69,4 +73,3 @@ class TestFakeTouristRepository:
         logistics = repo.get_progress(1, "KGP", 1)
         assert logistics is not None
         assert logistics.logistic_status == "WAITING_FOR_SEND"
-        

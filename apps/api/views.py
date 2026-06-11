@@ -119,7 +119,7 @@ class AscentLogView(View):
 
         try:
             body = json.loads(request.body)
-        except json.JSONDecodeError, ValueError:
+        except json.JSONDecodeError, ValueError:  # <--- ZMIANA (nawiasy!)
             return _problem_detail(
                 request,
                 "validation-failed",
