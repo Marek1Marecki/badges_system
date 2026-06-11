@@ -23,13 +23,17 @@ digraph G {
     "application" [fillcolor="lightgreen"];
     "application.dto" [fillcolor="lightgreen"];
     "application.dto.ascent_dto" [fillcolor="lightgreen"];
+    "application.dto.map_dto" [fillcolor="lightgreen"];
     "application.dto.user_context_dto" [fillcolor="lightgreen"];
     "application.dto.verify_badge_dto" [fillcolor="lightgreen"];
     "application.exceptions" [fillcolor="lightgreen"];
+    "application.services" [fillcolor="lightgreen"];
+    "application.services.poi_scoring_service" [fillcolor="lightgreen"];
     "application.use_cases" [fillcolor="lightgreen"];
     "application.use_cases.advance_logistic_status" [fillcolor="lightgreen"];
     "application.use_cases.build_tourist_region_geometry" [fillcolor="lightgreen"];
     "application.use_cases.calculate_object_regions" [fillcolor="lightgreen"];
+    "application.use_cases.explore_map" [fillcolor="lightgreen"];
     "application.use_cases.fetch_osm_data" [fillcolor="lightgreen"];
     "application.use_cases.log_ascent" [fillcolor="lightgreen"];
     "application.use_cases.scan_proximity_candidates" [fillcolor="lightgreen"];
@@ -42,7 +46,9 @@ digraph G {
     color=gray60;
     "application.ports" [fillcolor="khaki"];
     "application.ports.badge_repository_port" [fillcolor="khaki"];
+    "application.ports.cache_port" [fillcolor="khaki"];
     "application.ports.clock_port" [fillcolor="khaki"];
+    "application.ports.map_port" [fillcolor="khaki"];
     "application.ports.user_progress_port" [fillcolor="khaki"];
   }
 
@@ -52,10 +58,12 @@ digraph G {
     "infrastructure" [fillcolor="orange"];
     "infrastructure.adapters" [fillcolor="orange"];
     "infrastructure.adapters.clock" [fillcolor="orange"];
+    "infrastructure.adapters.django_cache" [fillcolor="orange"];
     "infrastructure.adapters.osm_adapter" [fillcolor="orange"];
     "infrastructure.adapters.osm_repository" [fillcolor="orange"];
     "infrastructure.adapters.persistence" [fillcolor="orange"];
     "infrastructure.adapters.persistence.django_badge_repo" [fillcolor="orange"];
+    "infrastructure.adapters.persistence.django_map_repo" [fillcolor="orange"];
     "infrastructure.adapters.persistence.django_tourist_repo" [fillcolor="orange"];
     "infrastructure.adapters.persistence.region_cache_repo" [fillcolor="orange"];
     "infrastructure.config" [fillcolor="orange"];
@@ -110,13 +118,23 @@ digraph G {
 
   "application.dto.ascent_dto" -> "domain.value_objects.ascent";
   "application.ports.badge_repository_port" -> "domain.entities.badge_version";
+  "application.ports.map_port" -> "application.dto.map_dto";
   "application.ports.user_progress_port" -> "application.dto.ascent_dto";
   "application.ports.user_progress_port" -> "application.dto.user_context_dto";
+  "application.services.poi_scoring_service" -> "application.ports.badge_repository_port";
+  "application.services.poi_scoring_service" -> "application.ports.cache_port";
+  "application.services.poi_scoring_service" -> "application.ports.clock_port";
+  "application.services.poi_scoring_service" -> "application.ports.user_progress_port";
+  "application.services.poi_scoring_service" -> "domain.value_objects.ascent";
+  "application.services.poi_scoring_service" -> "domain.value_objects.verification_context";
   "application.use_cases.advance_logistic_status" -> "application.exceptions";
   "application.use_cases.advance_logistic_status" -> "application.ports.user_progress_port";
   "application.use_cases.build_tourist_region_geometry" -> "application.exceptions";
   "application.use_cases.calculate_object_regions" -> "application.exceptions";
   "application.use_cases.calculate_object_regions" -> "application.ports.clock_port";
+  "application.use_cases.explore_map" -> "application.dto.map_dto";
+  "application.use_cases.explore_map" -> "application.ports.cache_port";
+  "application.use_cases.explore_map" -> "application.ports.map_port";
   "application.use_cases.fetch_osm_data" -> "application.exceptions";
   "application.use_cases.fetch_osm_data" -> "application.ports.clock_port";
   "application.use_cases.log_ascent" -> "application.dto.ascent_dto";
@@ -135,6 +153,7 @@ digraph G {
   "application.use_cases.verify_badge" -> "domain.value_objects.verification_context";
   "apps.api.urls" -> "apps.api.views";
   "apps.api.views" -> "application.dto.ascent_dto";
+  "apps.api.views" -> "application.dto.map_dto";
   "apps.api.views" -> "application.dto.verify_badge_dto";
   "apps.api.views" -> "application.exceptions";
   "apps.badges.admin" -> "apps.badges.forms";
@@ -152,6 +171,7 @@ digraph G {
   "domain.entities.badge_version" -> "domain.value_objects.verification_context";
   "domain.rules.badge_rules" -> "domain.value_objects.ascent";
   "domain.rules.badge_rules" -> "domain.value_objects.verification_context";
+  "infrastructure.adapters.django_cache" -> "application.ports.cache_port";
   "infrastructure.adapters.osm_adapter" -> "apps.badges.models";
   "infrastructure.adapters.osm_adapter" -> "infrastructure.exceptions";
   "infrastructure.adapters.osm_repository" -> "apps.badges.models";
@@ -160,6 +180,9 @@ digraph G {
   "infrastructure.adapters.persistence.django_badge_repo" -> "apps.badges.models";
   "infrastructure.adapters.persistence.django_badge_repo" -> "domain.entities.badge_version";
   "infrastructure.adapters.persistence.django_badge_repo" -> "domain.rules.badge_rules";
+  "infrastructure.adapters.persistence.django_map_repo" -> "application.dto.map_dto";
+  "infrastructure.adapters.persistence.django_map_repo" -> "application.ports.map_port";
+  "infrastructure.adapters.persistence.django_map_repo" -> "apps.badges.models";
   "infrastructure.adapters.persistence.django_tourist_repo" -> "application.dto.ascent_dto";
   "infrastructure.adapters.persistence.django_tourist_repo" -> "application.dto.user_context_dto";
   "infrastructure.adapters.persistence.django_tourist_repo" -> "application.ports.user_progress_port";

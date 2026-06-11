@@ -128,5 +128,12 @@ def recalculate_poi_scores_task(user_id: int) -> str:
     Zadanie to jest wyzwalane asynchronicznie przez transakcje API,
     gwarantując niezaburzanie pracy wątku HTTP (Event-Driven Invalidation).
     """
-    # TODO: Zaimplementować logikę w następnym US-C16!
-    return f"Zadanie przeliczenia 100/n dla usera (ID: {user_id}) umieszczone w kolejce."
+    from bootstrap import get_container
+
+    try:
+        service = get_container()["poi_scoring_service"]
+        service.recalculate_and_cache_for_user(user_id)
+        return f"Sukces: Przeliczono punkty POI dla usera (ID: {user_id})."
+    except Exception as exc:
+        logger.error(f"Nieoczekiwany błąd w recalculate_poi_scores_task: {str(exc)}")
+        raise

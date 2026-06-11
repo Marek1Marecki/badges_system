@@ -35,11 +35,13 @@
 
 ---
 
-### `application/` — Warstwa Aplikacji (Use Cases)
-**Odpowiedzialność:** Orkiestracja przepływu danych. Pobiera dane z zewnątrz (przez DTO), wywołuje usługi infrastrukturalne (przez Porty) i deleguje ewaluację do Domeny.  
-**Zarządza encjami:** Nie posiada własnych encji. Wymusza przepływ danych przez DTO.  
-**Eksportuje:** `Use Cases` (wywoływane przez Django/Celery), `Ports` (kontrakty dla infrastruktury), `DTO` (Pydantic Models dla walidacji wejść/wyjść).  
-**Zależy od:** `domain/`, `stdlib` oraz zewnętrznej biblioteki `pydantic` (wyłącznie w obrębie podkatalogu `application/dto/`).  
+### `application/` — Warstwa Aplikacji (Use Cases & Services)
+**Odpowiedzialność:** Orkiestracja przepływu danych. Pobiera dane z zewnątrz (przez DTO), wywołuje usługi infrastrukturalne (przez Porty) i deleguje ewaluację do Domeny.
+**Podkatalogi specyficzne:**
+- `use_cases/`: Klasyczne orkiestratory, jeden Use Case = jedna operacja użytkownika (np. Logowanie wejścia).
+- `services/`: Zaawansowane usługi aplikacyjne, wymagające wstrzykiwania czasu, pamięci Cache lub agregacji danych z wielu źródeł (np. `PoiScoringService`), które wykraczają poza pojedynczy Use Case.
+**Eksportuje:** `Use Cases`, `Application Services`, `Ports` (kontrakty dla infrastruktury), `DTO` (Pydantic Models dla walidacji wejść/wyjść).  
+**Zależy od:** `domain/`, `stdlib` oraz zewnętrznej biblioteki `pydantic` (wyłącznie w `dto/`).  
 **NIE zależy od:** `infrastructure/` ani `apps/` (Zależność odwrócona przez interfejsy / Porty).
 
 ---

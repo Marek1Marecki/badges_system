@@ -68,6 +68,13 @@ class FakeTouristRepository(
                 result.append(AscentDTO(peak_id=a["peak_id"], ascent_date=a["ascent_date"], region_ids=frozenset()))
         return result
 
+    def get_all_ascents_for_user(self, user_id: int) -> list[AscentDTO]:
+        result = []
+        for a in self.ascents:
+            if a["user_id"] == user_id:
+                result.append(AscentDTO(peak_id=a["peak_id"], ascent_date=a["ascent_date"], region_ids=frozenset()))
+        return result
+
     # --- UserProgressRepositoryPort ---
     def get_active_progresses(self, user_id: int) -> list[BadgeProgressDTO]:
         return [p for p in self.progresses.values() if p.user_id == user_id]

@@ -123,11 +123,43 @@ Aby chronić czystość architektury (Domain Purity), następujące byty **nie n
 
 ---
 
-## 5. Encje planowane (Faza C - Kontekst Użytkownika)
+## 5. Kontekst Użytkownika i Logistyka (Faza C - B2C)
 
-- **`AscentLog`**: Trwały zapis w bazie faktu wejścia na obiekt, weryfikowany bitemporalnie (T-01). Opcjonalnie posiada załączone zdjęcie-pamiątkę (`proof_file`).
-- **`UserBadgeProgress`**: Tabela łącząca Turystę z konkretną `BadgeVersion`. Zapisuje status domenowy (`NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`).
-    - Posiada wbudowaną sekcję Pól Logistycznych (Personal Kanban): `logistic_status`, `sent_date`, `verified_date`, `received_date` zarządzaną ręcznie przez Użytkownika. Odrzucono koncepcję centralnego agregatu B2B.
+### `TouristProfile` (Profil Turysty)
+**Opis:** Rozszerzenie konta autoryzacyjnego Django (`User`) o dane domenowe i biznesowe limity (Freemium).
+
+| Atrybut | Typ domenowy | Wymagany | Opis |
+|---------|--------------|----------|------|
+| `user_id` | `int` | Tak | Relacja OneToOne do systemu Auth. |
+| `nickname`| `str` | Tak | Pseudonim publiczny (Privacy by Default). |
+| `birth_date`| `date` | Nie | Używana przez Domenę do ewaluacji `MinAgeRule`. |
+| `active_plan`| `str` | Tak | Pakiet subskrypcyjny (np. FREE, PRO). |
+| `max_active_badges`| `int` | Tak | Limit weryfikowany przed dołączeniem do odznaki. |
+| `club_join_dates` | `dict` | Nie | Daty zapisu do klubów (zasilają `RequiresClubJoinDateRule`). |
+
+### `AscentLog` (Dziennik Wejść)
+**Opis:** Niezmienna historia wycieczek. Fakt wejścia powiązany z bitemporalnością obiektu.
+
+| Atrybut | Typ domenowy | Wymagany | Opis |
+|---------|--------------|----------|------|
+| `user_id` | `int` | Tak | Twórca logu (Właściciel). |
+| `peak_id` | `int` | Tak | Fizyczny obiekt turystyczny. |
+| `ascent_date` | `date` | Tak | Data faktycznego wejścia. Weryfikowana bitemporalnie *(→ Invariant T-01 i T-03)*. |
+| `souvenir_image`| `str` | Nie | Opcjonalna pamiątka, pomijana w Czystej Domenie (YAGNI). |
+
+*(Zabezpieczone unikalnym kluczem (user, peak, date) chroniącym przed podwójnym zapisem → Invariant D-04).*
+
+### `UserBadgeProgress` (Zmaterializowany Postęp i Osobisty Kanban)
+**Opis:** Płaska tabela przechowująca snapshot ewaluacji matematycznej oraz stan śledzenia fizycznej książeczki przez turystę.
+
+| Atrybut | Typ domenowy | Wymagany | Opis |
+|---------|--------------|----------|------|
+| `user_id` | `int` | Tak | Właściciel. |
+| `badge_id` | `int` | Tak | Wskazuje odznakę główną (Intencja). |
+| `version_id` | `int` | Nie | PUSTE aż do pierwszego logu wejścia. Leniwe zakotwiczenie gwarantujące Prawa Nabyte. |
+| `cycle_number` | `int` | Tak | Obsługa Odznak Wielokrotnych (Pętla Prestiżu). |
+| `domain_status` | `str (Enum)` | Tak | Stan matematyczny wyliczany w locie (`NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`). |
+| `logistic_status`| `str (Enum)` | Nie | Stan w Osobistym Trackerze turysty (np. `WAITING_FOR_SEND`). Manipulowany poza Domeną *(→ Invariant S-03)*. |
 
 ---
 

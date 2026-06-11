@@ -52,6 +52,10 @@ class AscentLogRepositoryPort(Protocol):
         """
         ...
 
+    def get_all_ascents_for_user(self, user_id: int) -> list[AscentDTO]:
+        """Pobiera całą, niefiltrowaną historię wejść turysty na potrzeby oceny kolorów."""
+        ...
+
 
 class UserProgressRepositoryPort(Protocol):
     """Port obsługujący subskrypcje, Prawa Nabyte i Osobisty Kanban."""

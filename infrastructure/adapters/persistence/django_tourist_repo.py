@@ -218,3 +218,32 @@ class DjangoTouristRepository(
             return self._to_progress_dto(prog)
         except UserBadgeProgress.DoesNotExist:
             return None
+
+    def get_all_ascents_for_user(self, user_id: int) -> list[AscentDTO]:
+        from apps.badges.models import ObjectRegionCache
+        from apps.tourists.models import AscentLog
+
+        ascents = list(AscentLog.objects.filter(user_id=user_id))
+        if not ascents:
+            return []
+
+        # Doklejanie CQRS zoptymalizowane do jednego zapytania
+        peak_ids = {a.peak_id for a in ascents}
+        region_caches = ObjectRegionCache.objects.filter(tourist_object_id__in=peak_ids).values(
+            "tourist_object_id", "region_id"
+        )
+
+        from collections import defaultdict
+
+        region_map = defaultdict(set)
+        for rc in region_caches:
+            region_map[rc["tourist_object_id"]].add(rc["region_id"])
+
+        return [
+            AscentDTO(
+                peak_id=a.peak_id,
+                ascent_date=a.ascent_date,
+                region_ids=frozenset(region_map.get(a.peak_id, set())),
+            )
+            for a in ascents
+        ]

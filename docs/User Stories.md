@@ -31,9 +31,9 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 **Powiązane invarianty:** —
 
 **Kryteria akceptacji:**
-- [ ] Model `TouristProfile` jest powiązany z modelem autoryzacyjnym Django (`User`) za pomocą relacji `OneToOneField`.
-- [ ] Profil przechowuje bezpiecznie `birth_date`.
-- [ ] Silnik Domenowy podczas ewaluacji otrzymuje prawdziwą datę z profilu zamiast dotychczasowego mocka w kodzie.
+- [x] Model `TouristProfile` jest powiązany z modelem autoryzacyjnym Django (`User`) za pomocą relacji `OneToOneField`.
+- [x] Profil przechowuje bezpiecznie `birth_date`.
+- [x] Silnik Domenowy podczas ewaluacji otrzymuje prawdziwą datę z profilu zamiast dotychczasowego mocka w kodzie.
 
 ### US-C01b — Katalog i Wybór Odznak (Badge Discovery) 🟠 P1
 **Story:** Jako Turysta, chcę przeglądać listę wszystkich dostępnych odznak z możliwością filtrowania (np. według państwa lub głównego pasma), aby móc dodać interesujące mnie pozycje do mojej listy celów.
@@ -48,9 +48,9 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 **Dotyczy encji:** `TouristProfile`, `TouristProfileDTO` (Limity przenoszone w głównym kontekście turysty)
 
 **Kryteria akceptacji:**
-- [ ] Profil turysty posiada przypisany poziom subskrypcji.
-- [ ] System definiuje limity (np. max liczba zdjęć do logu `proof_file`, max liczba jednocześnie subskrybowanych odznak ze statusem `IN_PROGRESS`).
-- [ ] Odrzucenie akcji z powodu wyczerpania limitu rzuca błąd aplikacyjny `400 Bad Request` z jasnym komunikatem zachęcającym do rozszerzenia pakietu.
+- [x] Profil turysty posiada przypisany poziom subskrypcji.
+- [x] System definiuje limity (np. max liczba zdjęć do logu `proof_file`, max liczba jednocześnie subskrybowanych odznak ze statusem `IN_PROGRESS`).
+- [x] Odrzucenie akcji z powodu wyczerpania limitu rzuca błąd aplikacyjny `400 Bad Request` z jasnym komunikatem zachęcającym do rozszerzenia pakietu.
 
 ### US-C02 — Przynależność Klubowa (Data zapisu) 🟠 P1
 **Story:** Jako Turysta, chcę móc odnotować datę dołączenia do konkretnego Klubu (np. KGP), aby system zaliczał mi logi wejść zrobione dopiero po tej dacie.
@@ -80,9 +80,9 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 **Powiązane invarianty:** T-01 (Bitemporalność obiektu)
 
 **Kryteria akceptacji:**
-- [ ] Zapis logu wymaga podania **wyłącznie** `tourist_object_id` oraz `date`.
-- [ ] Odrzucenie koncepcji deklarowania "aktywności" (np. pieszo/rower) dla maksymalnego uproszczenia UX.
-- [ ] System twardo odrzuca log (Fail-Fast), jeśli podana data nie mieści się w przedziale `existence_start` i `existence_end` obiektu (T-01).
+- [x] Zapis logu wymaga podania **wyłącznie** `tourist_object_id` oraz `date`.
+- [x] Odrzucenie koncepcji deklarowania "aktywności" (np. pieszo/rower) dla maksymalnego uproszczenia UX.
+- [x] System twardo odrzuca log (Fail-Fast), jeśli podana data nie mieści się w przedziale `existence_start` i `existence_end` obiektu (T-01).
 
 ### US-C04 — Pamiątki z Wejść (Souvenir Photos) 🟢 P3
 **Story:** Jako Turysta, chcę opcjonalnie dodać do mojego logu wejścia prywatne zdjęcie (np. selfie z wierzchołka, widok), aby traktować aplikację jako mój osobisty pamiętnik z podróży.
@@ -102,18 +102,18 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 **Powiązane invarianty:** P-01 (Prawa Nabyte)
 
 **Kryteria akceptacji:**
-- [ ] Przy kliknięciu "Rozpocznij", turysta jest przypinany do aktualnie obowiązującej `BadgeVersion`.
-- [ ] Po dodaniu każdego logu, system ustala wiek najstarszego wejścia turysty. 
-- [ ] Jeśli najstarsze wejście jest starsze niż obecna wersja odznaki, aplikacja umożliwia turyście ręczne przełączenie się (`switch`) na starsze `BadgeVersion`, do których nabył prawa.
-- [ ] Przełączanie wersji jest możliwe i płynne tak długo, jak długo odznaka nie została dodana do Wniosku Weryfikacyjnego (`VerificationRequest`). Po utworzeniu wniosku, wersja w `UserBadgeProgress` zostaje zablokowana (Read-Only).
+- [x] Przy kliknięciu "Rozpocznij", turysta jest przypinany do aktualnie obowiązującej `BadgeVersion`.
+- [x] Po dodaniu każdego logu, system ustala wiek najstarszego wejścia turysty. 
+- [x] Jeśli najstarsze wejście jest starsze niż obecna wersja odznaki, aplikacja umożliwia turyście ręczne przełączenie się (`switch`) na starsze `BadgeVersion`, do których nabył prawa.
+- [x] Przełączanie wersji jest możliwe i płynne tak długo, jak długo odznaka nie została dodana do Wniosku Weryfikacyjnego (`VerificationRequest`). Po utworzeniu wniosku, wersja w `UserBadgeProgress` zostaje zablokowana (Read-Only).
 
 ### US-C06 — Silnik Postępu (Set Math w Domenie) 🔴 P0
 **Story:** Jako Turysta, chcę zobaczyć na jakim jestem etapie (np. 12/25 szczytów), aby wiedzieć, ile brakuje mi do danego Stopnia odznaki.
 **Dotyczy encji:** `UserBadgeProgress`, `BadgeTierModel`, `VerifyBadgeUseCase`
 
 **Kryteria akceptacji:**
-- [ ] Przeliczanie statusu dla pojedynczej odznaki następuje **synchronicznie w locie (On-Demand)** podczas ładowania jej widoku detali, gwarantując turystom *Immediate Consistency*.
-- [ ] Przeliczanie masowe (Ranking POI 100/n z US-C16 dla całej mapy) jest delegowane do asynchronicznych zadań **Celery** (Event-Driven), aby nie blokować UI serwera.
+- [x] Przeliczanie statusu dla pojedynczej odznaki następuje **synchronicznie w locie (On-Demand)** podczas ładowania jej widoku detali, gwarantując turystom *Immediate Consistency*.
+- [x] Przeliczanie masowe (Ranking POI 100/n z US-C16 dla całej mapy) jest delegowane do asynchronicznych zadań **Celery** (Event-Driven), aby nie blokować UI serwera.
 
 ### US-C09 — Kolejny Cykl Odznaki (Pętla Prestiżu) 🟠 P1
 **Story:** Jako Turysta, chcę rozpocząć ponowne zdobywanie tej samej odznaki (nowy cykl), aby móc zweryfikować ją po raz kolejny, używając wyłącznie nowych wejść.
@@ -121,9 +121,9 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 **Powiązane edge cases:** EC-030
 
 **Kryteria akceptacji:**
-- [ ] Dodanie pola `cycle_number` (domyślnie 1) do `UserBadgeProgress`.
-- [ ] Turysta może utworzyć nowy cykl TYLKO wtedy, gdy poprzedni cykl jest w statusie `COMPLETED`.
-- [ ] Wejścia wykorzystane do zamknięcia Cyklu 1 są odfiltrowywane i nie wchodzą do puli ewaluacyjnej Cyklu 2.
+- [x] Dodanie pola `cycle_number` (domyślnie 1) do `UserBadgeProgress`.
+- [x] Turysta może utworzyć nowy cykl TYLKO wtedy, gdy poprzedni cykl jest w statusie `COMPLETED`.
+- [x] Wejścia wykorzystane do zamknięcia Cyklu 1 są odfiltrowywane i nie wchodzą do puli ewaluacyjnej Cyklu 2.
 
 ---
 
@@ -135,19 +135,19 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 **Powiązane invarianty:** S-03 (Domena nie zna logistyki)
 
 **Kryteria akceptacji:**
-- [ ] Gdy Czysta Domena oceni dany stopień/wersję na `COMPLETED`, pozycja ta automatycznie pojawia się w widoku Logistyki (Kanban) ze statusem `WAITING_FOR_SEND`.
-- [ ] To Turysta (a nie system) grupuje je fizycznie w koperty w świecie rzeczywistym.
+- [x] Gdy Czysta Domena oceni dany stopień/wersję na `COMPLETED`, pozycja ta automatycznie pojawia się w widoku Logistyki (Kanban) ze statusem `WAITING_FOR_SEND`.
+- [x] To Turysta (a nie system) grupuje je fizycznie w koperty w świecie rzeczywistym.
 
 ### US-C08 — Osobista Maszyna Stanów i Alerty (Tracking) 🟠 P1
 **Story:** Jako Turysta, chcę ręcznie aktualizować statusy moich wysłanych odznak i otrzymywać ostrzeżenia o opóźnieniach, aby nie zgubić śladu po moich książeczkach weryfikacyjnych.
 **Dotyczy encji:** `UserBadgeProgress` (pola logistyczne: `logistic_status`, `sent_date`, `verified_date`, `received_date`)
 
 **Kryteria akceptacji:**
-- [ ] Turysta samodzielnie przesuwa status na `WAITING_FOR_VERIFICATION` (podając datę wysyłki na poczcie).
-- [ ] System wyświetla alert ⚠️ (bez zadań w tle, wyliczany w locie w widoku), jeśli od daty wysyłki minęło > 30 dni.
-- [ ] Turysta zmienia status na `WAITING_FOR_RECEIVING` (gdy opłaci blachę / dostanie info z PTTK, podając datę).
-- [ ] System wyświetla alert ⚠️, jeśli od daty weryfikacji minęło > 30 dni, a listonosz nie przyniósł blachy.
-- [ ] Turysta klika `ALBUM` (stan terminalny) po fizycznym otrzymaniu odznaki.
+- [x] Turysta samodzielnie przesuwa status na `WAITING_FOR_VERIFICATION` (podając datę wysyłki na poczcie).
+- [x] System wyświetla alert ⚠️ (bez zadań w tle, wyliczany w locie w widoku), jeśli od daty wysyłki minęło > 30 dni.
+- [x] Turysta zmienia status na `WAITING_FOR_RECEIVING` (gdy opłaci blachę / dostanie info z PTTK, podając datę).
+- [x] System wyświetla alert ⚠️, jeśli od daty weryfikacji minęło > 30 dni, a listonosz nie przyniósł blachy.
+- [x] Turysta klika `ALBUM` (stan terminalny) po fizycznym otrzymaniu odznaki.
 
 ### US-C08b — Autoryzowana Korekta Błędów Logistycznych 🟠 P1
 **Story:** Jako Turysta, jeśli weryfikator PTTK zgłosił błąd w moim wpisie przypiętym do skompletowanej odznaki, chcę móc poprosić system o usunięcie "fałszywego" wejścia bez konieczności resetowania całego mojego konta.

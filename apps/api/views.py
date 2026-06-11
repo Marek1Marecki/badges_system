@@ -20,6 +20,7 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
 from application.dto.ascent_dto import AscentInputDTO
+from application.dto.map_dto import MapExploreRequestDTO
 from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
 from application.exceptions import (
     ApplicationException,
@@ -205,3 +206,54 @@ class BadgeProgressView(View):
             return _handle_application_exception(request, exc)
 
         return JsonResponse(result, status=200)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class MapObjectsView(View):
+    """GET /api/v1/map/objects?bbox={min_lon,min_lat,max_lon,max_lat}
+
+    Zwraca GeoJSON z obiektami dla widocznego okna mapy (ADR-011).
+    Kolory punktów odzwierciedlają postęp turysty (ADR-010).
+    """
+
+    def get(self, request):
+        auth_error = _require_auth(request)
+        if auth_error:
+            return auth_error
+
+        bbox_str = request.GET.get("bbox")
+        if not bbox_str:
+            return _problem_detail(
+                request, "validation-failed", "Błąd Walidacji", 422, "Parametr 'bbox' jest wymagany."
+            )
+
+        try:
+            min_lon, min_lat, max_lon, max_lat = map(float, bbox_str.split(","))
+        except ValueError:
+            return _problem_detail(
+                request, "validation-failed", "Błąd Walidacji", 422, "Format 'bbox' musi być: lon,lat,lon,lat."
+            )
+
+        region_id_str = request.GET.get("region_id")
+
+        try:
+            dto = MapExploreRequestDTO(
+                user_id=request.user.id,
+                min_lon=min_lon,
+                min_lat=min_lat,
+                max_lon=max_lon,
+                max_lat=max_lat,
+                badge_code=request.GET.get("badge_code"),
+                region_level=request.GET.get("region_level"),
+                region_id=int(region_id_str) if region_id_str else None,
+            )
+        except Exception as e:
+            return _problem_detail(request, "validation-failed", "Nieprawidłowe dane wejściowe", 422, str(e))
+
+        try:
+            use_case = get_container()["explore_map"]
+            geojson_data = use_case.execute(dto)
+        except ApplicationException as exc:
+            return _handle_application_exception(request, exc)
+
+        return JsonResponse(geojson_data, status=200)

@@ -6,7 +6,7 @@ Rejestracja w głównym urls.py projektu:
 
 from django.urls import path
 
-from apps.api.views import AscentLogView, BadgeProgressView, BadgeSubscribeView
+from apps.api.views import AscentLogView, BadgeProgressView, BadgeSubscribeView, MapObjectsView
 
 app_name = "api"
 
@@ -16,4 +16,5 @@ urlpatterns = [
     # Odznaki
     path("v1/badges/<str:badge_code>/subscribe/", BadgeSubscribeView.as_view(), name="badge_subscribe"),
     path("v1/badges/<str:badge_code>/progress/", BadgeProgressView.as_view(), name="badge_progress"),
+    path("v1/map/objects", MapObjectsView.as_view(), name="map_objects"),
 ]
