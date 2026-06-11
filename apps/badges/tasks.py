@@ -119,3 +119,14 @@ def run_osm_night_watchman_task(batch_size: int = 50) -> str:
             error=str(exc),
         )
         raise
+
+
+@shared_task
+def recalculate_poi_scores_task(user_id: int) -> str:
+    """Przelicza ranking szczytów (100/n) i inwaliduje cache Redis (ADR-015).
+
+    Zadanie to jest wyzwalane asynchronicznie przez transakcje API,
+    gwarantując niezaburzanie pracy wątku HTTP (Event-Driven Invalidation).
+    """
+    # TODO: Zaimplementować logikę w następnym US-C16!
+    return f"Zadanie przeliczenia 100/n dla usera (ID: {user_id}) umieszczone w kolejce."

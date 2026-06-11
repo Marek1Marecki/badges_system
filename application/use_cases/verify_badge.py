@@ -8,7 +8,7 @@ Zgodnie z TD-02: Wstrzykuje wiek i kluby turysty do Czystej Domeny.
 from typing import Any
 
 from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
-from application.exceptions import UseCaseError
+from application.exceptions import ResourceNotFoundError, UseCaseError
 from application.ports.badge_repository_port import BadgeRepositoryPort
 from application.ports.clock_port import ClockPort
 from application.ports.user_progress_port import (
@@ -44,7 +44,8 @@ class VerifyBadgeUseCase:
             user_id=request.user_id, badge_code=request.badge_code, cycle_number=request.cycle_number
         )
         if not progress:
-            raise UseCaseError(f"Turysta nie subskrybuje odznaki {request.badge_code}.")
+            # ResourceNotFoundError → 404 przez middleware
+            raise ResourceNotFoundError(f"Turysta nie subskrybuje odznaki {request.badge_code}.")
 
         if not progress.version_id:
             return {"verified": False, "status": "NOT_STARTED", "errors": [], "valid_ascents_count": 0}
@@ -95,4 +96,5 @@ class VerifyBadgeUseCase:
 
     def _get_completed_badges(self, user_id: int) -> frozenset[str]:
         """Pobiera kody odznak, które turysta ukończył."""
-        return self._progress_repo.get_completed_badge_codes(user_id)
+        progresses = self._progress_repo.get_active_progresses(user_id)
+        return frozenset(p.badge_code for p in progresses if p.domain_status == "COMPLETED")

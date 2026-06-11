@@ -1,6 +1,7 @@
 """Testy dla portów repozytorium."""
 
 from datetime import date
+
 from application.ports.badge_repository_port import BadgeRepositoryPort
 from domain.entities.badge_version import BadgeTierDomain, BadgeVersionDomain
 
@@ -86,8 +87,10 @@ class TestBadgeRepositoryPort:
         class CompleteRepository:
             def get_badge_version(self, badge_code: str, version_code: str) -> BadgeVersionDomain | None:
                 return None
+
             def get_version_id_for_date(self, badge_code: str, target_date: date) -> int | None:
                 return None
+
             def get_badge_version_by_id(self, version_id: int) -> BadgeVersionDomain | None:
                 return None
 
@@ -105,8 +108,10 @@ class TestBadgeRepositoryPort:
         class MockRepository:
             def get_badge_version(self, badge_code: str, version_code: str) -> BadgeVersionDomain | None:
                 return None
+
             def get_version_id_for_date(self, badge_code: str, target_date: date) -> int | None:
                 return None
+
             def get_badge_version_by_id(self, version_id: int) -> BadgeVersionDomain | None:
                 return None
 
@@ -147,10 +152,12 @@ class TestBadgeRepositoryPort:
                     version_id="v1",
                     rules=[],
                     pool_peak_ids=frozenset(),
-                    tiers=[BadgeTierDomain(tier_id=1, name="Standard", required_count=0, order=1)]
+                    tiers=[BadgeTierDomain(tier_id=1, name="Standard", required_count=0, order=1)],
                 )
+
             def get_version_id_for_date(self, badge_code: str, target_date: date) -> int | None:
                 return None
+
             def get_badge_version_by_id(self, version_id: int) -> BadgeVersionDomain | None:
                 return None
 
@@ -164,8 +171,10 @@ class TestBadgeRepositoryPort:
         class CompleteRepository:
             def get_badge_version(self, badge_code: str, version_code: str) -> BadgeVersionDomain | None:
                 return None
+
             def get_version_id_for_date(self, badge_code: str, target_date: date) -> int | None:
                 return None
+
             def get_badge_version_by_id(self, version_id: int) -> BadgeVersionDomain | None:
                 return None
 

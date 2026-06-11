@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
-from application.exceptions import UseCaseError
+from application.exceptions import ResourceNotFoundError
 from application.use_cases.verify_badge import VerifyBadgeUseCase
 from tests.fakes.clock import FakeClock
 
@@ -24,10 +24,12 @@ class TestVerifyBadgeUseCase:
         progress_repo.get_progress.return_value = None
         uc = VerifyBadgeUseCase(progress_repo, MagicMock(), MagicMock(), MagicMock(), FakeClock())
 
-        with pytest.raises(UseCaseError, match="nie subskrybuje"):
+        # ZMIANA: Zgodnie z nową logiką rzucamy 404 (ResourceNotFoundError), nie 400 (UseCaseError)
+        with pytest.raises(ResourceNotFoundError, match="nie subskrybuje"):
             uc.execute(_dto())
 
     def test_execute_returns_not_started_when_no_version_anchored(self) -> None:
+        """Kiedy turysta zaczął subskrypcję, ale nie ma logów, version_id jest puste."""
         progress_repo = MagicMock()
         progress = MagicMock()
         progress.version_id = None

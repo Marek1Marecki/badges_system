@@ -3,11 +3,12 @@
 # ===============================
 PY_DIRS := domain application infrastructure apps bootstrap scripts
 TEST_DIRS := tests
+MIN_COVERAGE ?= 80
 
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test audit graph check clean
+.PHONY: help setup format lint type-check test test-all audit graph check clean
 
 help:
 	@echo "CORE targets:"
@@ -16,6 +17,7 @@ help:
 	@echo "  lint         - linting kodu"
 	@echo "  type-check   - mypy + lint-imports"
 	@echo "  test         - szybkie testy jednostkowe"
+	@echo "  test-all     - wszystkie testy (jednostkowe + integracyjne) używane w CI/CD"
 	@echo "  audit        - audit architektoniczny (AST)"
 	@echo "  graph        - eksport grafu zaleznosci (DOT + SVG, opcjonalnie PNG)"
 	@echo "  check        - lokalne CI: format --check + lint + type-check + test + audit"
@@ -36,7 +38,12 @@ type-check:
 	uv run lint-imports
 
 test:
-	uv run pytest $(TEST_DIRS) -m "not integration"
+	uv run pytest $(TEST_DIRS) -m "not integration and not ml"
+
+test-all:
+	uv run pytest $(TEST_DIRS) --create-db --nomigrations \
+		--cov=, --cov-report=term-missing \
+		--cov-fail-under=$(MIN_COVERAGE)
 
 audit:
 	uv run python scripts/audit_contracts.py

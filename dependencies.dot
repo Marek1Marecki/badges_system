@@ -50,6 +50,7 @@ digraph G {
     label="infrastructure";
     color=gray60;
     "infrastructure" [fillcolor="orange"];
+    "infrastructure.adapters" [fillcolor="orange"];
     "infrastructure.adapters.clock" [fillcolor="orange"];
     "infrastructure.adapters.osm_adapter" [fillcolor="orange"];
     "infrastructure.adapters.osm_repository" [fillcolor="orange"];
@@ -62,6 +63,8 @@ digraph G {
     "infrastructure.exceptions" [fillcolor="orange"];
     "infrastructure.logging" [fillcolor="orange"];
     "infrastructure.logging.log_config" [fillcolor="orange"];
+    "infrastructure.middleware" [fillcolor="orange"];
+    "infrastructure.middleware.error_handling" [fillcolor="orange"];
     "infrastructure.schemas" [fillcolor="orange"];
     "infrastructure.schemas.badge_rules_schema" [fillcolor="orange"];
   }
@@ -70,6 +73,9 @@ digraph G {
     label="interface";
     color=gray60;
     "apps" [fillcolor="pink"];
+    "apps.api" [fillcolor="pink"];
+    "apps.api.urls" [fillcolor="pink"];
+    "apps.api.views" [fillcolor="pink"];
     "apps.badges" [fillcolor="pink"];
     "apps.badges.admin" [fillcolor="pink"];
     "apps.badges.apps" [fillcolor="pink"];
@@ -127,6 +133,10 @@ digraph G {
   "application.use_cases.verify_badge" -> "application.ports.clock_port";
   "application.use_cases.verify_badge" -> "application.ports.user_progress_port";
   "application.use_cases.verify_badge" -> "domain.value_objects.verification_context";
+  "apps.api.urls" -> "apps.api.views";
+  "apps.api.views" -> "application.dto.ascent_dto";
+  "apps.api.views" -> "application.dto.verify_badge_dto";
+  "apps.api.views" -> "application.exceptions";
   "apps.badges.admin" -> "apps.badges.forms";
   "apps.badges.admin" -> "apps.badges.models";
   "apps.badges.admin" -> "apps.badges.tasks";
