@@ -23,6 +23,7 @@ def build_container() -> dict:
     from application.use_cases.explore_map import ExploreMapUseCase
     from application.use_cases.fetch_badge_news import FetchBadgeNewsUseCase
     from application.use_cases.fetch_osm_data import FetchOsmDataUseCase, RunOsmNightWatchmanUseCase
+    from application.use_cases.get_mvt_tile import GetMvtTileUseCase
     from application.use_cases.log_ascent import LogAscentUseCase
     from application.use_cases.scan_proximity_candidates import ScanProximityCandidatesUseCase
     from application.use_cases.start_badge_progress import StartBadgeProgressUseCase
@@ -33,6 +34,7 @@ def build_container() -> dict:
     from infrastructure.adapters.osm_repository import OsmRepository
     from infrastructure.adapters.persistence.django_badge_repo import DjangoBadgeRepository
     from infrastructure.adapters.persistence.django_map_repo import DjangoMapRepository
+    from infrastructure.adapters.persistence.django_mvt_repo import DjangoMvtRepository
     from infrastructure.adapters.persistence.django_news_repo import DjangoNewsRepository
     from infrastructure.adapters.persistence.django_tourist_repo import DjangoTouristRepository
     from infrastructure.adapters.persistence.region_cache_repo import RegionCacheRepository
@@ -44,6 +46,7 @@ def build_container() -> dict:
     osm_repository = OsmRepository()
     tourist_repository = DjangoTouristRepository()
     map_repository = DjangoMapRepository()
+    mvt_repository = DjangoMvtRepository()
 
     return {
         "fetch_osm_data": FetchOsmDataUseCase(
@@ -99,6 +102,10 @@ def build_container() -> dict:
         ),
         "fetch_badge_news": FetchBadgeNewsUseCase(
             scraper=BeautifulSoupNewsScraper(), repository=DjangoNewsRepository()
+        ),
+        "get_mvt_tile": GetMvtTileUseCase(
+            mvt_repository=mvt_repository,
+            cache=cache_adapter,
         ),
     }
 

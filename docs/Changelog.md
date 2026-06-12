@@ -12,6 +12,22 @@
 
 ---
 
+## [0.4.0] - 2026-06-12
+
+### Kontekst wydania
+**Faza C (Backend API) — Kafelki, REST i Cache.** Zwieńczenie prac backendowych. Wystawiono Czystą Domenę na zewnątrz przez zwalidowane, bezpieczne endpointy API. Zaimplementowano natywny serwer kafelków i mechanizm rekomendacji celów.
+
+### Dodano
+- **REST API (Faza C):** Endpointy dla logowania wejść (`/ascents`), subskrypcji odznak (`/subscribe`) i śledzenia Osobistego Kanbanu (`/logistics`).
+- **Natywny Serwer MVT:** Zbudowano dedykowany adapter wykonujący zapytania `ST_AsMVT` z w locie generowanym rzutowaniem na EPSG:3857, zasilający mapę w obrysy państw i regionów.
+- **POI Scoring Engine (100/n):** Wdrożono usługę aplikacyjną wyliczającą atrakcyjność szczytów i przydzielającą kolory na bazie postępów turysty (ADR-010 i ADR-015).
+- **Buforowanie w Redis:** Pełna integracja z Redisem z użyciem `gzip` dla kafelków wektorowych oraz kompresji scoringu.
+- **Globalny Error Handler:** Opracowano i wdrożono `RFC7807ErrorMiddleware` wymuszający uniwersalny standard zwracania błędów przez API wraz ze śledzeniem `request_id`.
+
+### Naprawiono
+- Błąd walidacji cykli `parent_object` (C-01) zabezpieczono wymuszając model płaskiej gwiazdy w metodzie `clean()` modelu `TouristObject` (Rozwiązanie EC-022).
+- Usunięto zjawisko urywania testów integracyjnych w Django poprzez przeniesienie łapania wyjątków aplikacyjnych bezpośrednio do widoków, chroniąc system przed limitami `RequestFactory` (EC-032).
+
 ## [0.3.0] - 2026-06-10
 
 ### Kontekst wydania
@@ -34,6 +50,7 @@ Zakończono budowę bezstanowego silnika Czystej Domeny oraz warstwy orkiestracj
 - Ochrona Bitemporalna (Invariant T-01) oraz blokada "logowania przyszłości" (T-03) twardo egzekwowane przed zapisem logu.
 - Ochrona przed duplikatami wejść (Idempotentny Upsert) w adapterze PostGIS.
 - Błąd "UnboundLocalError" i 406 Not Acceptable u Nocnego Stróża OSM wyeliminowany przez wymuszenie zapytań `GET` i fałszowanie nagłówków Chrome.
+
 ## [0.2.0] - 2026-05-29
 
 ### Kontekst wydania

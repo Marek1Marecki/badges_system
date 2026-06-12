@@ -169,9 +169,9 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 **Powiązane ADR:** ADR-010, ADR-011
 
 **Kryteria akceptacji:**
-- [ ] Obiekty mają nadany jeden z 5 ujednoliconych stanów (Szary, Zielony, Czerwony, Niebieski, Pomarańczowy).
-- [ ] Obliczenia są buforowane w Redis (klucz per `user_id` + dzisiejsza data), aby zapytania działały poniżej 50ms.
-- [ ] API akceptuje Bounding Box (BBox) z mapy i zwraca tylko obiekty w widocznym oknie (Lazy Evaluation).
+- [x] Obiekty mają nadany jeden z 5 ujednoliconych stanów (Szary, Zielony, Czerwony, Niebieski, Pomarańczowy).
+- [x] Obliczenia są buforowane w Redis (klucz per `user_id` + dzisiejsza data), aby zapytania działały poniżej 50ms.
+- [x] API akceptuje Bounding Box (BBox) z mapy i zwraca tylko obiekty w widocznym oknie (Lazy Evaluation).
 
 ### US-C11 — Mapa Konkretnej Odznaki (Badge Map) 🟠 P1
 **Story:** Jako Turysta, chcę otworzyć szczegóły "Korony Sudetów" i widzieć mapę odfiltrowaną i pokolorowaną WYŁĄCZNIE przez pryzmat tej jednej odznaki.
@@ -215,10 +215,10 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 **Powiązane ADR:** ADR-015
 
 **Kryteria akceptacji:**
-- [ ] Szczyt punktuje według wzoru `Σ (100 / n_pozostałych)`. Wynik to liczba całkowita.
-- [ ] Wynik ignoruje odznaki, które na dzisiejszą datę są odrzucane przez domeny (np. złe okno czasowe).
-- [ ] Turysta może wyświetlić ranking topowych szczytów dla wybranego przez CQRS regionu (np. "Najbardziej opłacalne w Sudetach").
-- [ ] Turysta może wyświetlić zagregowany ranking całych regionów (Suma potencjału wszystkich szczytów z danego pasma górskiego).
+- [x] Szczyt punktuje według wzoru `Σ (100 / n_pozostałych)`. Wynik to liczba całkowita.
+- [x] Wynik ignoruje odznaki, które na dzisiejszą datę są odrzucane przez domeny (np. złe okno czasowe).
+- [x] Turysta może wyświetlić ranking topowych szczytów dla wybranego przez CQRS regionu (np. "Najbardziej opłacalne w Sudetach").
+- [x] Turysta może wyświetlić zagregowany ranking całych regionów (Suma potencjału wszystkich szczytów z danego pasma górskiego).
 
 ---
 
@@ -230,10 +230,10 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 **Powiązane zasady:** Wymóg Fail-Silently (Ciche niepowodzenie w przypadku zmiany struktury HTML zewnętrznej strony).
 
 **Kryteria akceptacji:**
-- [ ] Celery Beat codziennie uruchamia zadanie skanujące (Web Scraping).
-- [ ] Mechanizm twardej deduplikacji (np. `unique=True` dla URL artykułu lub jego hasha) gwarantuje, że do bazy trafiają wyłącznie nowe informacje.
-- [ ] W panelu Django Admin powstaje dedykowany Inbox z aktualnościami, posiadający statusy: "Nieprzeczytane" / "Przeczytane".
-- [ ] Administrator posiada akcję masową "Oznacz jako przeczytane", po której użyciu powiadomienia znikają z domyślnego widoku, zostając zarchiwizowane w bazie.
+- [x] Celery Beat codziennie uruchamia zadanie skanujące (Web Scraping).
+- [x] Mechanizm twardej deduplikacji (np. `unique=True` dla URL artykułu lub jego hasha) gwarantuje, że do bazy trafiają wyłącznie nowe informacje.
+- [x] W panelu Django Admin powstaje dedykowany Inbox z aktualnościami, posiadający statusy: "Nieprzeczytane" / "Przeczytane".
+- [x] Administrator posiada akcję masową "Oznacz jako przeczytane", po której użyciu powiadomienia znikają z domyślnego widoku, zostając zarchiwizowane w bazie.
 
 ---
 

@@ -161,6 +161,27 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 **Opis:** Podczas hydracji `BadgeVersionDomain` adapter przypisuje `required_count=len(pool_peaks)`. Jest to poprawne wyłącznie dla odznak jednostopniowych, w których należy zdobyć 100% szczytów z puli. Dla odznak typu "Zdobądź 20 z 50" lub wielostopniowych, to `BadgeTier` przechowuje rzeczywisty próg.  
 **Rozwiązanie / workaround:** Do czasu przebudowy Use Case'a tak, by wstrzykiwał progi ze Stopni (Tiers) do Czystej Domeny, weryfikacja takich odznak poprawnie policzy `valid_ascents_count`, ale pole `verified` fałszywie zwróci `False`. Konieczna refaktoryzacja w Fazie C.
 
+### EC-032 — Testy `RequestFactory` omijają Django Middleware
+**Obszar:** `apps/api/views.py`, `tests/apps/api/`  
+**Odkryty:** Podczas pisania testów integracyjnych dla REST API.  
+**Status:** `resolved`  
+**Opis:** Biblioteka `RequestFactory` z Django służy do testowania izolowanych widoków. Oznacza to, że wygenerowane przez nią żądanie trafia *bezpośrednio* do kontrolera, całkowicie omijając stos Middleware (w tym nasz `RFC7807ErrorMiddleware`). Jeśli widok zakłada, że rzucony przez niego `UseCaseError` zostanie elegancko sformatowany w JSON przez warstwę wyżej, w teście z `RequestFactory` wyjątek wyleci na zewnątrz i zepsuje test, a na produkcji bez middleware'u wywołałby błąd 500.  
+**Rozwiązanie / workaround:** Zastosowano programowanie defensywne. Widoki API łapią błędy z rodziny `ApplicationException` bezpośrednio w ciele metody (za pomocą lokalnego helpera `_handle_application_exception`). Globalny Middleware pozostaje w systemie jako siatka bezpieczeństwa ostatniej szansy (Catch-All dla błędów 500) oraz wstrzykiwacz `request_id`.
+
+### EC-033 — MagicMock i TypeError przy `JsonResponse`
+**Obszar:** `tests/apps/api/`  
+**Odkryty:** Podczas asercji widoków zwracających słowniki z danymi.  
+**Status:** `resolved`  
+**Opis:** Zmockowany przypadek użycia (Use Case) wywołany w teście bez ustawionej jawnie wartości zwracanej (`return_value`), domyślnie zwraca kolejny obiekt `MagicMock`. Przekazanie tego obiektu dalej do widoku, który próbuje osadzić go w słowniku i przepuścić przez `JsonResponse`, kończy się natychmiastowym błędem `TypeError: Object of type MagicMock is not JSON serializable`.  
+**Rozwiązanie / workaround:** Obowiązkowe, rygorystyczne definiowanie `.return_value = <typ_prosty>` (np. 42 lub dict) dla każdego zmockowanego serwisu przed wywołaniem żądania testowego.
+
+### EC-034 — Kafelki MVT, Raw SQL i pułapka wstrzyknięcia (Bandit S608)
+**Obszar:** `infrastructure/adapters/persistence/django_mvt_repo.py`  
+**Odkryty:** Podczas implementacji serwera kafelków (ADR-013).  
+**Status:** `resolved`  
+**Opis:** GeoDjango nie wspiera natywnie funkcji takich jak `ST_AsMVTGeom` i `ST_TileEnvelope`. Konieczne było użycie surowego SQL (`RawSQL`). Zbudowanie zapytania w formacie stringa f-string (`f"FROM {table_name}"`) wywołuje krytyczny błąd lintera bezpieczeństwa (Possible SQL Injection), ponieważ nie da się parametryzować identyfikatorów tabel w driverze psycopg.  
+**Rozwiązanie / workaround:** Zaimplementowano twardą "Białą Listę" (Whitelist) dozwolonych tabel na najwyższym poziomie warstwy Aplikacji (`LAYER_TO_TABLE_MAP` w Use Case). Dzięki temu do adaptera infrastrukturalnego trafia wyłącznie zwalidowany statyczny ciąg znaków, co czyni atak SQL Injection niemożliwym. Linia została jawnie zignorowana komentarzem `# noqa: S608`.
+
 ---
 
 ## 5. Repozytorium i CI/CD (Operacje)

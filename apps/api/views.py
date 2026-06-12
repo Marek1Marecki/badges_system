@@ -14,7 +14,7 @@ dla nieoczekiwanych wyjątków w środowisku produkcyjnym.
 
 import json
 
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
@@ -299,3 +299,29 @@ class BadgeLogisticsView(View):
             return _handle_application_exception(request, exc)
 
         return JsonResponse({"status": "UPDATED", "logistic_status": dto.logistic_status}, status=200)
+
+
+@method_decorator(csrf_exempt, name="dispatch")  # <--- DODANA ZGODNOŚĆ DEKORATORA
+class VectorTileView(View):
+    """GET /api/v1/tiles/{layer}/{z}/{x}/{y}.pbf
+
+    Zwraca zbuforowane, skompresowane (GZIP) kafelki wektorowe.
+    """
+
+    def get(self, request, layer: str, z: int, x: int, y: int):
+        try:
+            use_case = get_container()["get_mvt_tile"]
+            # Use Case zwraca skompresowane bajty (lub None) z DB/Redis
+            tile_data = use_case.execute(layer, z, x, y)
+        except ApplicationException as exc:
+            return _handle_application_exception(request, exc)
+
+        if not tile_data:
+            # 204 No Content - standardowe zachowanie dla pustych kafelków
+            return HttpResponse(status=204)
+
+        response = HttpResponse(tile_data, content_type="application/vnd.mapbox-vector-tile")
+        response["Content-Encoding"] = "gzip"
+        response["Cache-Control"] = "public, max-age=86400"
+
+        return response
