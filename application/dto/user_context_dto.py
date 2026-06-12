@@ -45,3 +45,10 @@ class BadgeProgressDTO(BaseModel):
     # Stany Logistyczne (Osobisty Kanban)
     logistic_status: str | None  # np. 'WAITING_FOR_VERIFICATION', 'ALBUM'
     logistic_status_date: date | None
+
+
+class LogisticStatusUpdateDTO(BaseModel):
+    """Waliduje żądanie zmiany statusu logistycznego odznaki przez turystę."""
+
+    logistic_status: str
+    status_date: date

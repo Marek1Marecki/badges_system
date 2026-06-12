@@ -21,6 +21,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from application.dto.ascent_dto import AscentInputDTO
 from application.dto.map_dto import MapExploreRequestDTO
+from application.dto.user_context_dto import LogisticStatusUpdateDTO
 from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
 from application.exceptions import (
     ApplicationException,
@@ -257,3 +258,44 @@ class MapObjectsView(View):
             return _handle_application_exception(request, exc)
 
         return JsonResponse(geojson_data, status=200)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class BadgeLogisticsView(View):
+    """PATCH /api/v1/progress/{progress_id}/logistics/
+
+    Aktualizuje status logistyczny odznaki w Osobistym Trackerze Turysty.
+    """
+
+    def patch(self, request, progress_id: int):
+        auth_error = _require_auth(request)
+        if auth_error:
+            return auth_error
+
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError, ValueError:
+            return _problem_detail(
+                request, "validation-failed", "Nieprawidłowe dane", 422, "Ciało żądania musi być JSON."
+            )
+
+        try:
+            dto = LogisticStatusUpdateDTO(**body)
+        except Exception as e:
+            return _problem_detail(request, "validation-failed", "Błąd Walidacji", 422, str(e))
+
+        # SECURITY: Identyfikacja użytkownika zawsze z sesji
+        user_id = request.user.id
+
+        try:
+            use_case = get_container()["advance_logistic_status"]
+            use_case.execute(
+                user_id=user_id,
+                progress_id=progress_id,
+                new_logistic_status=dto.logistic_status,
+                status_date=dto.status_date,
+            )
+        except ApplicationException as exc:
+            return _handle_application_exception(request, exc)
+
+        return JsonResponse({"status": "UPDATED", "logistic_status": dto.logistic_status}, status=200)

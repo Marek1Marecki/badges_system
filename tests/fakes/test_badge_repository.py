@@ -1,6 +1,7 @@
 """Testy jednostkowe dla FakeBadgeRepository."""
 
 from datetime import date
+
 from domain.entities.badge_version import BadgeVersionDomain
 from tests.fakes.badge_repository import FakeBadgeRepository
 

@@ -1,6 +1,7 @@
 """Testy jednostkowe dla FakeTouristRepository."""
 
 from datetime import date
+
 from application.dto.user_context_dto import TouristProfileDTO
 from tests.fakes.user_progress_repository import FakeTouristRepository
 

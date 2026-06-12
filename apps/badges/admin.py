@@ -21,6 +21,7 @@ from unfold.admin import ModelAdmin, TabularInline
 from apps.badges.forms import TouristObjectAdminForm
 from apps.badges.models import (
     BadgeModel,
+    BadgeNewsItem,
     BadgeTierModel,
     BadgeVersionModel,
     CountryModel,
@@ -663,3 +664,27 @@ class OsmSyncConflictAdmin(ModelAdmin):
         """Odrzuca propozycję, pozostawiając stary stan bazy."""
         count = queryset.filter(status=SyncConflictStatus.PENDING).update(status=SyncConflictStatus.REJECTED)
         self.message_user(request, f"Odrzucono {count} propozycji. Nasze dane pozostały nienaruszone.")
+
+
+@admin.register(BadgeNewsItem)
+class BadgeNewsItemAdmin(ModelAdmin):
+    list_display = ("badge_name", "change_type", "change_date_str", "is_read", "created_at", "source_link")
+    list_filter = ("is_read", "change_type")
+    search_fields = ("badge_name",)
+    readonly_fields = ("badge_name", "change_type", "change_date_str", "source_url", "is_read", "created_at")
+
+    actions = ["mark_as_read"]
+
+    def has_add_permission(self, request) -> bool:
+        return False  # Ochrona: To robot zrzuca newsy, nie człowiek
+
+    @admin.display(description="Źródło")
+    def source_link(self, obj: BadgeNewsItem) -> str:
+        from django.utils.html import format_html
+
+        return format_html('<a href="{}" target="_blank">Otwórz stronę</a>', obj.source_url)  # type: ignore[no-any-return]
+
+    @admin.action(description="Oznacz wybrane jako PRZECZYTANE (Archiwizuj)")
+    def mark_as_read(self, request, queryset):
+        count = queryset.update(is_read=True)
+        self.message_user(request, f"Zarchiwizowano {count} aktualności.")

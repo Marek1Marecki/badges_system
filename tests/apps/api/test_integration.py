@@ -39,6 +39,8 @@ def use_cases():
         "log_ascent": MagicMock(),
         "start_badge_progress": MagicMock(),
         "verify_badge": MagicMock(),
+        "explore_map": MagicMock(),
+        "advance_logistic_status": MagicMock(),
     }
     with patch("apps.api.views.get_container", return_value=cases):
         yield cases
@@ -277,3 +279,44 @@ class TestBadgeProgressView:
 
         call_args = use_cases["verify_badge"].execute.call_args
         assert call_args.args[0].cycle_number == 2
+
+
+# ---------------------------------------------------------------------------
+# BadgeLogisticsView — PATCH /api/v1/progress/{progress_id}/logistics/
+# ---------------------------------------------------------------------------
+
+
+class TestBadgeLogisticsView:
+    def test_patch_returns_200_on_success(self, factory, mock_user, use_cases) -> None:
+        from apps.api.views import BadgeLogisticsView
+
+        use_cases["advance_logistic_status"].execute.return_value = None
+
+        request = factory.patch(
+            "/api/v1/progress/1/logistics/",
+            data=json.dumps({"logistic_status": "WAITING_FOR_VERIFICATION", "status_date": str(date.today())}),
+            content_type="application/json",
+        )
+        request.user = mock_user
+
+        response = BadgeLogisticsView.as_view()(request, progress_id=1)
+
+        assert response.status_code == 200
+        assert json.loads(response.content)["status"] == "UPDATED"
+
+    def test_patch_conflict_returns_409(self, factory, mock_user, use_cases) -> None:
+        from application.exceptions import ConflictError
+        from apps.api.views import BadgeLogisticsView
+
+        use_cases["advance_logistic_status"].execute.side_effect = ConflictError("Niedozwolone przejście")
+
+        request = factory.patch(
+            "/api/v1/progress/1/logistics/",
+            data=json.dumps({"logistic_status": "ALBUM", "status_date": str(date.today())}),
+            content_type="application/json",
+        )
+        request.user = mock_user
+
+        response = BadgeLogisticsView.as_view()(request, progress_id=1)
+
+        assert response.status_code == 409

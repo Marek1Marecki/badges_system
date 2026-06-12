@@ -21,6 +21,7 @@ def build_container() -> dict:
     from application.use_cases.build_tourist_region_geometry import BuildTouristRegionGeometryUseCase
     from application.use_cases.calculate_object_regions import CalculateObjectRegionsUseCase
     from application.use_cases.explore_map import ExploreMapUseCase
+    from application.use_cases.fetch_badge_news import FetchBadgeNewsUseCase
     from application.use_cases.fetch_osm_data import FetchOsmDataUseCase, RunOsmNightWatchmanUseCase
     from application.use_cases.log_ascent import LogAscentUseCase
     from application.use_cases.scan_proximity_candidates import ScanProximityCandidatesUseCase
@@ -28,9 +29,11 @@ def build_container() -> dict:
     from application.use_cases.verify_badge import VerifyBadgeUseCase
     from infrastructure.adapters.clock import SystemClock
     from infrastructure.adapters.django_cache import DjangoCacheAdapter
+    from infrastructure.adapters.news_scraper import BeautifulSoupNewsScraper
     from infrastructure.adapters.osm_repository import OsmRepository
     from infrastructure.adapters.persistence.django_badge_repo import DjangoBadgeRepository
     from infrastructure.adapters.persistence.django_map_repo import DjangoMapRepository
+    from infrastructure.adapters.persistence.django_news_repo import DjangoNewsRepository
     from infrastructure.adapters.persistence.django_tourist_repo import DjangoTouristRepository
     from infrastructure.adapters.persistence.region_cache_repo import RegionCacheRepository
 
@@ -93,6 +96,9 @@ def build_container() -> dict:
         "explore_map": ExploreMapUseCase(
             map_repository=map_repository,
             cache=cache_adapter,
+        ),
+        "fetch_badge_news": FetchBadgeNewsUseCase(
+            scraper=BeautifulSoupNewsScraper(), repository=DjangoNewsRepository()
         ),
     }
 

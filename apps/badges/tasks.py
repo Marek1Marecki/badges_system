@@ -137,3 +137,16 @@ def recalculate_poi_scores_task(user_id: int) -> str:
     except Exception as exc:
         logger.error(f"Nieoczekiwany błąd w recalculate_poi_scores_task: {str(exc)}")
         raise
+
+
+@shared_task
+def fetch_badge_news_task() -> str:
+    """Skanuje portale z newsami PTTK i wrzuca je do Admina (US-A01)."""
+    from bootstrap import get_container
+
+    try:
+        use_case = get_container()["fetch_badge_news"]
+        return _str(use_case.execute())
+    except Exception as exc:
+        logger.error(f"Nieoczekiwany błąd w fetch_badge_news_task: {exc}")
+        raise
