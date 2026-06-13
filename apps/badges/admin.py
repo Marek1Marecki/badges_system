@@ -15,6 +15,15 @@ from django.forms.models import BaseInlineFormSet
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.utils.html import format_html
+from django_celery_beat.admin import ClockedScheduleAdmin as BaseClockedScheduleAdmin
+from django_celery_beat.admin import PeriodicTaskAdmin as BasePeriodicTaskAdmin
+from django_celery_beat.models import (
+    ClockedSchedule,
+    CrontabSchedule,
+    IntervalSchedule,
+    PeriodicTask,
+    SolarSchedule,
+)
 from leaflet.admin import LeafletGeoAdminMixin
 from unfold.admin import ModelAdmin, TabularInline
 
@@ -433,6 +442,33 @@ class BadgeTierInline(TabularInline):
     fields = ("name", "order", "required_peaks_count", "badge_image")
 
 
+class PeakInBadgeFilter(SimpleListFilter):
+    """Niestandardowy filtr pozwalający znaleźć wszystkie odznaki zawierające dany szczyt."""
+
+    title = "Zawiera obiekt w puli"
+    parameter_name = "has_peak"
+
+    def lookups(self, request, model_admin):
+        from apps.badges.models import TouristObject
+
+        # OPTYMALIZACJA: Pobieramy tylko te obiekty, które są fizycznie użyte w jakiejś
+        # odznace (odrzucamy "sieroty"), aby lista rozwijana była czytelna i krótka.
+        used_peaks = (
+            TouristObject.objects.filter(badgeversionmodel__isnull=False)
+            .values_list("id", "name")
+            .distinct()
+            .order_by("name")
+        )
+
+        return [(pk, name) for pk, name in used_peaks]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            # Filtrujemy Wersje Odznak, które w swojej relacji M2M (pool_peaks) mają wybrane ID
+            return queryset.filter(pool_peaks__id=self.value())
+        return queryset
+
+
 @admin.register(BadgeVersionModel)
 class BadgeVersionAdmin(ModelAdmin):
     """Panel Wersji Odznaki (Tu przypinamy szczyty i definiujemy stopnie)."""
@@ -453,7 +489,9 @@ class BadgeVersionAdmin(ModelAdmin):
         return super().formfield_for_manytomany(db_field, request, **kwargs)
 
     list_display = ("badge", "version_code", "valid_from")
-    list_filter = ("badge", "valid_from")
+    list_filter = ("badge", "valid_from", PeakInBadgeFilter)
+
+    search_fields = ("version_code", "badge__name", "pool_peaks__name")
 
     # Nasz potężny widget z powrotem we właściwym miejscu!
     filter_horizontal = ("pool_peaks",)
@@ -688,3 +726,41 @@ class BadgeNewsItemAdmin(ModelAdmin):
     def mark_as_read(self, request, queryset):
         count = queryset.update(is_read=True)
         self.message_user(request, f"Zarchiwizowano {count} aktualności.")
+
+
+# =====================================================================
+# INTEGRACJA ZEWNĘTRZNYCH PACZEK Z MOTYWEM UNFOLD
+# =====================================================================
+
+# 1. Wyrejestrowanie starych, brzydkich widoków
+admin.site.unregister(PeriodicTask)
+admin.site.unregister(CrontabSchedule)
+admin.site.unregister(IntervalSchedule)
+admin.site.unregister(ClockedSchedule)
+admin.site.unregister(SolarSchedule)
+
+
+# 2. Rejestracja ponowna z dziedziczeniem stylów Unfolda (MRO: ModelAdmin musi być pierwszy)
+@admin.register(PeriodicTask)
+class UnfoldPeriodicTaskAdmin(ModelAdmin, BasePeriodicTaskAdmin):
+    pass
+
+
+@admin.register(CrontabSchedule)
+class UnfoldCrontabScheduleAdmin(ModelAdmin):
+    pass
+
+
+@admin.register(IntervalSchedule)
+class UnfoldIntervalScheduleAdmin(ModelAdmin):
+    pass
+
+
+@admin.register(ClockedSchedule)
+class UnfoldClockedScheduleAdmin(ModelAdmin, BaseClockedScheduleAdmin):
+    pass
+
+
+@admin.register(SolarSchedule)
+class UnfoldSolarScheduleAdmin(ModelAdmin):
+    pass

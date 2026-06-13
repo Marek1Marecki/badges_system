@@ -8,7 +8,7 @@ MIN_COVERAGE ?= 80
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit graph check clean
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph check clean
 
 help:
 	@echo "CORE targets:"
@@ -48,6 +48,9 @@ test-all:
 audit:
 	uv run python scripts/audit_contracts.py
 
+secrets-check:
+	uv run python scripts/check_secrets.py
+
 graph:
 	uv run python scripts/audit_contracts.py
 	@if command -v dot >/dev/null 2>&1; then dot -Tpng dependencies.dot -o dependencies.png; echo "Rendered dependencies.png"; else echo "Graphviz dot not installed - kept dependencies.dot"; fi
@@ -64,6 +67,3 @@ clean:
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "__pycache__" -not -path "./.venv/*" -exec rm -rf {} +
 	rm -rf .coverage htmlcov/ .pytest_cache/ .mypy_cache/ coverage.xml .ruff_cache/
-
-secrets-check:
-	uv run python scripts/check_secrets.py

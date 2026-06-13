@@ -56,6 +56,10 @@ Architektura zakłada minimalizację zewnętrznych zależności sieciowych, w sz
 | `pydantic` | `>=2.8.0` | MIT | Niezrównana weryfikacja i walidacja danych dla DTO (`application/dto/`) oraz adapterów (np. `OsmNodeDTO`). Odrzuca błędne struktury na granicach systemu. | `dataclasses` (Brak wbudowanej, zagnieżdżonej walidacji wejść). |
 | `pydantic-settings` | `>=2.4.0` | MIT | Centralne źródło prawdy dla środowiska. Gwarantuje walidację typów dla konfiguracji w warstwie `bootstrap`. | `os.getenv` w kodzie (Zakazane kontraktem). |
 | `python-dateutil` | `>=2.9.0` | Apache-2.0 | Zaawansowana obsługa czasu. **UWAGA (Domain Purity):** Używana wyłącznie w warstwie `infrastructure/` (np. przez adaptery kalendarzowe). W procesie refaktoryzacji biblioteka ta została usunięta z `domain/rules`, by zachować czystość 100% `stdlib`. | Wbudowany `datetime.replace` (użyty ostatecznie w Czystej Domenie dla lat przestępnych). |
+| `django-allauth` | `>=65.0.0` | MIT | Gotowe, kuloodporne rozwiązanie do obsługi logowania społecznościowego (Google OAuth). Pozwala ominąć budowanie własnych kontrolerów autoryzacji i skupić się na Czystej Domenie. | `social-auth-app-django` |
+| `requests` | `>=2.31.0` | Apache-2.0 | Instalacja wymuszona jako zależność wymagana przez `django-allauth` do obsługi wymiany tokenów z Google OAuth2. **Zasada wewnętrzna:** Własny kod projektu (np. adapter OSM) pozostaje przy `urllib`, aby zachować kontrolę nad nagłówkami WAF. | — |
+| `PyJWT` | `>=2.8.0` | MIT | Zależność wymuszona przez `django-allauth` do bezpiecznego dekodowania i weryfikacji tokenów OpenID Connect (OIDC) podczas logowania przez Google OAuth2. | — |
+| `cryptography` | `>=42.0.0` | Apache-2.0 | Twarda zależność kryptograficzna wymagana przez `PyJWT` do weryfikacji asymetrycznych podpisów cyfrowych (RSA) na tokenach zwracanych przez Google OAuth2. | — |
 
 ### Geografia i Panel Administracyjny
 

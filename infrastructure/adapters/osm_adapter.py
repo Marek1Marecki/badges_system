@@ -160,28 +160,19 @@ class OverpassClient:
 
         query = f"[out:json];({''.join(queries)});out center meta;"
 
-        import urllib.parse
-        import urllib.request
-
-        # Kodujemy zapytanie do użycia w adresie URL (dla metody GET)
         encoded_query = urllib.parse.urlencode({"data": query})
 
         last_exception: Exception | None = None
         response_data = None
 
         for attempt in range(max_retries):
-            # UŻYWAMY GET (doklejamy zapytanie do URL) JAK W POJEDYNCZYM POBIERANIU
             base_url = self.OVERPASS_URLS[attempt % len(self.OVERPASS_URLS)]
             url = f"{base_url}?{encoded_query}"
 
-            # Wysyłamy żądanie bez ciała (data=None) i bez jawnego wymuszania POST,
-            # by uniknąć zaporowych błędów 406.
             req = urllib.request.Request(url, headers=self.HEADERS)  # noqa: S310
 
             try:
                 with urllib.request.urlopen(req, timeout=40.0) as response:  # noqa: S310
-                    import json
-
                     response_body = response.read().decode("utf-8")
                     response_data = json.loads(response_body)
                     logger.info("SUKCES! Pomyślnie pobrano paczkę danych.")
@@ -189,32 +180,24 @@ class OverpassClient:
 
             except urllib.error.HTTPError as e:
                 last_exception = e
-                import logging
-
-                logger = logging.getLogger(__name__)
                 logger.warning(f"Błąd przy masowym pobieraniu OSM (próba {attempt + 1}): HTTP {e.code}")
 
                 if e.code < 500:
-                    if e.code == 429:  # Zbyt wiele zapytań -> ignorujemy i ponawiamy
+                    if e.code == 429:
                         pass
                     elif e.code in (400, 404):
-                        raise OsmAdapterError(f"Odrzucono zapytanie masowe ({e.code})") from e
+                        # Odczytujemy ciało błędu tylko wtedy, gdy go faktycznie potrzebujemy
+                        error_body = e.read().decode("utf-8", errors="replace")
+                        raise OsmAdapterError(f"Odrzucono zapytanie masowe ({e.code}): {error_body[:100]}") from e
 
                 if attempt < max_retries - 1:
-                    import time
-
                     time.sleep(1.0 * (2**attempt))
                     continue
 
             except (urllib.error.URLError, json.JSONDecodeError, TimeoutError) as e:
                 last_exception = e
-                import logging
-
-                logger = logging.getLogger(__name__)
                 logger.error(f"Błąd sieci/timeout przy masowym pobieraniu: {str(e)}")
                 if attempt < max_retries - 1:
-                    import time
-
                     time.sleep(1.0 * (2**attempt))
                     continue
         else:
@@ -232,9 +215,6 @@ class OverpassClient:
                 key = f"{dto.type}/{dto.id}"
                 results[key] = dto
             except Exception as e:
-                import logging
-
-                logger = logging.getLogger(__name__)
                 logger.warning(f"Pominięto uszkodzony element z OSM w bulk fetch: {e}")
 
         return results

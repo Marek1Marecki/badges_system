@@ -16,6 +16,7 @@ from apps.badges.admin import (
     ObjectRegionCacheInline,
     OrganizerAdmin,
     OsmTypeMappingAdmin,
+    PeakInBadgeFilter,
     PendingMappingFilter,
     ProvinceAdmin,
     ReadOnlyMapAdmin,
@@ -185,7 +186,7 @@ class TestBadgeVersionAdmin:
 
     def test_badge_version_admin_list_filter(self):
         """Test pól list_filter."""
-        expected = ("badge", "valid_from")
+        expected = ("badge", "valid_from", PeakInBadgeFilter)
         assert BadgeVersionAdmin.list_filter == expected
 
 

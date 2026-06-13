@@ -39,7 +39,7 @@ def test_default_app_env_is_development() -> None:
 
 
 def test_default_log_level_is_info() -> None:
-    settings = AppSettings(**VALID_MINIMAL)
+    settings = AppSettings(_env_file=None, **VALID_MINIMAL)
     assert settings.log_level == "INFO"
 
 
@@ -49,7 +49,7 @@ def test_default_log_json_is_false() -> None:
 
 
 def test_default_overpass_timeout() -> None:
-    settings = AppSettings(**VALID_MINIMAL)
+    settings = AppSettings(_env_file=None, **VALID_MINIMAL)
     assert settings.overpass_timeout_seconds == 30
 
 

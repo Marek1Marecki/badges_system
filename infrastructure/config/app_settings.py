@@ -86,3 +86,9 @@ class AppSettings(BaseSettings):
         if upper not in allowed:
             raise ValueError(f"log_level musi być jednym z: {allowed}")
         return upper
+
+    # ------------------------------------------------------------------
+    # Autoryzacja i OAuth
+    # ------------------------------------------------------------------
+    google_oauth_client_id: str = ""
+    google_oauth_client_secret: str = ""
