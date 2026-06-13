@@ -124,6 +124,7 @@ digraph G {
     "apps.tourists.migrations.0001_initial" [fillcolor="pink"];
     "apps.tourists.models" [fillcolor="pink"];
     "apps.tourists.signals" [fillcolor="pink"];
+    "apps.tourists.views" [fillcolor="pink"];
   }
 
   "application.dto.ascent_dto" -> "domain.value_objects.ascent";
@@ -184,6 +185,7 @@ digraph G {
   "apps.tourists.migrations.0001_initial" -> "apps.tourists.models";
   "apps.tourists.models" -> "apps.badges.models";
   "apps.tourists.signals" -> "apps.tourists.models";
+  "apps.tourists.views" -> "apps.tourists.models";
   "domain.entities.badge_version" -> "domain.rules.badge_rules";
   "domain.entities.badge_version" -> "domain.value_objects.ascent";
   "domain.entities.badge_version" -> "domain.value_objects.verification_context";

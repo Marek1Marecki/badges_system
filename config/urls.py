@@ -17,10 +17,12 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import include, path
+from apps.tourists.views import dashboard_view
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("tinymce/", include("tinymce.urls")),
     path("api/", include("apps.api.urls")),
+    path("", dashboard_view, name="home"),
     path("accounts/", include("allauth.urls")),
 ]

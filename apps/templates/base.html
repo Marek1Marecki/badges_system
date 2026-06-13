@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>PTTK Badges</title>
+
+    <!--
+        BEZPIECZEŃSTWO: Wszystkie zewnętrzne zasoby mają atrybut integrity (SRI).
+        Hashe SHA-384 obliczone z oficjalnych paczek npm:
+          - htmx.org@1.9.11    (npmjs.org)
+          - maplibre-gl@3.6.2  (npmjs.org)
+
+        TAILWIND: cdn.tailwindcss.com to serwis dynamiczny (kompiluje CSS on-the-fly)
+        i nie obsługuje SRI. W ŚRODOWISKU PRODUKCYJNYM należy zastąpić go
+        statycznym plikiem generowanym przez: `npx tailwindcss -o static/css/tailwind.min.css --minify`
+        i serwować jako {% static 'css/tailwind.min.css' %}.
+        Na potrzeby developmentu używamy wersjonowanego Play CDN z fixowaną wersją.
+    -->
+
+    <!-- MapLibre GL JS — CSS -->
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css"
+        integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
+        crossorigin="anonymous"
+    />
+
+    <!--
+        Tailwind CSS — DEV ONLY.
+        TODO przed produkcją: zastąpić statycznym buildem.
+        Patrz komentarz powyżej.
+    -->
+    <script src="https://cdn.tailwindcss.com?v=3.4.1"></script>
+
+</head>
+<body class="bg-gray-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden" hx-ext="json-enc">
+
+    <!-- Pasek Nawigacyjny -->
+    <nav class="bg-sky-900 text-white p-4 flex justify-between items-center shadow-md z-10 relative">
+        <h1 class="text-xl font-bold tracking-wide">⛰️ System Odznak PTTK</h1>
+        <div class="flex items-center gap-4">
+            <span class="font-medium text-sky-200">
+                Witaj, {{ request.user.tourist_profile.nickname|default:request.user.email }}!
+            </span>
+            <a href="{% url 'account_logout' %}" class="bg-sky-800 hover:bg-sky-700 px-3 py-1 rounded text-sm transition">Wyloguj</a>
+        </div>
+    </nav>
+
+    <!-- Dynamiczna treść -->
+    <main class="flex-1 flex overflow-hidden">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!--
+        Skrypty ładowane na końcu body (optymalizacja renderowania).
+    -->
+
+    <!-- HTMX -->
+    <script
+        src="https://unpkg.com/htmx.org@1.9.11/dist/htmx.min.js"
+        integrity="sha384-0gxUXCCR8yv9FM2b+U3FDbsKthCI66oH5IA9fHppQq9DDMHuMauqq1ZHBpJxQ0J0"
+        crossorigin="anonymous"
+    ></script>
+
+    <!-- HTMX JSON encoder (wymagany przez hx-ext="json-enc") -->
+    <script
+        src="https://unpkg.com/htmx.org@1.9.11/dist/ext/json-enc.js"
+        integrity="sha384-nRnAvEUI7N/XvvowiMiq7oEI04gOXMCqD3Bidvedw+YNbj7zTQACPlRI3Jt3vYM4"
+        crossorigin="anonymous"
+    ></script>
+
+    <!-- MapLibre GL JS -->
+    <script
+        src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"
+        integrity="sha384-3WUbXI7T+/GIrWP/5MDMjhzLyHQ+0utF3PnJ7ozD7UeN1/bbZ96Hk+Vvd024VYfW"
+        crossorigin="anonymous"
+    ></script>
+
+</body>
+</html>
