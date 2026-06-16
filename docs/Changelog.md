@@ -12,6 +12,26 @@
 
 ---
 
+## [0.5.0] - 2026-06-16
+
+### Kontekst wydania
+**Faza C (Frontend & GIS Explorer) — Interfejs Turysty.** Zbudowano w pełni funkcjonalny, serwerowo renderowany interfejs webowy (Django Templates + HTMX) połączony z interaktywnymi mapami wektorowymi (MapLibre GL JS). Przejście od surowego API do grywalizacyjnego portalu mapowego.
+
+### Dodano
+- **Silnik Nawigacji Przestrzennej:** Widoki detali dla Obiektów, Regionów, Odznak i Organizatorów połączone gęstą siecią linków krzyżowych.
+- **Nawigacja Sąsiedzka:** Wykorzystanie PostGIS (`ST_Touches`) do dynamicznego znajdowania i przechodzenia między sąsiadującymi regionami geograficznymi bez sztywnych relacji w bazie.
+- **Radar 2 km:** Wdrożenie mini-map wykorzystujących `ST_DWithin` do znajdowania obiektów w promieniu 2000 m od celu.
+- **Wielowarstwowa Mapa Główna (MapLibre):**
+  - Warstwa MVT (Tło) dla granic regionów.
+  - Warstwa Heatmap (Oddalenie) bazująca na potencjale `100/n`.
+  - Warstwa Symboli (Przybliżenie) dla klikalnych pinezek z popupami zasilanymi HTMX.
+- **Rozbudowane Rankingi:** Wdrożenie widoków tabelarycznych dla "Rankingu Szczytów" z grupowaniem klastrów w rodziny (Rodzic-Dzieci) oraz zagregowanego "Rankingu Regionów".
+
+### Naprawiono
+- **Puste statusy Redis:** Błąd szarych pinezek na mapie spowodowany niezgodnością typów kluczy w Redis (`int` vs `str` serializacji) wyeliminowano przez *Double Lookup* w Use Case'ie [EC-035].
+- **Błędy renderingu MapLibre:** Wyeliminowano awarie rysowania mapy poprzez rozbicie warstw MVT z uwagi na brak wsparcia dla dynamicznego *Data-Driven Styling* na atrybucie `line-dasharray` [EC-036].
+- **Błąd 500 dla starych użytkowników:** Zabezpieczono profil turysty (OneToOneField) mechanizmem *Lazy Initialization* (`get_or_create`), co chroni logowanie kont utworzonych przed wpięciem sygnałów autoryzacji [EC-037].
+
 ## [0.4.0] - 2026-06-12
 
 ### Kontekst wydania

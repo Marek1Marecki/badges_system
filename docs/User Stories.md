@@ -92,6 +92,18 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 - [ ] Funkcja w 100% opcjonalna i wyłączona z rygorystycznego procesu weryfikacji odznak (dowodem ostatecznym pozostaje fizyczna książeczka).
 - [ ] Z uwagi na koszty magazynowania danych (Storage), funkcja odłożona na późniejsze fazy optymalizacji infrastruktury w chmurze (np. dodanie zewnętrznego S3).
 
+### US-C17 — Import i Analiza Śladu GPX (Smart Logger) 🟠 P1
+**Story:** Jako Turysta, chcę wgrać plik z moim śladem GPS (GPX), aby system sam odnalazł na nim obiekty, w których pobliżu przechodziłem, i pozwolił mi je masowo zalogować za pomocą jednego kliknięcia.
+**Dotyczy encji:** `AscentLog`, `TouristObject` (Geometry)
+**Powiązane invarianty:** D-04 (Idempotentność zapisów), T-01 (Bitemporalność)
+
+**Kryteria akceptacji:**
+- [ ] System przetwarza plik w locie (in-memory, bez zapisu pliku GPX na dysk serwera w celu ochrony prywatności).
+- [ ] Ścieżka z pliku jest upraszczana i rzutowana przestrzennie (bufor ok. 100-200m).
+- [ ] Turysta może zbiorczo edytować przypisaną datę wycieczki przed ostatecznym zatwierdzeniem.
+- [ ] Zapis do bazy wykorzystuje mechanizm `Bulk Upsert`, a silnik rankingów (Celery) jest wyzwalany **tylko raz** na koniec całej operacji masowej.
+- [ ] System zwraca raport częściowy (Partial Success), logując poprawne szczyty i pomijając te łamiące warunki bitemporalne dla wybranej daty.
+
 ---
 
 ## Epic 3: Silnik Postępu (Badge Progress)
@@ -219,6 +231,27 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 - [x] Wynik ignoruje odznaki, które na dzisiejszą datę są odrzucane przez domeny (np. złe okno czasowe).
 - [x] Turysta może wyświetlić ranking topowych szczytów dla wybranego przez CQRS regionu (np. "Najbardziej opłacalne w Sudetach").
 - [x] Turysta może wyświetlić zagregowany ranking całych regionów (Suma potencjału wszystkich szczytów z danego pasma górskiego).
+
+### EC-035 — Niezgodność typów w Cache (Szare Pinezki na Mapie)
+**Obszar:** `application/use_cases/explore_map.py`, Redis Cache  
+**Odkryty:** Podczas implementacji endpointu GeoJSON i nakładania kolorów z Cache.  
+**Status:** `resolved`  
+**Opis:** Klucze ID obiektów wyciągnięte z bazy danych są w Pythonie typu `int`. Natomiast po odczytaniu słownika z bufora opartego na Redis i JSON/Pickle, często klucze zostają zserializowane do typu `str` (np. `"15"` zamiast `15`). Próba bezpośredniego wyszukania po `dict.get(obj.id)` zwracała `None`, co skutkowało przypisywaniem domyślnego koloru `GRAY` i `0` punktów dla prawidłowych szczytów.  
+**Rozwiązanie / workaround:** Wprowadzono wariant *Double Lookup* z rzutowaniem w locie. Odczyt zawsze najpierw pyta o int, a jako fallback o string: `scores.get(obj.id, scores.get(str(obj.id), 0))`.
+
+### EC-036 — Brak wsparcia Data-Driven Styling dla 'line-dasharray'
+**Obszar:** `apps/static/js/map.js` (MapLibre GL JS)  
+**Odkryty:** Podczas próby dynamicznego rysowania przerywanych i ciągłych granic MVT na jednej warstwie.  
+**Status:** `resolved`  
+**Opis:** Zastosowanie wyrażenia warunkowego `['case', ['==', ['get', 'id'], 1], [1], [2,2]]` dla właściwości `line-dasharray` w MapLibre GL JS jest technicznie niewspierane przez silnik WebGL tej biblioteki. Skutkuje to "cichą awarią" – warstwa po prostu nie jest renderowana na mapie, bez żadnych błędów w konsoli.  
+**Rozwiązanie / workaround:** Zamiast jednej, dynamicznej warstwy, kod JS musi rozdzielić warstwy na osobne (np. `regions-line-active` oraz `regions-line-neighbors`), używając filtru `['==', ...]` na poziomie całej warstwy, i definiując atrybut `line-dasharray` sztywno (statycznie) dla każdej z nich osobno.
+
+### EC-037 — Błąd 500 przy relacji OneToOneField (Brakujący Profil)
+**Obszar:** `apps/tourists/views.py`  
+**Odkryty:** Przy wejściu na podstronę `/profile/` kontem administratora.  
+**Status:** `resolved`  
+**Opis:** Kod aplikacji często odwołuje się wprost do `request.user.tourist_profile`. Dla nowych użytkowników rejestrujących się przez Google OAuth profil ten powstaje dzięki sygnałom Django (`post_save`). Jednak konta utworzone historycznie (np. przez `createsuperuser`) nie posiadają tego profilu, co kończy się natychmiastowym błędem `RelatedObjectDoesNotExist`.  
+**Rozwiązanie / workaround:** Zakaz odwoływania się do profilu "w ciemno". W widokach opierających się na profilu wdrożono wzorzec *Lazy Initialization* poprzez użycie `TouristProfile.objects.get_or_create(user=request.user, defaults={...})`.
 
 ---
 

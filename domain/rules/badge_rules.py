@@ -120,8 +120,10 @@ class MinAgeRule(BadgeRule):
         Returns:
             Lista komunikatów o błędach dla wejść poniżej wymaganego wieku.
         """
+        # ZMIANA BIZNESOWA: Brak daty urodzenia traktujemy jako domyślną pełnoletność.
+        # Ufamy turyście, przenosząc ciężar ewentualnego oszustwa na weryfikatora PTTK.
         if not context.tourist_birth_date:
-            return ["Wymagany minimalny wiek, a profil turysty nie posiada zdefiniowanej daty urodzenia."]
+            return []  # Przepuszczamy bez błędu!
 
         errors = []
         for ascent in ascents:

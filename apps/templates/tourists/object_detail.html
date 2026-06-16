@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto p-6 h-full flex gap-6 overflow-hidden">
+
+    <!-- LEWA KOLUMNA: Detale Obiektu -->
+    <div class="w-1/2 bg-white rounded-xl shadow-md border border-gray-200 flex flex-col overflow-y-auto">
+
+        <!-- Nagłówek -->
+        <div class="p-6 border-b bg-sky-900 text-white rounded-t-xl relative">
+            <div class="absolute top-4 right-4 bg-sky-800 px-3 py-1 rounded-full text-sm font-bold shadow-inner">
+                +{{ score }} pkt
+            </div>
+            <p class="text-sky-200 text-sm font-bold uppercase tracking-wider mb-1">{{ obj.type }}</p>
+            <h2 class="text-3xl font-extrabold">{{ obj.name }}</h2>
+            {% if obj.altitude %}<p class="text-lg text-sky-100 mt-1">{{ obj.altitude }} m n.p.m.</p>{% endif %}
+
+            <div class="mt-4 inline-block px-3 py-1 rounded-md text-sm font-bold shadow-sm
+                {% if color == 'RED' %}bg-red-500 text-white
+                {% elif color == 'GREEN' %}bg-green-500 text-white
+                {% elif color == 'BLUE' %}bg-blue-500 text-white
+                {% elif color == 'ORANGE' %}bg-orange-500 text-white
+                {% else %}bg-gray-400 text-white{% endif %}">
+                STATUS: {{ color }}
+            </div>
+        </div>
+
+        <div class="p-6 space-y-6">
+            <!-- Akcja (Zaloguj wejście) -->
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center shadow-sm">
+                <button hx-post="/api/v1/ascents/"
+                        hx-ext="json-enc"
+                        hx-vals='{"peak_id": {{ obj.id }}, "ascent_date": "{% now "Y-m-d" %}"}'
+                        hx-swap="none"
+                        hx-on::after-request="if(event.detail.successful) location.reload();"
+                        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow transition text-lg">
+                    ✅ Zaloguj dzisiejsze wejście
+                </button>
+            </div>
+
+            <!-- Historia Wejść -->
+            <div>
+                <h3 class="text-lg font-bold text-slate-800 border-b pb-2 mb-3">Twoja Historia</h3>
+                {% if ascents %}
+                    <ul class="space-y-2">
+                        {% for a in ascents %}
+                            <li class="bg-green-50 border border-green-200 px-3 py-2 rounded flex justify-between">
+                                <span class="text-green-800 font-medium">{{ a.ascent_date|date:"d.m.Y" }}</span>
+                                <span class="text-xs text-green-600 uppercase tracking-widest mt-1">Zaliczone</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-sm text-gray-500 italic">Jeszcze tu nie byłeś. Czas wyruszyć na szlak!</p>
+                {% endif %}
+            </div>
+
+            <!-- Klastrowanie (Relacje) -->
+            {% if parent or children %}
+            <div>
+                <h3 class="text-lg font-bold text-slate-800 border-b pb-2 mb-3">W tym samym miejscu (Klaster)</h3>
+                <ul class="list-disc pl-5 text-sm text-sky-700 space-y-1">
+                    {% if parent %}
+                        <li><strong>Główny cel:</strong> <a href="{% url 'object_detail' parent.id %}" class="hover:underline">{{ parent.name }}</a></li>
+                    {% endif %}
+                    {% for child in children %}
+                        <li><strong>Punkt w pobliżu:</strong> <a href="{% url 'object_detail' child.id %}" class="hover:underline">{{ child.name }} [{{ child.type }}]</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Wikipedia i Odznaki -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-2">Można zdobyć w:</h3>
+                    <ul class="text-sm text-gray-600 space-y-1">
+                        {% for b in badges %}
+                            <li>
+                                • <a href="{% url 'badge_detail' b.code %}" class="hover:text-sky-600 hover:underline font-medium">
+                                    {{ b.name }}
+                                </a>
+                            </li>
+                        {% empty %}
+                            <li class="italic text-gray-400">Brak powiązanych odznak</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 mb-2">Przynależność (CQRS):</h3>
+                    <ul class="text-sm text-gray-600 space-y-1">
+                        {% for r in regions %}
+                            <li>
+                                <span class="text-xs font-mono text-gray-400">{{ r.region_level|slice:":3" }}</span>
+                                <a href="{% url 'region_detail' r.region_level r.region_id %}" class="hover:text-sky-600 hover:underline font-medium">
+                                    {{ r.region_name }}
+                                </a>
+                            </li>
+                        {% empty %}
+                            <li class="italic text-gray-400">Brak danych przestrzennych</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            {% if obj.wikipedia_link %}
+            <a href="{{ obj.wikipedia_link }}" target="_blank" class="text-sm text-sky-600 hover:underline block mt-4">
+                📖 Przeczytaj o {{ obj.name }} w Wikipedii
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- PRAWA KOLUMNA: Mini-Mapa Radar 2 km -->
+    <div class="w-1/2 bg-gray-200 rounded-xl shadow-inner border border-gray-300 relative overflow-hidden flex flex-col">
+        <div class="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur px-3 py-2 rounded-lg shadow text-sm font-bold text-slate-700">
+            📡 Radar (obiekty w promieniu 2 km)
+        </div>
+        <div id="minimap" class="flex-1 w-full h-full"></div>
+    </div>
+
+</div>
+
+<!-- Kontener na błędy (np. Data z Przyszłości) -->
+<div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const map = new maplibregl.Map({
+        container: 'minimap',
+        style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+        center: [{{ obj.geom.x|default:"19.0"|stringformat:"f" }}, {{ obj.geom.y|default:"52.0"|stringformat:"f" }}],
+        zoom: 13,
+        interactive: true
+    });
+
+    map.on('load', () => {
+        // Pobieramy Radar 2km z API
+        fetch(`/api/v1/objects/{{ obj.id }}/nearby/`)
+            .then(r => r.json())
+            .then(data => {
+                map.addSource('nearby', { type: 'geojson', data: data });
+
+                const colorMapping = [
+                    'match', ['get', 'peak_color'],
+                    'RED', '#ef4444', 'GREEN', '#22c55e', 'BLUE', '#3b82f6',
+                    'ORANGE', '#f97316', '#9ca3af'
+                ];
+
+                // Renderujemy kropki (Sąsiedzi - mniejsze, Cel główny - duży z białą obwódką)
+                map.addLayer({
+                    'id': 'nearby-points',
+                    'type': 'circle',
+                    'source': 'nearby',
+                    'paint': {
+                        'circle-radius': ['case', ['boolean', ['get', 'is_center'], false], 10, 6],
+                        'circle-color': colorMapping,
+                        'circle-stroke-width': ['case', ['boolean', ['get', 'is_center'], false], 3, 1],
+                        'circle-stroke-color': '#ffffff'
+                    }
+                });
+
+                // Podpisujemy obiekty (Warstwa Text)
+                map.addLayer({
+                    'id': 'nearby-labels',
+                    'type': 'symbol',
+                    'source': 'nearby',
+                    'layout': {
+                        'text-field': ['get', 'name'],
+                        'text-font': ['Open Sans Bold'],
+                        'text-offset': [0, 1.5],
+                        'text-anchor': 'top',
+                        'text-size': ['case', ['boolean', ['get', 'is_center'], false], 14, 11]
+                    },
+                    'paint': {
+                        'text-color': '#1e293b',
+                        'text-halo-color': '#ffffff',
+                        'text-halo-width': 2
+                    }
+                });
+
+                // Kliknięcie w sąsiada przenosi nas na jego stronę!
+                map.on('click', 'nearby-points', (e) => {
+                    const id = e.features[0].properties.id;
+                    if(id !== {{ obj.id }}) {
+                        window.location.href = `/object/${id}/`;
+                    }
+                });
+                map.on('mouseenter', 'nearby-points', () => map.getCanvas().style.cursor = 'pointer');
+                map.on('mouseleave', 'nearby-points', () => map.getCanvas().style.cursor = '');
+            });
+    });
+
+    // Obsługa błędów HTMX (gdy np. zalogujemy złą datę)
+    document.body.addEventListener('htmx:responseError', function(evt) {
+        const errorData = JSON.parse(evt.detail.xhr.response);
+        const toast = document.createElement('div');
+        toast.className = "bg-red-600 text-white px-4 py-3 rounded shadow-lg opacity-90 transition-opacity";
+        toast.innerHTML = `<strong>${errorData.title}</strong><br><span class="text-sm">${errorData.detail}</span>`;
+        document.getElementById('toast-container').appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    });
+});
+</script>
+{% endblock %}

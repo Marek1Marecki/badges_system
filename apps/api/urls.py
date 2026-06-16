@@ -12,6 +12,7 @@ from apps.api.views import (
     BadgeProgressView,
     BadgeSubscribeView,
     MapObjectsView,
+    NearbyObjectsView,
     VectorTileView,
 )
 
@@ -26,4 +27,5 @@ urlpatterns = [
     path("v1/map/objects/", MapObjectsView.as_view(), name="map_objects"),
     path("v1/progress/<int:progress_id>/logistics/", BadgeLogisticsView.as_view(), name="badge_logistics"),
     path("v1/tiles/<str:layer>/<int:z>/<int:x>/<int:y>.pbf", VectorTileView.as_view(), name="vector_tiles"),
+    path("v1/objects/<int:object_id>/nearby/", NearbyObjectsView.as_view(), name="nearby_objects"),
 ]

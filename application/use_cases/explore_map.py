@@ -45,8 +45,10 @@ class ExploreMapUseCase:
         for obj in objects:
             # Jeśli obiektu nie ma w cache (bo np. turysta nie subskrybuje jego odznaki),
             # staje się dla niego wizualnie "szary" i nie przynosi punktów.
-            color = colors.get(str(obj.id), "GRAY")
-            score = scores.get(str(obj.id), 0)
+            # POPRAWKA: Szukamy najpierw po int (natywny Cache Django),
+            # a awaryjnie po str (czysty JSON). Jeśli brak trafień -> GRAY / 0.
+            color = colors.get(obj.id, colors.get(str(obj.id), "GRAY"))
+            score = scores.get(obj.id, scores.get(str(obj.id), 0))
 
             features.append(
                 {

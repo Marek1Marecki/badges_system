@@ -79,6 +79,17 @@ class PoiScoringService:
             if prog.domain_status == "COMPLETED" or not prog.version_id:
                 continue
 
+            # MAGIA WIZUALIZACJI: Rozwiązanie Leniwego Zakotwiczenia
+            version_id_to_evaluate: int | None = prog.version_id
+
+            if not version_id_to_evaluate:
+                # Turysta zapisał się, ale nie ma logów (version = NULL).
+                # Tylko dla potrzeb RYSOWANIA MAPY (bez zapisu w bazie) zakładamy dzisiejszą wersję.
+                version_id_to_evaluate = self._badge_repo.get_version_id_for_date(prog.badge_code, today_date)
+
+            if not version_id_to_evaluate:
+                continue
+
             badge_version = self._badge_repo.get_badge_version_by_id(prog.version_id)
             if not badge_version:
                 continue
@@ -92,25 +103,14 @@ class PoiScoringService:
             unconsumed_ascents_dto = self._ascent_repo.get_unconsumed_ascents(user_id, prog.badge_code, cutoff_date)
             domain_ascents = [dto.to_domain() for dto in unconsumed_ascents_dto]
 
-            # 1. Oceń aktualny stan, aby znaleźć "n"
+            # 1. Oceń aktualny stan, aby znaleźć aktualną liczbę ważnych wejść
             current_eval = badge_version.evaluate(domain_ascents, context)
             curr_valid_count = current_eval.get("valid_ascents_count", 0)
-            required_count = current_eval.get("required_count", len(badge_version.pool_peak_ids))
-
-            missing_n = required_count - curr_valid_count
-            score_value = 100 // missing_n if missing_n > 0 else 0
 
             unconsumed_peak_ids = {a.peak_id for a in domain_ascents}
 
-            # Wildcard Rules (otwarte regiony) pomijamy w pre-kalkulacji wizualnej
             if not badge_version.pool_peak_ids:
                 continue
-
-            # PERF (Performance Warning): O(pool_size * reguły).
-            # Ewaluacja całego agregatu dla każdego szczytu "na sucho".
-            # Przy 3 aktywnych odznakach (po 200 szczytów) = 600 pełnych iteracji domenowych.
-            # Akceptowalne dla workerów w tle (Asynchronia). Jeśli czas wzrośnie > 5s,
-            # rozważyć optymalizację algorytmów Set Math wewnątrz samych Reguł.
 
             # 2. Symulacja dla każdego szczytu z Puli
             for peak_id in badge_version.pool_peak_ids:
@@ -125,12 +125,27 @@ class PoiScoringService:
                     # Symulacja: "A co gdyby turysta wszedł tu dzisiaj?"
                     sim_ascent = Ascent(peak_id=peak_id, ascent_date=today_date, region_ids=frozenset())
                     sim_eval = badge_version.evaluate(domain_ascents + [sim_ascent], context)
+                    sim_valid_count = sim_eval.get("valid_ascents_count", 0)
 
-                    if sim_eval.get("valid_ascents_count", 0) > curr_valid_count:
+                    # Jeśli to wirtualne wejście podbiło licznik, znaczy że szczyt jest ważny!
+                    if sim_valid_count > curr_valid_count:
                         color = "RED"
-                        score = score_value
+
+                        # MATEMATYKA 100/n: Pobieramy docelowy próg (target) po symulacji.
+                        # Np. wymaga 28 szczytów (target). Symulacja mówi, że będziesz miał 1 szczyt.
+                        # missing_n = 28 - 1 = 27. Zysk = 100 / 27 (zaokrąglone do int) -> 3 punkty.
+                        target = sim_eval.get("required_count", len(badge_version.pool_peak_ids))
+                        missing_after_ascent = max(target - sim_valid_count, 0)
+
+                        # Jeśli szczyt zamyka odznakę (missing_n = 0), daje od razu całe 100 pkt!
+                        # Jeśli nie, dzielimy 100 przez to, co zostanie.
+                        # Round() robi ładne matematyczne zaokrąglenie, nie ucinanie.
+                        if missing_after_ascent == 0:
+                            score = 100
+                        else:
+                            score = round(100.0 / missing_after_ascent)
                     else:
-                        color = "ORANGE"  # Np. w zimie szczyt zamknięty przez reguły
+                        color = "ORANGE"  # Zablokowany na dziś
 
                 # 3. Akumulacja i priorytetyzacja kolorów
                 final_scores[peak_id] += score

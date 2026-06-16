@@ -52,6 +52,14 @@ CELERY_TIMEZONE = "Europe/Warsaw"
 # Mówimy Celery, by harmonogramy brało z bazy danych (Django Admin), a nie z kodu!
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
+# --- Wspólny "Mózg" dla całej aplikacji ---
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": app_settings_config.celery_broker_url,
+    }
+}
+
 
 # ==========================================
 # APLIKACJE I MIDDLEWARE

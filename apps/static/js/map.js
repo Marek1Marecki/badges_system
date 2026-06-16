@@ -8,62 +8,161 @@ document.addEventListener("DOMContentLoaded", function() {
         zoom: 5
     });
 
+    // Automatyczne przybliżenie mapy do regionu (jeśli przekazano BBox)
+    if (window.REGION_EXTENT && window.REGION_EXTENT.length === 4) {
+        map.fitBounds([
+            [window.REGION_EXTENT[0], window.REGION_EXTENT[1]], // min_lon, min_lat
+            [window.REGION_EXTENT[2], window.REGION_EXTENT[3]]  // max_lon, max_lat
+        ], { padding: 50 });
+    }
+
     map.on('load', () => {
         // ----------------------------------------------------
         // WARSTWA 1: STATYCZNA MVT (Z bazy PostGIS, zakechowana)
         // ----------------------------------------------------
-        map.addSource('tourist_regions', {
+        const mvtLayerName = window.REGION_FILTER_LEVEL ? window.REGION_FILTER_LEVEL.toLowerCase() : 'tourist_region';
+        const activeRegionIdStr = window.REGION_FILTER_ID ? String(window.REGION_FILTER_ID) : null;
+
+        map.addSource('region_boundaries', {
             type: 'vector',
-            // Zwróć uwagę na odpytywanie naszego serwera kafelków o warstwę regionów turystycznych
-            tiles: [window.location.origin + '/api/v1/tiles/tourist_region/{z}/{x}/{y}.pbf'],
-            minzoom: 5,
+            tiles: [window.location.origin + `/api/v1/tiles/${mvtLayerName}/{z}/{x}/{y}.pbf`],
+            minzoom: 4,
             maxzoom: 14
         });
 
+        // 1. WYPEŁNIENIE POLIGONU
         map.addLayer({
             'id': 'regions-fill',
             'type': 'fill',
-            'source': 'tourist_regions',
-            'source-layer': 'default', // PostGIS ST_AsMVT nazywa tak domyślnie warstwę
+            'source': 'region_boundaries',
+            'source-layer': mvtLayerName,
             'paint': {
-                'fill-color': '#0284c7',
-                'fill-opacity': 0.05
+                'fill-color': activeRegionIdStr
+                    ? ['case', ['==', ['to-string', ['get', 'id']], activeRegionIdStr], '#0ea5e9', '#cbd5e1']
+                    : '#0284c7',
+                'fill-opacity': activeRegionIdStr
+                    ? ['case', ['==', ['to-string', ['get', 'id']], activeRegionIdStr], 0.25, 0.05]
+                    : 0.05
             }
         });
 
-        map.addLayer({
-            'id': 'regions-line',
-            'type': 'line',
-            'source': 'tourist_regions',
-            'source-layer': 'default',
-            'paint': {
-                'line-color': '#0369a1',
-                'line-width': 1,
-                'line-dasharray': [2, 2]
+        // 2. LINIE OBRYSU
+        if (activeRegionIdStr) {
+            map.addLayer({
+                'id': 'regions-line-neighbors',
+                'type': 'line',
+                'source': 'region_boundaries',
+                'source-layer': mvtLayerName,
+                'filter': ['!=', ['to-string', ['get', 'id']], activeRegionIdStr],
+                'paint': {
+                    'line-color': '#94a3b8',
+                    'line-width': 1,
+                    'line-dasharray': [2, 2]
+                }
+            });
+            map.addLayer({
+                'id': 'regions-line-active',
+                'type': 'line',
+                'source': 'region_boundaries',
+                'source-layer': mvtLayerName,
+                'filter': ['==', ['to-string', ['get', 'id']], activeRegionIdStr],
+                'paint': {
+                    'line-color': '#0369a1',
+                    'line-width': 3
+                }
+            });
+        } else {
+            map.addLayer({
+                'id': 'regions-line-global',
+                'type': 'line',
+                'source': 'region_boundaries',
+                'source-layer': mvtLayerName,
+                'paint': {
+                    'line-color': '#0369a1',
+                    'line-width': 1,
+                    'line-dasharray': [2, 2]
+                }
+            });
+        }
+
+        // NAWIGACJA MAPOWA (Kliknięcie w sąsiada przenosi na jego stronę)
+        map.on('click', 'regions-fill', (e) => {
+            const props = e.features[0].properties;
+            const clickedIdStr = String(props.id);
+            if (activeRegionIdStr && clickedIdStr !== activeRegionIdStr) {
+                window.location.href = `/region/${mvtLayerName.toUpperCase()}/${clickedIdStr}/`;
             }
+        });
+
+        map.on('mouseenter', 'regions-fill', () => {
+            if (activeRegionIdStr) map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'regions-fill', () => {
+            map.getCanvas().style.cursor = '';
         });
 
         // ----------------------------------------------------
-        // WARSTWA 2: DYNAMICZNA GEOJSON (Szczyty i Kolory Turysty)
+        // WARSTWA 2: DYNAMICZNA GEOJSON (Szczyty, Heatmapa i Kolory)
         // ----------------------------------------------------
         map.addSource('peaks', {
             type: 'geojson',
-            data: { type: 'FeatureCollection', features: [] } // Na start puste
+            data: { type: 'FeatureCollection', features: [] }
         });
 
-        // Kontrakt Kolorów (Zgodnie z UI_GUIDELINES.md)
         const colorMapping = [
-            'match',
-            ['get', 'peak_color'],
-            'RED', '#ef4444',     // Nowy cel
-            'GREEN', '#22c55e',   // Zaliczone
-            'BLUE', '#3b82f6',    // Ponowny Cykl
-            'ORANGE', '#f97316',  // Zablokowane na dziś
-            'GRAY', '#9ca3af',    // Ignorowane
-            '#9ca3af'             // Fallback
+            'match', ['get', 'peak_color'],
+            'RED', '#ef4444',
+            'GREEN', '#22c55e',
+            'BLUE', '#3b82f6',
+            'ORANGE', '#f97316',
+            'GRAY', '#9ca3af',
+            '#9ca3af' // Fallback
         ];
 
-        // Wyświetlanie jako Punkty (Pinezki) dla dużego zoomu
+        // 2A. WARSTWA HEATMAPY (Widoczna na dużym oddaleniu)
+        map.addLayer({
+            'id': 'peaks-heat',
+            'type': 'heatmap',
+            'source': 'peaks',
+            'filter': ['>', ['get', 'potential_score'], 0], // Tylko zyskowne obiekty!
+            'paint': {
+                'heatmap-weight': [
+                    'interpolate', ['linear'], ['get', 'potential_score'],
+                    0, 0,
+                    10, 0.2,
+                    50, 0.6,
+                    100, 1.0,
+                    200, 2.0
+                ],
+                'heatmap-intensity': [
+                    'interpolate', ['linear'], ['zoom'],
+                    4, 1,
+                    9, 3
+                ],
+                'heatmap-color': [
+                    'interpolate', ['linear'], ['heatmap-density'],
+                    0, 'rgba(33,102,172,0)',
+                    0.2, 'rgb(103,169,207)',
+                    0.4, 'rgb(209,229,240)',
+                    0.6, 'rgb(253,219,199)',
+                    0.8, 'rgb(239,138,98)',
+                    1, 'rgb(178,24,43)'
+                ],
+                'heatmap-radius': [
+                    'interpolate', ['linear'], ['zoom'],
+                    4, 10,
+                    9, 25
+                ],
+                // ZANIKANIE: Przezroczyste powyżej zoomu 10
+                'heatmap-opacity': [
+                    'interpolate', ['linear'], ['zoom'],
+                    8, 1,
+                    10, 0
+                ]
+            }
+        });
+
+        // 2B. WARSTWA PINEZEK (Widoczna na bliskim przybliżeniu)
         map.addLayer({
             'id': 'peaks-symbol',
             'type': 'circle',
@@ -72,16 +171,28 @@ document.addEventListener("DOMContentLoaded", function() {
                 'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 3, 12, 7],
                 'circle-color': colorMapping,
                 'circle-stroke-width': 2,
-                'circle-stroke-color': '#ffffff'
+                'circle-stroke-color': '#ffffff',
+                // POJAWIANIE SIĘ: Niewidoczne poniżej zoomu 8
+                'circle-opacity': [
+                    'interpolate', ['linear'], ['zoom'],
+                    8, 0,
+                    10, 1
+                ],
+                'circle-stroke-opacity': [
+                    'interpolate', ['linear'], ['zoom'],
+                    8, 0,
+                    10, 1
+                ]
             }
         });
 
-        // Pierwsze pobranie danych
+        // Pierwsze pobranie danych dla pinezek po załadowaniu mapy
         fetchMapObjects(map.getBounds());
-    });
+
+    }); // <-- Tu prawdopodobnie uciekł Ci ten nawias przy wklejaniu!
 
     // ----------------------------------------------------
-    // INVARIANT M-02: DEBOUNCE (Ochrona bazy danych przed spamem)
+    // INVARIANT M-02: DEBOUNCE (Ochrona bazy danych)
     // ----------------------------------------------------
     let debounceTimer;
     map.on('moveend', () => {
@@ -92,28 +203,34 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     function fetchMapObjects(bounds) {
-        // [West, South, East, North] -> [min_lon, min_lat, max_lon, max_lat]
         const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
 
-        fetch(`/api/v1/map/objects/?bbox=${bbox}`)
+        let url = `/api/v1/map/objects/?bbox=${bbox}`;
+        if (window.BADGE_FILTER_CODE) {
+            url += `&badge_code=${window.BADGE_FILTER_CODE}`;
+        }
+        if (window.REGION_FILTER_LEVEL && window.REGION_FILTER_ID) {
+            url += `&region_level=${window.REGION_FILTER_LEVEL}&region_id=${window.REGION_FILTER_ID}`;
+        }
+
+        fetch(url)
             .then(r => r.ok ? r.json() : null)
             .then(data => {
                 if (data && data.type === "FeatureCollection") {
                     map.getSource('peaks').setData(data);
                 }
             })
-            .catch(err => console.error("Błąd ładowania mapy:", err));
+            .catch(err => console.error("Błąd ładowania punktów mapy:", err));
     }
 
     // ----------------------------------------------------
-    // INTERAKCJA: Popupy z HTMX (Wysyłanie wejść z mapy!)
+    // INTERAKCJA: Popupy z HTMX
     // ----------------------------------------------------
     map.on('click', 'peaks-symbol', (e) => {
         const coords = e.features[0].geometry.coordinates.slice();
         const props = e.features[0].properties;
         const today = new Date().toISOString().split('T')[0];
 
-        // Tworzymy popup z magicznym przyciskiem HTMX
         const popupHtml = `
             <div class="p-2 min-w-[200px]">
                 <h3 class="font-bold text-gray-900">${props.name}</h3>
@@ -123,10 +240,15 @@ document.addEventListener("DOMContentLoaded", function() {
                     <span class="block">Status: <b>${props.peak_color}</b></span>
                 </div>
                 
+                <a href="/object/${props.id}/" class="block text-center mb-2 w-full bg-sky-100 hover:bg-sky-200 text-sky-800 font-bold py-1.5 rounded text-sm transition border border-sky-300">
+                    👁️ Zobacz szczegóły
+                </a>
+                
                 <button hx-post="/api/v1/ascents/"
                         hx-ext="json-enc"
                         hx-vals='{"peak_id": ${props.id}, "ascent_date": "${today}"}'
                         hx-swap="none"
+                        hx-on::after-request="if(event.detail.successful) location.reload();"
                         class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-1.5 rounded text-sm transition shadow-sm">
                     ✅ Zaloguj wejście (Dziś)
                 </button>
@@ -138,11 +260,9 @@ document.addEventListener("DOMContentLoaded", function() {
             .setHTML(popupHtml)
             .addTo(map);
 
-        // Zmuszamy HTMX do "zauważenia" nowego przycisku wstrzykniętego do DOM
         htmx.process(popup.getElement());
     });
 
-    // Kursor
     map.on('mouseenter', 'peaks-symbol', () => map.getCanvas().style.cursor = 'pointer');
     map.on('mouseleave', 'peaks-symbol', () => map.getCanvas().style.cursor = '');
 });

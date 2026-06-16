@@ -14,7 +14,10 @@ dla nieoczekiwanych wyjątków w środowisku produkcyjnym.
 
 import json
 
-from django.http import HttpResponse, JsonResponse
+from django.contrib.gis.measure import D
+from django.core.cache import cache
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
@@ -30,6 +33,8 @@ from application.exceptions import (
     ResourceNotFoundError,
     UseCaseError,
 )
+from apps.badges.models import TouristObject
+from apps.badges.tasks import recalculate_poi_scores_task
 from bootstrap import get_container
 
 # ---------------------------------------------------------------------------
@@ -140,6 +145,8 @@ class AscentLogView(View):
         try:
             use_case = get_container()["log_ascent"]
             ascent_id = use_case.execute(user_id=user_id, dto=dto)
+            # Wybudza Redis po zalogowaniu wejścia!:
+            recalculate_poi_scores_task.delay(user_id)
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
 
@@ -163,9 +170,13 @@ class BadgeSubscribeView(View):
         if auth_error:
             return auth_error
 
+        user_id = request.user.id
+
         try:
             use_case = get_container()["start_badge_progress"]
-            progress_id = use_case.execute(user_id=request.user.id, badge_code=badge_code)
+            progress_id = use_case.execute(user_id=user_id, badge_code=badge_code)
+            # Wybudza Redis po subskrypcji!:
+            recalculate_poi_scores_task.delay(user_id)
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
 
@@ -325,3 +336,58 @@ class VectorTileView(View):
         response["Cache-Control"] = "public, max-age=86400"
 
         return response
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class NearbyObjectsView(View):
+    """GET /api/v1/objects/{id}/nearby/
+
+    Zwraca obiekty w promieniu 2 km od celu w formacie GeoJSON (US-C14).
+    """
+
+    def get(self, request: HttpRequest, object_id: int) -> JsonResponse:
+        center_obj = get_object_or_404(TouristObject, id=object_id)
+
+        if not center_obj.geom:
+            return JsonResponse({"type": "FeatureCollection", "features": []})
+
+        # GeoDjango używając ST_DWithin potrafi natywnie operować w metrach przez obiekt D()
+        nearby_qs = TouristObject.objects.filter(
+            geom__distance_lte=(center_obj.geom, D(m=2000)), is_active=True, status="READY"
+        ).exclude(id=object_id)[:100]  # Limit bezpieczeństwa
+
+        # Pobieramy stan kolorów z Redis dla zalogowanego turysty
+        colors = {}
+        if request.user.is_authenticated:
+            cache_key = f"map_state:{request.user.id}"
+            cached_data = cache.get(cache_key) or {}
+            colors = cached_data.get("colors", {})
+
+        features = []
+        # Dodajemy sam środek radaru (główny obiekt) na sztywno jako pierwszy element
+        center_color = colors.get(center_obj.id, colors.get(str(center_obj.id), "GRAY"))
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [center_obj.geom.x, center_obj.geom.y]},
+                "properties": {
+                    "id": center_obj.id,
+                    "name": center_obj.name,
+                    "type": center_obj.type,
+                    "peak_color": center_color,
+                    "is_center": True,
+                },
+            }
+        )
+
+        for n in nearby_qs:
+            color = colors.get(n.id, colors.get(str(n.id), "GRAY"))
+            features.append(
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [n.geom.x, n.geom.y]},
+                    "properties": {"id": n.id, "name": n.name, "type": n.type, "peak_color": color, "is_center": False},
+                }
+            )
+
+        return JsonResponse({"type": "FeatureCollection", "features": features})

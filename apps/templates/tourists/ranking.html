@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto p-6 overflow-y-auto h-full w-full">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h2 class="text-3xl font-bold text-slate-800">Ranking Twoich Celów</h2>
+            <p class="text-gray-600">Najbardziej opłacalne obiekty do zdobycia w tym momencie, posortowane od najwyższego zysku.</p>
+        </div>
+        <!-- Przycisk powrotu do mapy -->
+        <a href="{% url 'home' %}" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2 px-4 border border-gray-300 rounded shadow-sm transition">
+            Pokaż na mapie 🗺️
+        </a>
+    </div>
+
+    <!-- Zakładki (Tabs) -->
+    <div class="border-b border-gray-200 mb-6 mt-4">
+        <nav class="-mb-px flex space-x-8">
+            <a href="{% url 'ranking' %}" class="whitespace-nowrap pb-4 px-1 border-b-2 border-sky-600 font-bold text-sky-600">
+                Pojedyncze Obiekty
+            </a>
+            <a href="{% url 'region_ranking' %}" class="whitespace-nowrap pb-4 px-1 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                Skumulowane Regiony
+            </a>
+        </nav>
+    </div>
+
+    <div class="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
+        <table class="min-w-full leading-normal">
+            <thead>
+                <tr class="bg-gray-50 border-b border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th class="px-5 py-3">Lp.</th>
+                    <th class="px-5 py-3">Punktacja</th>
+                    <th class="px-5 py-3">Obiekt (Cel)</th>
+                    <th class="px-5 py-3">Typ</th>
+                    <th class="px-5 py-3">Występuje w odznakach</th>
+                    <th class="px-5 py-3">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cluster in ranking %}
+                    <!-- Nagłówek Klastra (Z WYRÓWNANIEM DO KOLUMN) -->
+                    {% if cluster.is_family %}
+                    <tr class="bg-sky-100 border-t-4 border-gray-300 shadow-sm">
+                        <td class="px-5 py-3 text-center">
+                            <span class="text-xl" title="Klaster (Gniazdo celów)">📦</span>
+                        </td>
+                        <td class="px-5 py-3">
+                            <span class="inline-block bg-sky-700 text-white font-black px-3 py-1.5 rounded-lg text-sm shadow-md">
+                                Suma: +{{ cluster.cluster_score }} pkt
+                            </span>
+                        </td>
+                        <td colspan="4" class="px-5 py-3 text-sm font-extrabold text-sky-900 uppercase tracking-wide">
+                            Klaster: {{ cluster.cluster_name }} (Okolice)
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    <!-- Wylistowanie obiektów w Klastrze -->
+                    {% for item in cluster.items %}
+                    <tr class="hover:bg-gray-50 transition border-b border-gray-100 {% if not cluster.is_family %}border-t-2 border-gray-200{% endif %}">
+                        <td class="px-5 py-4 text-sm text-gray-500 font-mono">
+                            {% if not cluster.is_family %}{{ forloop.parentloop.counter }}{% endif %}
+                        </td>
+
+                        <td class="px-5 py-4">
+                            {% if item.score > 0 %}
+                            <span class="inline-block bg-sky-100 text-sky-800 font-bold px-3 py-1 rounded-full text-sm">
+                                +{{ item.score }} pkt
+                            </span>
+                            {% else %}
+                            <span class="inline-block bg-gray-100 text-gray-500 font-bold px-3 py-1 rounded-full text-sm">
+                                0 pkt
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-5 py-4 text-sm font-bold text-gray-800 {% if item.is_child %}pl-10{% endif %}">
+                            {% if item.is_child %}<span class="text-gray-400 mr-1">↳</span>{% endif %}
+                            <a href="{% url 'object_detail' item.id %}" class="hover:text-sky-600 hover:underline">
+                                {{ item.name }}
+                            </a>
+                            <span class="block text-xs text-gray-400 font-normal mt-1 {% if item.is_child %}ml-4{% endif %}">ID: {{ item.id }}</span>
+                        </td>
+
+                        <td class="px-5 py-4 text-sm text-gray-600 uppercase tracking-wider text-xs">
+                            {{ item.type }}
+                        </td>
+
+                        <td class="px-5 py-4 text-sm text-gray-600">
+                            <!-- Poprawione, klikalne pastylki z linkami -->
+                            <div class="flex flex-wrap gap-1">
+                                {% for b in item.badges %}
+                                    <a href="{% url 'badge_detail' b.code %}" class="inline-block bg-gray-100 hover:bg-sky-100 text-gray-700 hover:text-sky-700 px-2 py-1 rounded text-xs transition border border-gray-200 shadow-sm">
+                                        {{ b.name }}
+                                    </a>
+                                {% empty %}
+                                    <span class="text-gray-400 italic">Brak</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+
+                        <td class="px-5 py-4 text-sm">
+                            {% if item.color == 'RED' %}
+                                <span class="text-red-600 font-bold">Nowy Cel (Idź!)</span>
+                            {% elif item.color == 'GREEN' %}
+                                <span class="text-green-600 font-bold">Zdobyty</span>
+                            {% elif item.color == 'BLUE' %}
+                                <span class="text-blue-600 font-bold">Wymaga powtórki</span>
+                            {% elif item.color == 'ORANGE' %}
+                                <span class="text-orange-500 font-bold">Zablokowany</span>
+                            {% else %}
+                                <span class="text-gray-500 font-bold">Poza odznaką</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-5 py-10 text-center text-gray-500">
+                        <p class="text-lg">Twój ranking jest pusty.</p>
+                        <p class="text-sm mt-2">Zasubskrybuj nowe odznaki w Katalogu, aby wygenerować cele!</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

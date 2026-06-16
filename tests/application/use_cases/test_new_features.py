@@ -118,7 +118,7 @@ class TestGetMvtTileUseCase:
         result = uc.execute("country", 0, 0, 0)
         # Use case zwraca skompresowane dane gzip
         assert result == gzip.compress(b"tile_data")
-        repo.get_tile.assert_called_once_with("country", "odznaki_countrymodel", 0, 0, 0)
+        repo.get_tile.assert_called_once_with("country", 0, 0, 0)
 
 
 # 4. SCRAPER AKTUALNOŚCI (NEWS)

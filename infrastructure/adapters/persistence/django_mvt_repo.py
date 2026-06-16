@@ -3,16 +3,40 @@
 from django.db import connection
 
 from application.ports.mvt_port import MvtRepositoryPort
+from apps.badges.models import (
+    CountryModel,
+    MacroregionModel,
+    MesoregionModel,
+    ProvinceModel,
+    SubprovinceModel,
+    TouristRegionModel,
+    VoivodeshipModel,
+)
+
+# POPRAWNY IMPORT WYJĄTKU (Z infrastruktury, a nie z aplikacji)
+from infrastructure.exceptions import InfrastructureException
+
+# Baza sama dostarczy poprawne nazwy tabel z modeli!
+LAYER_TO_TABLE_MAP = {
+    "country": CountryModel._meta.db_table,
+    "voivodeship": VoivodeshipModel._meta.db_table,
+    "province": ProvinceModel._meta.db_table,
+    "subprovince": SubprovinceModel._meta.db_table,
+    "macroregion": MacroregionModel._meta.db_table,
+    "mesoregion": MesoregionModel._meta.db_table,
+    "tourist_region": TouristRegionModel._meta.db_table,
+}
 
 
 class DjangoMvtRepository(MvtRepositoryPort):
     """Implementuje MvtRepositoryPort korzystając z potęgi funkcji PostGIS."""
 
-    def get_tile(self, layer_name: str, table_name: str, z: int, x: int, y: int) -> bytes | None:
-        # ADR-013: Świadome złamanie abstrakcji ORM dla ekstremalnej wydajności.
-        # Tabela wstrzykiwana z bezpiecznej białej listy w Use Case (Ochrona przed SQL Injection).
-        # Transformacja 3857 wymagana przez ST_TileEnvelope.
-        query = f""" 
+    def get_tile(self, layer_name: str, z: int, x: int, y: int) -> bytes | None:
+        table_name = LAYER_TO_TABLE_MAP.get(layer_name)
+        if not table_name:
+            raise InfrastructureException(f"Nieznana warstwa MVT: {layer_name}")
+
+        query = f"""
         WITH bounds AS (
             SELECT ST_TileEnvelope(%s, %s, %s) AS geom
         ),
@@ -29,7 +53,6 @@ class DjangoMvtRepository(MvtRepositoryPort):
             cursor.execute(query, [z, x, y, layer_name])
             row = cursor.fetchone()
 
-            # PostGIS ST_AsMVT zwraca bajty. Zabezpieczamy przypadek pustych kafelków (np. na oceanie).
             if row and row[0]:
                 return bytes(row[0])
 
