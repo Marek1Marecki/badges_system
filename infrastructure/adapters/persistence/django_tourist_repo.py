@@ -11,7 +11,7 @@ from typing import cast
 
 from django.db.models import Min
 
-from application.dto.ascent_dto import AscentDTO
+from application.dto.ascent_dto import AscentDTO, AscentInputDTO
 from application.dto.user_context_dto import BadgeProgressDTO, TouristProfileDTO
 from application.ports.user_progress_port import (
     AscentLogRepositoryPort,
@@ -136,6 +136,35 @@ class DjangoTouristRepository(
             )
             for a in ascents
         ]
+
+    def get_objects_lifespans(self, peak_ids: set[int]) -> dict[int, tuple[date | None, date | None]]:
+        """Pobiera bitemporalne ramy życia dla wielu obiektów naraz (Optymalizacja N+1)."""
+        from apps.badges.models import TouristObject
+
+        # Pobieramy tylko niezbędne 3 kolumny
+        qs = TouristObject.objects.filter(id__in=peak_ids).values_list("id", "existence_start", "existence_end")
+        return {row[0]: (row[1], row[2]) for row in qs}
+
+    def bulk_save_ascents(self, user_id: int, ascents: list[AscentInputDTO]) -> int:
+        """Masowo zapisuje wejścia. Ignoruje duplikaty (Idempotentność D-04)."""
+        from apps.tourists.models import AscentLog
+
+        new_logs = [
+            AscentLog(
+                user_id=user_id,
+                peak_id=dto.peak_id,
+                ascent_date=dto.ascent_date,
+            )
+            for dto in ascents
+        ]
+
+        if not new_logs:
+            return 0
+
+        # ignore_conflicts=True mówi bazie PostgreSQL:
+        # "Jeśli naruszę UniqueConstraint (user, peak, date), zignoruj ten wiersz bez wywalania błędu!"
+        created = AscentLog.objects.bulk_create(new_logs, ignore_conflicts=True)
+        return len(created)
 
     # =====================================================================
     # UserProgressRepositoryPort

@@ -66,6 +66,42 @@ Rejestruje historyczny log wejścia na szczyt. Obejmuje walidację bitemporalną
 ### `GET /api/v1/progress/badges/{version_id}`
 Wymusza przeliczenie w locie (On-Demand) stanu turysty i zwraca m.in. `COMPLETED`.
 
+### `POST /api/v1/gpx/analyze`
+Analizuje ślad z pliku GPX w locie, zwracając listę szczytów w promieniu 200m od trasy. (US-C17). Brak zapisu do bazy.
+*   **Autoryzacja:** Wymagana
+*   **Content-Type:** `multipart/form-data`
+*   **Payload:** `file` (Plik `.gpx` lub `.xml`)
+*   **Response (200 OK):**
+```json
+{
+  "suggested_date": "2026-08-14",
+  "nearby_peaks": [
+    {"id": 15, "name": "Skrzyczne", "type": "Szczyt", "altitude": 1257, "lon": 19.0, "lat": 49.0}
+  ]
+}
+```
+
+### `POST /api/v1/ascents/bulk`
+Masowo rejestruje logi wejścia (np. na podstawie przeanalizowanego pliku GPX). Gwarantuje *Partial Success* – ignoruje logi łamiące bitemporalność (T-01) i duplikaty (D-04).
+*   **Autoryzacja:** Wymagana
+*   **Content-Type:** `application/json`
+*   **Payload (Lista JSON):**
+```json
+[
+  {"peak_id": 15, "ascent_date": "2026-08-14"},
+  {"peak_id": 16, "ascent_date": "2026-08-14"}
+]
+```
+*   **Response (200 OK):**
+```json
+{
+  "saved_count": 1,
+  "errors": [
+    {"peak_id": 16, "reason": "Data wejścia jest z przyszłości."}
+  ]
+}
+```
+
 ---
 
 ## 3. Logistyka i Tracker (Personal Kanban)

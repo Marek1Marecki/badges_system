@@ -18,7 +18,9 @@ def build_container() -> dict:
     """Buduje kontener zależności — adaptery wstrzyknięte do use case'ów."""
     from application.services.poi_scoring_service import PoiScoringService
     from application.use_cases.advance_logistic_status import AdvanceLogisticStatusUseCase
+    from application.use_cases.analyze_gpx_track import AnalyzeGpxTrackUseCase
     from application.use_cases.build_tourist_region_geometry import BuildTouristRegionGeometryUseCase
+    from application.use_cases.bulk_log_ascents import BulkLogAscentsUseCase
     from application.use_cases.calculate_object_regions import CalculateObjectRegionsUseCase
     from application.use_cases.explore_map import ExploreMapUseCase
     from application.use_cases.fetch_badge_news import FetchBadgeNewsUseCase
@@ -30,6 +32,7 @@ def build_container() -> dict:
     from application.use_cases.verify_badge import VerifyBadgeUseCase
     from infrastructure.adapters.clock import SystemClock
     from infrastructure.adapters.django_cache import DjangoCacheAdapter
+    from infrastructure.adapters.gpx_parser import DjangoGpxParser
     from infrastructure.adapters.news_scraper import BeautifulSoupNewsScraper
     from infrastructure.adapters.osm_repository import OsmRepository
     from infrastructure.adapters.persistence.django_badge_repo import DjangoBadgeRepository
@@ -45,6 +48,7 @@ def build_container() -> dict:
     region_cache_repository = RegionCacheRepository()
     osm_repository = OsmRepository()
     tourist_repository = DjangoTouristRepository()
+    gpx_parser = DjangoGpxParser()
     map_repository = DjangoMapRepository()
     mvt_repository = DjangoMvtRepository()
 
@@ -106,6 +110,14 @@ def build_container() -> dict:
         "get_mvt_tile": GetMvtTileUseCase(
             mvt_repository=mvt_repository,
             cache=cache_adapter,
+        ),
+        "analyze_gpx_track": AnalyzeGpxTrackUseCase(
+            gpx_parser=gpx_parser,
+            map_repository=map_repository,
+        ),
+        "bulk_log_ascents": BulkLogAscentsUseCase(
+            ascent_repository=tourist_repository,
+            clock=clock,
         ),
     }
 

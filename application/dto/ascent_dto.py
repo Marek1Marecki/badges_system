@@ -1,6 +1,7 @@
 """Data Transfer Objects (DTO) dla wejść użytkownika."""
 
 from datetime import date
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -41,3 +42,17 @@ class AscentInputDTO(BaseModel):
             peak_id=self.peak_id,
             ascent_date=self.ascent_date,
         )
+
+
+class GpxAnalysisResultDTO(BaseModel):
+    """Zwraca wynik analizy pliku GPX."""
+
+    suggested_date: date | None
+    nearby_peaks: list[dict[str, Any]]  # Zwracamy listę np. {"id": 1, "name": "Rysy", "distance": 12.5}
+
+
+class BulkAscentResultDTO(BaseModel):
+    """Zwraca raport z masowego zapisu wejść (Partial Success)."""
+
+    saved_count: int
+    errors: list[dict[str, Any]]  # Np. [{"peak_id": 15, "reason": "Data przed budową wieży"}]

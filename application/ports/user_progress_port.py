@@ -8,7 +8,7 @@ Nie zawierają importów z Django.
 from datetime import date
 from typing import Protocol
 
-from application.dto.ascent_dto import AscentDTO
+from application.dto.ascent_dto import AscentDTO, AscentInputDTO
 from application.dto.user_context_dto import BadgeProgressDTO, TouristProfileDTO
 
 
@@ -54,6 +54,20 @@ class AscentLogRepositoryPort(Protocol):
 
     def get_all_ascents_for_user(self, user_id: int) -> list[AscentDTO]:
         """Pobiera całą, niefiltrowaną historię wejść turysty na potrzeby oceny kolorów."""
+        ...
+
+    def get_objects_lifespans(self, peak_ids: set[int]) -> dict[int, tuple[date | None, date | None]]:
+        """Pobiera bitemporalne ramy życia dla wielu obiektów naraz (Optymalizacja N+1).
+
+        Zwraca słownik: {peak_id: (existence_start, existence_end)}
+        """
+        ...
+
+    def bulk_save_ascents(self, user_id: int, ascents: list[AscentInputDTO]) -> int:
+        """Masowo zapisuje wejścia. Ignoruje duplikaty (Idempotentność D-04).
+
+        Zwraca liczbę faktycznie dodanych nowych rekordów.
+        """
         ...
 
 

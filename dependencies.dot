@@ -32,7 +32,9 @@ digraph G {
     "application.services.poi_scoring_service" [fillcolor="lightgreen"];
     "application.use_cases" [fillcolor="lightgreen"];
     "application.use_cases.advance_logistic_status" [fillcolor="lightgreen"];
+    "application.use_cases.analyze_gpx_track" [fillcolor="lightgreen"];
     "application.use_cases.build_tourist_region_geometry" [fillcolor="lightgreen"];
+    "application.use_cases.bulk_log_ascents" [fillcolor="lightgreen"];
     "application.use_cases.calculate_object_regions" [fillcolor="lightgreen"];
     "application.use_cases.explore_map" [fillcolor="lightgreen"];
     "application.use_cases.fetch_badge_news" [fillcolor="lightgreen"];
@@ -51,6 +53,7 @@ digraph G {
     "application.ports.badge_repository_port" [fillcolor="khaki"];
     "application.ports.cache_port" [fillcolor="khaki"];
     "application.ports.clock_port" [fillcolor="khaki"];
+    "application.ports.gpx_port" [fillcolor="khaki"];
     "application.ports.map_port" [fillcolor="khaki"];
     "application.ports.mvt_port" [fillcolor="khaki"];
     "application.ports.news_port" [fillcolor="khaki"];
@@ -64,6 +67,7 @@ digraph G {
     "infrastructure.adapters" [fillcolor="orange"];
     "infrastructure.adapters.clock" [fillcolor="orange"];
     "infrastructure.adapters.django_cache" [fillcolor="orange"];
+    "infrastructure.adapters.gpx_parser" [fillcolor="orange"];
     "infrastructure.adapters.news_scraper" [fillcolor="orange"];
     "infrastructure.adapters.osm_adapter" [fillcolor="orange"];
     "infrastructure.adapters.osm_repository" [fillcolor="orange"];
@@ -141,7 +145,14 @@ digraph G {
   "application.services.poi_scoring_service" -> "domain.value_objects.verification_context";
   "application.use_cases.advance_logistic_status" -> "application.exceptions";
   "application.use_cases.advance_logistic_status" -> "application.ports.user_progress_port";
+  "application.use_cases.analyze_gpx_track" -> "application.dto.ascent_dto";
+  "application.use_cases.analyze_gpx_track" -> "application.exceptions";
+  "application.use_cases.analyze_gpx_track" -> "application.ports.gpx_port";
+  "application.use_cases.analyze_gpx_track" -> "application.ports.map_port";
   "application.use_cases.build_tourist_region_geometry" -> "application.exceptions";
+  "application.use_cases.bulk_log_ascents" -> "application.dto.ascent_dto";
+  "application.use_cases.bulk_log_ascents" -> "application.ports.clock_port";
+  "application.use_cases.bulk_log_ascents" -> "application.ports.user_progress_port";
   "application.use_cases.calculate_object_regions" -> "application.exceptions";
   "application.use_cases.calculate_object_regions" -> "application.ports.clock_port";
   "application.use_cases.explore_map" -> "application.dto.map_dto";
@@ -196,6 +207,8 @@ digraph G {
   "domain.rules.badge_rules" -> "domain.value_objects.ascent";
   "domain.rules.badge_rules" -> "domain.value_objects.verification_context";
   "infrastructure.adapters.django_cache" -> "application.ports.cache_port";
+  "infrastructure.adapters.gpx_parser" -> "application.ports.gpx_port";
+  "infrastructure.adapters.gpx_parser" -> "infrastructure.exceptions";
   "infrastructure.adapters.news_scraper" -> "application.dto.news_dto";
   "infrastructure.adapters.news_scraper" -> "application.ports.news_port";
   "infrastructure.adapters.news_scraper" -> "infrastructure.exceptions";

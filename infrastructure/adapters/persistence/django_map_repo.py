@@ -1,6 +1,9 @@
 """Adapter przestrzenny dostarczający dane dla warstwy mapowej."""
 
-from django.contrib.gis.geos import Polygon
+from typing import Any
+
+from django.contrib.gis.geos import GEOSGeometry, Polygon
+from django.contrib.gis.measure import D
 
 from application.dto.map_dto import TouristObjectGeoDTO
 from application.ports.map_port import MapRepositoryPort
@@ -52,3 +55,32 @@ class DjangoMapRepository(MapRepositoryPort):
             )
             for obj in qs
         ]
+
+    def get_objects_along_line(self, line_wkt: str, buffer_meters: float) -> list[dict[str, Any]]:
+        """Szuka obiektów wokół podanej linii WKT za pomocą indeksów GiST."""
+        from apps.badges.models import TouristObject
+
+        try:
+            line_geom = GEOSGeometry(line_wkt, srid=4326)
+        except Exception:
+            return []
+
+        # Szybki filtr PostGIS z użyciem D() - chroni CPU przed ST_DistanceSpheroid
+        qs = TouristObject.objects.filter(
+            geom__distance_lte=(line_geom, D(m=buffer_meters)), is_active=True, status="READY"
+        )
+
+        results = []
+        for obj in qs:
+            results.append(
+                {
+                    "id": obj.id,
+                    "name": obj.name,
+                    "type": obj.type,
+                    "altitude": obj.altitude,
+                    "lon": obj.geom.x,
+                    "lat": obj.geom.y,
+                }
+            )
+
+        return results

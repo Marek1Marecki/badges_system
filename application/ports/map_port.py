@@ -1,6 +1,6 @@
 """Port dla repozytorium mapowego. Zwraca obiekty w oparciu o filtry przestrzenne."""
 
-from typing import Protocol
+from typing import Any, Protocol
 
 from application.dto.map_dto import TouristObjectGeoDTO
 
@@ -22,4 +22,8 @@ class MapRepositoryPort(Protocol):
 
         Maksymalnie do 500 sztuk, aby zapobiec przeciążeniu frontendu.
         """
+        ...
+
+    def get_objects_along_line(self, line_wkt: str, buffer_meters: float) -> list[dict[str, Any]]:
+        """Zwraca obiekty (w formacie słownika) leżące w zadanym buforze wokół linii WKT."""
         ...

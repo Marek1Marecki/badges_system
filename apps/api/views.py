@@ -391,3 +391,82 @@ class NearbyObjectsView(View):
             )
 
         return JsonResponse({"type": "FeatureCollection", "features": features})
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class GpxAnalyzeView(View):
+    """POST /api/v1/gpx/analyze/
+
+    Analizuje w locie przesłany plik GPX (w RAM) i zwraca propozycje obiektów.
+    """
+
+    def post(self, request: HttpRequest) -> JsonResponse:
+        auth_error = _require_auth(request)
+        if auth_error:
+            return auth_error
+
+        if "file" not in request.FILES:
+            return _problem_detail(
+                request, "validation-failed", "Błąd Walidacji", 422, "Należy przesłać plik GPX w polu 'file'."
+            )
+
+        gpx_file = request.FILES["file"]
+
+        # Ochrona pamięci serwera: odrzucamy pliki > 10MB
+        if gpx_file.size > 10 * 1024 * 1024:
+            return _problem_detail(
+                request, "validation-failed", "Plik za duży", 422, "Plik GPX nie może przekraczać 10 MB."
+            )
+
+        file_content = gpx_file.read()
+
+        try:
+            use_case = get_container()["analyze_gpx_track"]
+            result = use_case.execute(file_content)
+        except ApplicationException as exc:
+            return _handle_application_exception(request, exc)
+
+        return JsonResponse(result.model_dump(), status=200)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class BulkAscentLogView(View):
+    """POST /api/v1/ascents/bulk/
+
+    Masowy zapis logów (np. po akceptacji z GPX). Zwraca wynik częściowy.
+    """
+
+    def post(self, request: HttpRequest) -> JsonResponse:
+        auth_error = _require_auth(request)
+        if auth_error:
+            return auth_error
+
+        try:
+            body = json.loads(request.body)
+            if not isinstance(body, list):
+                raise ValueError("Oczekiwano listy (tablicy) obiektów JSON.")
+        except (json.JSONDecodeError, ValueError) as e:
+            return _problem_detail(request, "validation-failed", "Nieprawidłowe dane", 422, str(e))
+
+        dtos = []
+        try:
+            for item in body:
+                dtos.append(AscentInputDTO(**item))
+        except Exception as e:
+            return _problem_detail(request, "validation-failed", "Błąd struktury wejść", 422, str(e))
+
+        try:
+            use_case = get_container()["bulk_log_ascents"]
+            result = use_case.execute(user_id=request.user.id, ascents=dtos)
+        except ApplicationException as exc:
+            return _handle_application_exception(request, exc)
+
+        # ARCHITEKTURA: Inwalidujemy Cache 100/n, ale TYLKO jeśli faktycznie coś dodano!
+        if result.saved_count > 0:
+            from django.db import transaction
+
+            from apps.badges.tasks import recalculate_poi_scores_task
+
+            transaction.on_commit(lambda: recalculate_poi_scores_task.delay(request.user.id))
+
+        return JsonResponse(result.model_dump(), status=200)

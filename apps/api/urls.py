@@ -11,6 +11,8 @@ from apps.api.views import (
     BadgeLogisticsView,
     BadgeProgressView,
     BadgeSubscribeView,
+    BulkAscentLogView,
+    GpxAnalyzeView,
     MapObjectsView,
     NearbyObjectsView,
     VectorTileView,
@@ -21,6 +23,8 @@ app_name = "api"
 urlpatterns = [
     # Logi wejść
     path("v1/ascents/", AscentLogView.as_view(), name="ascents"),
+    path("v1/ascents/bulk/", BulkAscentLogView.as_view(), name="ascents_bulk"),  # <--- DODANE
+    path("v1/gpx/analyze/", GpxAnalyzeView.as_view(), name="gpx_analyze"),  # <--- DODANE
     # Odznaki
     path("v1/badges/<str:badge_code>/subscribe/", BadgeSubscribeView.as_view(), name="badge_subscribe"),
     path("v1/badges/<str:badge_code>/progress/", BadgeProgressView.as_view(), name="badge_progress"),

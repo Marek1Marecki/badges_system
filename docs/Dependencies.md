@@ -60,6 +60,7 @@ Architektura zakłada minimalizację zewnętrznych zależności sieciowych, w sz
 | `requests` | `>=2.31.0` | Apache-2.0 | Instalacja wymuszona jako zależność wymagana przez `django-allauth` do obsługi wymiany tokenów z Google OAuth2. **Zasada wewnętrzna:** Własny kod projektu (np. adapter OSM) pozostaje przy `urllib`, aby zachować kontrolę nad nagłówkami WAF. | — |
 | `PyJWT` | `>=2.8.0` | MIT | Zależność wymuszona przez `django-allauth` do bezpiecznego dekodowania i weryfikacji tokenów OpenID Connect (OIDC) podczas logowania przez Google OAuth2. | — |
 | `cryptography` | `>=42.0.0` | Apache-2.0 | Twarda zależność kryptograficzna wymagana przez `PyJWT` do weryfikacji asymetrycznych podpisów cyfrowych (RSA) na tokenach zwracanych przez Google OAuth2. | — |
+| `defusedxml` | `>=0.7.1` | Python | Oficjalne zabezpieczenie biblioteki standardowej XML. Uniemożliwia ataki DoS typu *Billion Laughs* oraz wstrzykiwanie zewnętrznych encji (XXE) podczas parsowania złośliwych plików GPX wysyłanych przez użytkowników. | Wbudowany `xml.etree` (Odrzucony z powodów bezpieczeństwa, oznaczony jako podatność przez Bandit/Ruff S314). |
 
 ### Geografia i Panel Administracyjny
 
