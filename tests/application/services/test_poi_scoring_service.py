@@ -55,7 +55,8 @@ class TestPoiScoringService:
         ascent_repo = MagicMock()
         profile_repo = MagicMock()
         profile_repo.get_profile.return_value = TouristProfileDTO(
-            user_id=1,
+            profile_id=1,
+            is_main_profile=True,
             email="test@example.com",
             nickname="test",
             active_plan="Free",
@@ -78,7 +79,7 @@ class TestPoiScoringService:
         progress_repo.get_active_progresses.return_value = [
             BadgeProgressDTO(
                 progress_id=1,
-                user_id=1,
+                profile_id=1,
                 badge_code="KGP",
                 version_id=1,
                 cycle_number=1,
@@ -90,7 +91,8 @@ class TestPoiScoringService:
         ascent_repo = MagicMock()
         profile_repo = MagicMock()
         profile_repo.get_profile.return_value = TouristProfileDTO(
-            user_id=1,
+            profile_id=1,
+            is_main_profile=True,
             email="test@example.com",
             nickname="test",
             active_plan="Free",
@@ -113,7 +115,7 @@ class TestPoiScoringService:
         progress_repo.get_active_progresses.return_value = [
             BadgeProgressDTO(
                 progress_id=1,
-                user_id=1,
+                profile_id=1,
                 badge_code="KGP",
                 version_id=None,
                 cycle_number=1,
@@ -125,7 +127,8 @@ class TestPoiScoringService:
         ascent_repo = MagicMock()
         profile_repo = MagicMock()
         profile_repo.get_profile.return_value = TouristProfileDTO(
-            user_id=1,
+            profile_id=1,
+            is_main_profile=True,
             email="test@example.com",
             nickname="test",
             active_plan="Free",
@@ -159,7 +162,7 @@ class TestPoiScoringService:
         progress_repo.get_active_progresses.return_value = [
             BadgeProgressDTO(
                 progress_id=1,
-                user_id=1,
+                profile_id=1,
                 badge_code="KGP",
                 version_id=1,
                 cycle_number=1,
@@ -175,7 +178,8 @@ class TestPoiScoringService:
         ]
         profile_repo = MagicMock()
         profile_repo.get_profile.return_value = TouristProfileDTO(
-            user_id=1,
+            profile_id=1,
+            is_main_profile=True,
             email="test@example.com",
             nickname="test",
             active_plan="Free",
@@ -210,7 +214,7 @@ class TestPoiScoringService:
         progress_repo.get_active_progresses.return_value = [
             BadgeProgressDTO(
                 progress_id=1,
-                user_id=1,
+                profile_id=1,
                 badge_code="KGP",
                 version_id=1,
                 cycle_number=1,
@@ -224,7 +228,8 @@ class TestPoiScoringService:
         ascent_repo.get_unconsumed_ascents.return_value = []
         profile_repo = MagicMock()
         profile_repo.get_profile.return_value = TouristProfileDTO(
-            user_id=1,
+            profile_id=1,
+            is_main_profile=True,
             email="test@example.com",
             nickname="test",
             active_plan="Free",
@@ -256,7 +261,7 @@ class TestPoiScoringService:
         progress_repo.get_active_progresses.return_value = [
             BadgeProgressDTO(
                 progress_id=1,
-                user_id=1,
+                profile_id=1,
                 badge_code="KGP",
                 version_id=1,
                 cycle_number=1,
@@ -270,7 +275,8 @@ class TestPoiScoringService:
         ascent_repo.get_unconsumed_ascents.return_value = []
         profile_repo = MagicMock()
         profile_repo.get_profile.return_value = TouristProfileDTO(
-            user_id=1,
+            profile_id=1,
+            is_main_profile=True,
             email="test@example.com",
             nickname="test",
             active_plan="Free",
@@ -312,7 +318,8 @@ class TestPoiScoringService:
         ascent_repo = MagicMock()
         profile_repo = MagicMock()
         profile_repo.get_profile.return_value = TouristProfileDTO(
-            user_id=1,
+            profile_id=1,
+            is_main_profile=True,
             email="test@example.com",
             nickname="test",
             active_plan="Free",

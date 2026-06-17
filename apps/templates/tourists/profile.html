@@ -40,6 +40,29 @@
                 </button>
             </div>
         </form>
+
+        <!-- Formularz tworzenia sub-profilu (Konto Rodzinne) -->
+        <div class="mt-10 pt-6 border-t border-gray-200">
+            <h3 class="text-xl font-bold mb-2 text-slate-800">Konto Rodzinne</h3>
+            <p class="text-sm text-gray-600 mb-4">Dodaj profil dziecka lub partnera, by prowadzić ich osobistą ewidencję pod Twoim głównym kontem Google (Użyto {{ profiles_count }} z {{ max_profiles }}).</p>
+
+            {% if profiles_count < max_profiles %}
+            <form method="POST" action="{% url 'profile' %}" class="flex gap-2">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_profile">
+                <input type="text" name="new_nickname" placeholder="Imię lub pseudonim..." required
+                       class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 p-2.5 border text-sm">
+                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-4 rounded transition shadow text-sm whitespace-nowrap">
+                    + Dodaj profil
+                </button>
+            </form>
+            {% else %}
+            <div class="bg-amber-50 text-amber-800 p-3 rounded text-sm border border-amber-200">
+                Osiągnięto limit {{ max_profiles }} profili na tym koncie.
+            </div>
+            {% endif %}
+        </div>
+
     </div>
 </div>
 {% endblock %}

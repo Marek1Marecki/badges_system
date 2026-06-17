@@ -36,19 +36,19 @@ class StartBadgeProgressUseCase:
         self._badge_repo = badge_repository
         self._clock = clock
 
-    def execute(self, user_id: int, badge_code: str, cycle_number: int = 1) -> int:
+    def execute(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> int:
         """Rozpoczyna śledzenie postępu odznaki.
 
         Raises:
             UseCaseError: Jeśli dla wyliczonej daty nie istnieje żaden regulamin.
         """
         # 0. Weryfikacja limitów Freemium (US-C01c)
-        profile = self._profile_repo.get_profile(user_id)
+        profile = self._profile_repo.get_profile(profile_id)
         if profile:
             active_badges_count = len(
                 [
                     p
-                    for p in self._progress_repo.get_active_progresses(user_id)
+                    for p in self._progress_repo.get_active_progresses(profile_id)
                     if p.domain_status in ("NOT_STARTED", "IN_PROGRESS")
                 ]
             )
@@ -59,7 +59,7 @@ class StartBadgeProgressUseCase:
                 )
 
         # 1. Krok: Ustalenie daty "zakotwiczenia" (Grandfathering Detection)
-        oldest_ascent_date = self._ascent_repo.get_oldest_ascent_date(user_id, badge_code)
+        oldest_ascent_date = self._ascent_repo.get_oldest_ascent_date(profile_id, badge_code)
 
         # Jeśli turysta nie ma jeszcze wejść dla tej odznaki,
         # oceniamy go po aktualnym regulaminie z dzisiaj (T-02).
@@ -75,7 +75,7 @@ class StartBadgeProgressUseCase:
 
         # 3. Krok: Zapis w bazie (Utworzenie subskrypcji)
         progress_id = self._progress_repo.start_progress(
-            user_id=user_id,
+            profile_id=profile_id,
             badge_code=badge_code,
             version_id=version_id,
             cycle_number=cycle_number,

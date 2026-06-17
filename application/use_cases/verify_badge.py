@@ -41,7 +41,7 @@ class VerifyBadgeUseCase:
         """Przeprowadza weryfikację logów wejść z bazy danych."""
         # 1. Pobieramy "Zakotwiczenie" turysty (Prawa Nabyte)
         progress = self._progress_repo.get_progress(
-            user_id=request.user_id, badge_code=request.badge_code, cycle_number=request.cycle_number
+            profile_id=request.profile_id, badge_code=request.badge_code, cycle_number=request.cycle_number
         )
         if not progress:
             # ResourceNotFoundError → 404 przez middleware
@@ -56,21 +56,23 @@ class VerifyBadgeUseCase:
             raise UseCaseError("Regulamin przypisany do tej odznaki nie istnieje w bazie.")
 
         # 3. Pobieramy profil turysty (Wiek, Kluby)
-        profile = self._profile_repo.get_profile(request.user_id)
+        profile = self._profile_repo.get_profile(request.profile_id)
         birth_date = profile.birth_date if profile else None
         club_dates = profile.club_join_dates if profile else {}
 
         # 4. Ustalamy "Ocięcie" logów dla Pętli Prestiżu (Invariant P-02)
         cutoff_date = None
         if request.cycle_number > 1:
-            prev_cycle = self._progress_repo.get_progress(request.user_id, request.badge_code, request.cycle_number - 1)
+            prev_cycle = self._progress_repo.get_progress(
+                request.profile_id, request.badge_code, request.cycle_number - 1
+            )
             # Jeśli poprzedni cykl jest zamknięty, odcinamy stare logi po dacie zamknięcia
             if prev_cycle and prev_cycle.logistic_status_date:
                 cutoff_date = prev_cycle.logistic_status_date
 
         # 5. Pobieramy "Niezużyte" logi z bazy
         ascents_dto = self._ascent_repo.get_unconsumed_ascents(
-            user_id=request.user_id,
+            profile_id=request.profile_id,
             badge_code=request.badge_code,
             cutoff_date=cutoff_date,
         )
@@ -81,7 +83,7 @@ class VerifyBadgeUseCase:
             evaluation_time=self._clock.now(),
             tourist_birth_date=birth_date,
             club_join_dates=club_dates,
-            completed_badge_codes=self._get_completed_badges(request.user_id),
+            completed_badge_codes=self._get_completed_badges(request.profile_id),
         )
 
         # 7. EWALUACJA W CZYSTEJ DOMENIE
@@ -94,7 +96,7 @@ class VerifyBadgeUseCase:
 
         return result
 
-    def _get_completed_badges(self, user_id: int) -> frozenset[str]:
+    def _get_completed_badges(self, profile_id: int) -> frozenset[str]:
         """Pobiera kody odznak, które turysta ukończył."""
-        progresses = self._progress_repo.get_active_progresses(user_id)
+        progresses = self._progress_repo.get_active_progresses(profile_id)
         return frozenset(p.badge_code for p in progresses if p.domain_status == "COMPLETED")

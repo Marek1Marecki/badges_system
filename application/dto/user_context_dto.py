@@ -10,11 +10,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class TouristProfileDTO(BaseModel):
-    """Zunifikowany profil turysty (Logowanie + Profil + Limity)."""
+    """Zunifikowany profil turysty (Konto Rodzinne + Profil + Limity)."""
 
     model_config = ConfigDict(frozen=True)
 
-    user_id: int
+    profile_id: int  # <--- ZMIANA
+    is_main_profile: bool  # <--- ZMIANA
     email: str
     nickname: str
     birth_date: date | None = None
@@ -34,7 +35,7 @@ class BadgeProgressDTO(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     progress_id: int
-    user_id: int
+    profile_id: int  # <--- ZMIANA
     badge_code: str
     version_id: int | None
     cycle_number: int

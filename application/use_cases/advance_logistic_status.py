@@ -10,14 +10,15 @@ from datetime import date
 from application.exceptions import ConflictError, UseCaseError
 from application.ports.user_progress_port import UserProgressRepositoryPort
 
-# Definicja dozwolonych przejść (Jednokierunkowa maszyna stanów)
+# Definicja dozwolonych przejść (Maszyna stanów Trackera B2C)
 VALID_TRANSITIONS = {
     None: ["WAITING_FOR_SEND", "WAITING_FOR_VERIFICATION"],
     "WAITING_FOR_SEND": ["WAITING_FOR_VERIFICATION"],
-    "WAITING_FOR_VERIFICATION": ["WAITING_FOR_RECEIVING", "REJECTED"],
-    "WAITING_FOR_RECEIVING": ["ALBUM"],
-    "REJECTED": ["WAITING_FOR_VERIFICATION"],  # Powrót po korekcie błędów
-    "ALBUM": [],  # Stan terminalny
+    # Turysta może cofnąć pomyłkowe kliknięcie "Wysłano"
+    "WAITING_FOR_VERIFICATION": ["WAITING_FOR_RECEIVING", "WAITING_FOR_SEND"],
+    # Turysta może cofnąć pomyłkowe kliknięcie "Odebrano z PTTK"
+    "WAITING_FOR_RECEIVING": ["ALBUM", "WAITING_FOR_VERIFICATION"],
+    "ALBUM": ["WAITING_FOR_RECEIVING"],  # Opcjonalne wycofanie z albumu
 }
 
 
@@ -28,7 +29,7 @@ class AdvanceLogisticStatusUseCase:
         """Wstrzyknięty adapter do zarządzania postępowi turysty."""
         self._progress_repo = progress_repository
 
-    def execute(self, user_id: int, progress_id: int, new_logistic_status: str, status_date: date) -> None:
+    def execute(self, profile_id: int, progress_id: int, new_logistic_status: str, status_date: date) -> None:
         """Przesuwa status logistyczny zdobytej odznaki.
 
         Raises:
@@ -36,7 +37,7 @@ class AdvanceLogisticStatusUseCase:
             ConflictError: Gdy domena nie jest COMPLETED lub przejście FSM jest nielegalne.
         """
         # 1. Weryfikacja tożsamości i istnienia zasobu
-        progress = self._progress_repo.get_progress_by_id(user_id=user_id, progress_id=progress_id)
+        progress = self._progress_repo.get_progress_by_id(profile_id=profile_id, progress_id=progress_id)
         if not progress:
             raise UseCaseError(f"Postęp odznaki (ID: {progress_id}) nie istnieje lub brak dostępu.")
 

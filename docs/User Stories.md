@@ -23,7 +23,7 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 
 ---
 
-## Epic 1: Profil Turysty i Kontekst Weryfikacji (Verification Context)
+## Epic 1: Konta, Profile Rodzinne i Kontekst
 
 ### US-C01 — Rejestracja i Wiek Turysty 🔴 P0
 **Story:** Jako Turysta, chcę zdefiniować swoją datę urodzenia w profilu, aby system mógł poprawnie weryfikować odznaki posiadające ograniczenia wiekowe.
@@ -43,14 +43,18 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 - [ ] Model `BadgeModel` posiada twarde metadane terytorialne do filtrowania (np. Polska, Sudety), nadawane przez Administratora.
 - [ ] Turysta klika "Chcę zdobywać", co tworzy intencję (`UserBadgeProgress` ze statusem `NOT_STARTED` i pustym `version_id`).
 
-### US-C01c — Pakiety Subskrypcyjne i Limity (Freemium Quotas) 🟠 P1
-**Story:** Jako Właściciel Aplikacji, chcę przypisywać turystom pakiety subskrypcyjne (np. Free, Pro, Max), które nakładają limity na użycie infrastruktury, aby system mógł zarabiać na swoje utrzymanie.
-**Dotyczy encji:** `TouristProfile`, `TouristProfileDTO` (Limity przenoszone w głównym kontekście turysty)
-
+### US-C01c — Pakiety Freemium i Limity Konta 🟠 P1
+**Story:** Jako Właściciel Aplikacji, chcę przypisywać kontom (Głównym Profilom) pakiety subskrypcyjne (np. Free, Family), które limitują zasoby (np. maksymalna liczba podpiętych profili dzieci, liczba zdjęć), aby system mógł się utrzymać.
+**Dotyczy encji:** `TouristProfile`, `TouristProfileDTO`
 **Kryteria akceptacji:**
-- [x] Profil turysty posiada przypisany poziom subskrypcji.
-- [x] System definiuje limity (np. max liczba zdjęć do logu `proof_file`, max liczba jednocześnie subskrybowanych odznak ze statusem `IN_PROGRESS`).
-- [x] Odrzucenie akcji z powodu wyczerpania limitu rzuca błąd aplikacyjny `400 Bad Request` z jasnym komunikatem zachęcającym do rozszerzenia pakietu.
+- [ ] Główne konto posiada limit maksymalnej liczby profili (np. 1 dla FREE, 5 dla FAMILY).
+
+### US-C01d — Zarządzanie Profilami (Konta Rodzinne) 🔴 P0
+**Story:** Jako Turysta, chcę móc utworzyć dodatkowe profile (np. dla moich dzieci) pod jednym kontem logowania Google, aby wygodnie zarządzać ich niezależnymi postępami bez konieczności ciągłego wylogowywania się.
+**Dotyczy encji:** `TouristProfile`, `AscentLog`, `UserBadgeProgress`
+**Kryteria akceptacji:**
+- [ ] Użytkownik uwierzytelniony może przełączać "aktywny kontekst profilu" w menu (zapisywane w sesji).
+- [ ] Logi wejść i postępy są twardo przypinane do ID Profilu (`profile_id`), a nie ID Konta (`user_id`).
 
 ### US-C02 — Przynależność Klubowa (Data zapisu) 🟠 P1
 **Story:** Jako Turysta, chcę móc odnotować datę dołączenia do konkretnego Klubu (np. KGP), aby system zaliczał mi logi wejść zrobione dopiero po tej dacie.

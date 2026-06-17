@@ -53,11 +53,12 @@ class TouristProfileAdmin(ModelAdmin):
 class AscentLogAdmin(ModelAdmin):
     """Niezależny panel śledzący wszystkie wejścia na szczyty."""
 
-    list_display = ("user", "peak", "ascent_date", "has_souvenir", "created_at")
+    # ZMIANA: 'user' -> 'profile'
+    list_display = ("profile", "peak", "ascent_date", "has_souvenir", "created_at")
     list_filter = ("ascent_date",)
-    search_fields = ("user__email", "peak__name", "peak__osm_id")
-    # Pamiątka turysty do wglądu, ale bez edycji
-    readonly_fields = ("user", "peak", "ascent_date", "souvenir_image", "created_at")
+    search_fields = ("profile__nickname", "profile__user__email", "peak__name", "peak__osm_id")
+    # ZMIANA: 'user' -> 'profile'
+    readonly_fields = ("profile", "peak", "ascent_date", "souvenir_image", "created_at")
 
     @admin.display(description="Pamiątka", boolean=True)
     def has_souvenir(self, obj: AscentLog) -> bool:
@@ -69,16 +70,18 @@ class AscentLogAdmin(ModelAdmin):
 class UserBadgeProgressAdmin(ModelAdmin):
     """Niezależny panel stanu zdobywania odznak i Osobistego Trackera (Kanban)."""
 
-    list_display = ("user", "badge", "version_code", "cycle_number", "domain_status", "logistic_status")
+    # ZMIANA: 'user' -> 'profile'
+    list_display = ("profile", "badge", "version_code", "cycle_number", "domain_status", "logistic_status")
     list_filter = ("domain_status", "logistic_status", "cycle_number", "badge")
-    search_fields = ("user__email", "badge__name")
-    readonly_fields = ("user", "badge", "version", "cycle_number", "domain_status", "created_at", "updated_at")
+    search_fields = ("profile__nickname", "profile__user__email", "badge__name")
+    # ZMIANA: 'user' -> 'profile'
+    readonly_fields = ("profile", "badge", "version", "cycle_number", "domain_status", "created_at", "updated_at")
 
     fieldsets = (
         (
             "Tożsamość Odznaki i Prawa Nabyte",
             {
-                "fields": ("user", "badge", "cycle_number", "version"),
+                "fields": ("profile", "badge", "cycle_number", "version"),
                 "description": (
                     "Wersja pozostaje PUSTA do czasu zakotwiczenia pierwszym logiem (Prawa Nabyte - US-C05)."
                 ),
@@ -89,8 +92,8 @@ class UserBadgeProgressAdmin(ModelAdmin):
             {
                 "fields": ("domain_status",),
                 "description": (
-                    "Status jest wyliczany w locie (On-Demand) przez Czystą Domenę i "
-                    "zapisywany tu jako Snapshot. Administrator nie może go edytować."
+                    "Status jest wyliczany w locie (On-Demand) przez Czystą Domenę "
+                    "i zapisywany tu jako Snapshot. Administrator nie może go edytować."
                 ),
             },
         ),

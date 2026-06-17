@@ -23,11 +23,11 @@ class LogAscentUseCase:
         self._ascent_repo = ascent_repository
         self._clock = clock
 
-    def execute(self, user_id: int, dto: AscentInputDTO) -> int:
+    def execute(self, profile_id: int, dto: AscentInputDTO) -> int:
         """Wykonuje operację logowania wejścia.
 
         Args:
-            user_id: ID turysty z kontekstu sesji (API).
+            profile_id: ID turysty z kontekstu sesji (API).
             dto: Zwalidowane dane wejściowe.
 
         Returns:
@@ -61,14 +61,14 @@ class LogAscentUseCase:
             )
 
         # 3. Zabezpieczenie przed duplikatami / Upsert (Invariant D-04)
-        if self._ascent_repo.ascent_exists(user_id=user_id, peak_id=dto.peak_id, ascent_date=dto.ascent_date):
+        if self._ascent_repo.ascent_exists(profile_id=profile_id, peak_id=dto.peak_id, ascent_date=dto.ascent_date):
             raise ConflictError(
                 f"Wejście na obiekt {dto.peak_id} w dniu {dto.ascent_date} zostało już wcześniej zalogowane."
             )
 
         # 4. Zapis faktu (Delegacja do adaptera bazy danych)
         ascent_id = self._ascent_repo.save_ascent(
-            user_id=user_id,
+            profile_id=profile_id,
             peak_id=dto.peak_id,
             ascent_date=dto.ascent_date,
         )

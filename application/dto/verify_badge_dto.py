@@ -6,6 +6,6 @@ from pydantic import BaseModel
 class VerifyBadgeRequestDTO(BaseModel):
     """Żądanie weryfikacji postępu zdobywania odznaki."""
 
-    user_id: int
+    profile_id: int
     badge_code: str
     cycle_number: int = 1

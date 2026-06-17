@@ -16,6 +16,7 @@
 | `owner` | Turysta, który wygenerował dany rekord (np. log wejścia, postęp). | Identyfikator w rekordzie: `resource.user_id == current_user.id`. |
 | `authenticated` | Każdy zalogowany turysta. | Ważna sesja Django / Token JWT. |
 | `public` | Niezalogowany gość. | Brak uwierzytelnienia. |
+| `owner` | Turysta (właściciel konta Google), który ma podpięty dany Profil Turysty. | Identyfikator w rekordzie odnosi się do Profilu (`profile_id`), a Profil posiada `user_id == current_user.id`. Posiadacz konta ma pełny dostęp do wszystkich profili, które sam utworzył (Konta Rodzinne). |
 
 ---
 

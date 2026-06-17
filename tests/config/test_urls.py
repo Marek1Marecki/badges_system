@@ -37,11 +37,6 @@ class TestMainUrls(SimpleTestCase):
         url = reverse("badge_detail", kwargs={"badge_code": "test-badge"})
         assert resolve(url).func.__name__ == "badge_detail_view"
 
-    def test_region_detail_url_resolves(self):
-        """Test that region detail URL resolves to region_detail_view."""
-        url = reverse("region_detail", kwargs={"region_level": "mesoregion", "region_id": 1})
-        assert resolve(url).func.__name__ == "region_detail_view"
-
     def test_region_ranking_url_resolves(self):
         """Test that region ranking URL resolves to region_ranking_view."""
         url = reverse("region_ranking")

@@ -11,7 +11,8 @@ class TestTouristProfileDTO:
     def test_tourist_profile_dto_creation_with_all_fields(self):
         """Test tworzenia TouristProfileDTO z wszystkimi polami."""
         dto = TouristProfileDTO(
-            user_id=1,
+            profile_id=1,
+            is_main_profile=True,
             email="test@example.com",
             nickname="testuser",
             birth_date=date(2010, 1, 1),
@@ -21,7 +22,7 @@ class TestTouristProfileDTO:
             max_active_badges=10,
         )
 
-        assert dto.user_id == 1
+        assert dto.profile_id == 1
         assert dto.email == "test@example.com"
         assert dto.nickname == "testuser"
         assert dto.birth_date == date(2010, 1, 1)
@@ -33,7 +34,8 @@ class TestTouristProfileDTO:
     def test_tourist_profile_dto_creation_with_minimal_fields(self):
         """Test tworzenia TouristProfileDTO z minimalnymi polami."""
         dto = TouristProfileDTO(
-            user_id=1,
+            profile_id=1,
+            is_main_profile=True,
             email="test@example.com",
             nickname="testuser",
             active_plan="Free",
@@ -41,14 +43,15 @@ class TestTouristProfileDTO:
             max_active_badges=3,
         )
 
-        assert dto.user_id == 1
+        assert dto.profile_id == 1
         assert dto.birth_date is None
         assert dto.club_join_dates == {}
 
     def test_tourist_profile_dto_with_multiple_clubs(self):
         """Test TouristProfileDTO z wieloma klubami."""
         dto = TouristProfileDTO(
-            user_id=1,
+            profile_id=1,
+            is_main_profile=True,
             email="test@example.com",
             nickname="testuser",
             club_join_dates={"PTTK": date(2020, 1, 1), "KGP": date(2021, 6, 1)},
@@ -62,7 +65,8 @@ class TestTouristProfileDTO:
     def test_tourist_profile_dto_is_frozen(self):
         """Test że TouristProfileDTO jest immutable."""
         dto = TouristProfileDTO(
-            user_id=1,
+            profile_id=1,
+            is_main_profile=True,
             email="test@example.com",
             nickname="testuser",
             active_plan="Free",
@@ -81,7 +85,7 @@ class TestBadgeProgressDTO:
         """Test tworzenia BadgeProgressDTO z wszystkimi polami."""
         dto = BadgeProgressDTO(
             progress_id=1,
-            user_id=1,
+            profile_id=1,
             badge_code="KGP",
             version_id=1,
             cycle_number=1,
@@ -91,7 +95,7 @@ class TestBadgeProgressDTO:
         )
 
         assert dto.progress_id == 1
-        assert dto.user_id == 1
+        assert dto.profile_id == 1
         assert dto.badge_code == "KGP"
         assert dto.version_id == 1
         assert dto.cycle_number == 1
@@ -103,7 +107,7 @@ class TestBadgeProgressDTO:
         """Test tworzenia BadgeProgressDTO z minimalnymi polami."""
         dto = BadgeProgressDTO(
             progress_id=1,
-            user_id=1,
+            profile_id=1,
             badge_code="KGP",
             version_id=1,
             cycle_number=1,
@@ -120,7 +124,7 @@ class TestBadgeProgressDTO:
         """Test BadgeProgressDTO z różnymi statusami."""
         dto = BadgeProgressDTO(
             progress_id=1,
-            user_id=1,
+            profile_id=1,
             badge_code="KGP",
             version_id=1,
             cycle_number=1,
@@ -136,7 +140,7 @@ class TestBadgeProgressDTO:
         """Test że BadgeProgressDTO jest immutable."""
         dto = BadgeProgressDTO(
             progress_id=1,
-            user_id=1,
+            profile_id=1,
             badge_code="KGP",
             version_id=1,
             cycle_number=1,

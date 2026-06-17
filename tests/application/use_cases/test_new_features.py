@@ -39,9 +39,9 @@ class TestAdvanceLogisticStatusUseCase:
         repo.get_progress_by_id.return_value = prog
         uc = AdvanceLogisticStatusUseCase(repo)
 
-        # Próba przejścia wstecz
+        # Próba nieprawidłowego przejścia (WAITING_FOR_VERIFICATION -> ALBUM nie jest dozwolone)
         with pytest.raises(ConflictError, match="Niedozwolone przejście"):
-            uc.execute(1, 1, "WAITING_FOR_SEND", "2026-01-01")
+            uc.execute(1, 1, "ALBUM", "2026-01-01")
 
     def test_success_transition(self) -> None:
         repo = MagicMock()

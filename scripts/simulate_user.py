@@ -26,7 +26,7 @@ def run_simulation() -> None:
     verify_badge_use_case = container["verify_badge"]
 
     # 2. Tworzymy żądanie dla hipotetycznego turysty o ID = 1
-    dto = VerifyBadgeRequestDTO(user_id=1, badge_code="KGP", cycle_number=1)
+    dto = VerifyBadgeRequestDTO(profile_id=1, badge_code="KGP", cycle_number=1)
 
     print(f"Wysyłam żądanie weryfikacji: {dto}")
 

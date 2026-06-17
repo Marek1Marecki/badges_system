@@ -11,7 +11,7 @@ from tests.fakes.clock import FakeClock
 
 
 def _dto() -> VerifyBadgeRequestDTO:
-    return VerifyBadgeRequestDTO(user_id=1, badge_code="KGP", cycle_number=1)
+    return VerifyBadgeRequestDTO(profile_id=1, badge_code="KGP", cycle_number=1)
 
 
 class TestVerifyBadgeUseCase:

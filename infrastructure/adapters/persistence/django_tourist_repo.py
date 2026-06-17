@@ -31,11 +31,11 @@ class DjangoTouristRepository(
     # TouristProfileRepositoryPort
     # =====================================================================
 
-    def get_profile(self, user_id: int) -> TouristProfileDTO | None:
+    def get_profile(self, profile_id: int) -> TouristProfileDTO | None:
         from apps.tourists.models import TouristProfile
 
         try:
-            profile = TouristProfile.objects.select_related("user").get(user_id=user_id)
+            profile = TouristProfile.objects.select_related("user").get(id=profile_id)
         except TouristProfile.DoesNotExist:
             return None
 
@@ -43,7 +43,8 @@ class DjangoTouristRepository(
         join_dates = {str(k): date.fromisoformat(str(v)) for k, v in profile.club_join_dates.items()}
 
         return TouristProfileDTO(
-            user_id=profile.user.id,
+            profile_id=profile.id,
+            is_main_profile=profile.is_main_profile,
             email=profile.user.email,
             nickname=profile.nickname,
             birth_date=profile.birth_date,
@@ -67,13 +68,13 @@ class DjangoTouristRepository(
 
         return (obj.existence_start, obj.existence_end)
 
-    def ascent_exists(self, user_id: int, peak_id: int, ascent_date: date) -> bool:
+    def ascent_exists(self, profile_id: int, peak_id: int, ascent_date: date) -> bool:
         from apps.tourists.models import AscentLog
 
-        qs = AscentLog.objects.filter(user_id=user_id, peak_id=peak_id, ascent_date=ascent_date)
+        qs = AscentLog.objects.filter(profile_id=profile_id, peak_id=peak_id, ascent_date=ascent_date)
         return bool(qs.exists())
 
-    def get_oldest_ascent_date(self, user_id: int, badge_code: str) -> date | None:
+    def get_oldest_ascent_date(self, profile_id: int, badge_code: str) -> date | None:
         from apps.badges.models import BadgeVersionModel
         from apps.tourists.models import AscentLog
 
@@ -82,23 +83,25 @@ class DjangoTouristRepository(
             BadgeVersionModel.objects.filter(badge__code=badge_code).values_list("pool_peaks__id", flat=True).distinct()
         )
 
-        result = AscentLog.objects.filter(user_id=user_id, peak_id__in=peak_ids).aggregate(oldest=Min("ascent_date"))
+        result = AscentLog.objects.filter(profile_id=profile_id, peak_id__in=peak_ids).aggregate(
+            oldest=Min("ascent_date")
+        )
         return cast(date | None, result["oldest"])
 
-    def save_ascent(self, user_id: int, peak_id: int, ascent_date: date) -> int:
+    def save_ascent(self, profile_id: int, peak_id: int, ascent_date: date) -> int:
         from apps.tourists.models import AscentLog
 
         # Idempotentny Upsert (Invariant D-04). Jeśli z powodu laga sieciowego
         # API uderzy tu dwa razy, get_or_create nie wyrzuci błędu bazy z UniqueConstraint.
         log, _ = AscentLog.objects.get_or_create(
-            user_id=user_id,
+            profile_id=profile_id,
             peak_id=peak_id,
             ascent_date=ascent_date,
             defaults={},
         )
         return cast(int, log.id)
 
-    def get_unconsumed_ascents(self, user_id: int, badge_code: str, cutoff_date: date | None) -> list[AscentDTO]:
+    def get_unconsumed_ascents(self, profile_id: int, badge_code: str, cutoff_date: date | None) -> list[AscentDTO]:
         from apps.badges.models import BadgeVersionModel, ObjectRegionCache
         from apps.tourists.models import AscentLog
 
@@ -108,7 +111,7 @@ class DjangoTouristRepository(
             BadgeVersionModel.objects.filter(badge__code=badge_code).values_list("pool_peaks__id", flat=True).distinct()
         )
 
-        qs = AscentLog.objects.filter(user_id=user_id, peak_id__in=peak_ids)
+        qs = AscentLog.objects.filter(profile_id=profile_id, peak_id__in=peak_ids)
 
         # Odrzucamy logi "zużyte" (Starsze lub równe dacie zamknięcia poprzedniego cyklu)
         if cutoff_date:
@@ -145,13 +148,13 @@ class DjangoTouristRepository(
         qs = TouristObject.objects.filter(id__in=peak_ids).values_list("id", "existence_start", "existence_end")
         return {row[0]: (row[1], row[2]) for row in qs}
 
-    def bulk_save_ascents(self, user_id: int, ascents: list[AscentInputDTO]) -> int:
+    def bulk_save_ascents(self, profile_id: int, ascents: list[AscentInputDTO]) -> int:
         """Masowo zapisuje wejścia. Ignoruje duplikaty (Idempotentność D-04)."""
         from apps.tourists.models import AscentLog
 
         new_logs = [
             AscentLog(
-                user_id=user_id,
+                profile_id=profile_id,
                 peak_id=dto.peak_id,
                 ascent_date=dto.ascent_date,
             )
@@ -174,7 +177,7 @@ class DjangoTouristRepository(
         """Prywatny mapper ORM -> DTO."""
         return BadgeProgressDTO(
             progress_id=progress_obj.id,
-            user_id=progress_obj.user_id,
+            profile_id=progress_obj.profile_id,
             badge_code=progress_obj.badge.code,
             version_id=progress_obj.version_id,
             cycle_number=progress_obj.cycle_number,
@@ -183,31 +186,31 @@ class DjangoTouristRepository(
             logistic_status_date=progress_obj.logistic_status_date,
         )
 
-    def get_active_progresses(self, user_id: int) -> list[BadgeProgressDTO]:
+    def get_active_progresses(self, profile_id: int) -> list[BadgeProgressDTO]:
         from apps.tourists.models import UserBadgeProgress
 
-        qs = UserBadgeProgress.objects.filter(user_id=user_id).select_related("badge", "version")
+        qs = UserBadgeProgress.objects.filter(profile_id=profile_id).select_related("badge", "version")
         return [self._to_progress_dto(p) for p in qs]
 
-    def get_progress(self, user_id: int, badge_code: str, cycle_number: int = 1) -> BadgeProgressDTO | None:
+    def get_progress(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> BadgeProgressDTO | None:
         from apps.tourists.models import UserBadgeProgress
 
         try:
             prog = UserBadgeProgress.objects.select_related("badge", "version").get(
-                user_id=user_id, badge__code=badge_code, cycle_number=cycle_number
+                profile_id=profile_id, badge__code=badge_code, cycle_number=cycle_number
             )
             return self._to_progress_dto(prog)
         except UserBadgeProgress.DoesNotExist:
             return None
 
-    def start_progress(self, user_id: int, badge_code: str, version_id: int, cycle_number: int = 1) -> int:
+    def start_progress(self, profile_id: int, badge_code: str, version_id: int, cycle_number: int = 1) -> int:
         from apps.badges.models import BadgeModel
         from apps.tourists.models import UserBadgeProgress
 
         badge = BadgeModel.objects.get(code=badge_code)
 
         prog, _ = UserBadgeProgress.objects.get_or_create(
-            user_id=user_id,
+            profile_id=profile_id,
             badge=badge,
             cycle_number=cycle_number,
             defaults={
@@ -229,30 +232,32 @@ class DjangoTouristRepository(
             logistic_status=logistic_status, logistic_status_date=status_date
         )
 
-    def get_completed_badge_codes(self, user_id: int) -> frozenset[str]:
+    def get_completed_badge_codes(self, profile_id: int) -> frozenset[str]:
         from apps.tourists.models import DomainStatus, UserBadgeProgress
 
         codes = (
-            UserBadgeProgress.objects.filter(user_id=user_id, domain_status=DomainStatus.COMPLETED)
+            UserBadgeProgress.objects.filter(profile_id=profile_id, domain_status=DomainStatus.COMPLETED)
             .values_list("badge__code", flat=True)
             .distinct()
         )
         return frozenset(codes)
 
-    def get_progress_by_id(self, user_id: int, progress_id: int) -> BadgeProgressDTO | None:
+    def get_progress_by_id(self, profile_id: int, progress_id: int) -> BadgeProgressDTO | None:
         from apps.tourists.models import UserBadgeProgress
 
         try:
-            prog = UserBadgeProgress.objects.select_related("badge", "version").get(id=progress_id, user_id=user_id)
+            prog = UserBadgeProgress.objects.select_related("badge", "version").get(
+                id=progress_id, profile_id=profile_id
+            )
             return self._to_progress_dto(prog)
         except UserBadgeProgress.DoesNotExist:
             return None
 
-    def get_all_ascents_for_user(self, user_id: int) -> list[AscentDTO]:
+    def get_all_ascents_for_user(self, profile_id: int) -> list[AscentDTO]:
         from apps.badges.models import ObjectRegionCache
         from apps.tourists.models import AscentLog
 
-        ascents = list(AscentLog.objects.filter(user_id=user_id))
+        ascents = list(AscentLog.objects.filter(profile_id=profile_id))
         if not ascents:
             return []
 

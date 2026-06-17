@@ -29,6 +29,8 @@ def mock_user():
     user.is_authenticated = True
     user.id = 1
     user.username = "turysta"
+    user.profile = MagicMock()
+    user.profile.id = 1
     return user
 
 
@@ -63,6 +65,7 @@ class TestAscentLogView:
             content_type="application/json",
         )
         request.user = mock_user
+        request.profile = mock_user.profile
 
         response = AscentLogView.as_view()(request)
 
@@ -81,11 +84,12 @@ class TestAscentLogView:
             content_type="application/json",
         )
         request.user = mock_user  # id=1
+        request.profile = mock_user.profile
 
         AscentLogView.as_view()(request)
 
         call_kwargs = use_cases["log_ascent"].execute.call_args
-        assert call_kwargs.kwargs["user_id"] == 1
+        assert call_kwargs.kwargs["profile_id"] == 1
 
     def test_conflict_error_returns_409_rfc7807(self, factory, mock_user, use_cases) -> None:
         """ConflictError (D-04) → 409 Conflict RFC 7807."""
@@ -100,6 +104,7 @@ class TestAscentLogView:
             content_type="application/json",
         )
         request.user = mock_user
+        request.profile = mock_user.profile
 
         response = AscentLogView.as_view()(request)
 
@@ -122,6 +127,7 @@ class TestAscentLogView:
             content_type="application/json",
         )
         request.user = mock_user
+        request.profile = mock_user.profile
 
         response = AscentLogView.as_view()(request)
 
@@ -141,6 +147,7 @@ class TestAscentLogView:
             content_type="application/json",
         )
         request.user = mock_user
+        request.profile = mock_user.profile
 
         response = AscentLogView.as_view()(request)
 
@@ -156,6 +163,7 @@ class TestAscentLogView:
             content_type="application/json",
         )
         request.user = mock_user
+        request.profile = mock_user.profile
 
         response = AscentLogView.as_view()(request)
 
@@ -192,6 +200,7 @@ class TestBadgeSubscribeView:
 
         request = factory.post("/api/v1/badges/KGP/subscribe/")
         request.user = mock_user
+        request.profile = mock_user.profile
 
         response = BadgeSubscribeView.as_view()(request, badge_code="KGP")
 
@@ -207,10 +216,11 @@ class TestBadgeSubscribeView:
 
         request = factory.post("/api/v1/badges/KGP/subscribe/")
         request.user = mock_user
+        request.profile = mock_user.profile
 
         BadgeSubscribeView.as_view()(request, badge_code="KGP")
 
-        use_cases["start_badge_progress"].execute.assert_called_once_with(user_id=1, badge_code="KGP")
+        use_cases["start_badge_progress"].execute.assert_called_once_with(profile_id=1, badge_code="KGP")
 
     def test_no_regulation_returns_422(self, factory, mock_user, use_cases) -> None:
         from application.exceptions import UseCaseError
@@ -220,6 +230,7 @@ class TestBadgeSubscribeView:
 
         request = factory.post("/api/v1/badges/KGP/subscribe/")
         request.user = mock_user
+        request.profile = mock_user.profile
 
         response = BadgeSubscribeView.as_view()(request, badge_code="KGP")
 
@@ -245,6 +256,7 @@ class TestBadgeProgressView:
 
         request = factory.get("/api/v1/badges/KGP/progress/")
         request.user = mock_user
+        request.profile = mock_user.profile
 
         response = BadgeProgressView.as_view()(request, badge_code="KGP")
 
@@ -259,6 +271,7 @@ class TestBadgeProgressView:
 
         request = factory.get("/api/v1/badges/KGP/progress/")
         request.user = mock_user
+        request.profile = mock_user.profile
 
         response = BadgeProgressView.as_view()(request, badge_code="KGP")
 
@@ -274,6 +287,7 @@ class TestBadgeProgressView:
 
         request = factory.get("/api/v1/badges/KGP/progress/?cycle=2")
         request.user = mock_user
+        request.profile = mock_user.profile
 
         BadgeProgressView.as_view()(request, badge_code="KGP")
 
@@ -298,6 +312,7 @@ class TestBadgeLogisticsView:
             content_type="application/json",
         )
         request.user = mock_user
+        request.profile = mock_user.profile
 
         response = BadgeLogisticsView.as_view()(request, progress_id=1)
 
@@ -316,6 +331,7 @@ class TestBadgeLogisticsView:
             content_type="application/json",
         )
         request.user = mock_user
+        request.profile = mock_user.profile
 
         response = BadgeLogisticsView.as_view()(request, progress_id=1)
 

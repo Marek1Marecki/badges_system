@@ -25,7 +25,7 @@ class BulkLogAscentsUseCase:
         self._ascent_repo = ascent_repository
         self._clock = clock
 
-    def execute(self, user_id: int, ascents: list[AscentInputDTO]) -> BulkAscentResultDTO:
+    def execute(self, profile_id: int, ascents: list[AscentInputDTO]) -> BulkAscentResultDTO:
         """Sprawdza i masowo zapisuje wejścia, wyłapując logiczne błędy."""
         if not ascents:
             return BulkAscentResultDTO(saved_count=0, errors=[])
@@ -68,7 +68,7 @@ class BulkLogAscentsUseCase:
         # 3. ZAPIS DO BAZY (Tylko poprawne)
         saved_count = 0
         if valid_ascents:
-            saved_count = self._ascent_repo.bulk_save_ascents(user_id, valid_ascents)
+            saved_count = self._ascent_repo.bulk_save_ascents(profile_id, valid_ascents)
 
         # Powiadamiamy API o wyniku. API zadecyduje, czy odpalić Taska Celery (1 raz!)
         return BulkAscentResultDTO(

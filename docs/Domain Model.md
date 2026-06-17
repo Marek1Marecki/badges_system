@@ -130,8 +130,8 @@ Aby chronić czystość architektury (Domain Purity), następujące byty **nie n
 
 | Atrybut | Typ domenowy | Wymagany | Opis |
 |---------|--------------|----------|------|
-| `user_id` | `int` | Tak | Relacja OneToOne do systemu Auth. |
-| `nickname`| `str` | Tak | Pseudonim publiczny (Privacy by Default). |
+| `user_id` | `int` | Tak | Relacja ForeignKey (1:N) do konta w systemie Auth. |
+| `is_main_profile` | `bool` | Tak | Oznacza główny profil zarządzający subskrypcją. || `nickname`| `str` | Tak | Pseudonim publiczny (Privacy by Default). |
 | `birth_date`| `date` | Nie | Używana przez Domenę do ewaluacji `MinAgeRule`. |
 | `active_plan`| `str` | Tak | Pakiet subskrypcyjny (np. FREE, PRO). |
 | `max_active_badges`| `int` | Tak | Limit weryfikowany przed dołączeniem do odznaki. |
@@ -142,7 +142,7 @@ Aby chronić czystość architektury (Domain Purity), następujące byty **nie n
 
 | Atrybut | Typ domenowy | Wymagany | Opis |
 |---------|--------------|----------|------|
-| `user_id` | `int` | Tak | Twórca logu (Właściciel). |
+| `profile_id` | `int` | Tak | Turysta (Profil), którego dotyczy ten log wejścia. |
 | `peak_id` | `int` | Tak | Fizyczny obiekt turystyczny. |
 | `ascent_date` | `date` | Tak | Data faktycznego wejścia. Weryfikowana bitemporalnie *(→ Invariant T-01 i T-03)*. |
 | `souvenir_image`| `str` | Nie | Opcjonalna pamiątka, pomijana w Czystej Domenie (YAGNI). |
@@ -154,7 +154,7 @@ Aby chronić czystość architektury (Domain Purity), następujące byty **nie n
 
 | Atrybut | Typ domenowy | Wymagany | Opis |
 |---------|--------------|----------|------|
-| `user_id` | `int` | Tak | Właściciel. |
+| `profile_id` | `int` | Tak | Turysta (Profil), którego dotyczy ta odznaka. |
 | `badge_id` | `int` | Tak | Wskazuje odznakę główną (Intencja). |
 | `version_id` | `int` | Nie | PUSTE aż do pierwszego logu wejścia. Leniwe zakotwiczenie gwarantujące Prawa Nabyte. |
 | `cycle_number` | `int` | Tak | Obsługa Odznak Wielokrotnych (Pętla Prestiżu). |

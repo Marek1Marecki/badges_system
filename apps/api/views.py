@@ -1,7 +1,7 @@
 """Widoki REST API dla obszaru Turysty (Faza C).
 
 Warstwa HTTP jest cienką powłoką:
-  - parsuje request i wyciąga user_id z sesji (nigdy z body)
+  - parsuje request i wyciąga profile_id z sesji (nigdy z body)
   - wywołuje Use Case przez kontener DI
   - serializuje wynik lub błąd do RFC 7807 JSON
   - NIE zawiera logiki biznesowej
@@ -139,14 +139,14 @@ class AscentLogView(View):
         except Exception as e:
             return _problem_detail(request, "validation-failed", "Nieprawidłowe dane wejściowe", 422, str(e))
 
-        # SECURITY: user_id zawsze z sesji — nigdy z ciała żądania
-        user_id = request.user.id
+        # SECURITY: profile_id zawsze z sesji — nigdy z ciała żądania
+        profile_id = request.profile.id
 
         try:
             use_case = get_container()["log_ascent"]
-            ascent_id = use_case.execute(user_id=user_id, dto=dto)
+            ascent_id = use_case.execute(profile_id=profile_id, dto=dto)
             # Wybudza Redis po zalogowaniu wejścia!:
-            recalculate_poi_scores_task.delay(user_id)
+            recalculate_poi_scores_task.delay(profile_id)
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
 
@@ -170,13 +170,13 @@ class BadgeSubscribeView(View):
         if auth_error:
             return auth_error
 
-        user_id = request.user.id
+        profile_id = request.profile.id
 
         try:
             use_case = get_container()["start_badge_progress"]
-            progress_id = use_case.execute(user_id=user_id, badge_code=badge_code)
+            progress_id = use_case.execute(profile_id=profile_id, badge_code=badge_code)
             # Wybudza Redis po subskrypcji!:
-            recalculate_poi_scores_task.delay(user_id)
+            recalculate_poi_scores_task.delay(profile_id)
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
 
@@ -206,7 +206,7 @@ class BadgeProgressView(View):
         cycle_number = int(request.GET.get("cycle", 1))
 
         dto = VerifyBadgeRequestDTO(
-            user_id=request.user.id,
+            profile_id=request.profile.id,
             badge_code=badge_code,
             cycle_number=cycle_number,
         )
@@ -250,7 +250,7 @@ class MapObjectsView(View):
 
         try:
             dto = MapExploreRequestDTO(
-                user_id=request.user.id,
+                profile_id=request.profile.id,
                 min_lon=min_lon,
                 min_lat=min_lat,
                 max_lon=max_lon,
@@ -296,12 +296,12 @@ class BadgeLogisticsView(View):
             return _problem_detail(request, "validation-failed", "Błąd Walidacji", 422, str(e))
 
         # SECURITY: Identyfikacja użytkownika zawsze z sesji
-        user_id = request.user.id
+        profile_id = request.profile.id
 
         try:
             use_case = get_container()["advance_logistic_status"]
             use_case.execute(
-                user_id=user_id,
+                profile_id=profile_id,
                 progress_id=progress_id,
                 new_logistic_status=dto.logistic_status,
                 status_date=dto.status_date,
@@ -457,7 +457,7 @@ class BulkAscentLogView(View):
 
         try:
             use_case = get_container()["bulk_log_ascents"]
-            result = use_case.execute(user_id=request.user.id, ascents=dtos)
+            result = use_case.execute(profile_id=request.profile.id, ascents=dtos)
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
 

@@ -27,70 +27,70 @@ class FakeTouristRepository(
         self._next_progress_id = 1
 
     # --- TouristProfileRepositoryPort ---
-    def get_profile(self, user_id: int) -> TouristProfileDTO | None:
-        return self.profiles.get(user_id)
+    def get_profile(self, profile_id: int) -> TouristProfileDTO | None:
+        return self.profiles.get(profile_id)
 
     # --- AscentLogRepositoryPort ---
     def get_object_lifespan(self, peak_id: int) -> tuple[date | None, date | None] | None:
         return (None, None)  # W testach domyślnie obiekt żyje wiecznie
 
-    def ascent_exists(self, user_id: int, peak_id: int, ascent_date: date) -> bool:
+    def ascent_exists(self, profile_id: int, peak_id: int, ascent_date: date) -> bool:
         for a in self.ascents:
-            if a["user_id"] == user_id and a["peak_id"] == peak_id and a["ascent_date"] == ascent_date:
+            if a["profile_id"] == profile_id and a["peak_id"] == peak_id and a["ascent_date"] == ascent_date:
                 return True
         return False
 
-    def get_oldest_ascent_date(self, user_id: int, badge_code: str) -> date | None:
-        user_ascents = [a["ascent_date"] for a in self.ascents if a["user_id"] == user_id]
-        if user_ascents:
-            return min(user_ascents)
+    def get_oldest_ascent_date(self, profile_id: int, badge_code: str) -> date | None:
+        profile_ascents = [a["ascent_date"] for a in self.ascents if a["profile_id"] == profile_id]
+        if profile_ascents:
+            return min(profile_ascents)
         return None
 
-    def save_ascent(self, user_id: int, peak_id: int, ascent_date: date) -> int:
+    def save_ascent(self, profile_id: int, peak_id: int, ascent_date: date) -> int:
         ascent_id = self._next_ascent_id
         self._next_ascent_id += 1
         self.ascents.append(
             {
                 "id": ascent_id,
-                "user_id": user_id,
+                "profile_id": profile_id,
                 "peak_id": peak_id,
                 "ascent_date": ascent_date,
             }
         )
         return ascent_id
 
-    def get_unconsumed_ascents(self, user_id: int, badge_code: str, cutoff_date: date | None) -> list[AscentDTO]:
+    def get_unconsumed_ascents(self, profile_id: int, badge_code: str, cutoff_date: date | None) -> list[AscentDTO]:
         result = []
         for a in self.ascents:
-            if a["user_id"] == user_id:
+            if a["profile_id"] == profile_id:
                 if cutoff_date and a["ascent_date"] <= cutoff_date:
                     continue
                 result.append(AscentDTO(peak_id=a["peak_id"], ascent_date=a["ascent_date"], region_ids=frozenset()))
         return result
 
-    def get_all_ascents_for_user(self, user_id: int) -> list[AscentDTO]:
+    def get_all_ascents_for_user(self, profile_id: int) -> list[AscentDTO]:
         result = []
         for a in self.ascents:
-            if a["user_id"] == user_id:
+            if a["profile_id"] == profile_id:
                 result.append(AscentDTO(peak_id=a["peak_id"], ascent_date=a["ascent_date"], region_ids=frozenset()))
         return result
 
     # --- UserProgressRepositoryPort ---
-    def get_active_progresses(self, user_id: int) -> list[BadgeProgressDTO]:
-        return [p for p in self.progresses.values() if p.user_id == user_id]
+    def get_active_progresses(self, profile_id: int) -> list[BadgeProgressDTO]:
+        return [p for p in self.progresses.values() if p.profile_id == profile_id]
 
-    def get_progress(self, user_id: int, badge_code: str, cycle_number: int = 1) -> BadgeProgressDTO | None:
+    def get_progress(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> BadgeProgressDTO | None:
         for p in self.progresses.values():
-            if p.user_id == user_id and p.badge_code == badge_code and p.cycle_number == cycle_number:
+            if p.profile_id == profile_id and p.badge_code == badge_code and p.cycle_number == cycle_number:
                 return p
         return None
 
-    def start_progress(self, user_id: int, badge_code: str, version_id: int, cycle_number: int = 1) -> int:
+    def start_progress(self, profile_id: int, badge_code: str, version_id: int, cycle_number: int = 1) -> int:
         prog_id = self._next_progress_id
         self._next_progress_id += 1
         dto = BadgeProgressDTO(
             progress_id=prog_id,
-            user_id=user_id,
+            profile_id=profile_id,
             badge_code=badge_code,
             version_id=version_id,
             cycle_number=cycle_number,
@@ -107,7 +107,7 @@ class FakeTouristRepository(
             p = self.progresses[progress_id]
             self.progresses[progress_id] = BadgeProgressDTO(
                 progress_id=p.progress_id,
-                user_id=p.user_id,
+                profile_id=p.profile_id,
                 badge_code=p.badge_code,
                 version_id=p.version_id,
                 cycle_number=p.cycle_number,
@@ -121,7 +121,7 @@ class FakeTouristRepository(
             p = self.progresses[progress_id]
             self.progresses[progress_id] = BadgeProgressDTO(
                 progress_id=p.progress_id,
-                user_id=p.user_id,
+                profile_id=p.profile_id,
                 badge_code=p.badge_code,
                 version_id=p.version_id,
                 cycle_number=p.cycle_number,

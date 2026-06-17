@@ -42,14 +42,14 @@ class TestLogAscentUseCase:
         )
 
         ascent_id = use_case.execute(
-            user_id=1,
+            profile_id=1,
             dto=_dto(date(2024, 6, 1)),
         )
 
         assert ascent_id == 123
         ascent_repo.get_object_lifespan.assert_called_once_with(42)
         ascent_repo.save_ascent.assert_called_once_with(
-            user_id=1,
+            profile_id=1,
             peak_id=42,
             ascent_date=date(2024, 6, 1),
         )
@@ -59,7 +59,7 @@ class TestLogAscentUseCase:
         use_case, ascent_repo, clock = _use_case(lifespan=None)
 
         with pytest.raises(UseCaseError, match="nie istnieje"):
-            use_case.execute(user_id=1, dto=_dto(date(2024, 6, 1)))
+            use_case.execute(profile_id=1, dto=_dto(date(2024, 6, 1)))
 
         ascent_repo.save_ascent.assert_not_called()
 
@@ -70,7 +70,7 @@ class TestLogAscentUseCase:
         )
 
         with pytest.raises(BitemporalTimeError, match="Obiekt powstał 2020-01-01"):
-            use_case.execute(user_id=1, dto=_dto(date(2019, 12, 31)))
+            use_case.execute(profile_id=1, dto=_dto(date(2019, 12, 31)))
 
         ascent_repo.save_ascent.assert_not_called()
 
@@ -81,7 +81,7 @@ class TestLogAscentUseCase:
         )
 
         with pytest.raises(BitemporalTimeError, match="przestał istnieć 2023-12-31"):
-            use_case.execute(user_id=1, dto=_dto(date(2024, 1, 1)))
+            use_case.execute(profile_id=1, dto=_dto(date(2024, 1, 1)))
 
         ascent_repo.save_ascent.assert_not_called()
 
@@ -92,7 +92,7 @@ class TestLogAscentUseCase:
         )
 
         # Odwiedziny w dzień otwarcia i zniszczenia jednocześnie
-        ascent_id = use_case.execute(user_id=1, dto=_dto(date(2020, 1, 1)))
+        ascent_id = use_case.execute(profile_id=1, dto=_dto(date(2020, 1, 1)))
 
         assert ascent_id == 123
         ascent_repo.save_ascent.assert_called_once()
@@ -104,7 +104,7 @@ class TestLogAscentUseCase:
         # FakeClock domyślnie symuluje datę 2024-06-15.
         # Próbujemy zalogować wejście na dzień później (2024-06-16)
         with pytest.raises(UseCaseError, match="nie może być z przyszłości"):
-            use_case.execute(user_id=1, dto=_dto(date(2024, 6, 16)))
+            use_case.execute(profile_id=1, dto=_dto(date(2024, 6, 16)))
 
         ascent_repo.save_ascent.assert_not_called()
 
@@ -116,6 +116,6 @@ class TestLogAscentUseCase:
         ascent_repo.ascent_exists.return_value = True
 
         with pytest.raises(ConflictError, match="zostało już wcześniej zalogowane"):
-            use_case.execute(user_id=1, dto=_dto(date(2024, 6, 1)))
+            use_case.execute(profile_id=1, dto=_dto(date(2024, 6, 1)))
 
         ascent_repo.save_ascent.assert_not_called()

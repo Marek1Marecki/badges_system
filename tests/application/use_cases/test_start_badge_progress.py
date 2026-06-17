@@ -31,7 +31,7 @@ class TestStartBadgeProgressUseCase:
             clock=clock,
         )
 
-        progress_id = uc.execute(user_id=1, badge_code="KGP")
+        progress_id = uc.execute(profile_id=1, badge_code="KGP")
 
         assert progress_id == 1
         assert repo.progresses[1].version_id == 42
@@ -48,7 +48,7 @@ class TestStartBadgeProgressUseCase:
 
         uc = StartBadgeProgressUseCase(repo, repo, repo, badge_repo, clock)  # 3x repo
 
-        progress_id = uc.execute(user_id=1, badge_code="KGP")
+        progress_id = uc.execute(profile_id=1, badge_code="KGP")
 
         badge_repo.get_version_id_for_date.assert_called_once_with("KGP", date(2015, 6, 1))
         assert repo.progresses[progress_id].version_id == 10
@@ -63,14 +63,14 @@ class TestStartBadgeProgressUseCase:
         uc = StartBadgeProgressUseCase(repo, repo, repo, badge_repo, FakeClock())
 
         with pytest.raises(UseCaseError, match="Brak opublikowanej wersji regulaminu"):
-            uc.execute(user_id=1, badge_code="KGP")
+            uc.execute(profile_id=1, badge_code="KGP")
 
     def test_raises_error_when_freemium_limit_exceeded(self) -> None:
         repo = FakeTouristRepository()
         # Turysta ma limit 1 odznaki
         repo.profiles[1] = MagicMock(max_active_badges=1, active_plan="FREE")
         # I symulujemy, że już zdobywa jedną odznakę
-        repo.start_progress(1, "INNA_ODZNAKA", 99)
+        repo.start_progress(profile_id=1, badge_code="INNA_ODZNAKA", version_id=99, cycle_number=1)
 
         badge_repo = MagicMock()
         badge_repo.get_version_id_for_date.return_value = 42
@@ -78,4 +78,4 @@ class TestStartBadgeProgressUseCase:
         uc = StartBadgeProgressUseCase(repo, repo, repo, badge_repo, FakeClock())
 
         with pytest.raises(UseCaseError, match="Osiągnąłeś limit jednocześnie zdobywanych odznak"):
-            uc.execute(user_id=1, badge_code="KGP")
+            uc.execute(profile_id=1, badge_code="KGP")

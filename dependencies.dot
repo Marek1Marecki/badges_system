@@ -124,6 +124,7 @@ digraph G {
     "apps.tourists" [fillcolor="pink"];
     "apps.tourists.admin" [fillcolor="pink"];
     "apps.tourists.apps" [fillcolor="pink"];
+    "apps.tourists.context_processors" [fillcolor="pink"];
     "apps.tourists.migrations" [fillcolor="pink"];
     "apps.tourists.migrations.0001_initial" [fillcolor="pink"];
     "apps.tourists.models" [fillcolor="pink"];
@@ -195,6 +196,7 @@ digraph G {
   "apps.badges.tasks" -> "infrastructure.adapters.osm_adapter";
   "apps.tourists.admin" -> "apps.tourists.models";
   "apps.tourists.apps" -> "apps.tourists.signals";
+  "apps.tourists.context_processors" -> "apps.tourists.models";
   "apps.tourists.migrations.0001_initial" -> "apps.tourists.models";
   "apps.tourists.models" -> "apps.badges.models";
   "apps.tourists.signals" -> "apps.tourists.models";

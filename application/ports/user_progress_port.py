@@ -15,7 +15,7 @@ from application.dto.user_context_dto import BadgeProgressDTO, TouristProfileDTO
 class TouristProfileRepositoryPort(Protocol):
     """Port dostarczający dane o wieku i limitach turysty."""
 
-    def get_profile(self, user_id: int) -> TouristProfileDTO | None:
+    def get_profile(self, profile_id: int) -> TouristProfileDTO | None:
         """Pobiera pełen, połączony profil (z limitami). Zwraca None, jeśli nie istnieje."""
         ...
 
@@ -31,19 +31,19 @@ class AscentLogRepositoryPort(Protocol):
         """
         ...
 
-    def ascent_exists(self, user_id: int, peak_id: int, ascent_date: date) -> bool:
+    def ascent_exists(self, profile_id: int, peak_id: int, ascent_date: date) -> bool:
         """Sprawdza, czy turysta posiada już log wejścia na ten obiekt w tym dniu (Upsert)."""
         ...
 
-    def get_oldest_ascent_date(self, user_id: int, badge_code: str) -> date | None:
+    def get_oldest_ascent_date(self, profile_id: int, badge_code: str) -> date | None:
         """Zwraca datę najstarszego wpisu dla danej odznaki (potrzebne do Praw Nabytych)."""
         ...
 
-    def save_ascent(self, user_id: int, peak_id: int, ascent_date: date) -> int:
+    def save_ascent(self, profile_id: int, peak_id: int, ascent_date: date) -> int:
         """Zapisuje wejście."""
         ...
 
-    def get_unconsumed_ascents(self, user_id: int, badge_code: str, cutoff_date: date | None) -> list[AscentDTO]:
+    def get_unconsumed_ascents(self, profile_id: int, badge_code: str, cutoff_date: date | None) -> list[AscentDTO]:
         """Pobiera wejścia turysty.
 
         Jeśli podano cutoff_date (data zamknięcia poprzedniego cyklu odznaki),
@@ -52,7 +52,7 @@ class AscentLogRepositoryPort(Protocol):
         """
         ...
 
-    def get_all_ascents_for_user(self, user_id: int) -> list[AscentDTO]:
+    def get_all_ascents_for_user(self, profile_id: int) -> list[AscentDTO]:
         """Pobiera całą, niefiltrowaną historię wejść turysty na potrzeby oceny kolorów."""
         ...
 
@@ -63,7 +63,7 @@ class AscentLogRepositoryPort(Protocol):
         """
         ...
 
-    def bulk_save_ascents(self, user_id: int, ascents: list[AscentInputDTO]) -> int:
+    def bulk_save_ascents(self, profile_id: int, ascents: list[AscentInputDTO]) -> int:
         """Masowo zapisuje wejścia. Ignoruje duplikaty (Idempotentność D-04).
 
         Zwraca liczbę faktycznie dodanych nowych rekordów.
@@ -74,15 +74,15 @@ class AscentLogRepositoryPort(Protocol):
 class UserProgressRepositoryPort(Protocol):
     """Port obsługujący subskrypcje, Prawa Nabyte i Osobisty Kanban."""
 
-    def get_active_progresses(self, user_id: int) -> list[BadgeProgressDTO]:
+    def get_active_progresses(self, profile_id: int) -> list[BadgeProgressDTO]:
         """Zwraca listę wszystkich aktualnie subskrybowanych (śledzonych) odznak."""
         ...
 
-    def get_progress(self, user_id: int, badge_code: str, cycle_number: int = 1) -> BadgeProgressDTO | None:
+    def get_progress(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> BadgeProgressDTO | None:
         """Pobiera konkretny snapshot postępu."""
         ...
 
-    def start_progress(self, user_id: int, badge_code: str, version_id: int, cycle_number: int = 1) -> int:
+    def start_progress(self, profile_id: int, badge_code: str, version_id: int, cycle_number: int = 1) -> int:
         """Rozpoczyna zdobywanie (subskrypcję). Trwale zakotwicza turystę w wersji (Prawa Nabyte)."""
         ...
 
@@ -94,10 +94,10 @@ class UserProgressRepositoryPort(Protocol):
         """Zapisuje przesunięcie odznaki w Osobistym Trackerze (np. WAITING_FOR_SEND)."""
         ...
 
-    def get_completed_badge_codes(self, user_id: int) -> frozenset[str]:
+    def get_completed_badge_codes(self, profile_id: int) -> frozenset[str]:
         """Zwraca kody odznak ze statusem COMPLETED (optymalizacja dla PrerequisiteBadgeRule)."""
         ...
 
-    def get_progress_by_id(self, user_id: int, progress_id: int) -> BadgeProgressDTO | None:
+    def get_progress_by_id(self, profile_id: int, progress_id: int) -> BadgeProgressDTO | None:
         """Pobiera konkretny snapshot postępu po jego ID (weryfikując właściciela)."""
         ...

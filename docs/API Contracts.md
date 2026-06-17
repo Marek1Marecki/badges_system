@@ -110,5 +110,4 @@ Masowo rejestruje logi wejścia (np. na podstawie przeanalizowanego pliku GPX). 
 Aktualizuje status logistyczny zdobytej odznaki i powiązane z nim daty.
 *   **Autoryzacja:** Wymagana (`owner`)
 *   **Payload:** `{"logistic_status": "WAITING_FOR_VERIFICATION", "status_date": "2026-06-02"}`
-*   **Dozwolone przejścia:** `WAITING_FOR_SEND` → `WAITING_FOR_VERIFICATION` → `WAITING_FOR_RECEIVING` → `ALBUM`.
-*   **Wyjątki:** `409 Conflict` (Próba edycji logistyki, gdy matematyczny status to `IN_PROGRESS`).
+*   **Dozwolone przejścia `logistic_status`:** Maszyna stanów jest elastyczna (dwukierunkowa), pozwalając turyście na cofnięcie omyłkowego kliknięcia. Prawidłowy ciąg: `WAITING_FOR_SEND` ↔ `WAITING_FOR_VERIFICATION` ↔ `WAITING_FOR_RECEIVING` ↔ `ALBUM`.
