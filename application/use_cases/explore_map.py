@@ -33,7 +33,7 @@ class ExploreMapUseCase:
         )
 
         # 2. Pobranie zmaterializowanych statystyk dla użytkownika z Redis (O(1))
-        cache_key = f"map_state:{request.user_id}"
+        cache_key = f"map_state:{request.profile_id}"
         cached_data = self._cache.get(cache_key) or {}
 
         # Redis serializuje klucze słownika jako stringi, więc zachowujemy str(id)

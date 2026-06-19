@@ -122,7 +122,7 @@ def run_osm_night_watchman_task(batch_size: int = 50) -> str:
 
 
 @shared_task
-def recalculate_poi_scores_task(user_id: int) -> str:
+def recalculate_poi_scores_task(profile_id: int) -> str:
     """Przelicza ranking szczytów (100/n) i inwaliduje cache Redis (ADR-015).
 
     Zadanie to jest wyzwalane asynchronicznie przez transakcje API,
@@ -132,8 +132,8 @@ def recalculate_poi_scores_task(user_id: int) -> str:
 
     try:
         service = get_container()["poi_scoring_service"]
-        service.recalculate_and_cache_for_user(user_id)
-        return f"Sukces: Przeliczono punkty POI dla usera (ID: {user_id})."
+        service.recalculate_and_cache_for_profile(profile_id)
+        return f"Sukces: Przeliczono punkty POI dla profilu (ID: {profile_id})."
     except Exception as exc:
         logger.error(f"Nieoczekiwany błąd w recalculate_poi_scores_task: {str(exc)}")
         raise

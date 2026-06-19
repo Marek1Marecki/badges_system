@@ -248,9 +248,15 @@ class MapObjectsView(View):
 
         region_id_str = request.GET.get("region_id")
 
+        # Pobieramy profil bezpośrednio z sesji lub z relacji użytkownika
+        profile_id = request.session.get("active_profile_id")
+        if not profile_id:
+            first_profile = request.user.profiles.first()
+            profile_id = first_profile.id if first_profile else 0
+
         try:
             dto = MapExploreRequestDTO(
-                profile_id=request.profile.id,
+                profile_id=profile_id,
                 min_lon=min_lon,
                 min_lat=min_lat,
                 max_lon=max_lon,
@@ -455,9 +461,12 @@ class BulkAscentLogView(View):
         except Exception as e:
             return _problem_detail(request, "validation-failed", "Błąd struktury wejść", 422, str(e))
 
+        # Prawidłowe pobranie aktywnego profilu (Model Rodzinny)
+        profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id
+
         try:
             use_case = get_container()["bulk_log_ascents"]
-            result = use_case.execute(profile_id=request.profile.id, ascents=dtos)
+            result = use_case.execute(profile_id=profile_id, ascents=dtos)
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
 
@@ -467,6 +476,6 @@ class BulkAscentLogView(View):
 
             from apps.badges.tasks import recalculate_poi_scores_task
 
-            transaction.on_commit(lambda: recalculate_poi_scores_task.delay(request.user.id))
+            transaction.on_commit(lambda: recalculate_poi_scores_task.delay(profile_id))
 
         return JsonResponse(result.model_dump(), status=200)

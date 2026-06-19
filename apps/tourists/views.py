@@ -5,7 +5,6 @@ from collections import defaultdict
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
-from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -27,12 +26,27 @@ def _get_active_profile_id(request) -> int:
     active_id = request.session.get("active_profile_id")
     if active_id:
         return int(active_id)
+
     # Fallback na wypadek nowej sesji
     profile = request.user.profiles.first()
-    if profile:
-        request.session["active_profile_id"] = profile.id
-        return int(profile.id)
-    raise Http404("Brak profilu turysty. Zaloguj się ponownie.")
+
+    if not profile:
+        # MAGIA NAPRAWCZA: Leniwa inicjalizacja dla starych kont (np. superusera),
+        # które powstały przed dodaniem sygnału automatycznego tworzenia profili.
+        from apps.tourists.models import TouristProfile
+
+        nickname = request.user.email.split("@")[0] if request.user.email else f"admin_{request.user.id}"
+        profile = TouristProfile.objects.create(
+            user=request.user,
+            nickname=nickname,
+            is_main_profile=True,
+            active_plan="FREE",
+            max_photos_per_ascent=1,
+            max_active_badges=3,
+        )
+
+    request.session["active_profile_id"] = profile.id
+    return int(profile.id)
 
 
 @login_required
@@ -51,10 +65,33 @@ def dashboard_view(request):
 
 @login_required
 def badge_catalog_view(request):
-    """Katalog wszystkich dostępnych odznak z opcją subskrypcji."""
-    profile_id = _get_active_profile_id(request)
-    badges = BadgeModel.objects.select_related("organizer").all().order_by("name")
+    """Katalog wszystkich dostępnych odznak z opcją subskrypcji i podglądem szczytów."""
+    from django.utils import timezone
 
+    profile_id = _get_active_profile_id(request)
+
+    # 1. Pobieramy wszystkie odznaki
+    badges = list(BadgeModel.objects.select_related("organizer").all().order_by("name"))
+
+    # 2. Pobieramy najnowsze (obowiązujące) wersje regulaminów i ich szczyty w jednym zapytaniu
+    current_versions_qs = (
+        BadgeVersionModel.objects.filter(valid_from__lte=timezone.now().date())
+        .prefetch_related("pool_peaks")
+        .order_by("-valid_from")
+    )
+
+    # 3. Złoty środek: Zamiast męczyć ORM z `related_name`, mapujemy to w szybkim słowniku Pythona
+    version_map = {}
+    for version in current_versions_qs:
+        # Ponieważ posortowaliśmy malejąco po dacie, pierwsza wersja jaka wpadnie do słownika jest najnowszą
+        if version.badge_id not in version_map:
+            version_map[version.badge_id] = version
+
+    # Wstrzykujemy wersję bezpośrenio do obiektu odznaki (jako tymczasowy atrybut dla HTML)
+    for badge in badges:
+        badge.current_version = version_map.get(badge.id)
+
+    # 4. Sprawdzanie subskrypcji
     subscribed_ids = UserBadgeProgress.objects.filter(profile_id=profile_id).values_list("badge_id", flat=True)
 
     return render(

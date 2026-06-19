@@ -24,6 +24,7 @@ dependencies = [
     "pyjwt>=2.13.0",
     "cryptography>=49.0.0",
     "defusedxml>=0.7.1",
+    "pyvis>=0.3.2",
 ]
 
 [dependency-groups]

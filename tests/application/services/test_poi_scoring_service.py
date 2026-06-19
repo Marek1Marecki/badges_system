@@ -32,7 +32,7 @@ class TestPoiScoringService:
         assert service._clock == clock
         assert service._cache == cache
 
-    def test_recalculate_and_cache_for_user_with_no_profile(self):
+    def test_recalculate_and_cache_for_profile_with_no_profile(self):
         """Test przeliczania gdy użytkownik nie ma profilu."""
         progress_repo = MagicMock()
         ascent_repo = MagicMock()
@@ -44,11 +44,11 @@ class TestPoiScoringService:
 
         service = PoiScoringService(progress_repo, ascent_repo, profile_repo, badge_repo, clock, cache)
 
-        service.recalculate_and_cache_for_user(1)
+        service.recalculate_and_cache_for_profile(1)
 
         profile_repo.get_profile.assert_called_once_with(1)
 
-    def test_recalculate_and_cache_for_user_with_no_active_progresses(self):
+    def test_recalculate_and_cache_for_profile_with_no_active_progresses(self):
         """Test przeliczania gdy użytkownik nie ma aktywnych postępów."""
         progress_repo = MagicMock()
         progress_repo.get_active_progresses.return_value = []
@@ -69,11 +69,11 @@ class TestPoiScoringService:
 
         service = PoiScoringService(progress_repo, ascent_repo, profile_repo, badge_repo, clock, cache)
 
-        service.recalculate_and_cache_for_user(1)
+        service.recalculate_and_cache_for_profile(1)
 
         cache.set.assert_called_once()
 
-    def test_recalculate_and_cache_for_user_with_completed_badge(self):
+    def test_recalculate_and_cache_for_profile_with_completed_badge(self):
         """Test przeliczania gdy odznaka jest już ukończona."""
         progress_repo = MagicMock()
         progress_repo.get_active_progresses.return_value = [
@@ -105,11 +105,11 @@ class TestPoiScoringService:
 
         service = PoiScoringService(progress_repo, ascent_repo, profile_repo, badge_repo, clock, cache)
 
-        service.recalculate_and_cache_for_user(1)
+        service.recalculate_and_cache_for_profile(1)
 
         cache.set.assert_called_once()
 
-    def test_recalculate_and_cache_for_user_with_no_version_id(self):
+    def test_recalculate_and_cache_for_profile_with_no_version_id(self):
         """Test przeliczania gdy postęp nie ma version_id."""
         progress_repo = MagicMock()
         progress_repo.get_active_progresses.return_value = [
@@ -150,13 +150,13 @@ class TestPoiScoringService:
 
         service = PoiScoringService(progress_repo, ascent_repo, profile_repo, badge_repo, clock, cache)
 
-        service.recalculate_and_cache_for_user(1)
+        service.recalculate_and_cache_for_profile(1)
 
         # When version_id is None, the loop continues without calling get_version_id_for_date
         # This is the actual behavior of the service
         cache.set.assert_called_once()
 
-    def test_recalculate_and_cache_for_user_with_green_color(self):
+    def test_recalculate_and_cache_for_profile_with_green_color(self):
         """Test przeliczania gdy szczyt jest już zdobyty w obecnym cyklu."""
         progress_repo = MagicMock()
         progress_repo.get_active_progresses.return_value = [
@@ -198,7 +198,7 @@ class TestPoiScoringService:
 
         service = PoiScoringService(progress_repo, ascent_repo, profile_repo, badge_repo, clock, cache)
 
-        service.recalculate_and_cache_for_user(1)
+        service.recalculate_and_cache_for_profile(1)
 
         cache.set.assert_called_once()
         call_args = cache.set.call_args
@@ -208,7 +208,7 @@ class TestPoiScoringService:
         assert "colors" in cache_payload
         assert cache_payload["colors"][1] == "GREEN"
 
-    def test_recalculate_and_cache_for_user_with_blue_color(self):
+    def test_recalculate_and_cache_for_profile_with_blue_color(self):
         """Test przeliczania gdy szczyt był zdobyty w starym cyklu."""
         progress_repo = MagicMock()
         progress_repo.get_active_progresses.return_value = [
@@ -248,14 +248,14 @@ class TestPoiScoringService:
 
         service = PoiScoringService(progress_repo, ascent_repo, profile_repo, badge_repo, clock, cache)
 
-        service.recalculate_and_cache_for_user(1)
+        service.recalculate_and_cache_for_profile(1)
 
         cache.set.assert_called_once()
         call_args = cache.set.call_args
         cache_payload = call_args[0][1]
         assert cache_payload["colors"][1] == "BLUE"
 
-    def test_recalculate_and_cache_for_user_with_red_color(self):
+    def test_recalculate_and_cache_for_profile_with_red_color(self):
         """Test przeliczania gdy szczyt jest nowym celem (RED)."""
         progress_repo = MagicMock()
         progress_repo.get_active_progresses.return_value = [
@@ -295,7 +295,7 @@ class TestPoiScoringService:
 
         service = PoiScoringService(progress_repo, ascent_repo, profile_repo, badge_repo, clock, cache)
 
-        service.recalculate_and_cache_for_user(1)
+        service.recalculate_and_cache_for_profile(1)
 
         cache.set.assert_called_once()
         call_args = cache.set.call_args
@@ -332,7 +332,7 @@ class TestPoiScoringService:
 
         service = PoiScoringService(progress_repo, ascent_repo, profile_repo, badge_repo, clock, cache)
 
-        service.recalculate_and_cache_for_user(1)
+        service.recalculate_and_cache_for_profile(1)
 
         call_args = cache.set.call_args
         timeout_seconds = call_args[1]["timeout_seconds"]

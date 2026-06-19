@@ -72,7 +72,7 @@ class TestExploreMapUseCase:
         cache.get.return_value = {"colors": {"1": "RED"}, "scores": {"1": 100}}
 
         uc = ExploreMapUseCase(repo, cache)
-        dto = MapExploreRequestDTO(user_id=1, min_lon=0, min_lat=0, max_lon=1, max_lat=1)
+        dto = MapExploreRequestDTO(profile_id=1, min_lon=0, min_lat=0, max_lon=1, max_lat=1)
 
         result = uc.execute(dto)
         assert result["type"] == "FeatureCollection"
@@ -87,7 +87,7 @@ class TestExploreMapUseCase:
         cache.get.return_value = None  # Brak klucza w Redis
 
         uc = ExploreMapUseCase(repo, cache)
-        result = uc.execute(MapExploreRequestDTO(user_id=1, min_lon=0, min_lat=0, max_lon=1, max_lat=1))
+        result = uc.execute(MapExploreRequestDTO(profile_id=1, min_lon=0, min_lat=0, max_lon=1, max_lat=1))
 
         assert result["features"][0]["properties"]["peak_color"] == "GRAY"
         assert result["features"][0]["properties"]["potential_score"] == 0

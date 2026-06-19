@@ -12,7 +12,7 @@ class MapExploreRequestDTO(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    user_id: int
+    profile_id: int
     min_lon: float
     min_lat: float
     max_lon: float

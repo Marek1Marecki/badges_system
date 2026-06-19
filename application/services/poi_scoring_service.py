@@ -41,7 +41,7 @@ class PoiScoringService:
         clock: ClockPort,
         cache: CachePort,
     ) -> None:
-        """Inicjalizuje serwis z repozytoriami i zależnościami."""
+        """Inicjalizuje serwis z wymaganymi repozytoriami i zależnościami."""
         self._progress_repo = progress_repository
         self._ascent_repo = ascent_repository
         self._profile_repo = profile_repository
@@ -49,16 +49,16 @@ class PoiScoringService:
         self._clock = clock
         self._cache = cache
 
-    def recalculate_and_cache_for_user(self, user_id: int) -> None:
+    def recalculate_and_cache_for_profile(self, profile_id: int) -> None:
         """Główna metoda wywoływana przez Celery w tle."""
         now = self._clock.now()
         today_date = now.date()
 
-        profile = self._profile_repo.get_profile(user_id)
+        profile = self._profile_repo.get_profile(profile_id)
         birth_date = profile.birth_date if profile else None
         club_dates = profile.club_join_dates if profile else {}
 
-        active_progresses = self._progress_repo.get_active_progresses(user_id)
+        active_progresses = self._progress_repo.get_active_progresses(profile_id)
 
         completed_badges = frozenset([p.badge_code for p in active_progresses if p.domain_status == "COMPLETED"])
 
@@ -72,11 +72,11 @@ class PoiScoringService:
         final_scores: dict[int, int] = defaultdict(int)
         final_colors: dict[int, str] = {}
 
-        all_ascents = self._ascent_repo.get_all_ascents_for_user(user_id)
+        all_ascents = self._ascent_repo.get_all_ascents_for_user(profile_id)
         all_climbed_peak_ids = {a.peak_id for a in all_ascents}
 
         for prog in active_progresses:
-            if prog.domain_status == "COMPLETED" or not prog.version_id:
+            if prog.domain_status == "COMPLETED":
                 continue
 
             # MAGIA WIZUALIZACJI: Rozwiązanie Leniwego Zakotwiczenia
@@ -90,17 +90,17 @@ class PoiScoringService:
             if not version_id_to_evaluate:
                 continue
 
-            badge_version = self._badge_repo.get_badge_version_by_id(prog.version_id)
+            badge_version = self._badge_repo.get_badge_version_by_id(version_id_to_evaluate)
             if not badge_version:
                 continue
 
             cutoff_date = None
             if prog.cycle_number > 1:
-                prev_cycle = self._progress_repo.get_progress(user_id, prog.badge_code, prog.cycle_number - 1)
+                prev_cycle = self._progress_repo.get_progress(profile_id, prog.badge_code, prog.cycle_number - 1)
                 if prev_cycle and prev_cycle.logistic_status_date:
                     cutoff_date = prev_cycle.logistic_status_date
 
-            unconsumed_ascents_dto = self._ascent_repo.get_unconsumed_ascents(user_id, prog.badge_code, cutoff_date)
+            unconsumed_ascents_dto = self._ascent_repo.get_unconsumed_ascents(profile_id, prog.badge_code, cutoff_date)
             domain_ascents = [dto.to_domain() for dto in unconsumed_ascents_dto]
 
             # 1. Oceń aktualny stan, aby znaleźć aktualną liczbę ważnych wejść
@@ -112,7 +112,11 @@ class PoiScoringService:
             if not badge_version.pool_peak_ids:
                 continue
 
-            # 2. Symulacja dla każdego szczytu z Puli
+            # PERF (Performance Warning): O(pool_size * reguły).
+            # Ewaluacja całego agregatu dla każdego szczytu "na sucho".
+            # Przy 3 aktywnych odznakach (po 200 szczytów) = 600 pełnych iteracji domenowych.
+            # Akceptowalne dla workerów w tle (Asynchronia). Jeśli czas wzrośnie > 5s,
+            # rozważyć optymalizację algorytmów Set Math wewnątrz samych Reguł.
             for peak_id in badge_version.pool_peak_ids:
                 color = "GRAY"
                 score = 0
@@ -131,15 +135,9 @@ class PoiScoringService:
                     if sim_valid_count > curr_valid_count:
                         color = "RED"
 
-                        # MATEMATYKA 100/n: Pobieramy docelowy próg (target) po symulacji.
-                        # Np. wymaga 28 szczytów (target). Symulacja mówi, że będziesz miał 1 szczyt.
-                        # missing_n = 28 - 1 = 27. Zysk = 100 / 27 (zaokrąglone do int) -> 3 punkty.
                         target = sim_eval.get("required_count", len(badge_version.pool_peak_ids))
                         missing_after_ascent = max(target - sim_valid_count, 0)
 
-                        # Jeśli szczyt zamyka odznakę (missing_n = 0), daje od razu całe 100 pkt!
-                        # Jeśli nie, dzielimy 100 przez to, co zostanie.
-                        # Round() robi ładne matematyczne zaokrąglenie, nie ucinanie.
                         if missing_after_ascent == 0:
                             score = 100
                         else:
@@ -154,7 +152,7 @@ class PoiScoringService:
                 if COLOR_PRIORITY[color] > COLOR_PRIORITY[current_color]:
                     final_colors[peak_id] = color
 
-        # Zapisz w Cache z TTL dokładnie do północy (Czas na odświeżenie okien czasowych!)
+        # Zapisz w Cache z TTL dokładnie do północy
         tomorrow = today_date + timedelta(days=1)
         midnight = datetime.combine(tomorrow, dt_time.min, tzinfo=now.tzinfo)
         seconds_to_midnight = int((midnight - now).total_seconds())
@@ -164,5 +162,5 @@ class PoiScoringService:
             "colors": final_colors,
         }
 
-        cache_key = f"map_state:{user_id}"
+        cache_key = f"map_state:{profile_id}"
         self._cache.set(cache_key, cache_payload, timeout_seconds=seconds_to_midnight)

@@ -11,6 +11,8 @@ Wzorzec testowania:
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from apps.badges.tasks import (
     build_tourist_region_geometry_task,
     calculate_object_regions_task,
@@ -404,28 +406,36 @@ class TestRecalculatePoiScoresTask:
     """Testy zadania recalculate_poi_scores_task."""
 
     def test_successful_recalculation(self) -> None:
-        """Task przelicza punkty POI dla użytkownika."""
-        with patch("bootstrap.get_container") as mock_container:
+        """Task z sukcesem wywołuje serwis z profile_id i zwraca komunikat."""
+
+        with patch("bootstrap.get_container") as mock_get_container:
             mock_service = MagicMock()
-            mock_container.return_value = {"poi_scoring_service": mock_service}
+            mock_get_container.return_value = {"poi_scoring_service": mock_service}
 
             result = recalculate_poi_scores_task(1)
 
-        assert "Sukces" in result
-        assert "1" in result
-        mock_service.recalculate_and_cache_for_user.assert_called_once_with(1)
+            assert "Sukces" in result
+            assert "1" in result
+            # POPRAWKA: Sprawdzamy nową nazwę metody (profil zamiast usera)
+            mock_service.recalculate_and_cache_for_profile.assert_called_once_with(1)
 
-    def test_exception_handling(self) -> None:
-        """Task loguje błąd i rzuca wyjątek."""
-        with patch("bootstrap.get_container") as mock_container:
+    def test_unexpected_error_logs_and_raises(self) -> None:
+        """W przypadku awarii, task loguje błąd i propaguje wyjątek."""
+
+        with (
+            patch("bootstrap.get_container") as mock_get_container,
+            patch("apps.badges.tasks.logger") as mock_logger,
+        ):
             mock_service = MagicMock()
-            mock_service.recalculate_and_cache_for_user.side_effect = Exception("Calculation error")
-            mock_container.return_value = {"poi_scoring_service": mock_service}
+            # POPRAWKA: Rzucamy wyjątek z nowej metody
+            mock_service.recalculate_and_cache_for_profile.side_effect = Exception("Redis padł")
+            mock_get_container.return_value = {"poi_scoring_service": mock_service}
 
-            try:
+            with pytest.raises(Exception, match="Redis padł"):
                 recalculate_poi_scores_task(1)
-            except Exception as e:
-                assert "Calculation error" in str(e)
+
+            mock_logger.error.assert_called_once()
+            assert "Nieoczekiwany błąd w recalculate_poi_scores_task" in mock_logger.error.call_args[0][0]
 
 
 # ---------------------------------------------------------------------------
