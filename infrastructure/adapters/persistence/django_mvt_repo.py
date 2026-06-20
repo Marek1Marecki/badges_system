@@ -37,17 +37,17 @@ class DjangoMvtRepository(MvtRepositoryPort):
             raise InfrastructureException(f"Nieznana warstwa MVT: {layer_name}")
 
         query = f"""
-        WITH bounds AS (
-            SELECT ST_TileEnvelope(%s, %s, %s) AS geom
-        ),
-        mvtgeom AS (
-            SELECT ST_AsMVTGeom(ST_Transform(t.shape, 3857), bounds.geom) AS geom,
-                   t.id, t.name
-            FROM {table_name} t, bounds
-            WHERE ST_Intersects(ST_Transform(t.shape, 3857), bounds.geom)
-        )
-        SELECT ST_AsMVT(mvtgeom, %s) FROM mvtgeom;
-        """  # noqa: S608
+                WITH bounds AS (
+                    SELECT ST_TileEnvelope(%s, %s, %s) AS geom
+                ),
+                mvtgeom AS (
+                    SELECT ST_AsMVTGeom(ST_Transform(t.shape, 3857), bounds.geom) AS geom,
+                           t.id AS db_id, t.name
+                    FROM {table_name} t, bounds
+                    WHERE ST_Intersects(ST_Transform(t.shape, 3857), bounds.geom)
+                )
+                SELECT ST_AsMVT(mvtgeom, %s) FROM mvtgeom;
+                """  # noqa: S608
 
         with connection.cursor() as cursor:
             cursor.execute(query, [z, x, y, layer_name])

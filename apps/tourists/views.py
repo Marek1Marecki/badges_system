@@ -1,10 +1,12 @@
 """Widoki HTML dla obszaru Turysty (Faza C - Frontend)."""
 
 from collections import defaultdict
+from typing import Any
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -13,11 +15,23 @@ from apps.badges.models import (
     BadgeModel,
     BadgeTierModel,
     BadgeVersionModel,
+    CountryModel,
+    MacroregionModel,
+    MesoregionModel,
     ObjectRegionCache,
     OrganizerModel,
+    ProvinceModel,
+    SubprovinceModel,
     TouristObject,
+    TouristRegionModel,
+    VoivodeshipModel,
 )
-from apps.tourists.models import AscentLog, DomainStatus, TouristProfile, UserBadgeProgress
+from apps.tourists.models import (
+    AscentLog,
+    DomainStatus,
+    TouristProfile,
+    UserBadgeProgress,
+)
 from bootstrap import get_container
 
 
@@ -302,6 +316,119 @@ def badge_detail_view(request, badge_code: str):
             "target_version": target_version,
             "tiers_info": tiers_info,
             "has_consent": has_consent,
+        },
+    )
+
+
+@login_required
+def region_detail_view(request, region_level: str, region_id: int):
+    """Szczegóły regionu geograficznego z rankingiem obiektów i mapą."""
+    profile_id = _get_active_profile_id(request)
+
+    # Mapowanie typu regionu na konkretny model Django
+    MODELS_MAP = {
+        "country": CountryModel,
+        "voivodeship": VoivodeshipModel,
+        "province": ProvinceModel,
+        "subprovince": SubprovinceModel,
+        "macroregion": MacroregionModel,
+        "mesoregion": MesoregionModel,
+        "tourist_region": TouristRegionModel,
+    }
+
+    ModelClass = MODELS_MAP.get(region_level.lower())
+    if not ModelClass:
+        raise Http404("Nieznany typ regionu geograficznego.")
+
+    region = get_object_or_404(ModelClass, id=region_id)
+
+    # Pobranie Extent (Bounding Boxa) geometrii regionu, by mapa wiedziała gdzie się przybliżyć!
+    extent = region.shape.extent if hasattr(region, "shape") and region.shape else None
+
+    # 1. Pobieramy ranking 100/n z Redis
+    cache_key = f"map_state:{profile_id}"
+    cached_data = cache.get(cache_key) or {}
+    scores = cached_data.get("scores", {})
+    colors = cached_data.get("colors", {})
+
+    # 2. Pobieramy obiekty w tym regionie za pomocą CQRS
+    obj_ids = ObjectRegionCache.objects.filter(region_level=region_level, region_id=region_id).values_list(
+        "tourist_object_id", flat=True
+    )
+
+    peaks = TouristObject.objects.filter(id__in=obj_ids, is_active=True, status="READY")
+
+    # 3. Zestawiamy obiekty z ich rankingiem
+    ranking_data = []
+    for peak in peaks:
+        score = scores.get(peak.id, scores.get(str(peak.id), 0))
+        color = colors.get(peak.id, colors.get(str(peak.id), "GRAY"))
+
+        ranking_data.append(
+            {
+                "id": peak.id,
+                "name": peak.name,
+                "type": peak.type,
+                "score": score,
+                "color": color,
+            }
+        )
+
+    # Sortujemy od najbardziej zyskownych
+    ranking_data.sort(key=lambda x: x["score"], reverse=True)
+
+    # =================================================================
+    # NAWIGACJA TERYTORIALNA (Drzewo i Sąsiedzi)
+    # =================================================================
+    parent_region = None
+    parent_level = None
+    children_regions: list[Any] = []
+    children_level = None
+
+    lvl = region_level.upper()
+
+    # Hierarchia pionowa (Góra / Dół) - oparta o relacje ORM
+    if lvl == "MESOREGION":
+        parent_region = getattr(region, "macroregion", None)
+        parent_level = "MACROREGION"
+    elif lvl == "MACROREGION":
+        parent_region = getattr(region, "subprovince", None)
+        parent_level = "SUBPROVINCE"
+        children_regions = list(region.mesoregionmodel_set.all()) if hasattr(region, "mesoregionmodel_set") else []
+        children_level = "MESOREGION"
+    elif lvl == "SUBPROVINCE":
+        parent_region = getattr(region, "province", None)
+        parent_level = "PROVINCE"
+        children_regions = list(region.macroregionmodel_set.all()) if hasattr(region, "macroregionmodel_set") else []
+        children_level = "MACROREGION"
+    elif lvl == "PROVINCE":
+        children_regions = list(region.subprovincemodel_set.all()) if hasattr(region, "subprovincemodel_set") else []
+        children_level = "SUBPROVINCE"
+    elif lvl == "TOURIST_REGION":
+        children_regions = list(region.mesoregions.all()) if hasattr(region, "mesoregions") else []
+        children_level = "MESOREGION"
+
+    # Relacje poziome (Sąsiedzi) - Magia PostGIS (ST_Touches)
+    neighbors: list[Any] = []
+    if hasattr(region, "shape") and region.shape:
+        qs = ModelClass.objects.filter(shape__touches=region.shape).exclude(id=region.id).order_by("name")
+        neighbors = list(qs)
+
+    return render(
+        request,
+        "tourists/region_detail.html",
+        {
+            "region": region,
+            "region_level": region_level,
+            "region_id": region_id,
+            "extent": extent,
+            "top_objects": ranking_data[:20],
+            "total_objects": len(ranking_data),
+            "parent_region": parent_region,
+            "parent_level": parent_level,
+            "children_regions": children_regions,
+            "children_level": children_level,
+            "neighbors": neighbors,
         },
     )
 

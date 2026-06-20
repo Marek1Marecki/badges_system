@@ -16,37 +16,41 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     map.on('load', () => {
-        // --- WARSTWA 1: MVT ---
+        // ----------------------------------------------------
+        // WARSTWA 1: STATYCZNA MVT (Z bazy PostGIS, zakechowana)
+        // ----------------------------------------------------
         const mvtLayerName = window.REGION_FILTER_LEVEL ? window.REGION_FILTER_LEVEL.toLowerCase() : 'mesoregion';
         const activeRegionIdStr = window.REGION_FILTER_ID ? String(window.REGION_FILTER_ID) : null;
 
         map.addSource('region_boundaries', {
             type: 'vector',
-            tiles: [window.location.origin + `/api/v1/tiles/${mvtLayerName}/{z}/{x}/{y}.pbf`],
+            tiles: [window.location.origin + `/api/v1/tiles/${mvtLayerName}/{z}/{x}/{y}.pbf?v=2`],
             minzoom: 4,
             maxzoom: 14
         });
 
+        // 1. WYPEŁNIENIE POLIGONU (Używamy nowego atrybutu db_id z bazy)
         map.addLayer({
             'id': 'regions-fill',
             'type': 'fill',
             'source': 'region_boundaries',
             'source-layer': mvtLayerName,
             'paint': {
-                'fill-color': activeRegionIdStr ? ['case', ['==', ['to-string', ['get', 'id']], activeRegionIdStr], '#0ea5e9', '#cbd5e1'] : '#0284c7',
-                'fill-opacity': activeRegionIdStr ? ['case', ['==', ['to-string', ['get', 'id']], activeRegionIdStr], 0.25, 0.05] : 0.05
+                'fill-color': activeRegionIdStr ? ['case', ['==', ['to-string', ['get', 'db_id']], activeRegionIdStr], '#0ea5e9', '#cbd5e1'] : '#0284c7',
+                'fill-opacity': activeRegionIdStr ? ['case', ['==', ['to-string', ['get', 'db_id']], activeRegionIdStr], 0.25, 0.05] : 0.05
             }
         });
 
+        // 2. LINIE OBRYSU
         if (activeRegionIdStr) {
             map.addLayer({
                 'id': 'regions-line-neighbors', 'type': 'line', 'source': 'region_boundaries', 'source-layer': mvtLayerName,
-                'filter': ['!=', ['to-string', ['get', 'id']], activeRegionIdStr],
+                'filter': ['!=', ['to-string', ['get', 'db_id']], activeRegionIdStr],
                 'paint': { 'line-color': '#94a3b8', 'line-width': 1, 'line-dasharray': [2, 2] }
             });
             map.addLayer({
                 'id': 'regions-line-active', 'type': 'line', 'source': 'region_boundaries', 'source-layer': mvtLayerName,
-                'filter': ['==', ['to-string', ['get', 'id']], activeRegionIdStr],
+                'filter': ['==', ['to-string', ['get', 'db_id']], activeRegionIdStr],
                 'paint': { 'line-color': '#0369a1', 'line-width': 3 }
             });
         } else {
@@ -56,12 +60,52 @@ document.addEventListener("DOMContentLoaded", function() {
             });
         }
 
-        map.on('click', 'regions-fill', (e) => {
-            const props = e.features[0].properties;
-            const clickedIdStr = String(props.id);
-            if (activeRegionIdStr && clickedIdStr !== activeRegionIdStr) {
-                window.location.href = `/region/${mvtLayerName.toUpperCase()}/${clickedIdStr}/`;
+        // NAWIGACJA MAPOWA I DYMKI (Popup) DLA REGIONÓW
+map.on('click', 'regions-fill', (e) => {
+            const feature = e.features[0];
+            const props = feature.properties;
+
+            // ABSOLUTNIE PANCERNE POBIERANIE ID (Kaskadowe)
+            // Szuka: 1. Nowego db_id, 2. Starego id we właściwościach, 3. Natywnego id kafelka
+            const rawId = props.db_id || props.id || feature.id;
+
+            if (!rawId) {
+                console.error("Krytyczny błąd kafelka: Brak jakiegokolwiek ID w obiekcie!", feature);
+                return;
             }
+
+            const clickedIdStr = String(rawId);
+
+            if (activeRegionIdStr) {
+                if (clickedIdStr !== activeRegionIdStr) {
+                    window.location.href = `/region/${mvtLayerName.toUpperCase()}/${clickedIdStr}/`;
+                }
+            } else {
+                const coords = e.lngLat;
+                const displayLayerName = mvtLayerName.charAt(0).toUpperCase() + mvtLayerName.slice(1);
+
+                const regionPopupHtml = `
+                    <div class="p-2 min-w-[180px] text-center">
+                        <p class="text-xs text-teal-600 uppercase tracking-wide font-bold mb-1">${displayLayerName}</p>
+                        <h3 class="font-bold text-slate-800 text-lg mb-3">${props.name}</h3>
+                        <a href="/region/${mvtLayerName.toUpperCase()}/${clickedIdStr}/" class="block w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg text-sm transition shadow-md">
+                            🧭 Odkrywaj obiekty
+                        </a>
+                    </div>
+                `;
+
+                new maplibregl.Popup({ closeButton: true })
+                    .setLngLat(coords)
+                    .setHTML(regionPopupHtml)
+                    .addTo(map);
+            }
+        });
+
+        map.on('mouseenter', 'regions-fill', () => {
+            map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'regions-fill', () => {
+            map.getCanvas().style.cursor = '';
         });
 
         // --- WARSTWA 2: GEOJSON (Szczyty, Kolory, Heatmapa) ---
