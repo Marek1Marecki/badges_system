@@ -24,13 +24,22 @@ class RegionBaseModel(gis_models.Model):
 
     class Meta:
         abstract = True
-        managed = False
+        # managed = False
 
     def __str__(self) -> str:
         return f"{self.name} ({self.code})"
 
 
-class CountryModel(RegionBaseModel):
+class PhysicalRegionMixin(gis_models.Model):
+    """Domieszka (Mixin) dodająca relacje sąsiedztwa dla fizycznych obiektów GIS."""
+
+    neighbors = gis_models.ManyToManyField("self", blank=True, verbose_name="Sąsiedzi")
+
+    class Meta:
+        abstract = True
+
+
+class CountryModel(RegionBaseModel, PhysicalRegionMixin):
     """Model państwa."""
 
     order = gis_models.IntegerField(default=0)
@@ -42,7 +51,7 @@ class CountryModel(RegionBaseModel):
         verbose_name_plural = "Państwa"
 
 
-class VoivodeshipModel(RegionBaseModel):
+class VoivodeshipModel(RegionBaseModel, PhysicalRegionMixin):
     """Model województwa (tylko dla Polski)."""
 
     country = gis_models.ForeignKey(CountryModel, on_delete=gis_models.CASCADE)
@@ -55,7 +64,7 @@ class VoivodeshipModel(RegionBaseModel):
         verbose_name_plural = "Województwa"
 
 
-class ProvinceModel(RegionBaseModel):
+class ProvinceModel(RegionBaseModel, PhysicalRegionMixin):
     """Model prowincji fizykogeograficznej."""
 
     country = gis_models.ForeignKey(CountryModel, on_delete=gis_models.CASCADE)
@@ -68,7 +77,7 @@ class ProvinceModel(RegionBaseModel):
         verbose_name_plural = "Prowincje"
 
 
-class SubprovinceModel(RegionBaseModel):
+class SubprovinceModel(RegionBaseModel, PhysicalRegionMixin):
     """Model podprowincji fizykogeograficznej."""
 
     province = gis_models.ForeignKey(ProvinceModel, on_delete=gis_models.CASCADE)
@@ -81,7 +90,7 @@ class SubprovinceModel(RegionBaseModel):
         verbose_name_plural = "Podprowincje"
 
 
-class MacroregionModel(RegionBaseModel):
+class MacroregionModel(RegionBaseModel, PhysicalRegionMixin):
     """Model makroregionu."""
 
     subprovince = gis_models.ForeignKey(SubprovinceModel, on_delete=gis_models.CASCADE, null=True, blank=True)
@@ -93,7 +102,7 @@ class MacroregionModel(RegionBaseModel):
         verbose_name_plural = "Makroregiony"
 
 
-class MesoregionModel(RegionBaseModel):
+class MesoregionModel(RegionBaseModel, PhysicalRegionMixin):
     """Model mezoregionu."""
 
     macroregion = gis_models.ForeignKey(MacroregionModel, on_delete=gis_models.CASCADE, null=True, blank=True)

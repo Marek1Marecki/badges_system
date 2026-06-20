@@ -408,11 +408,11 @@ def region_detail_view(request, region_level: str, region_id: int):
         children_regions = list(region.mesoregions.all()) if hasattr(region, "mesoregions") else []
         children_level = "MESOREGION"
 
-    # Relacje poziome (Sąsiedzi) - Magia PostGIS (ST_Touches)
+    # 2. Relacje poziome (Sąsiedzi) - Błyskawiczny odczyt pre-kalkulowanej relacji M2M
     neighbors: list[Any] = []
-    if hasattr(region, "shape") and region.shape:
-        qs = ModelClass.objects.filter(shape__touches=region.shape).exclude(id=region.id).order_by("name")
-        neighbors = list(qs)
+    if hasattr(region, "neighbors"):
+        # Brak obciążenia procesora – zwykły odczyt JOIN z bazy
+        neighbors = list(region.neighbors.all().order_by("name"))
 
     return render(
         request,

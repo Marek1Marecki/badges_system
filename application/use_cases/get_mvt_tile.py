@@ -28,7 +28,7 @@ class GetMvtTileUseCase:
         if layer not in SUPPORTED_LAYERS:
             raise UseCaseError(f"Nieznana warstwa kafelków: {layer}")
 
-        cache_key = f"mvt_v4_{layer}_{z}_{x}_{y}"
+        cache_key = f"mvt_v7_{layer}_{z}_{x}_{y}"
         cached_tile = self._cache.get(cache_key)
 
         # Cache Hit - Zwracamy gotowe skompresowane bajty

@@ -42,7 +42,7 @@ class DjangoMvtRepository(MvtRepositoryPort):
                 ),
                 mvtgeom AS (
                     SELECT ST_AsMVTGeom(ST_Transform(t.shape, 3857), bounds.geom) AS geom,
-                           t.id AS db_id, t.name
+                           t.id, t.id::text AS db_id_str, t.name
                     FROM {table_name} t, bounds
                     WHERE ST_Intersects(ST_Transform(t.shape, 3857), bounds.geom)
                 )

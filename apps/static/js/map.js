@@ -8,6 +8,12 @@ document.addEventListener("DOMContentLoaded", function() {
         zoom: 5
     });
 
+    // Zmienne śledzące aktualny stan UI mapy
+    // Domyślnie startujemy od Województw, bo przybliżenie początkowe to Zoom 5!
+    let currentMvtLayer = window.REGION_FILTER_LEVEL ? window.REGION_FILTER_LEVEL.toLowerCase() : 'voivodeship';
+    const activeRegionIdStr = window.REGION_FILTER_ID ? String(window.REGION_FILTER_ID) : null;
+    let isManualOverride = false; // Flaga blokująca auto-zoom, gdy user sam wybierze siatkę
+
     if (window.REGION_EXTENT && window.REGION_EXTENT.length === 4) {
         map.fitBounds([
             [window.REGION_EXTENT[0], window.REGION_EXTENT[1]],
@@ -15,80 +21,128 @@ document.addEventListener("DOMContentLoaded", function() {
         ], { padding: 50 });
     }
 
-    map.on('load', () => {
-        // ----------------------------------------------------
-        // WARSTWA 1: STATYCZNA MVT (Z bazy PostGIS, zakechowana)
-        // ----------------------------------------------------
-        const mvtLayerName = window.REGION_FILTER_LEVEL ? window.REGION_FILTER_LEVEL.toLowerCase() : 'mesoregion';
-        const activeRegionIdStr = window.REGION_FILTER_ID ? String(window.REGION_FILTER_ID) : null;
+// --- FUNKCJA ZARZĄDZAJĄCA SIATKĄ REGIONÓW (MVT) ---
+    function loadMvtLayer(layerName) {
+        if (currentMvtLayer === layerName && map.getSource('region_boundaries')) return;
 
+        currentMvtLayer = layerName;
+
+        const layersToRemove = ['regions-fill', 'regions-line-neighbors', 'regions-line-active', 'regions-line-global'];
+        layersToRemove.forEach(l => {
+            if (map.getLayer(l)) map.removeLayer(l);
+        });
+        if (map.getSource('region_boundaries')) map.removeSource('region_boundaries');
+
+        // Podbita wersja URL dla złamania cache w przeglądarce
         map.addSource('region_boundaries', {
             type: 'vector',
-            tiles: [window.location.origin + `/api/v1/tiles/${mvtLayerName}/{z}/{x}/{y}.pbf?v=2`],
+            tiles: [window.location.origin + `/api/v1/tiles/${layerName}/{z}/{x}/{y}.pbf?v=7`],
             minzoom: 4,
             maxzoom: 14
         });
 
-        // 1. WYPEŁNIENIE POLIGONU (Używamy nowego atrybutu db_id z bazy)
+        // PANCERNY WARUNEK FILTROWANIA (Sprawdza i int, i string)
+        const activeRegionIdNum = activeRegionIdStr ? parseInt(activeRegionIdStr) : null;
+        const isActiveRegion = ['any',
+            ['==', ['id'], activeRegionIdNum],
+            ['==', ['get', 'db_id_str'], activeRegionIdStr]
+        ];
+
+        // 1. Wypełnienie Poligonu
         map.addLayer({
             'id': 'regions-fill',
             'type': 'fill',
             'source': 'region_boundaries',
-            'source-layer': mvtLayerName,
+            'source-layer': layerName,
             'paint': {
-                'fill-color': activeRegionIdStr ? ['case', ['==', ['to-string', ['get', 'db_id']], activeRegionIdStr], '#0ea5e9', '#cbd5e1'] : '#0284c7',
-                'fill-opacity': activeRegionIdStr ? ['case', ['==', ['to-string', ['get', 'db_id']], activeRegionIdStr], 0.25, 0.05] : 0.05
+                'fill-color': activeRegionIdStr ? ['case', isActiveRegion, '#0ea5e9', '#cbd5e1'] : '#0284c7',
+                'fill-opacity': activeRegionIdStr ? ['case', isActiveRegion, 0.25, 0.0] : 0.05
             }
         });
 
-        // 2. LINIE OBRYSU
+        // 2. Obrysy
         if (activeRegionIdStr) {
             map.addLayer({
-                'id': 'regions-line-neighbors', 'type': 'line', 'source': 'region_boundaries', 'source-layer': mvtLayerName,
-                'filter': ['!=', ['to-string', ['get', 'db_id']], activeRegionIdStr],
+                'id': 'regions-line-neighbors', 'type': 'line', 'source': 'region_boundaries', 'source-layer': layerName,
+                'filter': ['!', isActiveRegion],  // Negacja (Sąsiedzi)
                 'paint': { 'line-color': '#94a3b8', 'line-width': 1, 'line-dasharray': [2, 2] }
             });
             map.addLayer({
-                'id': 'regions-line-active', 'type': 'line', 'source': 'region_boundaries', 'source-layer': mvtLayerName,
-                'filter': ['==', ['to-string', ['get', 'db_id']], activeRegionIdStr],
-                'paint': { 'line-color': '#0369a1', 'line-width': 3 }
+                'id': 'regions-line-active', 'type': 'line', 'source': 'region_boundaries', 'source-layer': layerName,
+                'filter': isActiveRegion,         // Zgodność (Nasz region)
+                'paint': { 'line-color': '#0369a1', 'line-width': 4 } // Grubsza linia dla pewności!
             });
         } else {
             map.addLayer({
-                'id': 'regions-line-global', 'type': 'line', 'source': 'region_boundaries', 'source-layer': mvtLayerName,
+                'id': 'regions-line-global', 'type': 'line', 'source': 'region_boundaries', 'source-layer': layerName,
                 'paint': { 'line-color': '#0369a1', 'line-width': 1, 'line-dasharray': [2, 2] }
             });
         }
 
-        // NAWIGACJA MAPOWA I DYMKI (Popup) DLA REGIONÓW
-map.on('click', 'regions-fill', (e) => {
+        document.querySelectorAll('.grid-btn').forEach(b => {
+            if (b.getAttribute('onclick') && b.getAttribute('onclick').includes(layerName)) {
+                b.className = "grid-btn px-3 py-1.5 rounded-md bg-sky-600 text-white shadow-sm transition";
+            } else {
+                b.className = "grid-btn px-3 py-1.5 rounded-md hover:bg-sky-50 text-gray-600 transition";
+            }
+        });
+    }
+
+    // Wywołanie z HTML (z przycisku ręcznego)
+    window.changeMapGrid = function(layerName, btn) {
+        isManualOverride = true; // Użytkownik sam kliknął, wyłączamy mu Auto-Zoom!
+        loadMvtLayer(layerName);
+    };
+
+    map.on('load', () => {
+        // Załaduj początkową warstwę
+        loadMvtLayer(currentMvtLayer);
+
+        // =======================================================
+        // NOWE: KONTEKSTOWE KAFELKI (AUTO-ZOOM)
+        // =======================================================
+        if (!activeRegionIdStr) { // Działa tylko na Pulpicie Głównym
+            map.on('zoomend', () => {
+                if (isManualOverride) return; // Szanujemy ręczny wybór turysty
+
+                const z = map.getZoom();
+                let targetLayer = 'mesoregion';
+
+                if (z < 6.5) {
+                    targetLayer = 'voivodeship'; // Duże oddalenie -> Województwa
+                } else if (z < 8.5) {
+                    targetLayer = 'macroregion'; // Średni zoom -> np. Karpaty
+                } // Zoom > 8.5 to już precyzyjne Mezoregiony
+
+                if (targetLayer !== currentMvtLayer) {
+                    loadMvtLayer(targetLayer);
+                }
+            });
+        }
+
+        // --- OBSŁUGA KLIKNIĘCIA W REGIONY (POPUPS I NAWIGACJA) ---
+        map.on('click', 'regions-fill', (e) => {
             const feature = e.features[0];
             const props = feature.properties;
 
-            // ABSOLUTNIE PANCERNE POBIERANIE ID (Kaskadowe)
-            // Szuka: 1. Nowego db_id, 2. Starego id we właściwościach, 3. Natywnego id kafelka
-            const rawId = props.db_id || props.id || feature.id;
-
-            if (!rawId) {
-                console.error("Krytyczny błąd kafelka: Brak jakiegokolwiek ID w obiekcie!", feature);
-                return;
-            }
+            const rawId = props.db_id_str || props.db_id || props.id || feature.id;
+            if (!rawId) return;
 
             const clickedIdStr = String(rawId);
 
             if (activeRegionIdStr) {
                 if (clickedIdStr !== activeRegionIdStr) {
-                    window.location.href = `/region/${mvtLayerName.toUpperCase()}/${clickedIdStr}/`;
+                    window.location.href = `/region/${currentMvtLayer.toUpperCase()}/${clickedIdStr}/`;
                 }
             } else {
                 const coords = e.lngLat;
-                const displayLayerName = mvtLayerName.charAt(0).toUpperCase() + mvtLayerName.slice(1);
+                const displayLayerName = currentMvtLayer.charAt(0).toUpperCase() + currentMvtLayer.slice(1);
 
                 const regionPopupHtml = `
                     <div class="p-2 min-w-[180px] text-center">
                         <p class="text-xs text-teal-600 uppercase tracking-wide font-bold mb-1">${displayLayerName}</p>
-                        <h3 class="font-bold text-slate-800 text-lg mb-3">${props.name}</h3>
-                        <a href="/region/${mvtLayerName.toUpperCase()}/${clickedIdStr}/" class="block w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg text-sm transition shadow-md">
+                        <h3 class="font-bold text-slate-800 text-lg mb-3">${props.name || "Nieznany Region"}</h3>
+                        <a href="/region/${currentMvtLayer.toUpperCase()}/${clickedIdStr}/" class="block w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg text-sm transition shadow-md">
                             🧭 Odkrywaj obiekty
                         </a>
                     </div>
@@ -101,14 +155,13 @@ map.on('click', 'regions-fill', (e) => {
             }
         });
 
-        map.on('mouseenter', 'regions-fill', () => {
-            map.getCanvas().style.cursor = 'pointer';
-        });
-        map.on('mouseleave', 'regions-fill', () => {
-            map.getCanvas().style.cursor = '';
-        });
+        map.on('mouseenter', 'regions-fill', () => map.getCanvas().style.cursor = 'pointer');
+        map.on('mouseleave', 'regions-fill', () => map.getCanvas().style.cursor = '');
 
-        // --- WARSTWA 2: GEOJSON (Szczyty, Kolory, Heatmapa) ---
+
+        // ----------------------------------------------------
+        // WARSTWA 2: DYNAMICZNA GEOJSON (Szczyty i Kolory)
+        // ----------------------------------------------------
         map.addSource('peaks', {
             type: 'geojson',
             data: { type: 'FeatureCollection', features: [] }
@@ -124,7 +177,6 @@ map.on('click', 'regions-fill', (e) => {
             '#9ca3af'
         ];
 
-        // HEATMAPA (Tylko dla punktujących celów)
         map.addLayer({
             'id': 'peaks-heat',
             'type': 'heatmap',
@@ -139,7 +191,6 @@ map.on('click', 'regions-fill', (e) => {
             }
         });
 
-        // PINEZKI (Wyłaniają się z heatmapy na zbliżeniu)
         map.addLayer({
             'id': 'peaks-symbol',
             'type': 'circle',
@@ -154,11 +205,9 @@ map.on('click', 'regions-fill', (e) => {
             }
         });
 
-        // INICJALIZACJA
         fetchMapObjects(map.getBounds());
     });
 
-    // --- LOGIKA POBIERANIA (Debounce 300ms) ---
     let debounceTimer;
     map.on('moveend', () => {
         clearTimeout(debounceTimer);
@@ -182,10 +231,9 @@ map.on('click', 'regions-fill', (e) => {
                     map.getSource('peaks').setData(data);
                 }
             })
-            .catch(err => console.error("Błąd ładowania punktów:", err));
+            .catch(err => console.error("Błąd ładowania punktów mapy:", err));
     }
 
-    // --- POPUPY HTMX ---
     map.on('click', 'peaks-symbol', (e) => {
         const coords = e.features[0].geometry.coordinates.slice();
         const props = e.features[0].properties;
@@ -199,11 +247,9 @@ map.on('click', 'regions-fill', (e) => {
                     <span class="block">Zysk: <b>${props.potential_score} pkt</b></span>
                     <span class="block">Status: <b>${props.peak_color}</b></span>
                 </div>
-                
                 <a href="/object/${props.id}/" class="block text-center mb-2 w-full bg-sky-100 hover:bg-sky-200 text-sky-800 font-bold py-1.5 rounded text-sm transition border border-sky-300">
                     👁️ Zobacz szczegóły
                 </a>
-                
                 <button hx-post="/api/v1/ascents/"
                         hx-ext="json-enc"
                         hx-vals='{"peak_id": ${props.id}, "ascent_date": "${today}"}'
@@ -215,12 +261,12 @@ map.on('click', 'regions-fill', (e) => {
             </div>
         `;
 
-        const popup = new maplibregl.Popup({ closeButton: true, offset: 15 })
+        new maplibregl.Popup({ closeButton: true, offset: 15 })
             .setLngLat(coords)
             .setHTML(popupHtml)
             .addTo(map);
 
-        htmx.process(popup.getElement());
+        htmx.process(document.body);
     });
 
     map.on('mouseenter', 'peaks-symbol', () => map.getCanvas().style.cursor = 'pointer');
