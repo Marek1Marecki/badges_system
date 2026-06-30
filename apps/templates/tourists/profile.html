@@ -1,68 +1,84 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mx-auto p-6 h-full flex justify-center items-start pt-10">
+<div class="container mx-auto p-6 h-full flex flex-col items-center pt-10 overflow-y-auto">
     <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-8 w-full max-w-md">
-        <h2 class="text-2xl font-bold mb-6 text-slate-800">Ustawienia Profilu</h2>
+        <h2 class="text-2xl font-bold mb-6 text-slate-800">Profil: {{ profile.nickname }}</h2>
 
-        {% if messages %}
-            {% for message in messages %}
-                <div class="bg-green-100 text-green-800 p-3 rounded mb-6 text-sm">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-
-        <form method="POST" action="{% url 'profile' %}" class="space-y-5">
-            {% csrf_token %}
+        <!-- NOWOCZESNY FORMULARZ API (HTMX) -->
+        <form hx-patch="/api/v1/profiles/{{ profile.id }}/"
+              hx-ext="json-enc"
+              hx-on::after-request="if(event.detail.successful) { alert('Zapisano zmiany w profilu!'); location.reload(); }"
+              class="space-y-5">
 
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">Konto Google (E-mail)</label>
-                <input type="text" value="{{ profile.user.email }}" disabled
-                       class="w-full border-gray-300 bg-gray-100 rounded-md shadow-sm p-2.5 border text-gray-500 cursor-not-allowed">
+                <input type="text" value="{{ profile.user.email }}" disabled class="w-full border-gray-300 bg-gray-100 rounded-md shadow-sm p-2.5 border text-gray-500 cursor-not-allowed">
             </div>
 
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">Pseudonim w rankingu</label>
-                <input type="text" name="nickname" value="{{ profile.nickname }}" required
-                       class="w-full border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 p-2.5 border">
+                <input type="text" name="nickname" value="{{ profile.nickname }}" required class="w-full border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 p-2.5 border">
             </div>
 
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">Data urodzenia</label>
-                <input type="date" name="birth_date" value="{{ profile.birth_date|date:'Y-m-d' }}"
-                       class="w-full border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 p-2.5 border">
-                <p class="text-xs text-gray-500 mt-2">Wymagana do weryfikacji przez system odznak dziecięcych i młodzieżowych (MinAge/MaxAge Rule).</p>
+                <input type="date" name="birth_date" value="{{ profile.birth_date|date:'Y-m-d' }}" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 p-2.5 border">
             </div>
 
-            <div class="pt-4 border-t mt-4">
-                <p class="text-sm mb-4">Twój aktywny pakiet: <span class="font-bold text-sky-700">{{ profile.active_plan }}</span></p>
+            <!-- WYBÓR MAPY (Paywall) -->
+            <div class="border-t pt-4">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Preferowany podkład mapy</label>
+
+                {% for layer in map_layers %}
+                <label class="flex items-center gap-2 mb-2 {% if layer.locked %}opacity-50 cursor-not-allowed{% else %}cursor-pointer{% endif %}">
+                    <input type="radio" name="preferred_base_map" value="{{ layer.id }}" class="text-sky-600 focus:ring-sky-500"
+                           {% if layer.locked %}disabled{% endif %}
+                           {% if preferred_base_map == layer.id and not layer.locked %}checked{% endif %}>
+
+                    <span class="text-sm {% if layer.is_paid %}font-bold text-slate-800{% endif %}">
+                        {{ layer.name }}
+                    </span>
+
+                    {% if layer.locked %}
+                        <span class="text-[10px] uppercase font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded shadow-sm border border-amber-200">🔒 Wymaga PRO</span>
+                    {% endif %}
+                </label>
+                {% endfor %}
+            </div>
+
+            <div class="pt-4 mt-4">
                 <button type="submit" class="w-full bg-sky-800 hover:bg-sky-900 text-white font-bold py-2.5 px-4 rounded transition shadow">
-                    Zapisz zmiany
+                    💾 Zapisz ustawienia
                 </button>
             </div>
         </form>
 
-        <!-- Formularz tworzenia sub-profilu (Konto Rodzinne) -->
-        <div class="mt-10 pt-6 border-t border-gray-200">
-            <h3 class="text-xl font-bold mb-2 text-slate-800">Konto Rodzinne</h3>
-            <p class="text-sm text-gray-600 mb-4">Dodaj profil dziecka lub partnera, by prowadzić ich osobistą ewidencję pod Twoim głównym kontem Google (Użyto {{ profiles_count }} z {{ max_profiles }}).</p>
-
-            {% if profiles_count < max_profiles %}
-            <form method="POST" action="{% url 'profile' %}" class="flex gap-2">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="add_profile">
-                <input type="text" name="new_nickname" placeholder="Imię lub pseudonim..." required
-                       class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 p-2.5 border text-sm">
-                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-4 rounded transition shadow text-sm whitespace-nowrap">
-                    + Dodaj profil
-                </button>
-            </form>
-            {% else %}
-            <div class="bg-amber-50 text-amber-800 p-3 rounded text-sm border border-amber-200">
-                Osiągnięto limit {{ max_profiles }} profili na tym koncie.
-            </div>
+        <!-- SYMULATOR BRAMKI PŁATNOŚCI -->
+        <div class="mt-6 pt-4 border-t border-gray-200 text-center">
+            <p class="text-sm mb-2">Twój aktywny pakiet: <span class="font-bold {% if profile.active_plan == 'FREE' %}text-gray-500{% else %}text-amber-600{% endif %}">{{ profile.active_plan }}</span></p>
+            {% if profile.active_plan == 'FREE' %}
+            <button hx-post="/api/v1/profiles/{{ profile.id }}/upgrade/"
+                    hx-swap="none"
+                    hx-on::after-request="if(event.detail.successful) { alert('Gratulacje! Odblokowano funkcje PRO!'); location.reload(); }"
+                    class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded transition shadow-md flex items-center justify-center gap-2">
+                ⚡ Aktywuj PRO (Test)
+            </button>
             {% endif %}
         </div>
-
     </div>
 </div>
+
+<!-- Tosty błędów HTMX -->
+<div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+<script>
+document.body.addEventListener('htmx:responseError', function(evt) {
+    const errorData = JSON.parse(evt.detail.xhr.response);
+    const toast = document.createElement('div');
+    toast.className = "bg-red-600 text-white px-4 py-3 rounded shadow-lg opacity-90 transition-opacity";
+    toast.innerHTML = `<strong>${errorData.title}</strong><br><span class="text-sm">${errorData.detail}</span>`;
+    document.getElementById('toast-container').appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+});
+</script>
 {% endblock %}

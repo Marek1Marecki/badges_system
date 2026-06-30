@@ -80,6 +80,7 @@ digraph G {
     "infrastructure.adapters.persistence.region_cache_repo" [fillcolor="orange"];
     "infrastructure.config" [fillcolor="orange"];
     "infrastructure.config.app_settings" [fillcolor="orange"];
+    "infrastructure.config.map_layers" [fillcolor="orange"];
     "infrastructure.exceptions" [fillcolor="orange"];
     "infrastructure.logging" [fillcolor="orange"];
     "infrastructure.logging.log_config" [fillcolor="orange"];
@@ -133,6 +134,7 @@ digraph G {
     "apps.tourists.context_processors" [fillcolor="pink"];
     "apps.tourists.migrations" [fillcolor="pink"];
     "apps.tourists.migrations.0001_initial" [fillcolor="pink"];
+    "apps.tourists.migrations.0002_touristprofile_preferred_base_map" [fillcolor="pink"];
     "apps.tourists.models" [fillcolor="pink"];
     "apps.tourists.signals" [fillcolor="pink"];
     "apps.tourists.views" [fillcolor="pink"];
@@ -193,6 +195,7 @@ digraph G {
   "apps.api.views" -> "application.exceptions";
   "apps.api.views" -> "apps.badges.models";
   "apps.api.views" -> "apps.badges.tasks";
+  "apps.api.views" -> "apps.tourists.models";
   "apps.badges.admin" -> "apps.badges.forms";
   "apps.badges.admin" -> "apps.badges.models";
   "apps.badges.admin" -> "apps.badges.tasks";
@@ -204,6 +207,7 @@ digraph G {
   "apps.tourists.admin" -> "apps.tourists.models";
   "apps.tourists.apps" -> "apps.tourists.signals";
   "apps.tourists.context_processors" -> "apps.tourists.models";
+  "apps.tourists.context_processors" -> "infrastructure.config.map_layers";
   "apps.tourists.migrations.0001_initial" -> "apps.tourists.models";
   "apps.tourists.models" -> "apps.badges.models";
   "apps.tourists.signals" -> "apps.tourists.models";

@@ -89,7 +89,20 @@ class VerifyBadgeUseCase:
         # 7. EWALUACJA W CZYSTEJ DOMENIE
         result = badge_version.evaluate(domain_ascents, context)
 
-        # 8. Zapisujemy zmaterializowany wynik w bazie, jeśli status uległ zmianie
+        # =========================================================
+        # 7b. PRAWA NABYTE: Retroaktywne odbieranie odznak (Dylemat 2)
+        # =========================================================
+        # Jeśli turysta w przeszłości zdobył odznakę, a zmiana profilu
+        # (np. dodanie daty urodzenia) nagle spowodowała błąd reguły wieku,
+        # system szanuje historię i wymusza zachowanie statusu COMPLETED.
+        if progress.domain_status == "COMPLETED":
+            result["status"] = "COMPLETED"
+            result["verified"] = True
+            result["errors"] = []
+            for tier in result.get("tiers", []):
+                tier["status"] = "COMPLETED"
+
+        # 8. Zapisujemy zmaterializowany wynik w bazie
         new_status = result["status"]
         if new_status != progress.domain_status:
             self._progress_repo.update_domain_status(progress.progress_id, new_status)

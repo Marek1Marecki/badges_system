@@ -4,9 +4,22 @@
 {% block content %}
 <!-- Panel Lewy: Lista Subskrybowanych Odznak -->
 <aside class="w-1/3 max-w-md bg-white border-r border-gray-200 flex flex-col z-10 shadow-lg">
-    <div class="p-4 border-b bg-gray-50">
-        <h2 class="text-lg font-bold text-gray-800">Twoje Odznaki</h2>
-        <p class="text-xs text-gray-500">Kliknij mapę, by zaktualizować postępy.</p>
+    <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+        <div>
+            <h2 class="text-lg font-bold text-gray-800">Twoje Odznaki</h2>
+            <p class="text-xs text-gray-500">Kliknij mapę, by logować wejścia.</p>
+        </div>
+    </div>
+
+    <!-- NOWE: Sekcja Wgrywania GPX -->
+    <div class="p-4 border-b bg-sky-50 flex flex-col gap-2">
+        <h2 class="text-md font-bold text-sky-900">🧭 Zaloguj wycieczkę z GPX</h2>
+        <p class="text-xs text-sky-700 leading-tight mb-1">Wgraj ślad z zegarka (Garmin/Suunto/Locus). System sam znajdzie obiekty na Twojej trasie w promieniu 200m.</p>
+
+        <input type="file" id="gpx-file-input" accept=".gpx, .xml" class="hidden">
+        <button onclick="document.getElementById('gpx-file-input').click()" id="gpx-upload-btn" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded shadow transition flex justify-center items-center gap-2">
+            📂 Wybierz plik ze śladem (.gpx)
+        </button>
     </div>
 
     <div id="badges-list" class="flex-1 overflow-y-auto p-4 space-y-3">
@@ -41,6 +54,7 @@
     </div>
 </aside>
 
+
 <!-- Panel Prawy: Mapa (100% wysokości) -->
 <section class="flex-1 relative bg-gray-100">
     <div id="map" class="absolute inset-0"></div>
@@ -53,11 +67,184 @@
     </div>
 </section>
 
+
 <!-- Kontener na toasty błędów z HTMX -->
 <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
+
+<!-- NOWE: Wyskakujące Okienko (Modal) dla wyników GPX -->
+<div id="gpx-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="p-4 bg-sky-900 text-white flex justify-between items-center">
+            <h3 class="font-bold text-lg">📍 Znalezione Obiekty na Trasie</h3>
+            <button onclick="closeGpxModal()" class="text-sky-200 hover:text-white font-bold text-2xl leading-none">&times;</button>
+        </div>
+        <div class="p-6 overflow-y-auto flex-1 bg-slate-50">
+            <div class="mb-5 bg-white p-3 rounded border shadow-sm">
+                <label class="block text-sm font-bold text-gray-700 mb-1">Potwierdź datę wycieczki:</label>
+                <input type="date" id="gpx-date" class="w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-sky-500 focus:border-sky-500 text-sm">
+                <p class="text-xs text-gray-500 mt-1">Data odczytana z pliku. Możesz ją zmienić ręcznie.</p>
+            </div>
+
+            <div class="mb-2">
+                <p class="text-sm font-bold text-slate-800">Obiekty w promieniu 200m (Odznacz niechciane):</p>
+            </div>
+            <!-- Lista checkboxów generowana przez JS -->
+            <div id="gpx-peaks-list" class="space-y-2"></div>
+        </div>
+
+        <div class="p-4 bg-white border-t flex justify-end gap-3">
+            <button onclick="closeGpxModal()" class="px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded hover:bg-gray-200 font-medium transition text-sm">Anuluj</button>
+            <button onclick="submitGpxAscents()" id="gpx-submit-btn" class="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-bold shadow transition text-sm flex items-center gap-2">
+                ✅ Zapisz zaznaczone wejścia
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    // Obsługa wyboru pliku GPX
+    document.getElementById('gpx-file-input').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const btn = document.getElementById('gpx-upload-btn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = "⏳ Analizowanie śladu w PostGIS...";
+        btn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // KROK 1: Analiza pliku (bez zapisu do bazy)
+        fetch('/api/v1/gpx/analyze/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if(!response.ok) throw response;
+            return response.json();
+        })
+        .then(data => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            e.target.value = ""; // Reset inputu
+            openGpxModal(data);
+        })
+        .catch(async err => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            e.target.value = "";
+            let msg = "Wystąpił problem z połączeniem.";
+            if(err.json) {
+                const errData = await err.json();
+                msg = errData.detail || errData.title;
+            }
+            alert("❌ Błąd analizy: " + msg);
+        });
+    });
+
+    function openGpxModal(data) {
+        document.getElementById('gpx-modal').classList.remove('hidden');
+
+        // Wypełnianie sugerowanej daty
+        const dateInput = document.getElementById('gpx-date');
+        if(data.suggested_date) {
+            dateInput.value = data.suggested_date;
+        } else {
+            dateInput.value = new Date().toISOString().split('T')[0];
+        }
+
+        // Generowanie Checkboxów
+        const listDiv = document.getElementById('gpx-peaks-list');
+        listDiv.innerHTML = '';
+
+        if(data.nearby_peaks.length === 0) {
+            listDiv.innerHTML = `
+                <div class="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm">
+                    Na trasie tego śladu nie znaleźliśmy żadnych aktywnych obiektów PTTK z Twojej bazy.
+                </div>`;
+            document.getElementById('gpx-submit-btn').disabled = true;
+            return;
+        }
+
+        document.getElementById('gpx-submit-btn').disabled = false;
+
+        data.nearby_peaks.forEach(peak => {
+            listDiv.innerHTML += `
+                <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg shadow-sm hover:border-sky-400 hover:bg-sky-50 cursor-pointer transition">
+                    <input type="checkbox" value="${peak.id}" class="gpx-peak-checkbox w-5 h-5 text-sky-600 border-gray-300 rounded focus:ring-sky-500" checked>
+                    <div>
+                        <span class="font-bold text-slate-800 block">${peak.name}</span>
+                        <span class="text-xs text-gray-500 font-mono">${peak.type.toUpperCase()} | ID: ${peak.id}</span>
+                    </div>
+                </label>
+            `;
+        });
+    }
+
+    function closeGpxModal() {
+        document.getElementById('gpx-modal').classList.add('hidden');
+    }
+
+    // KROK 2: Wysyłanie paczki do Bulk Upsert
+    function submitGpxAscents() {
+        const dateVal = document.getElementById('gpx-date').value;
+        const checkboxes = document.querySelectorAll('.gpx-peak-checkbox:checked');
+
+        if(checkboxes.length === 0) {
+            alert("Zaznacz co najmniej jeden obiekt, aby go zalogować!");
+            return;
+        }
+
+        // Przygotowanie payloadu do Bulk API
+        const payload = Array.from(checkboxes).map(cb => ({
+            peak_id: parseInt(cb.value),
+            ascent_date: dateVal
+        }));
+
+        const btn = document.getElementById('gpx-submit-btn');
+        btn.innerHTML = "⏳ Zapisywanie...";
+        btn.disabled = true;
+
+        fetch('/api/v1/ascents/bulk/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(response => {
+            if(!response.ok) throw response;
+            return response.json();
+        })
+        .then(data => {
+            let msg = `✅ Zapisano pomyślnie ${data.saved_count} wejść!\n`;
+            if (data.errors && data.errors.length > 0) {
+                msg += `\n❌ Odrzucono ${data.errors.length} wpisów:\n`;
+                data.errors.forEach(err => {
+                    msg += `- ID ${err.peak_id}: ${err.reason}\n`;
+                });
+            }
+            alert(msg);
+            location.reload(); // Odświeża stronę, zaciągając nowe kolory z Redis!
+        })
+        .catch(async err => {
+            btn.innerHTML = "✅ Zapisz zaznaczone wejścia";
+            btn.disabled = false;
+            let msg = "Wystąpił problem z połączeniem.";
+            if(err.json) {
+                const errData = await err.json();
+                msg = errData.detail || errData.title;
+            }
+            alert("❌ Błąd zapisu: " + msg);
+        });
+    }
+</script>
+
+
 <!-- Ładowanie zhermetyzowanej logiki mapy -->
 <script src="{% static 'js/map.js' %}"></script>
+
 
 <!-- Przechwytywanie błędów HTMX (RFC 7807 z API) -->
 <script>

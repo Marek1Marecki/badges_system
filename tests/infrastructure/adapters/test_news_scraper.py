@@ -1,7 +1,7 @@
 """Tests for BeautifulSoupNewsScraper."""
 
 import pytest
-from bs4 import BeautifulSoup
+
 from infrastructure.adapters.news_scraper import BeautifulSoupNewsScraper
 from infrastructure.exceptions import InfrastructureException
 

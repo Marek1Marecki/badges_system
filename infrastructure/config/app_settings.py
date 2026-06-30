@@ -92,3 +92,5 @@ class AppSettings(BaseSettings):
     # ------------------------------------------------------------------
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""
+
+    mapy_cz_api_key: str = ""

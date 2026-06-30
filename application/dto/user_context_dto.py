@@ -53,3 +53,11 @@ class LogisticStatusUpdateDTO(BaseModel):
 
     logistic_status: str
     status_date: date
+
+
+class UpdateProfileRequestDTO(BaseModel):
+    """Waliduje dane aktualizacji profilu przez API."""
+
+    nickname: str | None = None
+    birth_date: date | None = None
+    preferred_base_map: str | None = None

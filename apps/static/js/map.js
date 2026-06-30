@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function() {
 
-    // Inicjalizacja Mapy
+    // Inicjalizacja Mapy (Podkład ładujemy później przez zmienną z Django)
     const map = new maplibregl.Map({
         container: 'map',
         style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
@@ -9,7 +9,6 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     // Zmienne śledzące aktualny stan UI mapy
-    // Domyślnie startujemy od Województw, bo przybliżenie początkowe to Zoom 5!
     let currentMvtLayer = window.REGION_FILTER_LEVEL ? window.REGION_FILTER_LEVEL.toLowerCase() : 'voivodeship';
     const activeRegionIdStr = window.REGION_FILTER_ID ? String(window.REGION_FILTER_ID) : null;
     let isManualOverride = false; // Flaga blokująca auto-zoom, gdy user sam wybierze siatkę
@@ -21,7 +20,77 @@ document.addEventListener("DOMContentLoaded", function() {
         ], { padding: 50 });
     }
 
-// --- FUNKCJA ZARZĄDZAJĄCA SIATKĄ REGIONÓW (MVT) ---
+    // =====================================================================
+    // WIDŻET: DYNAMICZNY PRZEŁĄCZNIK PODKŁADÓW (Z Backendem)
+    // =====================================================================
+    class LayerSwitcherControl {
+        onAdd(map) {
+            this._map = map;
+            this._container = document.createElement('div');
+            this._container.className = 'maplibregl-ctrl maplibregl-ctrl-group bg-white p-3 shadow-md flex flex-col gap-2 rounded-lg border border-gray-200';
+
+            let html = `<span class="text-xs font-black text-sky-900 uppercase tracking-wider mb-1 block border-b border-gray-100 pb-1">Podkład Mapy</span>`;
+
+            window.MAP_LAYERS.forEach(layer => {
+                const isChecked = window.PREFERRED_BASE_MAP === layer.id ? "checked" : "";
+                const isDisabled = layer.locked ? "disabled" : "";
+                const textClass = layer.locked ? "text-gray-400" : "text-gray-800";
+                const lockIcon = layer.locked ? " 🔒" : "";
+
+                html += `
+                <label class="text-sm flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded font-medium transition ${textClass}">
+                    <input type="radio" name="basemap" value="${layer.id}" class="text-sky-600 focus:ring-sky-500" ${isDisabled} ${isChecked}> 
+                    ${layer.name}${lockIcon}
+                </label>`;
+            });
+
+            this._container.innerHTML = html;
+
+            this._container.querySelectorAll('input').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    const selectedId = e.target.value;
+
+                    window.MAP_LAYERS.forEach(l => {
+                        if (l.id !== 'cartodb_positron' && this._map.getLayer(l.id + '-base')) {
+                            this._map.setLayoutProperty(l.id + '-base', 'visibility', 'none');
+                        }
+                    });
+
+                    if (selectedId !== 'cartodb_positron' && this._map.getLayer(selectedId + '-base')) {
+                        this._map.setLayoutProperty(selectedId + '-base', 'visibility', 'visible');
+                    }
+
+                    // PATCH do API - zapis profilu!
+                    fetch(`/api/v1/profiles/${window.ACTIVE_PROFILE_ID || ''}/`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ preferred_base_map: selectedId })
+                    }).catch(err => console.error("Nie udało się zapisać preferencji:", err));
+                });
+            });
+
+            this._container.querySelectorAll('label').forEach(label => {
+                const input = label.querySelector('input');
+                if (input && input.disabled) {
+                    label.addEventListener('click', (e) => {
+                        if (e.target.tagName !== 'INPUT') {
+                            alert("🗺️ Ten podkład to opcja Premium.\nPrzejdź do Ustawień Profilu i zmień swój pakiet na PRO lub FAMILY, aby odblokować poziomice i szlaki!");
+                        }
+                    });
+                }
+            });
+
+            return this._container;
+        }
+        onRemove() {
+            this._container.parentNode.removeChild(this._container);
+            this._map = undefined;
+        }
+    }
+
+    map.addControl(new LayerSwitcherControl(), 'bottom-left');
+
+    // --- FUNKCJA ZARZĄDZAJĄCA SIATKĄ REGIONÓW (MVT) ---
     function loadMvtLayer(layerName) {
         if (currentMvtLayer === layerName && map.getSource('region_boundaries')) return;
 
@@ -33,7 +102,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
         if (map.getSource('region_boundaries')) map.removeSource('region_boundaries');
 
-        // Podbita wersja URL dla złamania cache w przeglądarce
         map.addSource('region_boundaries', {
             type: 'vector',
             tiles: [window.location.origin + `/api/v1/tiles/${layerName}/{z}/{x}/{y}.pbf?v=7`],
@@ -41,14 +109,12 @@ document.addEventListener("DOMContentLoaded", function() {
             maxzoom: 14
         });
 
-        // PANCERNY WARUNEK FILTROWANIA (Sprawdza i int, i string)
         const activeRegionIdNum = activeRegionIdStr ? parseInt(activeRegionIdStr) : null;
         const isActiveRegion = ['any',
             ['==', ['id'], activeRegionIdNum],
             ['==', ['get', 'db_id_str'], activeRegionIdStr]
         ];
 
-        // 1. Wypełnienie Poligonu
         map.addLayer({
             'id': 'regions-fill',
             'type': 'fill',
@@ -60,17 +126,16 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
 
-        // 2. Obrysy
         if (activeRegionIdStr) {
             map.addLayer({
                 'id': 'regions-line-neighbors', 'type': 'line', 'source': 'region_boundaries', 'source-layer': layerName,
-                'filter': ['!', isActiveRegion],  // Negacja (Sąsiedzi)
+                'filter': ['!', isActiveRegion],
                 'paint': { 'line-color': '#94a3b8', 'line-width': 1, 'line-dasharray': [2, 2] }
             });
             map.addLayer({
                 'id': 'regions-line-active', 'type': 'line', 'source': 'region_boundaries', 'source-layer': layerName,
-                'filter': isActiveRegion,         // Zgodność (Nasz region)
-                'paint': { 'line-color': '#0369a1', 'line-width': 4 } // Grubsza linia dla pewności!
+                'filter': isActiveRegion,
+                'paint': { 'line-color': '#0369a1', 'line-width': 3 }
             });
         } else {
             map.addLayer({
@@ -88,31 +153,40 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // Wywołanie z HTML (z przycisku ręcznego)
     window.changeMapGrid = function(layerName, btn) {
-        isManualOverride = true; // Użytkownik sam kliknął, wyłączamy mu Auto-Zoom!
+        isManualOverride = true;
         loadMvtLayer(layerName);
     };
 
     map.on('load', () => {
-        // Załaduj początkową warstwę
+        // --- WARSTWY RASTEROWE Z BACKENDU ---
+        window.MAP_LAYERS.forEach(layer => {
+            if (!layer.locked && layer.id !== 'cartodb_positron') {
+                map.addSource(layer.id + '-source', { type: 'raster', tiles: [layer.tiles], tileSize: 256 });
+                map.addLayer({
+                    id: layer.id + '-base',
+                    type: 'raster',
+                    source: layer.id + '-source',
+                    layout: { visibility: window.PREFERRED_BASE_MAP === layer.id ? 'visible' : 'none' }
+                });
+            }
+        });
+
         loadMvtLayer(currentMvtLayer);
 
-        // =======================================================
-        // NOWE: KONTEKSTOWE KAFELKI (AUTO-ZOOM)
-        // =======================================================
-        if (!activeRegionIdStr) { // Działa tylko na Pulpicie Głównym
+        // AUTO-ZOOM DLA GŁÓWNEGO PULPITU
+        if (!activeRegionIdStr) {
             map.on('zoomend', () => {
-                if (isManualOverride) return; // Szanujemy ręczny wybór turysty
+                if (isManualOverride) return;
 
                 const z = map.getZoom();
                 let targetLayer = 'mesoregion';
 
                 if (z < 6.5) {
-                    targetLayer = 'voivodeship'; // Duże oddalenie -> Województwa
+                    targetLayer = 'voivodeship';
                 } else if (z < 8.5) {
-                    targetLayer = 'macroregion'; // Średni zoom -> np. Karpaty
-                } // Zoom > 8.5 to już precyzyjne Mezoregiony
+                    targetLayer = 'macroregion';
+                }
 
                 if (targetLayer !== currentMvtLayer) {
                     loadMvtLayer(targetLayer);
@@ -120,7 +194,6 @@ document.addEventListener("DOMContentLoaded", function() {
             });
         }
 
-        // --- OBSŁUGA KLIKNIĘCIA W REGIONY (POPUPS I NAWIGACJA) ---
         map.on('click', 'regions-fill', (e) => {
             const feature = e.features[0];
             const props = feature.properties;
@@ -235,9 +308,9 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     map.on('click', 'peaks-symbol', (e) => {
-        const coords = e.features[0].geometry.coordinates.slice();
         const props = e.features[0].properties;
         const today = new Date().toISOString().split('T')[0];
+        const coords = e.features[0].geometry.coordinates.slice();
 
         const popupHtml = `
             <div class="p-2 min-w-[200px]">

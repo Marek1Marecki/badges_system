@@ -24,6 +24,7 @@ class TouristProfile(models.Model):
 
     nickname = models.CharField(max_length=100, verbose_name="Pseudonim (Publiczny)")
     birth_date = models.DateField(null=True, blank=True, verbose_name="Data urodzenia")
+    preferred_base_map = models.CharField(max_length=20, default="carto", verbose_name="Preferowany podkład mapy")
 
     # Słownik klubów (np. "KGP": "2020-01-01")
     club_join_dates = models.JSONField(default=dict, blank=True, verbose_name="Przynależność klubowa")

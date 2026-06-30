@@ -15,6 +15,8 @@ from apps.api.views import (
     GpxAnalyzeView,
     MapObjectsView,
     NearbyObjectsView,
+    ProfileSettingsView,
+    ProfileUpgradeView,
     VectorTileView,
 )
 
@@ -32,4 +34,6 @@ urlpatterns = [
     path("v1/progress/<int:progress_id>/logistics/", BadgeLogisticsView.as_view(), name="badge_logistics"),
     path("v1/tiles/<str:layer>/<int:z>/<int:x>/<int:y>.pbf", VectorTileView.as_view(), name="vector_tiles"),
     path("v1/objects/<int:object_id>/nearby/", NearbyObjectsView.as_view(), name="nearby_objects"),
+    path("v1/profiles/<int:profile_id>/", ProfileSettingsView.as_view(), name="profile_settings"),
+    path("v1/profiles/<int:profile_id>/upgrade/", ProfileUpgradeView.as_view(), name="profile_upgrade"),
 ]

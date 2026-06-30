@@ -33,6 +33,14 @@
     -->
     <script src="https://cdn.tailwindcss.com?v=3.4.1"></script>
 
+    <!-- Zabezpieczony kontekst biznesowy z serwera (Zmienne Globalne dla JS) -->
+    <script>
+        window.ACTIVE_PROFILE_ID = {{ active_profile.id|default:"null" }};
+        window.MAP_PREMIUM_UNLOCKED = {{ map_premium_unlocked|yesno:"true,false" }};
+        window.PREFERRED_BASE_MAP = "{{ preferred_base_map|default:'cartodb_positron' }}";
+        window.MAP_LAYERS = {{ map_layers_json|safe|default:"[]" }};
+    </script>
+
 </head>
 
 <body class="bg-gray-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden" hx-ext="json-enc">

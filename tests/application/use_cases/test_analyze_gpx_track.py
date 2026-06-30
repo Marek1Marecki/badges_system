@@ -3,6 +3,7 @@
 from datetime import date
 
 import pytest
+
 from application.dto.ascent_dto import GpxAnalysisResultDTO
 from application.exceptions import UseCaseError
 from application.use_cases.analyze_gpx_track import AnalyzeGpxTrackUseCase

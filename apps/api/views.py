@@ -16,7 +16,7 @@ import json
 
 from django.contrib.gis.measure import D
 from django.core.cache import cache
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views import View
@@ -24,7 +24,10 @@ from django.views.decorators.csrf import csrf_exempt
 
 from application.dto.ascent_dto import AscentInputDTO
 from application.dto.map_dto import MapExploreRequestDTO
-from application.dto.user_context_dto import LogisticStatusUpdateDTO
+from application.dto.user_context_dto import (
+    LogisticStatusUpdateDTO,
+    UpdateProfileRequestDTO,
+)
 from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
 from application.exceptions import (
     ApplicationException,
@@ -35,6 +38,7 @@ from application.exceptions import (
 )
 from apps.badges.models import TouristObject
 from apps.badges.tasks import recalculate_poi_scores_task
+from apps.tourists.models import TouristProfile
 from bootstrap import get_container
 
 # ---------------------------------------------------------------------------
@@ -479,3 +483,71 @@ class BulkAscentLogView(View):
             transaction.on_commit(lambda: recalculate_poi_scores_task.delay(profile_id))
 
         return JsonResponse(result.model_dump(), status=200)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class ProfileSettingsView(View):
+    """PATCH /api/v1/profiles/{profile_id}/
+
+    Aktualizuje ustawienia profilu (np. Wiek, Mapa). Posiada ochronę IDOR.
+    """
+
+    def patch(self, request, profile_id: int):
+        auth_error = _require_auth(request)
+        if auth_error:
+            return auth_error
+
+        # IDOR GUARD: Tylko właściciel konta Google może modyfikować powiązane z nim profile!
+        try:
+            profile = get_object_or_404(TouristProfile, id=profile_id, user=request.user)
+        except Http404:
+            return _problem_detail(request, "resource-not-found", "Zasób nie istnieje", 404, "Brak dostępu do profilu.")
+
+        try:
+            body = json.loads(request.body)
+            # Puste stringi dla daty zamieniamy na None (czyszczenie wieku)
+            if body.get("birth_date") == "":
+                body["birth_date"] = None
+            dto = UpdateProfileRequestDTO(**body)
+        except Exception as e:
+            return _problem_detail(request, "validation-failed", "Błąd Walidacji", 422, str(e))
+
+        if dto.nickname:
+            profile.nickname = dto.nickname
+        if dto.birth_date is not None or "birth_date" in body:
+            profile.birth_date = dto.birth_date
+        if dto.preferred_base_map:
+            profile.preferred_base_map = dto.preferred_base_map
+
+        profile.save(update_fields=["nickname", "birth_date", "preferred_base_map"])
+        return JsonResponse({"status": "UPDATED"}, status=200)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class ProfileUpgradeView(View):
+    """POST /api/v1/profiles/{profile_id}/upgrade/
+
+    Sztuczna bramka płatności (Wymusza pakiet PRO dla testów UX).
+    """
+
+    def post(self, request, profile_id: int):
+        auth_error = _require_auth(request)
+        if auth_error:
+            return auth_error
+
+        try:
+            profile = get_object_or_404(TouristProfile, id=profile_id, user=request.user)
+        except Http404:
+            return _problem_detail(request, "resource-not-found", "Zasób nie istnieje", 404, "Brak dostępu do profilu.")
+
+        profile.active_plan = "PRO"
+        profile.save(update_fields=["active_plan"])
+
+        # Opcjonalne przeliczenie map w tle
+        from django.db import transaction
+
+        from apps.badges.tasks import recalculate_poi_scores_task
+
+        transaction.on_commit(lambda: recalculate_poi_scores_task.delay(profile_id))
+
+        return JsonResponse({"status": "UPGRADED"}, status=200)

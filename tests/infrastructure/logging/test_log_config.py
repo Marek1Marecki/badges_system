@@ -1,8 +1,5 @@
 """Tests for log_config."""
 
-import sys
-from io import StringIO
-
 from infrastructure.logging.log_config import configure_logging
 
 
