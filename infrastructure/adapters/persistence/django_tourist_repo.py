@@ -281,3 +281,8 @@ class DjangoTouristRepository(
             )
             for a in ascents
         ]
+
+    def delete_progress(self, profile_id: int, badge_code: str) -> None:
+        from apps.tourists.models import UserBadgeProgress
+
+        UserBadgeProgress.objects.filter(profile_id=profile_id, badge__code=badge_code).delete()

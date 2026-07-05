@@ -80,17 +80,14 @@ class PoiScoringService:
                 continue
 
             # MAGIA WIZUALIZACJI: Rozwiązanie Leniwego Zakotwiczenia
-            version_id_to_evaluate: int | None = prog.version_id
+            if prog.version_id:
+                # Turysta ma przypięte Prawa Nabyte (Zalogował już wejście)
+                badge_version = self._badge_repo.get_badge_version_by_id(prog.version_id)
+            else:
+                # Turysta tylko subskrybuje. Dla celów mapy pokazujemy mu po prostu
+                # aktualnie obowiązujące zasady z dzisiaj (najnowszą wersję).
+                badge_version = self._badge_repo.get_latest_badge_version(prog.badge_code)
 
-            if not version_id_to_evaluate:
-                # Turysta zapisał się, ale nie ma logów (version = NULL).
-                # Tylko dla potrzeb RYSOWANIA MAPY (bez zapisu w bazie) zakładamy dzisiejszą wersję.
-                version_id_to_evaluate = self._badge_repo.get_version_id_for_date(prog.badge_code, today_date)
-
-            if not version_id_to_evaluate:
-                continue
-
-            badge_version = self._badge_repo.get_badge_version_by_id(version_id_to_evaluate)
             if not badge_version:
                 continue
 

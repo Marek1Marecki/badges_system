@@ -24,7 +24,6 @@ class RegionBaseModel(gis_models.Model):
 
     class Meta:
         abstract = True
-        # managed = False
 
     def __str__(self) -> str:
         return f"{self.name} ({self.code})"
@@ -46,7 +45,6 @@ class CountryModel(RegionBaseModel, PhysicalRegionMixin):
 
     class Meta:
         db_table = "odznaki_country"
-        managed = False
         verbose_name = "Państwo"
         verbose_name_plural = "Państwa"
 
@@ -58,7 +56,6 @@ class VoivodeshipModel(RegionBaseModel, PhysicalRegionMixin):
 
     class Meta:
         db_table = "odznaki_voivodeship"
-        managed = False
         unique_together = [("country", "code"), ("country", "name")]
         verbose_name = "Województwo"
         verbose_name_plural = "Województwa"
@@ -71,7 +68,6 @@ class ProvinceModel(RegionBaseModel, PhysicalRegionMixin):
 
     class Meta:
         db_table = "odznaki_province"
-        managed = False
         unique_together = [("country", "code")]
         verbose_name = "Prowincja"
         verbose_name_plural = "Prowincje"
@@ -84,7 +80,6 @@ class SubprovinceModel(RegionBaseModel, PhysicalRegionMixin):
 
     class Meta:
         db_table = "odznaki_subprovince"
-        managed = False
         unique_together = [("province", "code")]
         verbose_name = "Podprowincja"
         verbose_name_plural = "Podprowincje"
@@ -97,7 +92,6 @@ class MacroregionModel(RegionBaseModel, PhysicalRegionMixin):
 
     class Meta:
         db_table = "odznaki_macroregion"
-        managed = False
         verbose_name = "Makroregion"
         verbose_name_plural = "Makroregiony"
 
@@ -109,7 +103,6 @@ class MesoregionModel(RegionBaseModel, PhysicalRegionMixin):
 
     class Meta:
         db_table = "odznaki_mesoregion"
-        managed = False
         verbose_name = "Mezoregion"
         verbose_name_plural = "Mezoregiony"
 

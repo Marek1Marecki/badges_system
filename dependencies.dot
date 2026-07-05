@@ -43,6 +43,7 @@ digraph G {
     "application.use_cases.log_ascent" [fillcolor="lightgreen"];
     "application.use_cases.scan_proximity_candidates" [fillcolor="lightgreen"];
     "application.use_cases.start_badge_progress" [fillcolor="lightgreen"];
+    "application.use_cases.unsubscribe_badge" [fillcolor="lightgreen"];
     "application.use_cases.verify_badge" [fillcolor="lightgreen"];
   }
 
@@ -102,28 +103,10 @@ digraph G {
     "apps.badges.apps" [fillcolor="pink"];
     "apps.badges.forms" [fillcolor="pink"];
     "apps.badges.management.commands.calculate_neighbors" [fillcolor="pink"];
+    "apps.badges.management.commands.export_reference_data" [fillcolor="pink"];
+    "apps.badges.management.commands.restore_reference_data" [fillcolor="pink"];
     "apps.badges.migrations" [fillcolor="pink"];
     "apps.badges.migrations.0001_initial" [fillcolor="pink"];
-    "apps.badges.migrations.0002_alter_touristobject_type" [fillcolor="pink"];
-    "apps.badges.migrations.0003_osmtypemapping_peakmodel" [fillcolor="pink"];
-    "apps.badges.migrations.0004_touristobject_local_names_and_more" [fillcolor="pink"];
-    "apps.badges.migrations.0005_alter_touristobject_is_active" [fillcolor="pink"];
-    "apps.badges.migrations.0006_alter_badgetiermodel_name" [fillcolor="pink"];
-    "apps.badges.migrations.0007_badgeversionmodel_rules_text_and_more" [fillcolor="pink"];
-    "apps.badges.migrations.0008_alter_badgeversionmodel_rules" [fillcolor="pink"];
-    "apps.badges.migrations.0009_badgemodel_is_booklet_required_and_more" [fillcolor="pink"];
-    "apps.badges.migrations.0010_touristobject_existence_end_and_more" [fillcolor="pink"];
-    "apps.badges.migrations.0011_delete_peakmodel" [fillcolor="pink"];
-    "apps.badges.migrations.0012_badgetiermodel_unique_tier_name_per_version_and_more" [fillcolor="pink"];
-    "apps.badges.migrations.0013_touristobject_osm_error_touristobject_status" [fillcolor="pink"];
-    "apps.badges.migrations.0014_proximitycandidate" [fillcolor="pink"];
-    "apps.badges.migrations.0015_touristobject_last_sync_check_osmsyncconflict" [fillcolor="pink"];
-    "apps.badges.migrations.0016_badgenewsitem" [fillcolor="pink"];
-    "apps.badges.migrations.0017_touristregionmodel_neighbors" [fillcolor="pink"];
-    "apps.badges.migrations.0018_remove_touristregionmodel_neighbors" [fillcolor="pink"];
-    "apps.badges.migrations.0019_alter_countrymodel_options_and_more" [fillcolor="pink"];
-    "apps.badges.migrations.0020_alter_countrymodel_options_and_more" [fillcolor="pink"];
-    "apps.badges.migrations.0021_create_physical_neighbors" [fillcolor="pink"];
     "apps.badges.models" [fillcolor="pink"];
     "apps.badges.tasks" [fillcolor="pink"];
     "apps.badges.tests" [fillcolor="pink"];
@@ -134,7 +117,6 @@ digraph G {
     "apps.tourists.context_processors" [fillcolor="pink"];
     "apps.tourists.migrations" [fillcolor="pink"];
     "apps.tourists.migrations.0001_initial" [fillcolor="pink"];
-    "apps.tourists.migrations.0002_touristprofile_preferred_base_map" [fillcolor="pink"];
     "apps.tourists.models" [fillcolor="pink"];
     "apps.tourists.signals" [fillcolor="pink"];
     "apps.tourists.views" [fillcolor="pink"];
@@ -181,6 +163,8 @@ digraph G {
   "application.use_cases.start_badge_progress" -> "application.ports.badge_repository_port";
   "application.use_cases.start_badge_progress" -> "application.ports.clock_port";
   "application.use_cases.start_badge_progress" -> "application.ports.user_progress_port";
+  "application.use_cases.unsubscribe_badge" -> "application.exceptions";
+  "application.use_cases.unsubscribe_badge" -> "application.ports.user_progress_port";
   "application.use_cases.verify_badge" -> "application.dto.verify_badge_dto";
   "application.use_cases.verify_badge" -> "application.exceptions";
   "application.use_cases.verify_badge" -> "application.ports.badge_repository_port";
@@ -201,6 +185,7 @@ digraph G {
   "apps.badges.admin" -> "apps.badges.tasks";
   "apps.badges.forms" -> "apps.badges.models";
   "apps.badges.management.commands.calculate_neighbors" -> "apps.badges.models";
+  "apps.badges.management.commands.restore_reference_data" -> "apps.badges.models";
   "apps.badges.models" -> "infrastructure.schemas.badge_rules_schema";
   "apps.badges.tasks" -> "application.exceptions";
   "apps.badges.tasks" -> "infrastructure.adapters.osm_adapter";

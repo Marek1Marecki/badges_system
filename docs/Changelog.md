@@ -12,6 +12,28 @@
 
 ---
 
+## [0.6.0] - 2026-07-02
+
+### Kontekst wydania
+**Faza C (Finał) — Model Rodzinny, Smart GPX i Interaktywny Atlas.** Całkowita transformacja architektury tożsamości na "Jeden Użytkownik = Wiele Profili". Wdrożenie interaktywnych widoków mapowych z dynamicznym przełączaniem warstw i inteligentnym asystentem importu tras.
+
+### Dodano
+- **Konta Rodzinne (Family Model):** Wdrożenie `TouristProfile` jako głównego nośnika tożsamości. Możliwość posiadania wielu profili pod jednym kontem Google z płynnym przełączaniem kontekstu w UI (HTMX).
+- **Smart Logger GPX (US-C17):** Bezpieczny (chroniony przed XML Bomb) analizator śladów GPX. Automatycznie wyszukuje obiekty PTTK w promieniu 200m od trasy i wykonuje masowy, idempotentny zapis (Bulk Upsert).
+- **UI Mapy (MapLibre):** Dodano pływające kontrolki do dynamicznej zmiany siatki (Województwa, Makro, Mezo, Auto-Zoom) oraz podkładów mapowych (Carto, OSM, Mapy.cz).
+- **Zabezpieczenie Paywall:** Podkłady premium (Mapy.cz) są zablokowane dla kont FREE. Ustawienie jest zapisywane w profilu za pomocą REST API i pamiętane między urządzeniami.
+- **Alert Logistyczny:** Osobisty Kanban podświetla na czerwono odznaki, których status pocztowy nie zmienił się od ponad 30 dni.
+
+### Zmieniono
+- **Wydajność GIS (Pre-kalkulacja):** Zrezygnowano z obliczania sąsiadów regionów w locie (`ST_Touches`). Wprowadzono relację M2M i skrypt `calculate_neighbors` (tolerancja `ST_DWithin` 50m) odciążający procesor na lata.
+- **UX Rezygnacji:** Dodano możliwość porzucenia zdobywania odznaki, co natychmiast zwalnia slot w pakiecie Freemium, ale wiąże się z utratą Praw Nabytych.
+
+### Naprawiono
+- Błędy ładowania kafelków MVT na froncie rozwiązano wymuszając rzutowanie ID z bazy danych na typ tekstowy (`t.id::text AS db_id_str`).
+- Zabezpieczono system przed IDOR w nowym modelu rodzinnym (każdy request API waliduje uprawnienia właściciela do `profile_id`).
+
+---
+
 ## [0.5.0] - 2026-06-16
 
 ### Kontekst wydania

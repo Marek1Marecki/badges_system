@@ -29,6 +29,7 @@ def build_container() -> dict:
     from application.use_cases.log_ascent import LogAscentUseCase
     from application.use_cases.scan_proximity_candidates import ScanProximityCandidatesUseCase
     from application.use_cases.start_badge_progress import StartBadgeProgressUseCase
+    from application.use_cases.unsubscribe_badge import UnsubscribeBadgeUseCase
     from application.use_cases.verify_badge import VerifyBadgeUseCase
     from infrastructure.adapters.clock import SystemClock
     from infrastructure.adapters.django_cache import DjangoCacheAdapter
@@ -118,6 +119,9 @@ def build_container() -> dict:
         "bulk_log_ascents": BulkLogAscentsUseCase(
             ascent_repository=tourist_repository,
             clock=clock,
+        ),
+        "unsubscribe_badge": UnsubscribeBadgeUseCase(
+            progress_repository=tourist_repository,
         ),
     }
 

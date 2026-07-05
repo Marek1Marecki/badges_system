@@ -77,9 +77,17 @@
                     <ul class="text-sm text-gray-600 space-y-1">
                         {% for b in badges %}
                             <li>
-                                • <a href="{% url 'badge_detail' b.code %}" class="hover:text-sky-600 hover:underline font-medium">
-                                    {{ b.name }}
-                                </a>
+                                {% if b.code in subscribed_badge_codes %}
+                                    <!-- POGRUBIONY ZIELONY LINK (Subskrybowana) -->
+                                    • <a href="{% url 'badge_detail' b.code %}" class="text-green-700 hover:text-green-900 hover:underline font-bold" title="Zdobywasz tę odznakę!">
+                                        {{ b.name }} ✓
+                                    </a>
+                                {% else %}
+                                    <!-- ZWYKŁY LINK -->
+                                    • <a href="{% url 'badge_detail' b.code %}" class="hover:text-sky-600 hover:underline font-medium">
+                                        {{ b.name }}
+                                    </a>
+                                {% endif %}
                             </li>
                         {% empty %}
                             <li class="italic text-gray-400">Brak powiązanych odznak</li>

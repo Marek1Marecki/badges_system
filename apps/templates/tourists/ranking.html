@@ -88,12 +88,19 @@
                         </td>
 
                         <td class="px-5 py-4 text-sm text-gray-600">
-                            <!-- Poprawione, klikalne pastylki z linkami -->
                             <div class="flex flex-wrap gap-1">
                                 {% for b in item.badges %}
-                                    <a href="{% url 'badge_detail' b.code %}" class="inline-block bg-gray-100 hover:bg-sky-100 text-gray-700 hover:text-sky-700 px-2 py-1 rounded text-xs transition border border-gray-200 shadow-sm">
-                                        {{ b.name }}
-                                    </a>
+                                    {% if b.code in subscribed_badge_codes %}
+                                        <!-- PASTYLKA ZIELONA (Subskrybowana) -->
+                                        <a href="{% url 'badge_detail' b.code %}" class="inline-block bg-green-100 hover:bg-green-200 text-green-800 font-bold px-2 py-1 rounded text-xs transition border border-green-300 shadow-sm" title="Zdobywasz tę odznakę!">
+                                            {{ b.name }} ✓
+                                        </a>
+                                    {% else %}
+                                        <!-- PASTYLKA SZARA (Zwykła) -->
+                                        <a href="{% url 'badge_detail' b.code %}" class="inline-block bg-gray-100 hover:bg-sky-100 text-gray-700 hover:text-sky-700 px-2 py-1 rounded text-xs transition border border-gray-200 shadow-sm">
+                                            {{ b.name }}
+                                        </a>
+                                    {% endif %}
                                 {% empty %}
                                     <span class="text-gray-400 italic">Brak</span>
                                 {% endfor %}

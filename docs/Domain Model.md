@@ -132,6 +132,7 @@ Aby chronić czystość architektury (Domain Purity), następujące byty **nie n
 |---------|--------------|----------|------|
 | `user_id` | `int` | Tak | Relacja ForeignKey (1:N) do konta w systemie Auth. |
 | `is_main_profile` | `bool` | Tak | Oznacza główny profil zarządzający subskrypcją. || `nickname`| `str` | Tak | Pseudonim publiczny (Privacy by Default). |
+| `preferred_base_map`| `str` | Tak | Ostatnio użyty podkład mapowy na urządzeniu. |
 | `birth_date`| `date` | Nie | Używana przez Domenę do ewaluacji `MinAgeRule`. |
 | `active_plan`| `str` | Tak | Pakiet subskrypcyjny (np. FREE, PRO). |
 | `max_active_badges`| `int` | Tak | Limit weryfikowany przed dołączeniem do odznaki. |

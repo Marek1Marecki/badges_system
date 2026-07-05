@@ -26,3 +26,7 @@ class BadgeRepositoryPort(Protocol):
     def get_badge_version_by_id(self, version_id: int) -> BadgeVersionDomain | None:
         """Pobiera Wersję Odznaki po jej wewnętrznym ID."""
         ...
+
+    def get_latest_badge_version(self, badge_code: str) -> BadgeVersionDomain | None:
+        """Pobiera najnowszą opublikowaną (oficjalną) wersję regulaminu dla odznaki."""
+        ...

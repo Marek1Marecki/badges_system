@@ -40,21 +40,21 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 **Dotyczy encji:** `BadgeModel` (Nowe pola: `country_scope`, `region_scope`), `UserBadgeProgress`
 
 **Kryteria akceptacji:**
-- [ ] Model `BadgeModel` posiada twarde metadane terytorialne do filtrowania (np. Polska, Sudety), nadawane przez Administratora.
-- [ ] Turysta klika "Chcę zdobywać", co tworzy intencję (`UserBadgeProgress` ze statusem `NOT_STARTED` i pustym `version_id`).
+- [x] Model `BadgeModel` posiada twarde metadane terytorialne do filtrowania (np. Polska, Sudety), nadawane przez Administratora.
+- [x] Turysta klika "Chcę zdobywać", co tworzy intencję (`UserBadgeProgress` ze statusem `NOT_STARTED` i pustym `version_id`).
 
 ### US-C01c — Pakiety Freemium i Limity Konta 🟠 P1
 **Story:** Jako Właściciel Aplikacji, chcę przypisywać kontom (Głównym Profilom) pakiety subskrypcyjne (np. Free, Family), które limitują zasoby (np. maksymalna liczba podpiętych profili dzieci, liczba zdjęć), aby system mógł się utrzymać.
 **Dotyczy encji:** `TouristProfile`, `TouristProfileDTO`
 **Kryteria akceptacji:**
-- [ ] Główne konto posiada limit maksymalnej liczby profili (np. 1 dla FREE, 5 dla FAMILY).
+- [x] Główne konto posiada limit maksymalnej liczby profili (np. 1 dla FREE, 5 dla FAMILY).
 
 ### US-C01d — Zarządzanie Profilami (Konta Rodzinne) 🔴 P0
 **Story:** Jako Turysta, chcę móc utworzyć dodatkowe profile (np. dla moich dzieci) pod jednym kontem logowania Google, aby wygodnie zarządzać ich niezależnymi postępami bez konieczności ciągłego wylogowywania się.
 **Dotyczy encji:** `TouristProfile`, `AscentLog`, `UserBadgeProgress`
 **Kryteria akceptacji:**
-- [ ] Użytkownik uwierzytelniony może przełączać "aktywny kontekst profilu" w menu (zapisywane w sesji).
-- [ ] Logi wejść i postępy są twardo przypinane do ID Profilu (`profile_id`), a nie ID Konta (`user_id`).
+- [x] Użytkownik uwierzytelniony może przełączać "aktywny kontekst profilu" w menu (zapisywane w sesji).
+- [x] Logi wejść i postępy są twardo przypinane do ID Profilu (`profile_id`), a nie ID Konta (`user_id`).
 
 ### US-C02 — Przynależność Klubowa (Data zapisu) 🟠 P1
 **Story:** Jako Turysta, chcę móc odnotować datę dołączenia do konkretnego Klubu (np. KGP), aby system zaliczał mi logi wejść zrobione dopiero po tej dacie.
@@ -102,11 +102,11 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 **Powiązane invarianty:** D-04 (Idempotentność zapisów), T-01 (Bitemporalność)
 
 **Kryteria akceptacji:**
-- [ ] System przetwarza plik w locie (in-memory, bez zapisu pliku GPX na dysk serwera w celu ochrony prywatności).
-- [ ] Ścieżka z pliku jest upraszczana i rzutowana przestrzennie (bufor ok. 100-200m).
-- [ ] Turysta może zbiorczo edytować przypisaną datę wycieczki przed ostatecznym zatwierdzeniem.
-- [ ] Zapis do bazy wykorzystuje mechanizm `Bulk Upsert`, a silnik rankingów (Celery) jest wyzwalany **tylko raz** na koniec całej operacji masowej.
-- [ ] System zwraca raport częściowy (Partial Success), logując poprawne szczyty i pomijając te łamiące warunki bitemporalne dla wybranej daty.
+- [x] System przetwarza plik w locie (in-memory, bez zapisu pliku GPX na dysk serwera w celu ochrony prywatności).
+- [x] Ścieżka z pliku jest upraszczana i rzutowana przestrzennie (bufor ok. 100-200m).
+- [x] Turysta może zbiorczo edytować przypisaną datę wycieczki przed ostatecznym zatwierdzeniem.
+- [x] Zapis do bazy wykorzystuje mechanizm `Bulk Upsert`, a silnik rankingów (Celery) jest wyzwalany **tylko raz** na koniec całej operacji masowej.
+- [x] System zwraca raport częściowy (Partial Success), logując poprawne szczyty i pomijając te łamiące warunki bitemporalne dla wybranej daty.
 
 ---
 
@@ -194,36 +194,36 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 **Dotyczy encji:** `MapContext` (DTO)
 
 **Kryteria akceptacji:**
-- [ ] Obiekty spoza puli tej odznaki nie są przesyłane do przeglądarki.
-- [ ] Kolorowanie ignoruje postęp w innych odznakach (np. szczyt może być Czerwony dla tej mapy, mimo że globalnie jest Niebieski).
+- [x] Obiekty spoza puli tej odznaki nie są przesyłane do przeglądarki.
+- [x] Kolorowanie ignoruje postęp w innych odznakach (np. szczyt może być Czerwony dla tej mapy, mimo że globalnie jest Niebieski).
 
 ### US-C12 — Nawigacja Regionalna (Mapy Pośrednie) 🟠 P1
 **Story:** Jako Turysta, chcę móc wygenerować mapę zawężoną do konkretnego poziomu geograficznego (np. tylko Państwo, tylko Makroregion, tylko Mezoregion), aby skupić się na celach w moim fizycznym zasięgu.
 **Kryteria akceptacji:**
-- [ ] Utworzenie dedykowanych widoków dla jednostek geograficznych.
-- [ ] Warstwa wektorowa (MVT) wyświetla klikalne poligony regionów sąsiadujących.
-- [ ] Kliknięcie w sąsiedni poligon na mapie dynamicznie przeładowuje kontekst aplikacji na nowy region (np. przejście z Beskidu Śląskiego do Małego).
+- [x] Utworzenie dedykowanych widoków dla jednostek geograficznych.
+- [x] Warstwa wektorowa (MVT) wyświetla klikalne poligony regionów sąsiadujących.
+- [x] Kliknięcie w sąsiedni poligon na mapie dynamicznie przeładowuje kontekst aplikacji na nowy region (np. przejście z Beskidu Śląskiego do Małego).
 
 ### US-C13 — Płynny UX Mapy (Heatmapa i Klastrowanie) 🟠 P1
 **Story:** Jako Turysta, chcę aby przy dużym oddaleniu mapy obiekty scalały się w "mapę ciepła" (Heatmap), a przy przybliżeniu zamieniały w klikalne pinezki, aby uniknąć zasłonięcia ekranu tysiącami ikon.
 **Dotyczy:** Frontend (MapLibre GL JS), `UI_GUIDELINES.md`
 **Kryteria akceptacji:**
-- [ ] Wdrożenie warstwy `heatmap` w MapLibre widocznej dla `zoom < X`.
-- [ ] Wdrożenie warstwy `symbol` widocznej dla `zoom >= X`.
-- [ ] Kliknięcie pinezki otwiera natywny popup (Tooltip) ze skróconym opisem i linkiem do szczegółów. Obliczenia wizualne obciążają wyłącznie urządzenie klienckie.
+- [x] Wdrożenie warstwy `heatmap` w MapLibre widocznej dla `zoom < X`.
+- [x] Wdrożenie warstwy `symbol` widocznej dla `zoom >= X`.
+- [x] Kliknięcie pinezki otwiera natywny popup (Tooltip) ze skróconym opisem i linkiem do szczegółów. Obliczenia wizualne obciążają wyłącznie urządzenie klienckie.
 
 ### US-C14 — Detale Obiektu i Radar 2 km 🟡 P2
 **Story:** Jako Turysta, wchodząc na stronę konkretnego obiektu, chcę widzieć mapę celów znajdujących się w promieniu 2 km od niego, aby optymalnie zaplanować moją wycieczkę.
 **Kryteria akceptacji:**
-- [ ] Strona ze szczegółami obiektu (`TouristObject`).
-- [ ] Na stronie osadzona jest mini-mapa wyrenderowana na podstawie szybkiego zapytania `ST_DWithin` (2000m) z bazy PostGIS.
-- [ ] Na liście uwzględniona jest dynamiczna kolorystyka obiektów (czy już je zdobyłem).
+- [x] Strona ze szczegółami obiektu (`TouristObject`).
+- [x] Na stronie osadzona jest mini-mapa wyrenderowana na podstawie szybkiego zapytania `ST_DWithin` (2000m) z bazy PostGIS.
+- [x] Na liście uwzględniona jest dynamiczna kolorystyka obiektów (czy już je zdobyłem).
 
 ### US-C15 — Wybór Podkładu Mapowego (Basemap Switcher) 🟢 P3
 **Story:** Jako Turysta, chcę mieć możliwość przełączania podkładu mapy (np. na Mapy.cz, OpenStreetMap, mapę turystyczną), aby móc lepiej orientować się w terenie szlaków górskich.
 **Kryteria akceptacji:**
-- [ ] Implementacja standardowego widżetu wyboru warstw rastrowych w UI MapLibre.
-- [ ] (Zależność operacyjna) Uzyskanie i bezpieczne zmagazynowanie darmowych kluczy API dostawców w `AppSettings`.
+- [x] Implementacja standardowego widżetu wyboru warstw rastrowych w UI MapLibre.
+- [x] (Zależność operacyjna) Uzyskanie i bezpieczne zmagazynowanie darmowych kluczy API dostawców w `AppSettings`.
 
 ### US-C16 — Ranking Potencjału Obiektów (Min-Maxing) 🟠 P1
 **Story:** Jako Turysta, chcę widzieć punktację "opłacalności" niezdobytych przeze mnie szczytów (oraz sumę punktów dla całych regionów), aby optymalnie zaplanować wycieczkę, która najbardziej przybliży mnie do zdobycia blach.
@@ -271,6 +271,55 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 - [x] Mechanizm twardej deduplikacji (np. `unique=True` dla URL artykułu lub jego hasha) gwarantuje, że do bazy trafiają wyłącznie nowe informacje.
 - [x] W panelu Django Admin powstaje dedykowany Inbox z aktualnościami, posiadający statusy: "Nieprzeczytane" / "Przeczytane".
 - [x] Administrator posiada akcję masową "Oznacz jako przeczytane", po której użyciu powiadomienia znikają z domyślnego widoku, zostając zarchiwizowane w bazie.
+
+---
+
+## Epic 7: Społeczność i Rywalizacja (Faza D - Social & Leaderboards)
+
+### US-D01 — Globalny Ranking Turystów (Leaderboard) 🟠 P1
+**Story:** Jako Turysta, chcę widzieć tabelę wyników innych użytkowników (np. TOP 50 w tym miesiącu), aby móc zdrowo rywalizować i zwiększać swoje zaangażowanie.
+**Dotyczy encji:** `TouristProfile` (Agregacje)
+**Kryteria akceptacji:**
+- [ ] Widok "Tablica Liderów" grupujący użytkowników według liczby zdobytych szczytów lub ukończonych odznak.
+- [ ] Zgodnie z Privacy by Default, system używa wyłącznie pola `nickname`.
+- [ ] Ranking jest przeliczany i buforowany asynchronicznie (Celery), aby nie obciążać bazy.
+
+### US-D02 — Odznaki Okolicznościowe i Eventy 🟡 P2
+**Story:** Jako Właściciel, chcę móc zdefiniować odznakę limitowaną czasowo (np. działającą tylko jeden weekend), aby napędzać ruch w aplikacji z okazji świąt lub wydarzeń.
+**Dotyczy encji:** `BadgeModel`, `DateWindowRule`
+**Kryteria akceptacji:**
+- [ ] Możliwość zdefiniowania globalnego okna czasowego dla całego wyzwania.
+- [ ] Turyści widzą na pulpicie odliczanie "Pozostało: 2 dni 14 godzin".
+
+### US-D03 — Profil Publiczny (Gablota Chwały) 🟢 P3
+**Story:** Jako Turysta, chcę móc wygenerować publiczny, bezpieczny link do mojego profilu, aby pochwalić się znajomym zdobytymi blachami.
+**Kryteria akceptacji:**
+- [ ] Nowy widok HTTP w trybie READ-ONLY.
+- [ ] Turysta widzi w ustawieniach opcję "Udostępnij mój profil".
+
+---
+
+## Epic 8: Infrastruktura i Wdrożenie Produkcyjne (DevOps)
+
+### US-D04 — Chmurowy Magazyn Pamiątek (Cloud Storage) 🟠 P1
+**Story:** Jako Właściciel, chcę zintegrować zewnętrzny magazyn obiektowy (np. AWS S3 / R2), aby w końcu odblokować turyście możliwość wgrywania zdjęć z wycieczek (US-C04) bez zapychania mojego serwera.
+**Dotyczy encji:** `django-storages`
+**Kryteria akceptacji:**
+- [ ] Wdrożenie paczki `django-storages` i konfiguracja S3 Boto3 w `app_settings.py`.
+- [ ] Zablokowanie wysyłania plików > 5MB z użyciem HTMX/JS na frontendzie.
+
+### US-D05 — Aplikacja Instalowana na Telefonie (PWA) 🟡 P2
+**Story:** Jako Turysta, chcę móc "zainstalować" tę stronę internetową na moim smartfonie, aby działała na pełnym ekranie i posiadała ikonkę w moim menu.
+**Kryteria akceptacji:**
+- [ ] Wygenerowanie pliku `manifest.json`.
+- [ ] Wdrożenie `Service Worker` w JS do obsługi zapytań offline i cache'owania podkładu PTTK.
+
+### US-D06 — Serwer Produkcyjny (Docker Prod) 🔴 P0
+**Story:** Jako Architekt, chcę stworzyć niezależną, wysoce bezpieczną konfigurację Docker Compose, aby móc opublikować projekt w Internecie.
+**Kryteria akceptacji:**
+- [ ] Utworzenie `docker-compose.prod.yml`.
+- [ ] Konfiguracja serwera Gunicorn jako bramki WSGI.
+- [ ] Zablokowanie `DEBUG=False` i serwowanie `STATIC_FILES` poprzez Nginx / Caddy.
 
 ---
 

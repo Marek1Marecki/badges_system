@@ -1,0 +1,80 @@
+"""Odtwarza dane referencyjne systemu z Snapshotu (Single Source of Truth)."""
+
+import json
+from pathlib import Path
+
+from django.conf import settings
+from django.core.management import call_command
+from django.core.management.base import BaseCommand
+from django.db import transaction
+
+
+class Command(BaseCommand):
+    help = "Odtwarza autorytatywny stan systemu PTTK z plików Snapshotu i weryfikuje Manifest."
+
+    def handle(self, *args, **options):
+        data_dir = Path(settings.BASE_DIR) / "data" / "reference"
+
+        if not data_dir.exists():
+            self.stdout.write(self.style.ERROR(f"Katalog {data_dir} nie istnieje!"))
+            return
+
+        # 1. ODCZYT MANIFESTU
+        manifest_path = data_dir / "manifest.json"
+        files_to_load = []
+
+        if manifest_path.exists():
+            with open(manifest_path, encoding="utf-8") as f:
+                manifest = json.load(f)
+                files_to_load = manifest.get("files", [])
+
+            self.stdout.write(self.style.WARNING(f"Znaleziono Snapshot: {manifest.get('snapshot_version')}"))
+            self.stdout.write(self.style.SUCCESS(f"Statystyki: {json.dumps(manifest.get('statistics', {}), indent=2)}"))
+        else:
+            self.stdout.write(self.style.ERROR("Brak pliku manifest.json! Używam domyślnej listy plików."))
+            files_to_load = [
+                "01_regions.json.gz",
+                "02_tourist_objects.json.gz",
+                "03_badges.json.gz",
+                "04_osm_mappings.json.gz",
+                "05_badge_news.json.gz",
+            ]
+
+        self.stdout.write(self.style.WARNING("\nRozpoczynam Przywracanie Systemu (Restore)..."))
+
+        # 2. ODTWARZANIE W JEDNEJ TRANSAKCJI
+        with transaction.atomic():
+            for filename in files_to_load:
+                file_path = data_dir / filename
+                if file_path.exists():
+                    self.stdout.write(f"Wczytywanie {filename}...")
+                    call_command("loaddata", str(file_path))
+                else:
+                    self.stdout.write(self.style.ERROR(f"KRYTYCZNY BŁĄD: Brakuje pliku z manifestu: {filename}"))
+                    raise FileNotFoundError(f"Przerwano transakcję. Brak pliku: {filename}")
+
+        self.stdout.write(self.style.SUCCESS("\n✅ Wgrano dane słownikowe PTTK."))
+
+        # 3. ODBUDOWA STRUKTUR
+        self.stdout.write(self.style.WARNING("\nRozpoczynam odbudowę struktur GIS (Cache & M2M)..."))
+
+        try:
+            call_command("calculate_neighbors")
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f"Błąd przeliczania sąsiadów: {e}"))
+
+        # 2. Przeliczamy przynależność obiektów do regionów (CQRS)
+        from apps.badges.models import TouristObject
+        from bootstrap import get_container
+
+        try:
+            use_case = get_container()["calculate_object_regions"]
+            # Pobieramy wszystkie zwalidowane obiekty i puszczamy w pętli przez Use Case
+            object_ids = TouristObject.objects.values_list("id", flat=True)
+            for obj_id in object_ids:
+                use_case.execute(object_id=obj_id)
+            self.stdout.write(self.style.SUCCESS(f"✅ Odbudowano tabelę CQRS dla {len(object_ids)} obiektów."))
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f"Błąd przeliczania CQRS: {e}"))
+
+        self.stdout.write(self.style.SUCCESS("\n🎉 Odtwarzanie Snapshotu zakończone sukcesem!"))

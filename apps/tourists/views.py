@@ -105,15 +105,19 @@ def badge_catalog_view(request):
     for badge in badges:
         badge.current_version = version_map.get(badge.id)
 
-    # 4. Sprawdzanie subskrypcji
-    subscribed_ids = UserBadgeProgress.objects.filter(profile_id=profile_id).values_list("badge_id", flat=True)
+    # 4. Sprawdzanie subskrypcji z podziałem na statusy
+    progresses = UserBadgeProgress.objects.filter(profile_id=profile_id)
+
+    active_ids = [p.badge_id for p in progresses if p.domain_status != "COMPLETED"]
+    completed_ids = [p.badge_id for p in progresses if p.domain_status == "COMPLETED"]
 
     return render(
         request,
         "tourists/catalog.html",
         {
             "badges": badges,
-            "subscribed_ids": subscribed_ids,
+            "active_ids": active_ids,
+            "completed_ids": completed_ids,
         },
     )
 
@@ -185,6 +189,12 @@ def profile_settings_view(request):
 def object_detail_view(request, object_id: int):
     """Szczegóły konkretnego obiektu, klastry i historia wejść."""
     profile_id = _get_active_profile_id(request)
+
+    # NOWE: Pobieramy kody odznak subskrybowanych przez ten profil
+    subscribed_badge_codes = list(
+        UserBadgeProgress.objects.filter(profile_id=profile_id).values_list("badge__code", flat=True)
+    )
+
     obj = get_object_or_404(TouristObject, id=object_id)
 
     regions = ObjectRegionCache.objects.filter(tourist_object=obj).order_by("region_level")
@@ -218,6 +228,7 @@ def object_detail_view(request, object_id: int):
             "ascents": ascents,
             "parent": parent,
             "children": children,
+            "subscribed_badge_codes": subscribed_badge_codes,
         },
     )
 
@@ -244,8 +255,13 @@ def badge_detail_view(request, badge_code: str):
         except Exception:
             evaluation = None
     else:
+        from django.db.models import Q
+
+        today = timezone.now().date()
         target_version = (
-            BadgeVersionModel.objects.filter(badge=badge, valid_from__lte=timezone.now().date())
+            BadgeVersionModel.objects.filter(
+                Q(badge=badge), Q(valid_from__lte=today), Q(valid_to__isnull=True) | Q(valid_to__gte=today)
+            )
             .order_by("-valid_from")
             .first()
         )
@@ -443,6 +459,11 @@ def poi_ranking_view(request):
     scores = cached_data.get("scores", {})
     colors = cached_data.get("colors", {})
 
+    # NOWE: Pobieramy kody odznak subskrybowanych przez ten profil
+    subscribed_badge_codes = list(
+        UserBadgeProgress.objects.filter(profile_id=profile_id).values_list("badge__code", flat=True)
+    )
+
     def get_score(pid):
         s = scores.get(pid, scores.get(str(pid), 0))
         try:
@@ -539,7 +560,14 @@ def poi_ranking_view(request):
 
     ranking_data.sort(key=lambda x: x["cluster_score"], reverse=True)
 
-    return render(request, "tourists/ranking.html", {"ranking": ranking_data})
+    return render(
+        request,
+        "tourists/ranking.html",
+        {
+            "ranking": ranking_data,
+            "subscribed_badge_codes": subscribed_badge_codes,
+        },
+    )
 
 
 @login_required

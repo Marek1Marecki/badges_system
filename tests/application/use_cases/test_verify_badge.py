@@ -72,3 +72,127 @@ class TestVerifyBadgeUseCase:
         assert result["verified"] is True
         assert result["status"] == "COMPLETED"
         progress_repo.update_domain_status.assert_called_once_with(123, "COMPLETED")
+
+    def test_execute_applies_cutoff_date_for_cycle_2(self) -> None:
+        """Dla cyklu > 1, logi są odcinane po dacie zamknięcia poprzedniego cyklu."""
+        progress_repo = MagicMock()
+        progress = MagicMock()
+        progress.version_id = 99
+        progress.progress_id = 123
+        progress.domain_status = "IN_PROGRESS"
+        progress_repo.get_progress.return_value = progress
+        progress_repo.get_active_progresses.return_value = []
+
+        prev_cycle = MagicMock()
+        prev_cycle.logistic_status_date = "2023-01-01"
+        progress_repo.get_progress.side_effect = [progress, prev_cycle]
+
+        badge_repo = MagicMock()
+        badge_version = MagicMock()
+        badge_version.evaluate.return_value = {
+            "verified": False,
+            "status": "IN_PROGRESS",
+            "errors": [],
+            "valid_ascents_count": 3,
+        }
+        badge_repo.get_badge_version_by_id.return_value = badge_version
+
+        ascent_repo = MagicMock()
+        ascent_repo.get_unconsumed_ascents.return_value = []
+
+        profile_repo = MagicMock()
+        profile_repo.get_profile.return_value = None
+
+        dto = VerifyBadgeRequestDTO(profile_id=1, badge_code="KGP", cycle_number=2)
+        uc = VerifyBadgeUseCase(progress_repo, ascent_repo, profile_repo, badge_repo, FakeClock())
+        result = uc.execute(dto)
+
+        ascent_repo.get_unconsumed_ascents.assert_called_once_with(
+            profile_id=1, badge_code="KGP", cutoff_date="2023-01-01"
+        )
+
+    def test_execute_preserves_completed_status_from_history(self) -> None:
+        """PRAWA NABYTE: Jeśli progress był COMPLETED, wymusza status COMPLETED nawet po zmianie profilu."""
+        progress_repo = MagicMock()
+        progress = MagicMock()
+        progress.version_id = 99
+        progress.progress_id = 123
+        progress.domain_status = "COMPLETED"
+        progress_repo.get_progress.return_value = progress
+        progress_repo.get_active_progresses.return_value = []
+
+        badge_repo = MagicMock()
+        badge_version = MagicMock()
+        badge_version.evaluate.return_value = {
+            "verified": False,
+            "status": "IN_PROGRESS",
+            "errors": ["Wiek nie spełnia wymogów"],
+            "valid_ascents_count": 5,
+            "tiers": [{"status": "IN_PROGRESS"}],
+        }
+        badge_repo.get_badge_version_by_id.return_value = badge_version
+
+        ascent_repo = MagicMock()
+        ascent_repo.get_unconsumed_ascents.return_value = []
+
+        profile_repo = MagicMock()
+        profile_repo.get_profile.return_value = None
+
+        uc = VerifyBadgeUseCase(progress_repo, ascent_repo, profile_repo, badge_repo, FakeClock())
+        result = uc.execute(_dto())
+
+        assert result["verified"] is True
+        assert result["status"] == "COMPLETED"
+        assert result["errors"] == []
+        assert result["tiers"][0]["status"] == "COMPLETED"
+
+    def test_execute_skips_update_when_status_unchanged(self) -> None:
+        """Nie aktualizuje statusu w bazie, jeśli nie zmienił się."""
+        progress_repo = MagicMock()
+        progress = MagicMock()
+        progress.version_id = 99
+        progress.progress_id = 123
+        progress.domain_status = "IN_PROGRESS"
+        progress_repo.get_progress.return_value = progress
+        progress_repo.get_active_progresses.return_value = []
+
+        badge_repo = MagicMock()
+        badge_version = MagicMock()
+        badge_version.evaluate.return_value = {
+            "verified": False,
+            "status": "IN_PROGRESS",
+            "errors": [],
+            "valid_ascents_count": 3,
+        }
+        badge_repo.get_badge_version_by_id.return_value = badge_version
+
+        ascent_repo = MagicMock()
+        ascent_repo.get_unconsumed_ascents.return_value = []
+
+        profile_repo = MagicMock()
+        profile_repo.get_profile.return_value = None
+
+        uc = VerifyBadgeUseCase(progress_repo, ascent_repo, profile_repo, badge_repo, FakeClock())
+        result = uc.execute(_dto())
+
+        assert result["status"] == "IN_PROGRESS"
+        progress_repo.update_domain_status.assert_not_called()
+
+    def test_get_completed_badges_filters_by_status(self) -> None:
+        """Metoda pomocnicza zwraca tylko odznaki ze statusem COMPLETED."""
+        progress_repo = MagicMock()
+        progress1 = MagicMock()
+        progress1.badge_code = "KGP"
+        progress1.domain_status = "COMPLETED"
+        progress2 = MagicMock()
+        progress2.badge_code = "GOT"
+        progress2.domain_status = "IN_PROGRESS"
+        progress3 = MagicMock()
+        progress3.badge_code = "KZG"
+        progress3.domain_status = "COMPLETED"
+        progress_repo.get_active_progresses.return_value = [progress1, progress2, progress3]
+
+        uc = VerifyBadgeUseCase(progress_repo, MagicMock(), MagicMock(), MagicMock(), FakeClock())
+        completed = uc._get_completed_badges(profile_id=1)
+
+        assert completed == frozenset(["KGP", "KZG"])

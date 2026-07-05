@@ -38,6 +38,16 @@
                     </button>
                 </div>
             {% else %}
+                <!-- Przycisk ucieczki na górze detali -->
+                {% if progress.domain_status != 'COMPLETED' %}
+                <div class="flex justify-end mb-4">
+                    <button hx-delete="/api/v1/badges/{{ badge.code }}/subscribe/"
+                            hx-swap="none" hx-confirm="Opuścić odznakę?" hx-on::after-request="if(event.detail.successful) window.location.href='{% url 'catalog' %}';"
+                            class="text-xs text-red-500 hover:text-red-700 hover:underline flex items-center gap-1">
+                        🗑️ Zrezygnuj
+                    </button>
+                </div>
+                {% endif %}
                 <!-- STAN 2: Subskrybuje -->
                 <div class="flex justify-between items-center border-b pb-2">
                     <h3 class="text-xl font-bold text-slate-800">Twój Postęp (Cykl {{ progress.cycle_number }})</h3>
@@ -182,7 +192,8 @@
 <!-- Kontener na błędy HTMX -->
 <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
-<script src="{% static 'js/map.js' %}"></script>
+<script type="module" src="{% static 'js/map/main.js' %}"></script>
+
 <script>
 document.body.addEventListener('htmx:responseError', function(evt) {
     const errorData = JSON.parse(evt.detail.xhr.response);

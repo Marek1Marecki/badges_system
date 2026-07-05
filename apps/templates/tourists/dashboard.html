@@ -58,13 +58,6 @@
 <!-- Panel Prawy: Mapa (100% wysokości) -->
 <section class="flex-1 relative bg-gray-100">
     <div id="map" class="absolute inset-0"></div>
-
-    <!-- NOWE: Przełącznik Siatki (Pływający nad mapą) -->
-    <div class="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur rounded-lg shadow-md border border-gray-200 p-1 flex text-sm font-medium">
-        <button onclick="changeMapGrid('voivodeship', this)" class="grid-btn px-3 py-1.5 rounded-md hover:bg-sky-50 text-gray-600 transition">Województwa</button>
-        <button onclick="changeMapGrid('macroregion', this)" class="grid-btn px-3 py-1.5 rounded-md hover:bg-sky-50 text-gray-600 transition">Makroregiony</button>
-        <button onclick="changeMapGrid('mesoregion', this)" class="grid-btn px-3 py-1.5 rounded-md bg-sky-600 text-white shadow-sm transition">Mezoregiony</button>
-    </div>
 </section>
 
 
@@ -243,7 +236,7 @@
 
 
 <!-- Ładowanie zhermetyzowanej logiki mapy -->
-<script src="{% static 'js/map.js' %}"></script>
+<script type="module" src="{% static 'js/map/main.js' %}"></script>
 
 
 <!-- Przechwytywanie błędów HTMX (RFC 7807 z API) -->

@@ -202,6 +202,26 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 
 ---
 
+### EC-038 — XML Bomb (XXE) w plikach GPX
+**Obszar:** `infrastructure/adapters/gpx_parser.py`  
+**Status:** `resolved`  
+**Opis:** Standardowa biblioteka `xml.etree` jest podatna na ataki Denial of Service (np. Billion Laughs) przy parsowaniu złośliwych plików wysłanych przez użytkowników. Linter bezpieczeństwa (Bandit S314) zablokował wdrożenie parsera opartego na stdlib.  
+**Rozwiązanie / workaround:** Zastosowano bibliotekę `defusedxml`, która bezpiecznie analizuje drzewo XML odrzucając ataki rekursywne.
+
+### EC-039 — Błędy rysowania w OSM (Mikroszczeliny między poligonami)
+**Obszar:** `calculate_neighbors.py` (Zależności poziome regionów)  
+**Status:** `resolved`  
+**Opis:** Wykorzystanie w PostGIS funkcji `ST_Touches` do wyznaczania sąsiadów (np. graniczących ze sobą mezoregionów) pomijało wiele powiązań z powodu błędów kartografów w OSM (mikroszczeliny lub nachodzące na siebie poligony).  
+**Rozwiązanie / workaround:** Zrezygnowano z `ST_Touches` na rzecz `shape__distance_lte=(..., D(m=50))`. Dodany bufor 50 metrów "połknął" wszystkie błędy kartograficzne, a ciężar obliczeń przeniesiono do jednorazowego skryptu ładującego wyniki do tabeli M2M.
+
+### EC-040 — MVT z PostGIS gubi duże identyfikatory (BigInt)
+**Obszar:** `django_mvt_repo.py` i `map.js`  
+**Status:** `resolved`  
+**Opis:** Protobuf (PBF) w kafelkach MVT generowanych przez PostGIS potrafi błędnie rzutować duże ID (`BigAutoField`) dla właściwości, co skutkowało brakiem możliwości kliknięcia regionu na mapie (błąd `undefined`).  
+**Rozwiązanie / workaround:** W zapytaniu SQL twardo zrzutowano ID na ciąg znaków (`t.id::text AS db_id_str`). Front-end MapLibre został zaktualizowany, by przy rysowaniu poligonów i obsłudze kliknięć ufać wyłącznie tekstowej zmiennej `db_id_str`.
+
+---
+
 ## Historia zmian
 
 | Wersja | Data | Autor | Opis zmiany |

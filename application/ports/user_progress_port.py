@@ -101,3 +101,7 @@ class UserProgressRepositoryPort(Protocol):
     def get_progress_by_id(self, profile_id: int, progress_id: int) -> BadgeProgressDTO | None:
         """Pobiera konkretny snapshot postępu po jego ID (weryfikując właściciela)."""
         ...
+
+    def delete_progress(self, profile_id: int, badge_code: str) -> None:
+        """Trwale usuwa subskrypcję odznaki (możliwe tylko dla niezakończonych)."""
+        ...

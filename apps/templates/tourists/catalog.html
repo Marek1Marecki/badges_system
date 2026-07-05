@@ -50,12 +50,21 @@
             </div>
 
             <div class="p-5 pt-0 mt-auto">
-                {% if badge.id in subscribed_ids %}
-                    <button disabled class="w-full bg-gray-100 text-gray-500 border border-gray-200 font-medium py-2 rounded cursor-not-allowed">
-                        Już subskrybujesz
+                {% if badge.id in completed_ids %}
+                    <button disabled class="w-full bg-green-50 text-green-700 border border-green-200 font-medium py-2 rounded cursor-not-allowed shadow-inner">
+                        ✅ Zdobytą (W logistyce)
+                    </button>
+                {% elif badge.id in active_ids %}
+                    <!-- Przycisk REZYGNACJI z potwierdzeniem -->
+                    <button hx-delete="/api/v1/badges/{{ badge.code }}/subscribe/"
+                            hx-swap="none"
+                            hx-confirm="Czy na pewno chcesz porzucić tę odznakę? Zrobisz w ten sposób miejsce na inną, ale jeśli do niej wrócisz, stracisz Prawa Nabyte i system przydzieli Ci najnowszy regulamin!"
+                            hx-on::after-request="if(event.detail.successful) location.reload();"
+                            class="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-medium py-2 rounded transition shadow-sm">
+                        🗑️ Porzuć wyzwanie
                     </button>
                 {% else %}
-                    <!-- MAGIA HTMX: Uderzamy prosto w REST API z widoku HTML -->
+                    <!-- Standardowe rozpoczęcie -->
                     <button hx-post="/api/v1/badges/{{ badge.code }}/subscribe/"
                             hx-swap="none"
                             hx-on::after-request="if(event.detail.successful) window.location.href='{% url 'home' %}'"

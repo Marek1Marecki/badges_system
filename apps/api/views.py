@@ -174,17 +174,46 @@ class BadgeSubscribeView(View):
         if auth_error:
             return auth_error
 
-        profile_id = request.profile.id
+        # Prawidłowe pobranie aktywnego profilu z sesji (lub domyślnego dla konta)
+        profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id
 
         try:
             use_case = get_container()["start_badge_progress"]
             progress_id = use_case.execute(profile_id=profile_id, badge_code=badge_code)
             # Wybudza Redis po subskrypcji!:
-            recalculate_poi_scores_task.delay(profile_id)
+            # recalculate_poi_scores_task.delay(profile_id)
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
 
+        from django.db import transaction
+
+        from apps.badges.tasks import recalculate_poi_scores_task
+
+        transaction.on_commit(lambda: recalculate_poi_scores_task.delay(profile_id))
+
         return JsonResponse({"progress_id": progress_id, "status": "SUBSCRIBED"}, status=201)
+
+    def delete(self, request, badge_code: str):
+        auth_error = _require_auth(request)
+        if auth_error:
+            return auth_error
+
+        profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id
+
+        try:
+            use_case = get_container()["unsubscribe_badge"]
+            use_case.execute(profile_id=profile_id, badge_code=badge_code)
+        except ApplicationException as exc:
+            return _handle_application_exception(request, exc)
+
+        # Inwalidacja cache! Pinezki na mapie muszą znowu stać się szare!
+        from django.db import transaction
+
+        from apps.badges.tasks import recalculate_poi_scores_task
+
+        transaction.on_commit(lambda: recalculate_poi_scores_task.delay(profile_id))
+
+        return JsonResponse({"status": "UNSUBSCRIBED"}, status=200)
 
 
 @method_decorator(csrf_exempt, name="dispatch")

@@ -126,5 +126,6 @@
 <!-- Kontener na toasty błędów z HTMX (używane w popupach mapy) -->
 <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
-<script src="{% static 'js/map.js' %}"></script>
+<script type="module" src="{% static 'js/map/main.js' %}"></script>
+
 {% endblock %}

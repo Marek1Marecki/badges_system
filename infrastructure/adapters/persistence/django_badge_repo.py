@@ -187,13 +187,21 @@ class DjangoBadgeRepository(BadgeRepositoryPort):
         return self._hydrate_version(version_model, version_model.badge.code)
 
     def get_version_id_for_date(self, badge_code: str, target_date: date) -> int | None:
+        from django.db.models import Q
+
         from apps.badges.models import BadgeVersionModel
 
+        # Ochrona przed starociami: Szukamy wersji, która się zaczęła, a jej valid_to to NULL lub jest w przyszłości
         version = (
-            BadgeVersionModel.objects.filter(badge__code=badge_code, valid_from__lte=target_date)
+            BadgeVersionModel.objects.filter(
+                Q(badge__code=badge_code),
+                Q(valid_from__lte=target_date),
+                Q(valid_to__isnull=True) | Q(valid_to__gte=target_date),
+            )
             .order_by("-valid_from")
             .first()
         )
+
         return version.id if version else None
 
     def _hydrate_version(self, version_model: BadgeVersionModel, badge_code: str) -> BadgeVersionDomain:
@@ -242,3 +250,16 @@ class DjangoBadgeRepository(BadgeRepositoryPort):
             pool_peak_ids=frozenset(pool_peaks),
             tiers=domain_tiers,  # <--- Zamiast pojedynczego required_count
         )
+
+    def get_latest_badge_version(self, badge_code: str) -> BadgeVersionDomain | None:
+        from django.utils import timezone
+
+        from apps.badges.models import BadgeVersionModel
+
+        version_model = (
+            BadgeVersionModel.objects.filter(badge__code=badge_code, valid_from__lte=timezone.now().date())
+            .order_by("-valid_from")
+            .first()
+        )
+
+        return self._hydrate_version(version_model, badge_code) if version_model else None
