@@ -133,7 +133,7 @@ Zabrania się usuwania istniejących komentarzy ludzkich podczas refaktoryzacji.
 
 ## Konwencje kodowania
 
-- **Język:** Python 3.12+ (Zawsze `typing`, Type Hints).
+- **Język:** Python 3.14+ (Zawsze `typing`, Type Hints).
 - **Styl:** `ruff` + `ruff format`.
 - **Weryfikacja jakości:** Wszystkie commity muszą przejść `make check` (format, lint, mypy strict dla domeny, import-linter, audit_contracts.py, szybkie testy).
 - **Asercje/Błędy:** `ValueError` lub dedykowane klasy `AppError` dla infrastruktury i domeny (`DomainValidationError`).
@@ -148,6 +148,7 @@ Zabrania się usuwania istniejących komentarzy ludzkich podczas refaktoryzacji.
 | TD-01 | Cykliczne relacje: `parent_object` nie jest walidowane przed grafami A->B->A. | Podczas optymalizacji formularzy Admina (Invariant C-01). |
 | TD-02 | Weryfikacja wiekowa (`MinAgeRule`) i daty klubu (`RequiresClubJoinDateRule`) używają zahardkodowanych zaślepek z `date(2015,1,1)`. | **W Fazie C**, przy implementacji `UserContext`. |
 | TD-03 | Błędna hydracja progu (`required_count=len(pool_peaks)` w adapterze). Psuje to weryfikację odznak wielostopniowych i typu "Wybierz X z Y". Próg powinien być pobierany z `BadgeTier`. | Przed oddaniem API weryfikacyjnego na front (Edge Case EC-031). |
+| *Brak* | *Wszystkie długi z Fazy A, B i C zostały spłacone.* | - |
 
 ---
 
@@ -155,8 +156,8 @@ Zabrania się usuwania istniejących komentarzy ludzkich podczas refaktoryzacji.
 
 | Termin | Definicja |
 |--------|-----------|
-| Ascent | Zalogowane wejście turysty z datą i aktywnością (HIKING). |
-| BadgeVersion | Historyczny regulamin z dozwoloną pulą szczytów i zbiorem reguł JSON. |
+| `Ascent` (VO) | Fakt historyczny wejścia turysty. Zawiera `peak_id`, `ascent_date` oraz wyliczone w locie `region_ids` (CQRS). Czysty fakt, bez typu aktywności (YAGNI). |
+| `VerificationContext` (VO) | Wstrzykiwany do domeny stan zewnętrzny (np. czas ewaluacji, wiek turysty, przynależność klubowa). Chroni przed niedeterminizmem. || BadgeVersion | Historyczny regulamin z dozwoloną pulą szczytów i zbiorem reguł JSON. |
 | TouristObject | Czysty, zwalidowany punkt na mapie. W bazie przechowuje Curated Fields i Data Lake z OSM. |
 | Object Pool | Zbiór identyfikatorów (`frozenset[int]`), z którego turysta musi zdobyć X obiektów. |
 | Night Watchman | Asynchroniczny task z Celery Beat, odpytujący Overpass API o najstarsze obiekty w bazie. |

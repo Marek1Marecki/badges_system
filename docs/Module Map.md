@@ -62,6 +62,13 @@
 
 ---
 
+### `apps/tourists/` — Warstwa Dostarczania dla Turysty (B2C)
+**Odpowiedzialność:** Oddzielony kontekst (Bounded Context) dla użytkownika końcowego. Zawiera modele bazy danych dla Profilu, Logów Wejść i Postępu. Serwuje widoki HTML oparte na HTMX oraz renderuje Pulpit z Mapą.
+**Eksportuje:** Widoki, Sygnały uwierzytelnienia (OAuth).
+**Zależy od:** `bootstrap/` (Use Case'y) oraz w trybie Read-Only od słowników z `apps/badges/models.py`.
+
+---
+
 ### `bootstrap/` — Kompozycja Systemu (Dependency Injection)
 **Odpowiedzialność:** Inicjalizacja całej aplikacji. "Drutuje" (wires up) adaptery z infrastruktury z przypadkami użycia z warstwy aplikacji. To JEDYNE miejsce w systemie produkcyjnym, które wie o istnieniu obu tych warstw równocześnie.  
 **Eksportuje:** `get_container()` (zwraca słownik zainstancjonowanych Use Case'ów), `configure_app()`.  

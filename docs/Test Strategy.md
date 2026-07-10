@@ -81,6 +81,37 @@ Zamiast mockować bazę danych narzędziami takimi jak `unittest.mock` w warstwi
 
 ---
 
+## Wzorzec Testowania API (Izolacja Kontrolerów)
+
+W testach integracyjnych dla widoków REST API (`apps/api/views.py`) obowiązuje rygorystyczny wzorzec odcinania logiki biznesowej od warstwy HTTP. 
+Celem testu widoku jest sprawdzenie **wyłącznie**: 
+1. Parsowania parametrów wejściowych (Pydantic DTO).
+2. Autoryzacji (`_require_auth`).
+3. Formatyzacji błędów do standardu RFC 7807 (`_handle_application_exception`).
+
+**Jak testujemy:**
+- Używamy `django.test.RequestFactory` (uwaga: omija to globalne Middleware, zgodnie z EC-042).
+- Zamiast podnosić bazę danych, **mockujemy globalny kontener DI**.
+
+```python
+# Wzorzec testowy (pytest):
+@pytest.fixture
+def use_cases():
+    """Zwraca dict mocków Use Case'ów i izoluje widoki od prawdziwej domeny/bazy."""
+    cases = {
+        "log_ascent": MagicMock(),
+        "start_badge_progress": MagicMock(),
+    }
+    with patch("apps.api.views.get_container", return_value=cases):
+        yield cases
+
+def test_conflict_error_returns_409_rfc7807(factory, mock_user, use_cases):
+    use_cases["log_ascent"].execute.side_effect = ConflictError("Duplikat")
+    # ... wykonanie żądania i asercja JSONa ...
+```
+
+---
+
 ## Protokół weryfikacji testu (Zasada Mutacji)
 
 Zanim uznasz, że napisałeś poprawny test dla Invariantu (np. `TimeLimitRule`), **wykonaj test mutacyjny**:
@@ -93,6 +124,10 @@ Zanim uznasz, że napisałeś poprawny test dla Invariantu (np. `TimeLimitRule`)
 
 ## Zasady dla agentów LLM
 
+- **Fakes vs Mocks (Granica Architektoniczna):** 
+  - Do testowania Czystej Domeny (`domain/rules/`, `BadgeVersionDomain`) bezwzględnie używamy czystych obiektów Pythona.
+  - Do testowania Orkiestratorów (`application/use_cases/`), które posiadają 3 lub więcej wstrzykiwanych Portów Repozytoriów, kategorycznie zezwala się na użycie `unittest.mock.MagicMock`. Pisanie i utrzymywanie rozbudowanych `FakeRepositories` dla skomplikowanych agregatów z relacjami jest antywzorcem (Over-engineering) i zaciemnia cel testu, którym w Use Case jest weryfikacja przepływu (Orchestration), a nie stanu danych.
+
 ### Zakazane
 - **Mockowanie wewnętrznej logiki:** Nigdy nie mockuj klas wewnątrz tego samego modułu (np. nie mockuj `BadgeVersionDomain.evaluate` testując `VerifyBadgeUseCase`). W Use Case testujesz realne współdziałanie Domeny, używając Fake Adapterów z `tests/fakes/`.
 - **`datetime.now()` w testach:** Zawsze używaj `FakeClock.DEFAULT_TIME` lub explicit zdefiniowanej daty statycznej z `tzinfo`. Test uruchomiony za 5 lat musi dać ten sam wynik co dziś.
@@ -101,12 +136,23 @@ Zanim uznasz, że napisałeś poprawny test dla Invariantu (np. `TimeLimitRule`)
 ### Wymagane
 - Każda nowa klasa dziedzicząca po `BadgeRule` musi mieć minimum dwa testy: `test_rule_name_success` oraz `test_rule_name_failure`.
 - Jeśli łatana jest usterka zapisana w `EDGE_CASES.md`, test zapobiegający regresji musi nosić jej prefiks i numer, np. `def test_EC020_badge_tier_requires_explicit_choice_to_save():`.
+- **BDD Mapping (Behavior-Driven Design):** Testy jednostkowe i integracyjne nie mogą opisywać technicznej implementacji (np. `test_badge_engine_resolves_json`), lecz muszą opisywać intencję biznesową i zachowanie systemu (np. `test_user_earns_badge_after_3_peaks_in_region_respecting_grandfather_clause`). Zgodnie z architekturą, testy te mapują się bezpośrednio z User Stories i służą jako "Living Documentation".
 
 ---
 
-## Historia zmian
+### Co jest testowane — zakres", ❌ Nie testujemy (i dlaczego)
 
-| Wersja | Data | Autor | Opis zmiany |
-|--------|------|-------|-------------|
-| 1.0 | 2026-05-28 | Dominik / AI Architect | Pierwsza wersja (Testowanie GeoDjango, FakeClock). |
-| 1.1 | 2026-05-28 | AI Architect | Doprecyzowanie ról markerów integracyjnych, celów pokrycia per moduł (Coverage Table) i konwencji dla katalogu `fakes/`. |
+- **Banałów ORM-a w testach jednostkowych (ORM Wrappers):** Nie piszemy testów jednostkowych, których jedynym celem jest mockowanie bazy po to, by sprawdzić, czy metoda `get_or_create` w adapterze repozytorium faktycznie wykonuje `get_or_create`. Jest to testowanie kodu twórców frameworka Django, a nie naszego. Niski poziom pokrycia (Coverage) rzędu 20-30% w katalogu `infrastructure/adapters/persistence/` jest zjawiskiem **w pełni akceptowalnym i pożądanym**. Weryfikację tych metod delegujemy do wyższych warstw testowych (Integration / E2E Playwright).
+
+---
+
+## Środowiska Testowe i Zarządzanie Danymi (Data Stewardship)
+
+Zgodnie z koncepcją "Bazy jako Odtwarzacza", kategorycznie rozdzielamy dane użytkowników (Runtime) od danych systemowych PTTK (Reference Data).
+
+**Wymogi dla środowisk integracyjnych i E2E (Pre-Prod / Playwright):**
+1. **Pojedyncze Źródło Prawdy:** Środowisko testowe NIE MOŻE być repliką bazy deweloperskiej ani polegać na ręcznie stworzonych szczytach w panelu Admina.
+2. **Kolejność Odtwarzania:** Przed każdym przebiegiem testów E2E należy wykonać w 100% zautomatyzowany reset bazy, a następnie wywołać skrypt `uv run python manage.py restore_reference_data`. Gwarantuje to, że skrypty testujące (np. klikające w Babią Górę) pracują na identycznym, zmanifestowanym zestawie węzłów topograficznych i regulaminów odznak, jaki znajduje się aktualnie w repozytorium Git.
+3. **Integralność Snapshotu:** Pakiet danych z `data/reference/*.json.gz` to spójny graf (Aggregate). Zawsze musi być wgrywany w całości. Próba wgrania tylko np. regionów z pominięciem odznak skończy się błędami referencyjnymi.
+
+---

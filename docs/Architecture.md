@@ -24,6 +24,8 @@ System Odznak Turystycznych PTTK to aplikacja webowa służąca do kompleksowego
 | **Zadania w tle** | Celery + Celery Beat | `>=5.6.x`          | Zarządzanie długotrwałymi zadaniami (masowy import z OSM) oraz uruchamianie "Nocnego Stróża" z użyciem ponawiania (Linear Backoff). |
 | **Zasilanie Danych**| Overpass API | —                  | Darmowe, potężne źródło surowych danych topograficznych z OpenStreetMap. |
 
+*   **Pamięć Podręczna (Redis):** Działa jako podwójny agent. Z jednej strony jest brokerem wiadomości (Message Broker) dla kolejek Celery, z drugiej przechowuje zmaterializowane wyniki matematycznego "Rankingu Potencjału POI" (tzw. `100/n`). Użycie jednego klastra Redis do współdzielenia cache mapy pozwala na inwalidację danych z poziomu asynchronicznego workera (Event-Driven Cache Invalidation).
+
 ---
 
 ## 3. Diagram komponentów
@@ -79,6 +81,42 @@ System Odznak Turystycznych PTTK to aplikacja webowa służąca do kompleksowego
 - **Nawigacja i Routing:** System nie służy do wyznaczania tras (turn-by-turn) ani liczenia odległości przejścia szlakiem między punktem A i B.
 - **Data Hoarding:** System nie replikuje całego OpenStreetMap. Pobiera i aktualizuje tylko obiekty jawnie zażądane przez administratora (Curated Catalog).
 - **Automatyczna weryfikacja GPS:** Aplikacja nie weryfikuje turysty śladem GPX. Dowodzenie obecności (np. zdjęcia, pieczątki) jest sprawdzane przez człowieka w procesie logistycznym. Domena ufa danym wprowadzonym przez autoryzowany log.
+
+#### Identity & Family Context (Zarządzanie Użytkownikami)
+Odizolowany mechanizm logowania od logiki śledzenia postępów. Wdrożono model `Konto Rodzinne`. Uwierzytelnienie opiera się na koncie dostawcy (Google OAuth - `auth_user`), ale cała domena PTTK operuje wyłącznie na encji `TouristProfile` (profilu konkretnego wędrowca, np. dziecka). Rozwiązuje to problem limitów wiekowych (MinAgeRule) i pozwala rodzicowi prowadzić odznaki dla całej rodziny bez przelogowywania. 
+Posiada własny system limitów Freemium (Quotas), kontrolowany na poziomie warstwy Aplikacji.
+
+### Tożsamość vs Profil (Identity vs Profile Separation)
+- **Konto (User / Identity):** Obsługiwane wyłącznie przez wbudowany model Django `auth_user` i `django-allauth`. Odpowiada **tylko** za proces logowania (Google OAuth) i trzymanie adresu e-mail.
+- **Profil Turysty (TouristProfile):** Właściwy byt domenowy. Oddzielony relacyjnie. Przechowuje publiczny `nickname` (Privacy by Default), pakiety Freemium oraz wiek. Czysta Domena nigdy nie ma dostępu do modelu `User` i adresu e-mail.
+
+---
+
+### Wersjonowanie Stanu Domeny (Data Stewardship)
+W architekturze zaimplementowano rygorystyczny podział na *User Data* (ulotne, produkcyjne) oraz *Reference Data* (stanowiące część logiki domenowej, np. struktury odznak, geometria gór).
+Zamiast traktować bazę danych DEV jako źródło prawdy, zastosowano podejście, w którym **Dane Referencyjne są wersjonowane w repozytorium Git na równi z kodem**. Mechanizm Snapshotów (pliki `.json.gz` + `manifest.json`) gwarantuje, że przy przełączeniu na konkretny tag/commit w Gicie, system pozwala na odtworzenie 100% dokładnego stanu regulaminów PTTK z danego dnia, co jest krytyczne dla stabilności testów E2E oraz praw nabytych turystów. Baza danych pełni w tym wypadku wyłącznie rolę "Odtwarzacza" (Runtime Store).
+
+---
+
+## 7. Model Zarządzania Środowiskami i Dane Referencyjne
+
+Aplikacja operuje na dwóch fundamentalnie różnych typach danych, które podlegają całkowicie odmiennemu cyklowi życia (Data Lifecycle):
+
+1. **Dane Użytkowników (Runtime Data):**
+   - *Obejmuje:* `TouristProfile`, `AscentLog`, `UserBadgeProgress`.
+   - *Źródło Prawdy:* Wyłącznie serwer produkcyjny (PROD).
+   - *Zasada Propagacji:* Zabrania się propagacji ("ściągania") danych użytkowników ze środowiska produkcyjnego na środowiska DEV / TEST w celu ochrony danych osobowych (RODO). Wymaga użycia Fabryk Danych na niższych środowiskach.
+
+2. **Dane Referencyjne (System Authoring):**
+   - *Obejmuje:* `TouristObject`, `Badge`, `BadgeVersion`, `RegionBaseModel` (Kraje, Regiony).
+   - *Źródło Prawdy:* Wyłącznie repozytorium kodu (`data/reference/*.json.gz`).
+   - *Zasada Propagacji:* Odtwarzalne z repozytorium za pomocą komendy `restore_reference_data`. Bazy danych we wszystkich środowiskach (DEV, TEST, PROD) są traktowane jako "odtwarzacze" (Runtime Store) dla tych definicji, a nie miejsce ich projektowania.
+
+### Przeznaczenie Środowisk
+- **DEV (Lokalne):** Sandbox (Piaskownica) dla developera. Miejsce projektowania nowych odznak przez panel Admina. **Zasada:** Po zaprojektowaniu odznaki w DEV, musi ona zostać "zamrożona" komendą `export_reference_data` do plików JSON, zacommitowana do Gita i przepchnięta w górę, stając się częścią kodu aplikacji.
+- **TEST (CI / Lokalne testy):** Środowisko odtwarzane w pełni automatycznie (`migrate` -> `restore_reference_data` -> `pytest`). Zapewnia 100% determinizmu w testach przestrzennych PostGIS, ponieważ zawsze startuje z identycznej wersji "Złotego Standardu" Gór z repozytorium.
+- **PRE-PROD (Staging):** Identyczne z produkcją. Środowisko weryfikacji migracji i testów E2E (Playwright).
+- **PROD:** Serwer produkcyjny. Połknięcie nowych Odznak PTTK na produkcji odbywa się poprzez wdrożenie nowej wersji z Gita i uruchomienie skryptu przywracającego.
 
 ---
 

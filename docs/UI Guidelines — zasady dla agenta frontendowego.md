@@ -87,6 +87,11 @@ Wszystkie operacje które zmieniają stan UI (dodanie logu wejścia, zmiana stat
 
 **Wyjątek:** Inicjalizacja mapy MapLibre i obsługa zdarzeń mapowych (przesunięcie, zoom, kliknięcie w pinezkę) — wymagają Vanilla JS w dedykowanym pliku statycznym.
 
+### Integracja HTMX z zewnętrznymi bibliotekami JS (MapLibre)
+Zabrania się używania standardowego `fetch()` w JavaScripcie do wykonywania mutacji stanu (POST, PATCH) z poziomu mapy, jeśli można użyć HTMX. 
+Zamiast tego, kontrolki mapy (np. Popupy) powinny być generowane jako ciągi HTML zawierające atrybuty `hx-`. 
+**Wymóg:** Po wstrzyknięciu takiego HTML-a do DOM przez zewnętrzną bibliotekę (MapLibre), należy natychmiast wywołać `htmx.process(element);`, aby ożywić wygenerowane przyciski. Zapewnia to spójność obsługi błędów (RFC 7807) zdefiniowanej w globalnych event listenerach HTMX.
+
 ---
 
 ## 4. Zasady JavaScript dla mapy
@@ -123,6 +128,10 @@ function fetchMapObjects(bounds) {
 
 ### Narzędzia UI (Popupy)
 Kliknięcie w pinezkę w warstwie `symbol` musi generować wbudowany, systemowy popup w MapLibre. Treść popupu musi zawierać przycisk/link do pełnej podstrony `TouristObject`.
+
+### Automatyczne kadrowanie mapy (Auto-Zoom / Fly-to)
+Wszelkie widoki detali (np. Strona Regionu, Strona Obiektu), które posiadają kontekst przestrzenny, muszą instruować mapę o swoim obszarze brzegowym (Bounding Box).
+**Wymóg:** Backend (Django) wstrzykuje współrzędne obrysu jako `window.REGION_EXTENT = [min_lon, min_lat, max_lon, max_lat]`. Skrypt `map.js` na starcie sprawdza istnienie tej zmiennej i wywołuje asynchronicznie `map.fitBounds(..., { padding: 50 })`. Zakazuje się ręcznego "zgadywania" zoomu i środka mapy w kodzie JavaScript dla widoków szczegółowych.
 
 ---
 
@@ -162,6 +171,14 @@ fetch('/api/v1/ascents', { method: 'POST', body: formData })
 
 ---
 
+## 7. Architektura Informacji i Sieć Nawigacyjna (Hyperlinking)
+
+System PTTK Badges funkcjonuje jako gęsta "Wikipedia Turystyczna". Wymaga to ścisłego przestrzegania zasady spłaszczania nawigacji:
+- **Zasada Klikalności Encji:** Każda referencja do bytu domenowego wyświetlana w interfejsie użytkownika (np. nazwa odznaki, nazwa szczytu, nazwa regionu w tabeli lub dymku na mapie) **musi** być klikalnym hiperłączem prowadzącym do strony detali tego obiektu. 
+- **Zabezpieczenie przed N+1 w Szablonach:** Aby uniknąć przeciążenia bazy przez ORM przy generowaniu linków, widoki Django przygotowujące dane dla szablonów HTML muszą używać `.select_related()` i `.prefetch_related()`. Jeśli widok przekazuje encję do szablonu, musi ona zostać spakowana jako słownik zawierający odpowiedni atrybut rutingu (np. `code` dla odznak, `id` dla szczytów), a nie spłaszczona do samego tekstu.
+
+---
+
 ## 7. Zasady dla agenta frontendowego
 
 ### Zakazane
@@ -184,10 +201,55 @@ fetch('/api/v1/ascents', { method: 'POST', body: formData })
 
 ---
 
-## Historia zmian
+## 8. Prezentacja Danych Zagnieżdżonych (Klastrowanie Wizualne)
 
-| Wersja | Data | Autor | Opis zmiany |
-|--------|------|-------|-------------|
-| 1.0 | 2026-05-31 | Dominik / AI Architect | Pierwsza wersja (Kontrakt BBox, HTMX, a11y, PeakColor). |
-| 1.1 | 2026-06-01 | AI Architect | Usunięcie logiki MVT. Pozostawienie uciętego fragmentu. |
-| 1.2 | 2026-06-02 | Dominik / AI Architect | Scalenie wersji 1.0 i 1.1. Przywrócenie rygoru z a11y i HTMX, dodanie architektury 3-warstwowej dla MapLibre (Basemap, MVT, GeoJSON) i weryfikacja współrzędnych BBox. |
+Obiekty turystyczne mogą tworzyć Klastry przestrzenne (Rodzic -> Dzieci, ADR-006). Aplikacja kategorycznie unika "Fałszywych Obietnic" (Fałszywych pozytywów) na mapach, gdzie punkty liczą się osobno. 
+Jednakże w widokach tabelarycznych (np. Ranking Celów `poi_ranking_view`), system **musi** stosować wzorzec Grouping (Klastrowanie Wizualne):
+
+1. **Logika Zapytania (SQL):** Widok przygotowujący tabelę dla klastrów musi zawsze pobierać **całą rodzinę** obiektów. Jeśli filtrowanie wyłapuje Dziecko (np. Schronisko ma punkty), zapytanie używając `Q` musi dociągnąć również jego Rodzica, i odwrotnie.
+2. **Budowa Paczki w Pythonie:** Zamiast płaskiej listy obiektów, widok wysyła do szablonu zgrupowane słowniki (np. `[{"cluster_id": 1, "cluster_score": 15, "items": [...]}]`).
+3. **Renderowanie HTML (UX):**
+   - Jeśli obiekt jest singlem (brak klastra), renderuje się jako zwykły wiersz tabeli.
+   - Jeśli obiekt jest częścią klastra (`is_family = True`), system generuje wiersz-nagłówek (Klaster) z pogrubioną sumą punktów dla całego gniazda, a pod nim wylistowuje członków z wcięciami (`pl-10`) i znakami podrzędności (`↳`). 
+   - Wymaga to odpowiedniego zarządzania `colspan` dla nagłówka klastra, aby suma punktów była idealnie wyrównana z kolumną "Punktacja" wierszy podrzędnych.
+
+---
+
+### 3. Zasady HTMX
+
+### Reużywalność REST API jako serwisu dla HTMX
+Wszelkie akcje mutujące stan (jak zmiana statusu w Kanbanie, logowanie wejść, aktualizacja profilu) nie mogą być realizowane przez klasyczne widoki Django zwracające formularze (`FormViews`).
+**Wymóg:** Interfejs HTML zasilany HTMX musi działać jak aplikacja Single-Page, tzn. w atrybutach takich jak `hx-patch` lub `hx-post` uderza bezpośrednio w dedykowane punkty końcowe REST API (`/api/v1/...`). Widoki te zwracają JSON. 
+HTMX następnie przechwytuje odpowiedź JSON. W przypadku powodzenia następuje ciche odświeżenie strony lub podmiana węzła DOM (np. `hx-on::after-request="if(event.detail.successful) location.reload();"`). W przypadku błędu z API, uruchamiany jest globalny skrypt nasłuchujący na event `htmx:responseError`, który parsuje format RFC 7807 i wyświetla turystyczny komunikat błędu (Toast).
+
+---
+
+### 8. Wzorce Komponentów Interfejsu
+
+### Wzorzec Click-Driven Kanban (Bez Drag & Drop)
+Wszelkie tablice typu Kanban (np. Osobista Logistyka Turysty) są projektowane w oparciu o filozofię **Mobile-First**. 
+- **Zakazane:** Wdrażanie ciężkich bibliotek do przeciągania i upuszczania elementów (Drag & Drop), które często konfliktują ze scrollowaniem na ekranach dotykowych.
+- **Wymagane:** Zastosowanie wzorca **Click-Driven Kanban**. Zmiana stanu karty odbywa się poprzez wbudowane w nią przyciski akcji (np. "Wysłano pocztą ➔", "⬅ Cofnij").
+- **Implementacja:** Przycisk korzysta z HTMX (np. `hx-patch="/api/v1/progress/.../logistics/"`) przekazując nowy stan w atrybucie `hx-vals`. Po sukcesie wywoływane jest przeładowanie strony lub węzła DOM (np. `hx-on::after-request="location.reload();"`), co natychmiast "przesuwa" kartę do odpowiedniej kolumny CSS Grid w nowym cyklu renderowania.
+
+---
+
+### 4. Zasady JavaScript dla mapy
+
+### Dynamiczna konfiguracja warstw mapy (Data-Driven Configuration)
+Zabrania się "hardkodowania" adresów URL podkładów rastrowych (Base Maps) bezpośrednio w plikach JavaScript (np. w kontrolkach zmiany warstwy).
+**Wymóg:** Lista dostępnych podkładów mapowych (wraz z ich ograniczeniami Paywall) jest definiowana jako Słownik Prawdy w backendzie (`infrastructure/config/map_layers.py`). Następnie jest wstrzykiwana do globalnego obiektu JS (`window.MAP_LAYERS`) za pomocą `Context Processor`. Kod frontendowy odpowiada jedynie za iterację po tej liście i generowanie kontrolek UI. Zabezpiecza to klucze API przed wyciekiem do nieuprawnionych klientów.
+
+### Zasada Minimalizmu Interfejsu Mapowego (Map Controls)
+Mapa jest najważniejszym elementem eksploracji. Wszystkie widgety nakładane na kanwę MapLibre (np. przełącznik warstw, wybór siatki MVT) podlegają **Zasadzie Zwijania na Hover (Folium/Leaflet Style)**.
+**Wymóg:** Kontrolki muszą być domyślnie ukryte pod pojedynczą, małą ikoną w rogu ekranu (np. stosem warstw). Główne menu z wyborami (radia, pastylki) wysuwa się wyłącznie przy zdarzeniu `mouseenter` na obszarze kontrolki i chowa się po zdarzeniu `mouseleave`. Zabrania się przypinania do mapy statycznych, rozwartych paneli zajmujących cenne miejsce (szczególnie w kontekście Mobile-First).
+
+---
+
+### 7. Architektura Informacji i Nawigacja
+
+- **Wizualny Kontekst Subskrypcji (Visual State Context):** Każdy widok w aplikacji renderujący listę odznak powiązanych z jakimkolwiek obiektem lub terytorium (np. na Stronie Obiektu lub w Rankingu Celów) **musi** jawnie odróżniać odznaki aktualnie subskrybowane przez Turystę od odznak, których Turysta nie zdobywa. 
+  - **Mechanizm:** Zawsze przekazuj do szablonu zmienną `subscribed_badge_codes`.
+  - **Prezentacja (Tailwind):** Odznaka subskrybowana musi być wyróżniona kolorystycznie (np. jasna zieleń `bg-green-100 text-green-800`), fontem (`font-bold`) oraz znacznikem graficznym (np. `✓`), ułatwiając szybkie skanowanie wzrokiem długich tabel danych. Niesubskrybowane odznaki zachowują neutralny, szary odcień.
+
+---

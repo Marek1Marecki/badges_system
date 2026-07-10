@@ -272,7 +272,7 @@
 |---|---|
 | **Definicja** | Historyczny fakt obycia wycieczki na obiekt przez turystę, zawierający datę i typ aktywności (pieszo, narty). Podlega ewaluacji przez Czystą Domenę. |
 | **Alias** | `AscentLog` |
-| **Przykład** | Jan Kowalski, Babia Góra, 2024-08-15, HIKING |
+| **Przykład** | Jan Kowalski, Babia Góra, 2024-08-15 |
 | **NIE jest** | Samo logowanie wejścia nie jest równoznaczne ze zdobyciem odznaki, ani nie jest jeszcze weryfikacją fizyczną PTTK. |
 | **Używany w** | `Ascent` (Value Object), `AscentLog`, `VerifyBadgeUseCase` |
 

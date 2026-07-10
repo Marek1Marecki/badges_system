@@ -105,19 +105,15 @@ Semantyka `NULL` (puste = dowolne):
 **Treść:** Obiekt ze statusem `ERROR` (np. przez trwale uszkodzone ID z OSM) nie może być automatycznie ponawiany przez Nocnego Stróża.
 **Uzasadnienie:** Zapobiega to zapychaniu kolejki martwymi żądaniami. Wymaga kliknięcia przez Admina (Akcja *Retry*).
 
-### S-03 — Czysta separacja Logistyki od Domeny (Kanban vs Math) 🔴 KRYTYCZNY
-**Treść:** Silnik Domenowy ewaluuje wyłącznie fakty matematyczne: `NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`. Logistyka pocztowa i weryfikacyjna (`WAITING_FOR_SEND`, `ALBUM`) to oddzielny agregat (`VerificationRequest`), który nie ma wstępu do `domain/` (ADR-014).
-**Uzasadnienie:** Turysta może zebrać 5 odznak o statusie `COMPLETED` w ciągu roku i wysłać je jako JEDEN wniosek weryfikacyjny w grudniu. Mieszanie tych stanów niszczy UX.
-**Gdzie egzekwować:** 
-- Linter: `import-linter` (zakaz importu modeli logistycznych do Czystej Domeny).
-
-### S-04 — Niemutowalność Zużytych Wejść (Ascent Locking) 🔴 KRYTYCZNY 
-**Treść:** Turysta traci prawo do edycji, ukrywania lub usunięcia rekordu `AscentLog`, jeśli dany rekord został już wykorzystany do spełnienia warunków Wersji Odznaki w cyklu, który osiągnął stan `COMPLETED`. 
-**Furtka Korekcyjna (Escalation):** W przypadku wyłapania oszustwa (lub pomyłki) w logach historycznych przez weryfikatora PTTK przy fizycznym sprawdzaniu, weryfikator (poza Czystą Domeną) może usunąć powiązanie lub rekord `AscentLog`. System musi wtedy synchronicznie cofnąć status `UserBadgeProgress` z `COMPLETED` z powrotem na `IN_PROGRESS`, blokując tym samym proces logistyczny.
-**Uzasadnienie:** Zapobiega oszustwom typu "Użyj-Zmień-Użyj", gwarantując twardość zdobytych osiągnięć.
+### S-03 — Separacja Matematyki od Logistyki (Kanban) 🔴 KRYTYCZNY
+**Treść:** Czysta Domena kończy swoją pracę na wyliczeniu statusu `COMPLETED`. Logistyka (wysyłka książeczki, weryfikacja przez PTTK, przypięcie do Albumu) to oddzielna maszyna stanów, która działa wyłącznie jako "Osobisty Tracker" oparty o pole `logistic_status` w `UserBadgeProgress`. 
+**Uzasadnienie:** Czysta matematyka odznak nie zależy od opóźnień Poczty Polskiej.
 **Gdzie egzekwować:**
-- Zapytania do bazy na poziomie API: `DELETE /api/v1/ascents/{id}` (Wyrzuca `403 Forbidden` z informacją o zablokowaniu).
+- Use Case: `AdvanceLogisticStatusUseCase` (akceptuje zmiany logistyki tylko gdy `domain_status == COMPLETED`).
 
+### S-04 — Zakaz kasowania faktów (Czarna Lista) 🟠 WYSOKI
+**Treść:** Zalogowane wejście na szczyt (`AscentLog`) to obiektywny fakt. Jeśli weryfikator PTTK odrzuci wniosek o odznakę z powodu braku dowodu na dany szczyt, log nie jest usuwany z bazy (aby nie zepsuć innych odznak). Zamiast tego, log dodawany jest do "Czarnej listy" (wykluczeń) dla tej konkretnej subskrypcji.
+**Uzasadnienie:** Zapobiega "Efektowi Domina" (Cascading Deletions), w którym utrata jednej odznaki niszczy postępy w innej.
 ---
 
 ## Grupa P — Pule, Prawa Nabyte i Prestiż
@@ -137,6 +133,12 @@ Semantyka `NULL` (puste = dowolne):
 ---
 
 ## Grupa C — Geometria, Klastry i Infrastruktura Mapowa (Faza C/D)
+
+### C-01 — Płaska Gwiazda (Brak Cykli w Grafie Rodzic-Dziecko) 🔴 KRYTYCZNY
+**Treść:** Relacja `parent_object` w klastrach turystycznych tworzy strukturę "Płaskiej Gwiazdy" o maksymalnej głębokości = 1. Wymusza to 3 zasady: (1) Obiekt nie może być własnym rodzicem. (2) Obiekt, który ma już dzieci, nie może mieć przypisanego rodzica. (3) Obiekt, który jest dzieckiem, nie może zostać rodzicem innych obiektów.
+**Uzasadnienie:** Naruszenie (cykl grafu) wywoła rekurencję bez wyjścia i przepełni pamięć (Stack Overflow) przy renderowaniu map i obliczaniu zysków `100/n`.
+**Gdzie egzekwować:** 
+- Nadpisana metoda `save()` i `clean()` w modelu `TouristObject` (ochrona przed ominięciem walidacji przez Django Admin Actions).
 
 ### C-01 — Brak Cykli w Grafie Relacji Rodzic-Dziecko 🔴 KRYTYCZNY
 **Treść:** Relacja `parent_object` nie może stworzyć pętli (np. A jest rodzicem B, a B rodzicem A).

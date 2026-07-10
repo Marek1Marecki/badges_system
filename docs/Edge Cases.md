@@ -44,6 +44,9 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 **Opis:** Serwery kafelków (Tile Servers) OpenStreetMap rygorystycznie egzekwują zasady użycia i blokują żądania z przeglądarek, które nie wysyłają nagłówka `Referer`. Domyślna polityka bezpieczeństwa Django (`same-origin`) ukrywa ten nagłówek przy odpytywaniu zewnętrznych domen, co skutkuje brakiem podkładu mapowego w panelu Administratora (wyświetla się grafika "Access blocked").  
 **Rozwiązanie / workaround:** Do globalnej konfiguracji projektu `config/settings.py` dodano wymuszenie luźniejszej polityki: `SECURE_REFERRER_POLICY = "origin-when-cross-origin"`. Zezwala to przeglądarce na wysłanie pochodzenia do serwerów kafelkowych, odblokowując mapę bez łamania globalnego bezpieczeństwa aplikacji.
 
+2. Popraw fragment pobierający stopnie:
+Znajdź sekcję ZŁOŻENIE DANYCH WIZUALNYCH I PRAW AUTORSKICH (D-03) (w okolicach linii 230) i podmień środek bloku if target_version: na ten bezpieczny kod:
+
 ---
 
 ## 2. Geometria i Przetwarzanie Przestrzenne (PostGIS)
@@ -63,6 +66,24 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 **Opis:** W procesie łączenia dziesiątek mezoregionów w jeden Region Turystyczny (za pomocą biblioteki GEOS - `unary_union`), początkowo użyto `except Exception: exact_dist = 0.0` lub `return None`, by zapobiec przerwaniu pracy Celery. To powodowało ciche maskowanie faktu, że baza danych może zawierać uszkodzone lub samoprzecinające się (self-intersecting) poligony, których nie da się w żaden sposób wykorzystać w aplikacji klienckiej (np. kafelkach MVT).  
 **Rozwiązanie / workaround:** Zero tolerancji dla cichych błędów przy geometrii (Fail-Fast). Usunięto maskujące bloki `except`. Wyjątki infrastrukturalne mają prawo "wybuchnąć" w adapterze i zostają zaprotokołowane jako `ERROR` w głównym pliku `tasks.py`.  
 **Test:** `test_geometry_union_fails_fast_on_invalid_polygon`
+
+### EC-058 — Problem N+1 przy weryfikacji Bitemporalności (Bulk Operations)
+**Obszar:** `application/use_cases/bulk_log_ascents.py`, `AscentLogRepositoryPort`  
+**Status:** `resolved`  
+**Opis:** Podczas przetwarzania paczki np. 30 szczytów zdekodowanych z pliku GPX, odpytywanie bazy danych o ramy bitemporalne (`existence_start`, `existence_end`) wewnątrz pętli `for` generowało by 30 osobnych transakcji (zjawisko N+1), co jest śmiertelne dla wydajności operacji masowych.
+**Rozwiązanie / workaround:** Zdefiniowano nową sygnaturę portu `get_objects_lifespans(peak_ids: set[int])`, która wykorzystuje `values_list` z klauzulą `IN`. Baza odpowiada jednym błyskawicznym zapytaniem zwracającym słownik. Wewnątrz pętli iterującej po logach wejść, Python odpytuje już tylko ten pre-kalkulowany, lokalny słownik w pamięci RAM.
+
+### EC-059 — Optymalizacja wydajności wyszukiwania wzdłuż Śladu GPX
+**Obszar:** `infrastructure/adapters/gpx_parser.py`, `django_map_repo.py`  
+**Status:** `resolved`  
+**Opis:** Wgranie śladu GPX np. z całodniowego przejścia szlaku generuje geometrię składającą się z kilkudziesięciu tysięcy wierzchołków. Uderzenie z taką figurą bezpośrednio do PostGIS z funkcją odległości (nawet opartą na `ST_DWithin`) mogłoby zawiesić serwer. Dodatkowo Czysta Domena nie może parsować obiektów typu `GEOSGeometry` (zgodnie z ADR-002).
+**Rozwiązanie / workaround:** Wprowadzono architekturę wieloetapową. Parser GPX przed przekazaniem linii do warstwy aplikacji dokonuje agresywnego uproszczenia (Line Simplification, `simplify(0.0001)`), redukując liczbę wierzchołków. Zoptymalizowana linia przesyłana jest jako czysty tekst `WKT` (Well-Known Text). Dopiero po stronie adaptera `django_map_repo` WKT jest odtwarzane i przetwarzane szybkim filtrem `distance_lte` z indeksami GiST.
+
+### EC-062 — Relacje M2M zignorowane przez modele `managed = False`
+**Obszar:** `apps/badges/models.py`, `migrations/`  
+**Status:** `resolved`  
+**Opis:** Dodanie relacji `ManyToManyField` (np. pola `neighbors`) do modeli oznaczonych jako `managed = False` (lub dziedziczących z takich modeli) skutkuje tym, że mechanizm `makemigrations` w Django **całkowicie ignoruje** konieczność utworzenia tabel pośrednich w bazie danych. Ręczne usunięcie flagi `managed = False` wymusza na Django próbę utworzenia od nowa całych, głównych tabel, co kończy się błędem `Relation already exists`.
+**Rozwiązanie / workaround:** Twardy zakaz manipulowania flagą `managed` w celu wymuszenia migracji. Aby powołać do życia tabele M2M dla niezarządzanych modeli, należy użyć tzw. **Pustej Migracji (Empty Migration)**. Należy wygenerować pusty plik komendą `makemigrations --empty` i użyć instrukcji `migrations.RunSQL`, wpisując tam ręcznie wygenerowany kod `CREATE TABLE IF NOT EXISTS` z poprawnymi nazwami tabel i kolumn uzyskanymi z `Model._meta.get_field(...)`.
 
 ---
 
@@ -182,6 +203,162 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 **Opis:** GeoDjango nie wspiera natywnie funkcji takich jak `ST_AsMVTGeom` i `ST_TileEnvelope`. Konieczne było użycie surowego SQL (`RawSQL`). Zbudowanie zapytania w formacie stringa f-string (`f"FROM {table_name}"`) wywołuje krytyczny błąd lintera bezpieczeństwa (Possible SQL Injection), ponieważ nie da się parametryzować identyfikatorów tabel w driverze psycopg.  
 **Rozwiązanie / workaround:** Zaimplementowano twardą "Białą Listę" (Whitelist) dozwolonych tabel na najwyższym poziomie warstwy Aplikacji (`LAYER_TO_TABLE_MAP` w Use Case). Dzięki temu do adaptera infrastrukturalnego trafia wyłącznie zwalidowany statyczny ciąg znaków, co czyni atak SQL Injection niemożliwym. Linia została jawnie zignorowana komentarzem `# noqa: S608`.
 
+### EC-068 — "Cinderella Bug" (Znikające punkty po północy przy Prawach Nabytych)
+**Obszar:** `infrastructure/adapters/persistence/django_badge_repo.py`, `PoiScoringService`  
+**Status:** `resolved`  
+**Opis:** Algorytm punktacji `100/n` rysujący mapę w czasie rzeczywistym używał mechanizmu symulacji Praw Nabytych, odpytując bazę o wersję regulaminu ważną na "dzisiaj" (`valid_from <= today`). Po minięciu północy (zmiana daty na kolejny dzień), system nagle przestał punktować cele. Wynikało to z błędu zapytania SQL, które ignorowało pole `valid_to`. Stara wersja odznaki zamknięta 3 lata temu również spełniała warunek `valid_from <= today`, więc w locie baza mogła zwrócić błędną (starą i zamkniętą) wersję jako rzekomo "aktywną" na dziś.
+**Rozwiązanie / workaround:** Każde historyczne zapytanie o Wersję Odznaki musi obligatoryjnie implementować pełne zamknięcie wektora czasowego z użyciem logiki `Q` w Django ORM: `Q(valid_from__lte=target_date)` ORAZ `(Q(valid_to__isnull=True) | Q(valid_to__gte=target_date))`. Dodatkowo, dla wirtualnego "rysowania mapy" (bez zabetonowanych praw nabytych) wprowadzono osobną metodę `get_latest_badge_version()`, uodparniając mapę na upływ czasu.
+
+---
+
+## 5. Frontend i Interfejs Użytkownika (UI/UX)
+
+### EC-035 — Niezgodność typów w Cache (Szare Pinezki na Mapie)
+**Status:** `resolved`  
+**Opis:** Klucze ID wyciągnięte z Redis/Pickle były serializowane do `str`, podczas gdy baza operuje na `int`. Skutkowało to brakiem kolorowania szczytów. Rozwiązano przez wdrożenie *Double Lookup* z rzutowaniem w locie.
+
+### EC-036 — Brak wsparcia Data-Driven Styling dla 'line-dasharray'
+**Status:** `resolved`  
+**Opis:** WebGL w MapLibre "po cichu" nie rysował granic MVT z powodu próby dynamicznej zmiany stylu linii z przerywanej na ciągłą. Rozwiązano rozbijając to na statyczne, oddzielne warstwy.
+
+### EC-037 — Błąd 500 przy relacji ForeignKey (Brakujący Profil)
+**Status:** `resolved`  
+**Opis:** Użytkownicy zarejestrowani przed wprowadzeniem "Konta Rodzinnego" nie posiadali wygenerowanego `TouristProfile`, co kończyło się błędem `RelatedObjectDoesNotExist`. Rozwiązano wprowadzając *Lazy Initialization* (tworzenie profilu w locie przy odczycie).
+
+### EC-038 — XML Bomb (XXE) w plikach GPX
+**Status:** `resolved`  
+**Opis:** Zablokowano parsowanie śladów GPX wbudowaną biblioteką Pythona. Zastosowano `defusedxml` by uniknąć ataku Billion Laughs.
+
+### EC-039 — Błędy rysowania w OSM (Mikroszczeliny między poligonami)
+**Status:** `resolved`  
+**Opis:** Funkcja `ST_Touches` pomijała wiele graniczących regionów przez błędy w rysowaniu OSM. Rozwiązano zmieniając logikę na `shape__distance_lte=(..., D(m=50))` i przenosząc ten ciężar do skryptu pre-kalkulacyjnego M2M (`calculate_neighbors`).
+
+### EC-040 — MVT z PostGIS gubi duże identyfikatory (BigInt)
+**Status:** `resolved`  
+**Opis:** Format PBF gubił duże ID przy renderowaniu kafelków wektorowych. Rozwiązano przez twarde rzutowanie ID na typ tekstowy w SQL (`t.id::text AS db_id_str`).
+
+### EC-041 — Pułapka domyślnych szablonów .gitignore
+**Status:** `resolved`  
+**Opis:** (Dawniej EC-040). Brakowało restrykcji na lokalne pliki `.env`, co groziło wyciekiem haseł. Zablokowano zmuszając do stosowania wyłącznie `.env.example`.
+
+### EC-042 — Testy `RequestFactory` omijają Django Middleware
+**Status:** `resolved`  
+**Opis:** Testowanie widoków przez `RequestFactory` całkowicie omijało `RFC7807ErrorMiddleware`. Zmusiło to nas do wdrożenia obsługi `ApplicationException` bezpośrednio w widokach `views.py`.
+
+### EC-043 — Konflikty renderowania `django-unfold` (Leaflet, JSONForm i obce aplikacje)
+**Obszar:** `apps/badges/admin.py`, `apps/badges/forms.py`  
+**Status:** `resolved`  
+**Opis:** Wdrożenie `django-unfold` (opartego na Tailwind CSS) powoduje globalny *CSS Reset*, co "ogołaca" ze stylów domyślne widżety i panele Django. Skutkuje to zniknięciem map w `django-leaflet`, zepsuciem widżetów `<datalist>`, nadpisaniem `django-jsonform` oraz **znikaniem przycisków "Dodaj" w zewnętrznych aplikacjach** (np. `django-celery-beat`), które domyślnie używają klasycznego interfejsu.
+**Rozwiązanie / workaround:** 
+Wdrożono twarde reguły nadpisywania:
+1. **Mapy:** Użyto `LeafletGeoAdminMixin` w połączeniu z `ModelAdmin` z Unfold (kolejność dziedziczenia przed `ModelAdmin` jest kluczowa!).
+2. **JSONForm:** Nadpisano metodę `formfield_for_dbfield`, aby jawnie wywoływała oryginalną logikę pola.
+3. **Własne widżety:** Muszą dziedziczyć z `UnfoldAdminTextInputWidget`.
+4. **Obce Aplikacje (Zewnętrzne):** Modele z zewnętrznych bibliotek (np. `PeriodicTask`) muszą zostać jawnie wyrejestrowane (`admin.site.unregister()`) i zarejestrowane ponownie z dziedziczeniem po klasach z `unfold.admin`.
+*(Zakazuje się agentom LLM usuwania tych obejść podczas refaktoryzacji panelu).*
+
+### EC-044 — Omijanie metody clean() przez Akcje Django Admina
+**Obszar:** `apps/badges/models.py` (`TouristObject`)  
+**Status:** `resolved`  
+**Opis:** Walidacja zabezpieczająca przed tworzeniem pętli w klastrach (Invariant C-01) została umieszczona w metodzie `clean()`. Niestety, wbudowane "Akcje" (Actions) w Django Adminie uderzają bezpośrednio do bazy przez `.save()` lub `.update()`, całkowicie omijając formularz i metodę `clean()`, co pozwalało na stworzenie nielegalnego cyklu A->B->A.
+**Rozwiązanie / workaround:** Wymuszenie twardej walidacji przez nadpisanie metody `save()` w modelu, która zawsze wywołuje `self.clean()`. Błędy wywołane przez Akcje rzucają wtedy bezpiecznym błędem 500 zamiast cicho korumpować bazę.
+
+### EC-045 — Problem N+1 przy weryfikacji PrerequisiteBadgeRule
+**Obszar:** `application/use_cases/verify_badge.py`  
+**Status:** `resolved`  
+**Opis:** Reguła wymagająca posiadania innej ukończonej odznaki wymuszała pobranie przez Use Case wszystkich postępów turysty do pamięci RAM, a następnie filtrowanie ich w Pythonie. Skutkowało to ogromnym obciążeniem pamięci i problemem N+1 przy rosnącej historii użytkownika.
+**Rozwiązanie / workaround:** Przeniesienie ciężaru na relacyjną bazę danych poprzez dodanie zoptymalizowanej metody `get_completed_badge_codes()` w Porcie, która wykonuje jedno, płaskie zapytanie SQL (`SELECT ... WHERE domain_status='COMPLETED'`).
+
+### EC-044 — Błędy routingu przez brakujący ukośnik (Trailing Slash)
+**Obszar:** `apps/api/urls.py`, `apps/static/js/map.js`  
+**Status:** `resolved`  
+**Opis:** Django domyślnie wymaga ukośnika na końcu adresu URL (działa `APPEND_SLASH`). Wywołanie w `fetch()` lub Postmanie adresu `/api/v1/map/objects` (bez ukośnika) powoduje zwrócenie przez serwer statusu `301 Redirect` do adresu z ukośnikiem. Jeśli żądanie było typu POST, przekierowanie gubi payload (zmienia się w GET), co prowadzi do niezrozumiałych błędów w API.
+**Rozwiązanie / workaround:** Twarda reguła w kodzie – wszystkie ścieżki w `urls.py` muszą kończyć się na `/`, a każdy skrypt JS musi odpytywać adres z ukośnikiem na końcu.
+
+### EC-045 — Błąd składni Pythona 2 przy łapaniu wielu wyjątków
+**Obszar:** `apps/api/views.py`  
+**Status:** `resolved`  
+**Opis:** Podczas refaktoryzacji, agenci LLM potrafią wygenerować przestarzały kod: `except json.JSONDecodeError, ValueError:`. W Pythonie 3 powoduje to natychmiastowy `SyntaxError` przy starcie serwera (Gunicorn/Uvicorn w ogóle nie wstanie).
+**Rozwiązanie / workaround:** Prawidłowa składnia wymaga użycia krotki: `except (json.JSONDecodeError, ValueError):`. Egzekwowane przez linter Ruff.
+
+### EC-046 — Konflikt typowania `HttpRequest` i dekoratorów w widokach API
+**Obszar:** `apps/api/views.py`  
+**Status:** `resolved`  
+**Opis:** Podczas definiowania widoków opartych na klasach (CBV), użycie listy dekoratorów `[csrf_exempt, require_auth]` nad klasą, a także jawne typowanie parametru `request: HttpRequest` bez odpowiednich importów na szczycie pliku, wywoływało seryjne błędy lintera Ruff (F821 - undefined name). Co więcej, z uwagi na wdrożenie `_handle_application_exception`, zewnętrzne dekoratory autoryzacji psuły format zwracanych błędów RFC 7807 (zwracając standardowe 403 z HTML).  
+**Rozwiązanie / workaround:** Zrezygnowano z dekoratorów autoryzacyjnych i jawnego typowania `HttpRequest` w sygnaturach metod, na rzecz metodycznej asercji wewnątrz ciała widoku: `auth_error = _require_auth(request)`. Nałożono wyłącznie pojedyńczy dekorator `@method_decorator(csrf_exempt, name="dispatch")`.
+
+### EC-047 — Błąd typowania Mypy przy `get_or_create` (Zwracane `Any`)
+**Obszar:** `infrastructure/adapters/persistence/` (w tym `django_news_repo.py`)  
+**Status:** `resolved`  
+**Opis:** Metoda `get_or_create` w ORM Django zwraca krotkę `(obj, created)`. Niestety, wtyczka `django-stubs` dla `mypy` nie zawsze potrafi poprawnie wywnioskować typu flagi `created` i traktuje ją jako `Any`. Jeśli metoda portu deklaruje twardy zwrot typu `bool`, `mypy --strict` wyrzuca błąd `Returning Any from function declared to return bool`.
+**Rozwiązanie / workaround:** Zawsze wymuszaj jawne rzutowanie flagi na typ logiczny, np. `return bool(created)`, aby zadowolić lintera i uciąć przepływ `Any` z adaptera do domeny.
+
+### EC-048 — Defensywne typowanie w BeautifulSoup (Atrybuty mogą być listami)
+**Obszar:** `infrastructure/adapters/news_scraper.py`  
+**Status:** `resolved`  
+**Opis:** Przy parsowaniu HTML za pomocą `BeautifulSoup`, wyciąganie atrybutów z tagu, takich jak np. `link_tag.get('href')`, zwraca skomplikowany unijny typ danych. Zgodnie z HTML, atrybuty (szczególnie `class`) mogą być listami. Próba bezpośredniej konkatenacji `str + link_tag.get('href')` powoduje błąd `mypy` ostrzegający przed łączeniem stringa z potencjalną listą lub `None`.
+**Rozwiązanie / workaround:** Każdy atrybut wyciągnięty z `BeautifulSoup` przed użyciem musi zostać jawnie "rozpakowany" za pomocą drzewa decyzyjnego: `if isinstance(attr, list): val = str(attr[0]) elif isinstance(attr, str): val = attr else: val = ""`.
+
+### EC-049 — Niezamierzona konwersja `dict` na `tuple` w plikach konfiguracyjnych
+**Obszar:** `config/settings.py`  
+**Status:** `resolved`  
+**Opis:** Podczas definiowania dużych słowników konfiguracyjnych (np. `SOCIALACCOUNT_PROVIDERS`), pozostawienie przecinka na samym końcu po klamrze zamykającej słownik (`},`) powoduje, że Python automatycznie i cicho rzutuje całą strukturę na jednoelementową krotkę (`tuple`). Prowadzi to do błędu `AttributeError: 'tuple' object has no attribute 'get'` w głębokich warstwach zewnętrznych bibliotek (takich jak `allauth`), co jest ekstremalnie trudne do debugowania.
+**Rozwiązanie / workaround:** Rygorystyczne przestrzeganie czystości składni na końcu definicji zmiennych globalnych w plikach `.py` (brak przecinków końcowych). Egzekwowane przez linter `ruff`.
+
+### EC-050 — Zdeprecjonowana konfiguracja `django-allauth` (Żółte ostrzeżenia przy starcie)
+**Obszar:** `config/settings.py`, logowanie OAuth  
+**Status:** `resolved`  
+**Opis:** Użycie nowoczesnej wersji `django-allauth` (`>=65.0.0`) w połączeniu ze starymi flagami konfiguracyjnymi (np. `ACCOUNT_EMAIL_REQUIRED = True`, `ACCOUNT_USERNAME_REQUIRED = False`) generuje ostrzeżenia deprecjacji przy uruchamianiu serwera.
+**Rozwiązanie / workaround:** Przejście na nowy standard deklaratywny biblioteki. Należy używać zbiorów i list: `ACCOUNT_LOGIN_METHODS = {'email'}` oraz `ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']`.
+
+### EC-051 — `UnboundLocalError` przy leniwych importach w blokach try/except
+**Obszar:** `infrastructure/adapters/osm_adapter.py`  
+**Status:** `resolved`  
+**Opis:** W ramach unikania modyfikacji góry pliku, zastosowano tzw. lokalny (leniwy) import wewnątrz metody (np. `import json` wewnątrz bloku `try`). Jednocześnie w klauzuli `except` sprawdzano wyjątek z tego modułu (`except json.JSONDecodeError:`). Kiedy połączenie sieciowe rzuciło `TimeoutError` przed wykonaniem importu, skrypt przeskoczył do ewaluacji bloku `except`, co zakończyło się twardym błędem aplikacji: `UnboundLocalError: cannot access local variable 'json'`.
+**Rozwiązanie / workaround:** Twardy zakaz stosowania lokalnych importów wewnątrz funkcji dla modułów, które biorą udział w logice obsługi wyjątków (`try/except`). Wszystkie tego typu zależności muszą być zadeklarowane na poziomie modułu (na samej górze pliku).
+
+### EC-052 — Niewidzialne zmienne środowiskowe w czystych skryptach Pythona
+**Obszar:** `scripts/check_secrets.py` oraz wszelkie narzędzia w katalogu `scripts/`  
+**Status:** `resolved`  
+**Opis:** Aplikacja główna Django odczytuje plik `.env` bezbłędnie dzięki bibliotece `pydantic-settings` (w `infrastructure/config/app_settings.py`). Jednakże uruchomienie czystego skryptu diagnostycznego poleceniem `python script.py` powoduje, że wywołania `os.getenv("KLUCZ")` zwracają `None`, nawet jeśli plik `.env` istnieje w katalogu. Wynika to z faktu, że czysty Python nie parsuje lokalnego pliku `.env` i nie eksportuje jego zawartości do powłoki systemu operacyjnego bez użycia dodatkowych narzędzi (np. `python-dotenv`).
+**Rozwiązanie / workaround:** Zrezygnowano z dodawania zewnętrznych bibliotek dla skryptów testowych. Skrypt `check_secrets.py` został przepisany tak, aby manualnie (za pomocą wbudowanego w Pythona `open()`) parsować plik `.env.example` oraz `.env` i samodzielnie budować logikę weryfikującą obecność sekretów, całkowicie uniezależniając środowisko testowe CI od powłoki systemu operacyjnego (Bash/Zsh).
+
+### EC-053 — Przepełnienie pamięci przez filtry M2M / FK w Django Adminie
+**Obszar:** `apps/badges/admin.py`  
+**Status:** `resolved`  
+**Opis:** Użycie domyślnego mechanizmu filtrowania Django (`list_filter = ("pool_peaks",)`) dla relacji do dużej tabeli (ponad 10 000 obiektów turystycznych) powoduje wygenerowanie przez ORM gigantycznej listy w panelu bocznym. Skutkuje to ogromnym obciążeniem bazy danych, przesyłaniem megabajtów niepotrzebnego HTML-a oraz zawieszaniem się przeglądarki Administratora przy próbie wyrenderowania strony.
+**Rozwiązanie / workaround:** Twardy zakaz stosowania domyślnych filtrów dla dużych relacji. Wdrożono niestandardowy filtr oparty na `SimpleListFilter` (`PeakInBadgeFilter`). Klasa ta używa zoptymalizowanego zapytania w metodzie `lookups` (np. `.filter(badgeversionmodel__isnull=False).distinct()`), aby do panelu bocznego zaciągnąć WYŁĄCZNIE te obiekty, które są aktualnie w użyciu, całkowicie pomijając "sieroty". Dodatkowo wykorzystano `search_fields` ze ścieżką relacyjną (`pool_peaks__name`) jako lżejszą alternatywę wyszukiwania.
+
+### EC-054 — Niedziałające przyciski HTMX wewnątrz dynamicznych dymków mapy (Popups)
+**Obszar:** `apps/static/js/map.js` (Integracja MapLibre z HTMX)  
+**Status:** `resolved`  
+**Opis:** Konstruowanie kodu HTML wewnątrz skryptu JavaScript (np. zmienna `popupHtml` dla MapLibre) i osadzanie w nim atrybutów HTMX (np. `hx-post`, `hx-vals`) skutkuje tym, że po kliknięciu przycisku w dymku na mapie, akcja HTMX nie jest wyzwalana. Wynika to z faktu, że biblioteka HTMX buduje nasłuchiwacze zdarzeń tylko podczas ładowania dokumentu. Dynamicznie wstrzyknięty węzeł DOM jest dla niej "niewidzialny".
+**Rozwiązanie / workaround:** Po każdym dodaniu dynamicznego elementu do drzewa DOM (np. po wywołaniu `.addTo(map)` dla popupu), należy bezwzględnie wymusić na HTMX przeskanowanie nowego fragmentu za pomocą funkcji bibliotecznej: `htmx.process(popup.getElement());`. Dzięki temu HTMX "zauważy" nowe przyciski i podepnie pod nie obsługę zdarzeń AJAX.
+
+### EC-055 — "Problem Dwóch Mózgów" (Rozjazd pamięci podręcznej Celery i Django)
+**Obszar:** `config/settings.py`, `PoiScoringService`, `Redis`  
+**Status:** `resolved`  
+**Opis:** Pomimo pomyślnego wykonania zadania `recalculate_poi_scores_task` przez Workera Celery w 0.1s, aplikacja webowa Django nie widziała wyników na mapie (szczyty pozostawały szare i dawały 0 punktów). Zjawisko to wystąpiło z powodu braku jawnej deklaracji zmiennej `CACHES` w pliku `settings.py`. Domyślnie Django i Celery używały `LocMemCache` (Lokalnej pamięci RAM procesu). W efekcie Worker Celery zapisywał wynik do swojej pamięci RAM, a Serwer Web (Gunicorn/Runserver) odpytywał swoją, pustą pamięć.  
+**Rozwiązanie / workaround:** Wymuszono podpięcie współdzielonego klastra: `CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": ...}}`. Ostrzeżenie operacyjne: po zmianie w kodzie odpowiedzialnym za punktację, ZAWSZE należy restartować proces Workera Celery, by załadował nową logikę do pamięci.
+
+### EC-056 — Dzielenie całkowite w Pythonie a błędna wycena `100/n`
+**Obszar:** `application/services/poi_scoring_service.py`  
+**Status:** `resolved`  
+**Opis:** Pierwsza implementacja wzoru 100/n (`score_value = 100 // missing_n`) zwracała wyniki `0` lub `1` dla większości szczytów. Zastosowanie operatora `//` wymuszało w Pythonie zaokrąglanie w dół przed konwersją do typu zmiennoprzecinkowego (np. `100 // 80` dawało `1`, a `100 // 120` dawało `0`). Dodatkowo waga była wyliczana globalnie przed symulacją wejścia, co fałszowało "zysk" ze szczytu.
+**Rozwiązanie / workaround:** Zmieniono na klasyczne dzielenie zmiennoprzecinkowe `100.0 / missing_after_ascent` i zabezpieczono funkcją `round()`. Obliczenia wagi wstawiono **wewnątrz** pętli po przeprowadzeniu symulacji wejścia (Set Math na agregacie), tak aby wynik odzwierciedlał faktyczny zysk dla turysty po odwiedzeniu konkretnej góry.
+
+### EC-060 — Pokusa łamania granic API przez używanie helperów widoków (Coupling)
+**Obszar:** `apps/api/views.py` vs `apps/tourists/views.py`  
+**Status:** `resolved`  
+**Opis:** Podczas refaktoryzacji z `user_id` na `profile_id`, w widokach REST API (`api/views.py`) podjęto próbę zaimportowania i użycia funkcji pomocniczej `_get_active_profile_id` z modułu renderującego szablony HTML (`tourists/views.py`). Spowodowało to błąd lintera (F821), ponieważ takie krzyżowe importy między aplikacjami łamią zasadę niezależności API od warstwy prezentacyjnej.
+**Rozwiązanie / workaround:** Zablokowano współdzielenie helperów między API a widokami HTML. Widoki API muszą polegać na natywnym odczycie sesji wewnątrz własnego kontekstu: `request.session.get("active_profile_id") or request.user.profiles.first().id`.
+
+### EC-061 — Przeglądarka ignoruje zmiany logiki MVT (Agresywny Browser Cache)
+**Obszar:** `apps/static/js/map.js` (MapLibre), `VectorTileView`  
+**Status:** `resolved`  
+**Opis:** Modyfikacje logiki backendowej (np. zmiana surowego SQL dodająca nową kolumnę `db_id_str` do zapytania `ST_AsMVTGeom`) są często niewidoczne w aplikacji klienckiej, nawet po twardym odświeżeniu (`Ctrl+F5`) lub usunięciu kluczy z Redis. Przeglądarki internetowe niezwykle agresywnie buforują pliki z rozszerzeniem `.pbf` na dysku lokalnym, ignorując polecenia odświeżenia.  
+**Rozwiązanie / workaround:** Zastosowano wzorzec *Cache Busting* na poziomie kodu źródłowego frontendu. W momencie zmiany logiki kafelków MVT na serwerze, programista musi jawnie zmodyfikować adres URL źródła (Source) w MapLibre, dodając unikalny parametr wersji (np. `/api/v1/tiles/...pbf?v=4`). Zmusza to każdą przeglądarkę na świecie do fizycznego porzucenia swoich lokalnych kopii pliku i pobrania nowej struktury z serwera.
+
 ---
 
 ## 5. Repozytorium i CI/CD (Operacje)
@@ -222,11 +399,38 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 
 ---
 
-## Historia zmian
+### EC-063 — Niewidoczny globalny stan (Window) po optymalizacji renderowania HTML
+**Obszar:** `apps/templates/base.html`, `map.js`  
+**Status:** `resolved`  
+**Opis:** W ramach optymalizacji czasu ładowania strony, tagi `<script>` ładujące główne pliki logiki (np. `map.js`) zostały przeniesione na sam koniec dokumentu HTML (przed zamykający tag `</body>`). Zmiana ta spowodowała, że skrypty mapy próbowały użyć zmiennych wstrzykiwanych z Context Processora (np. limitów Freemium czy aktywnych profili), co kończyło się błędem `ReferenceError` lub wczytywaniem mapy w "Trybie Pustym", gdyż blok ze wstrzykiwaniem stanu wyrenderował się za późno względem inicjalizacji modułów.
+**Rozwiązanie / workaround:** Twarda reguła szablonów: podczas gdy ciężkie biblioteki i pliki statyczne `.js` mogą i powinny rezydować na końcu dokumentu, **wstrzykiwanie bezpiecznego kontekstu biznesowego z serwera** (`<script> window.XYZ = {{ ... }}; </script>`) musi bezwzględnie znajdować się w sekcji `<head>`, aby zagwarantować gotowość globalnego stanu przed parsowaniem drzewa DOM i wyzwalaniem modułów klienckich.
 
-| Wersja | Data | Autor | Opis zmiany |
-|--------|------|-------|-------------|
-| 1.0 | 2026-05-28 | Dominik / AI Architect | Zarchiwizowanie pierwszych rozwiązań operacyjnych z fazy zasilania danymi i panelu administracyjnego. Otwarte EC-030 dla przyszłej weryfikacji użytkowników. |
-| 1.1 | 2026-05-28 | AI Architect | Uzupełnienie pól Test i Reprodukcja, rearanżacja do 4 kategorii, dodanie EC-022 (Cykle klastrów). |
-| 1.2 | 2026-05-30 | Dominik / AI Architect | Ujednolicono liczbę prób (Retry) na 15 prób zgodnie z wdrożonym logiem w kodzie (maksymalny czas oczekiwania). |
-|
+---
+
+### EC-067 — Omyłkowe wywoływanie `request.profile` zamiast z sesji (Model Rodzinny)
+**Obszar:** `apps/api/views.py` (i inne widoki żądań)  
+**Status:** `resolved`  
+**Opis:** Po wdrożeniu Modelu Rodzinnego (gdzie jeden `request.user` z Django posiada wiele `TouristProfile`), próby ułatwienia sobie pobierania profilu w kodzie poprzez odwoływanie się do nieistniejącego atrybutu (np. `profile_id = request.profile.id`) kończą się błędem `AttributeError: 'WSGIRequest' object has no attribute 'profile'`.  
+**Rozwiązanie / workaround:** Twardy nakaz korzystania z wyciągania identyfikatora z sesji HTTP. Każdy widok musi bezwzględnie weryfikować aktywny kontekst uciekając się do: `profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id`.
+
+---
+
+## 6. Bezpieczeństwo i Integracja OAuth
+
+### EC-064 — "Nagi HTML" przy przekierowaniu dla niezalogowanych
+**Obszar:** `apps/templates/account/login.html`  
+**Status:** `resolved`  
+**Opis:** Kiedy niezalogowany użytkownik wchodzi na podstronę zabezpieczoną `@login_required` (np. `/`), Django domyślnie przekierowuje go na adres `/accounts/login/`. Jeśli system używa biblioteki `django-allauth`, serwuje ona na tym adresie wbudowany, całkowicie pozbawiony stylów CSS (nagi) plik HTML, co dramatycznie psuje User Experience aplikacji opartej na Tailwind CSS.  
+**Rozwiązanie / workaround:** Wymagane jest zawsze jawne nadpisywanie wbudowanych szablonów biblioteki. Utworzono plik `apps/templates/account/login.html` dziedziczący po głównym `base.html`, który zawiera stylizowany ekran z przyciskiem logowania.
+
+### EC-065 — Metoda GET dla linków logowania OAuth zablokowana ze względów bezpieczeństwa (CSRF)
+**Obszar:** `apps/templates/base.html`, Przyciski Logowania  
+**Status:** `resolved`  
+**Opis:** Nowoczesne wersje `django-allauth` (ze względów ochrony przed atakami na sesję) zabraniają inicjowania procesu OAuth (np. przekierowania do Google) za pomocą zwykłego linku `<a>` z parametrem `href`. Próba użycia linku skutkuje ekranem z ostrzeżeniem lub błędem metody HTTP.  
+**Rozwiązanie / workaround:** Każdy przycisk "Zaloguj" wywołujący zewnętrznego dostawcę tożsamości musi być bezwzględnie zaimplementowany jako element `<button type="submit">` wewnątrz formularza `<form method="post">` z dołączonym tagiem `{% csrf_token %}`.
+
+### EC-066 — Odrzucenie połączenia (Error 401 invalid_client) przy logowaniu Google
+**Obszar:** `config/settings.py` (Zmienne środowiskowe z `.env`)  
+**Status:** `resolved`  
+**Opis:** Po kliknięciu w przycisk logowania przeglądarka zostaje odrzucona przez serwery Google z błędem 401 (OAuth client was not found).  
+**Rozwiązanie / workaround:** Zjawisko to występuje z powodu błędu autoryzacji w chmurze (Google Cloud Console). Należy upewnić się, że zmienna `GOOGLE_OAUTH_CLIENT_ID` wczytywana z pliku `.env` jest dokładną kopią klucza z konsoli, a podany tam "Authorized redirect URI" w 100% odpowiada adresowi, z którego odpytuje nasza aplikacja deweloperska lub produkcyjna (np. `http://127.0.0.1:8005/accounts/google/login/callback/`).

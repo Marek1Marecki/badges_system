@@ -8,6 +8,12 @@
 
 ---
 
+### Autoryzacja i Kontekst Rodzinny
+API wykorzystuje sesje Django (`sessionid`). Ze względu na wdrożenie **Modelu Rodzinnego (Family Model)**, jeden użytkownik (Konto Google) może posiadać wiele Profili (np. rodzic i dzieci). 
+Każdy request modyfikujący stan automatycznie dotyczy **Aktywnego Profilu**, którego `profile_id` jest wyciągane z sesji: `request.session.get("active_profile_id")`. Aplikacja posiada rygorystyczne zabezpieczenie **IDOR**: żaden użytkownik nie może zmodyfikować profilu, którego nie jest właścicielem.
+
+---
+
 ## 1. Map GeoData (Eksploracja)
 
 ### `GET /api/v1/tiles/{layer}/{z}/{x}/{y}.pbf`
@@ -111,3 +117,30 @@ Aktualizuje status logistyczny zdobytej odznaki i powiązane z nim daty.
 *   **Autoryzacja:** Wymagana (`owner`)
 *   **Payload:** `{"logistic_status": "WAITING_FOR_VERIFICATION", "status_date": "2026-06-02"}`
 *   **Dozwolone przejścia `logistic_status`:** Maszyna stanów jest elastyczna (dwukierunkowa), pozwalając turyście na cofnięcie omyłkowego kliknięcia. Prawidłowy ciąg: `WAITING_FOR_SEND` ↔ `WAITING_FOR_VERIFICATION` ↔ `WAITING_FOR_RECEIVING` ↔ `ALBUM`.
+
+---
+
+### 4. Zarządzanie Profilem i Subskrypcjami (Konto Rodzinne)
+
+#### `PATCH /api/v1/profiles/{profile_id}/`
+Aktualizuje ustawienia profilu turysty, takie jak wiek, pseudonim lub ulubiony podkład mapowy.
+*   **Autoryzacja:** Wymagana (Ochrona IDOR wbudowana).
+*   **Content-Type:** `application/json`
+*   **Payload (Opcjonalne pola):**
+```json
+{
+  "nickname": "GórskiWilk",
+  "birth_date": "1990-05-15",
+  "preferred_base_map": "mapycz"
+}
+```
+*   **Response (200 OK):** `{"status": "UPDATED"}`
+*   **Błędy:** `404 Not Found` (Próba edycji nieswojego profilu - celowe ukrycie istnienia zasobu), `422 Unprocessable Entity` (Błąd walidacji formatu).
+
+#### `POST /api/v1/profiles/{profile_id}/upgrade/`
+Sztuczna bramka (Mock) do testowania pakietów Freemium. Błyskawicznie zmienia plan z `FREE` na `PRO`, odblokowując np. mapy premium.
+*   **Autoryzacja:** Wymagana (Ochrona IDOR).
+*   **Response (200 OK):** `{"status": "UPGRADED"}`
+
+### `POST /api/v1/ascents/bulk`
+Opisać ten endpoint

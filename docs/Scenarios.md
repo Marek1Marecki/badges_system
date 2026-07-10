@@ -141,29 +141,155 @@
 
 ---
 
-### SCN-011 — Osobisty Tracker i Wymóg Książeczki (Personal Kanban)
+### SCN-011 — Osobisty Tracker i Logistyka (Personal Kanban)
 
-**Obszar:** `user_progress_logistics`  
+**Obszar:** `advance_logistic_status`, `logistics_view`  
 **Powiązane invarianty:** S-01 (Kierunek stanów), S-03  
 **Powiązane edge cases:** —  
 **Aktorzy:** Turysta  
 
 **Warunki wstępne:**
-- Turysta posiada odznakę w statusie postępu `COMPLETED`.
-- Odznaka posiada flagę na poziomie bazy: `BadgeModel.is_booklet_required = True`.
-- Turysta nie wgrał dotąd do systemu pliku PDF z własnym potwierdzeniem (`UserBooklet`).
+- Turysta posiada odznakę w statusie domenowym `COMPLETED`.
+- Odznaka posiada status logistyczny `None` (lub `WAITING_FOR_SEND`).
 
 **Kroki:**
-1. Turysta klika przycisk "Zaznacz jako wysłane do weryfikacji" w swoim panelu Kanban.
-   → System API zwraca 422 Unprocessable Entity z komunikatem o braku wgranej kopii książeczki dla tej odznaki.
-2. Turysta wgrywa PDF swojej fizycznej książeczki i ponawia request `PATCH /logistics`.
-   → System przyjmuje datę podaną przez turystę i zmienia status na `WAITING_FOR_VERIFICATION`.
+1. Turysta klika przycisk "Wysłano pocztą" w swoim panelu Kanban (Moja Logistyka).
+   → UseCase uderza do API (`PATCH`).
+   → Maszyna Stanów weryfikuje przejście. Status zmienia się na `WAITING_FOR_VERIFICATION` z dzisiejszą datą. Odznaka przeskakuje do następnej kolumny.
+2. Turysta orientuje się, że kliknął złą odznakę.
+   → Turysta klika "Cofnij". API przyjmuje z powrotem status `WAITING_FOR_SEND` (Elastyczna maszyna FSM).
 3. Turysta po miesiącu otrzymuje blachę pocztą i klika "Wepnij do Albumu".
-   → Zmiana stanu na `ALBUM` z zapisem timestampu akcji.
-4. Próba wykonania żądania API przez złośliwego użytkownika (Hacker) próbującego wymusić zmianę z `ALBUM` z powrotem na `WAITING_FOR_SEND`.
-   → Wyrzucenie błędu `IllegalStateTransitionError` na poziomie weryfikacji przejść FSM (Maszyny Stanów).
+   → Zmiana stanu na `ALBUM` (stan terminalny).
+4. Próba wykonania żądania API przez złośliwego użytkownika (Hacker) próbującego wymusić zmianę logistyki dla odznaki, która ma matematyczny status `IN_PROGRESS`.
+   → Wyrzucenie błędu `ConflictError` z komunikatem, że weryfikacja logistyki możliwa jest wyłącznie dla skompletowanych wyzwań.
 
-**Stan końcowy:** Turysta ma zorganizowaną "szufladę" w aplikacji, nie polegając na pamięci.
+**Stan końcowy:** Turysta zarządza statusem swoich przesyłek bez wymogu wgrywania dowodów (fizyczna weryfikacja odbywa się poza systemem, np. w oddziale PTTK).
+
+---
+
+### SCN-012 — Onboarding nowego turysty i pakiety Freemium (Google OAuth)
+
+**Obszar:** `OAuth`, `TouristProfile`, `Badge Progress`
+**Powiązane User Stories:** US-C01, US-C01b, US-C01c
+**Aktorzy:** Nowy Turysta (Niezalogowany)
+
+**Warunki wstępne:**
+- System posiada co najmniej 1 aktywną odznakę (np. "Sudecki Włóczykij").
+- Użytkownik nie istnieje w bazie danych.
+
+**Kroki (Test E2E dla Playwright):**
+1. Turysta klika "Zaloguj przez Google".
+   → System uwierzytelnia użytkownika przez OAuth.
+   → Sygnał `post_save` automatycznie generuje rekord `TouristProfile`.
+   → Turysta otrzymuje pakiet subskrypcyjny `FREE` z limitem np. 3 aktywnych odznak.
+2. Turysta zostaje przekierowany na Pulpit (Dashboard).
+   → Ekran "Moje Odznaki" jest pusty (Empty State). System zaprasza do "Katalogu Odznak".
+3. Turysta przechodzi do Katalogu i klika "Zacznij zdobywać" przy odznace "Sudecki Włóczykij".
+   → Use Case weryfikuje limit pakietu `FREE` (0 < 3).
+   → Subskrypcja zostaje utworzona.
+4. Turysta wraca na Pulpit Mapowy.
+   → Silnik 100/n przelicza potencjał WYŁĄCZNIE dla szczytów z "Sudeckiego Włóczykija". Inne szczyty pozostają wyszarzone.
+
+**Wynik negatywny (Limit Freemium):** 
+Jeśli turysta spróbuje zasubskrybować 4. odznakę na pakiecie `FREE`, interfejs HTMX przechwyci błąd `400 Bad Request` i wyświetli na ekranie Toast z komunikatem z Middleware RFC7807: *"Przekroczono limit pakietu FREE"*.
+
+---
+
+### SCN-013 — Logowanie wejścia a limity Freemium i Bitemporalność
+
+**Obszar:** `log_ascent`, `TouristProfile`  
+**Powiązane invarianty:** T-01, T-03, D-04  
+**Powiązane User Stories:** US-C01c, US-C03  
+**Aktorzy:** Turysta (Darmowe Konto)  
+
+**Warunki wstępne:**
+- Obiekt X ma `existence_start = 2020-01-01`.
+- Turysta posiada pakiet `FREE` (limit 1 zdjęcia per wejście).
+
+**Kroki i Test Scenarios (E2E / Integration):**
+1. Turysta próbuje zalogować wejście na Obiekt X z datą `2019-12-31`.
+   → *Negative Case:* System odrzuca żądanie (`422 Unprocessable Entity`) z powodu złamania bitemporalności (T-01).
+2. Turysta próbuje zalogować wejście na Obiekt X z datą jutrzejszą.
+   → *Negative Case:* System odrzuca żądanie (`422 Unprocessable Entity`) z powodu wejścia w przyszłości (T-03).
+3. Turysta loguje wejście z datą dzisiejszą, załączając 2 zdjęcia.
+   → *Edge Case:* System odrzuca żądanie (`400 Bad Request`), informując o przekroczeniu limitu `max_photos_per_ascent` dla pakietu FREE.
+4. Turysta poprawia formularz (dzisiejsza data, 0 zdjęć) i wysyła.
+   → *Happy Path:* System zwraca `201 Created` z `ascent_id`.
+5. Turysta ponownie klika "Wyślij" z tymi samymi danymi (podwójne kliknięcie myszką).
+   → *Idempotency Case:* System przechwytuje konflikt (D-04) i zwraca `409 Conflict`, nie duplikując wpisu w bazie.
+
+---
+
+### SCN-014 — Automatyczna Weryfikacja Postępu (On-Demand)
+
+**Obszar:** `verify_badge`  
+**Powiązane invarianty:** R-01, P-02  
+**Aktorzy:** Turysta  
+
+**Warunki wstępne:**
+- Turysta zasubskrybował odznakę z wymogiem zdobycia 3 obiektów z puli. Wersja odznaki jest zakotwiczona.
+- Turysta zalogował już 2 poprawne wejścia na szczyty z tej puli.
+- Status domenowy odznaki to `IN_PROGRESS`.
+
+**Kroki i Test Scenarios (E2E / Integration):**
+1. Turysta na mapie klika 3. obiekt z puli i dodaje log wejścia (Dziś).
+   → Żądanie logowania zwraca sukces.
+   → UI Turysty (HTMX) odświeża komponent postępu, wykonując `GET /progress/`.
+2. Odbiór żądania `GET /progress/` przez system.
+   → `VerifyBadgeUseCase` pobiera z bazy profil, zakotwiczoną wersję i **niezużyte** logi wejść.
+   → Konstruowany jest `VerificationContext` ze wstrzykniętym `ClockPort.now()`.
+   → Czysta Domena krzyżuje 3 wejścia turysty z pulą odznaki (Set Math). Próg (3/3) zostaje osiągnięty.
+3. System aktualizuje stan bazy.
+   → Status w `UserBadgeProgress` zmienia się z `IN_PROGRESS` na `COMPLETED`.
+4. Odpowiedź dociera do UI.
+   → Turysta widzi na ekranie 100% na pasku postępu oraz odblokowany Osobisty Kanban (Logistykę).
+
+---
+
+### SCN-015 — Grupowanie Celów w Klastry (Wizualizacja Rankingu)
+
+**Obszar:** `poi_ranking_view`, `Ranking`  
+**Powiązane invarianty:** C-01 (Płaska Gwiazda)  
+**Powiązane ADR:** ADR-006, ADR-015  
+**Aktorzy:** Turysta  
+
+**Warunki wstępne:**
+- System posiada Klaster: "Skrzyczne" (Rodzic) oraz "Schronisko Skrzyczne" (Dziecko).
+- Silnik 100/n zbuforował w Redis, że Szczyt jest wart 10 pkt, a Schronisko 5 pkt.
+
+**Kroki (Test Scenarios E2E):**
+1. Turysta wchodzi na podstronę `/ranking/` (Ranking Celów).
+   → *Happy Path:* System identyfikuje, że Szczyt i Schronisko mają wspólny `anchor_id`.
+   → Tabela renderuje główny wiersz "📦 Klaster: Skrzyczne (Okolice)" z widocznym zyskiem całkowitym `+15 pkt`.
+   → Bezpośrednio pod nagłówkiem renderowane są dwa wiersze: Szczyt (+10 pkt) oraz Schronisko (+5 pkt) opatrzone wcięciem i znakiem podrzędności (↳).
+2. Sytuacja brzegowa: Szczyt wypadł z punktacji (0 pkt, np. został zdobyty), ale Schronisko nadal daje 5 pkt.
+   → *Edge Case:* Tabela nadal renderuje nagłówek Klastra (z sumą +5 pkt). Rodzic (Szczyt) pojawia się w zestawieniu dla kontekstu (z wartością 0 pkt i szarym tłem), by turysta widział, dlaczego w ogóle tam idzie.
+
+---
+
+### SCN-016 — Smart Logger GPX (Masowa Rejestracja i Partial Success)
+
+**Obszar:** `analyze_gpx_track`, `bulk_log_ascents`  
+**Powiązane invarianty:** T-01, T-03, D-04, M-02  
+**Powiązane User Stories:** US-C17  
+**Aktorzy:** Turysta  
+
+**Warunki wstępne:**
+- System posiada 3 obiekty: Obiekt A, Obiekt B i Obiekt C (Spalony/Zamknięty z `existence_end = 2022-01-01`).
+- Turysta dysponuje plikiem GPX. Ślad przebiega w odległości < 100 metrów od wszystkich 3 obiektów.
+- Plik GPX zawiera tag `<time>` z datą `2024-05-10`.
+
+**Kroki i Test Scenarios (E2E / Integration):**
+1. Turysta uderza w endpoint `POST /api/v1/gpx/analyze/` wysyłając plik GPX.
+   → *Geospatial Case:* Adapter parsuje XML (w RAM), upraszcza linię, wyciąga datę z tagu i rzuca ją do PostGIS na `ST_DWithin(200m)`.
+   → *Oczekiwany efekt:* API zwraca `200 OK` z DTO zawierającym sugerowaną datę `2024-05-10` oraz listę 3 obiektów (A, B, C).
+2. Turysta akceptuje sugerowaną datę i odsyła listę ID 3 obiektów do `POST /api/v1/ascents/bulk/`.
+   → *Batching Case:* Use Case pobiera z bazy cykle życia obiektów JEDNYM zapytaniem (unikając problemu N+1).
+   → *Bitemporal Case:* Obiekt A i B przechodzą walidację. Obiekt C zostaje odrzucony, bo `2024-05-10` > `existence_end` (2022-01-01).
+   → *Idempotency Case:* Turysta miał już w bazie log z wejścia na Obiekt A w tym samym dniu. Baza "cicho połyka" ten fakt (`ignore_conflicts=True`).
+   → *Partial Success:* API zwraca `200 OK` z komunikatem `{"saved_count": 1, "errors": [{"peak_id": C...}]}`.
+3. API wyzwala proces przeliczania rankingu (Celery).
+   → *Throttling Case:* Task `recalculate_poi_scores_task.delay()` zostaje wywołany dokładnie JEDEN raz dla tego `profile_id`, a nie 3 razy (zapobiega to Task Spammingowi).
 
 ---
 
@@ -173,4 +299,3 @@
 
 - `UserProgressRepositoryPort` — Wymagany przez SCN-001 (Prawa nabyte / Najstarsze wejście), SCN-002 (Weryfikacja logistycznego statusu zależnej odznaki), SCN-010 (Rozpoczynanie kolejnego Cyklu).
 - `AscentLogRepositoryPort` — Wymagany przez SCN-001, SCN-010 (Pobieranie odfiltrowanej listy wejść i ich dowodów).
-- `VerificationRequestRepositoryPort` — Wymagany przez SCN-011 (Tworzenie paczki, maszyna stanów, załączanie `UserBooklet`).

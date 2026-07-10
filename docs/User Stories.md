@@ -48,6 +48,8 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 **Dotyczy encji:** `TouristProfile`, `TouristProfileDTO`
 **Kryteria akceptacji:**
 - [x] Główne konto posiada limit maksymalnej liczby profili (np. 1 dla FREE, 5 dla FAMILY).
+- [x] Ochrona Limitów (Engagement Loop): Limit subskrybowanych odznak dla pakietu FREE (np. max 3) obejmuje **wyłącznie** odznaki w statusie `NOT_STARTED` lub `IN_PROGRESS`. Odznaki ukończone (`COMPLETED` i zarchiwizowane) nie "zżerają" limitu darmowego konta. Gwarantuje to podtrzymanie zaangażowania użytkownika, zachęcając do kupna wersji PRO zablokowanymi mapami topograficznymi, a nie uderzaniem w "twardą ścianę płatności" (Hard Paywall).
+- [x] Odrzucenie akcji z powodu wyczerpania limitu rzuca błąd aplikacyjny `400 Bad Request` z jasnym komunikatem zachęcającym do rozszerzenia pakietu.
 
 ### US-C01d — Zarządzanie Profilami (Konta Rodzinne) 🔴 P0
 **Story:** Jako Turysta, chcę móc utworzyć dodatkowe profile (np. dla moich dzieci) pod jednym kontem logowania Google, aby wygodnie zarządzać ich niezależnymi postępami bez konieczności ciągłego wylogowywania się.

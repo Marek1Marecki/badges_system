@@ -28,6 +28,9 @@ Jaki zestaw frameworka webowego, silnika bazy danych oraz brokera zadań asynchr
 
 *Wniosek z debaty:* Szybkość dostarczenia narzędzia dla administratora (Panel Django) i potęga GeoDjango w operacjach GIS przeważają nad architektonicznym ryzykiem monolitu. Ryzyko to zneutralizujemy za pomocą twardych kontraktów (narzucenie Portów i Adapterów w kodzie Pythona). Koszty infrastrukturalne (GDAL) akceptujemy jako nieunikniony podatek od zaawansowanego GIS-u.
 
+**Refleksja Architektoniczna (Faza C): Dlaczego nie FastAPI?**
+Podczas prac nad weryfikacją postępów rozważano migrację na FastAPI + SQLAlchemy w celu uzyskania natywnej asynchroniczności i idealnego DDD. Decyzję o pozostaniu przy Django utrzymano z jednego krytycznego powodu: **Data Stewardship (Kuratela Danych)**. Zbudowanie od zera panelu zarządzania danymi przestrzennymi (GeoDjango, Leaflet) oraz kreatora reguł (JSONForm) zniweczyłoby harmonogram projektu. Kłopoty z Django (np. `RequestFactory` omijające Middleware, trudności z testami ORM) uznano za akceptowalny "Podatek Infrastrukturalny". Zabezpieczeniem tej decyzji jest Czysta Architektura – w razie ekstremalnego skalowania w przyszłości, katalogi `domain/` i `application/` mogą zostać przeniesione do FastAPI bez zmiany ani jednej linijki kodu, pozostawiając Django wyłącznie w roli Headless CMS.
+
 ---
 
 ## Opcje rozważane

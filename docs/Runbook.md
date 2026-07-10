@@ -75,6 +75,56 @@ uv run celery -A config beat -l info
 
 ---
 
+## 4. Zarządzanie Danymi Referencyjnymi (Data Seeding & Snapshots)
+
+Nasz system ściśle oddziela **Dane Użytkowników** (logi, profile) od **Danych Referencyjnych** (odznaki, regiony, szczyty). 
+Lokalna baza danych (DEV) traktowana jest jako "Środowisko Robocze" (Sandbox). Prawdziwym, jedynym źródłem prawdy (Single Source of Truth) o regulaminach PTTK i geografii są skompresowane pliki `json.gz` wraz z `manifest.json`, trzymane w katalogu `data/reference/` w repozytorium Git.
+
+### Eksport danych (Zrzut Snapshotu)
+**Kiedy używać:** Zawsze, gdy za pomocą panelu Django Admin wprowadzisz nową odznakę, zmodyfikujesz regulamin, dodasz nowy szczyt lub zaimportujesz dane z OSM.
+
+**Komenda:**
+```bash
+uv run python manage.py export_reference_data
+```
+
+### Problem 5: Szare pinezki na mapie / Brak widocznej aktualizacji po zalogowaniu wejścia
+**Objaw:** Po dodaniu logu wejścia lub subskrybowaniu odznaki szczyty na mapie nie zmieniają koloru, a zysk (100/n) to nadal 0 pkt.
+**Przyczyna:** Wyłączony lub zawieszony Worker Celery, błąd rozjazdu kluczy (ID profilu vs ID konta) lub wygaśnięcie Cache.
+**Rozwiązanie (Skrypt diagnostyczny):**
+Otwórz powłokę systemową `uv run python manage.py shell` i uruchom skrypt analityczny:
+```python
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from apps.tourists.models import UserBadgeProgress
+
+print("\n--- KTO MA SUBSKRYPCJE? ---")
+for prog in UserBadgeProgress.objects.all():
+    print(f"Profile ID: {prog.profile_id} subskrybuje: {prog.badge.code}")
+
+print("\n--- CO SIEDZI W CACHE REDIS? ---")
+for u_id in get_user_model().objects.values_list('id', flat=True):
+    data = cache.get(f"map_state:{u_id}")
+    print(f"User/Profile {u_id}: {'TAK (Liczba kluczy: ' + str(len(data.get('colors', {}))) + ')' if data else 'BRAK'}")
+```
+
+---
+
+## 6. Testowanie REST API (Tips & Tricks)
+
+API wymaga uwierzytelnienia. Aby ominąć konieczność budowania pełnego flow autoryzacji Google OAuth w narzędziach takich jak Postman czy cURL w środowisku lokalnym, stosuj metodę "Kradzieży Sesji" (Session Hijacking):
+
+1. Otwórz projekt w przeglądarce (np. `http://127.0.0.1:8005/`) i zaloguj się normalnie przez UI.
+2. Otwórz Narzędzia Deweloperskie przeglądarki (F12) -> Zakładka *Application* / *Pamięć* -> *Cookies*.
+3. Skopiuj wartość ciasteczka `sessionid`.
+4. W Postmanie stwórz żądanie (np. `POST /api/v1/ascents/`).
+5. W zakładce **Headers** dodaj nagłówek:
+   * **Key:** `Cookie`
+   * **Value:** `sessionid=TUTAJ_WKLEJ_WARTOŚĆ`
+6. Narzędzie testowe uzyska pełny dostęp do API jako Twój zalogowany użytkownik (z wpiętym `profile_id`). Zabezpieczenie przed CSRF nie blokuje zapytań API, ponieważ widoki w `apps/api/views.py` są oznaczone dekoratorem `@csrf_exempt`.
+
+---
+
 ## Wdrożenie produkcyjne i Rollback
 
 ### Wdrożenie
@@ -128,3 +178,8 @@ sudo bash -c 'echo "nameserver 1.1.1.1" >> /etc/resolv.conf'
 **Przyczyna:** Środowisko nie posiada systemowych bibliotek graficznych i geodezyjnych C++, których jako bazy wymaga pakiet GeoDjango. Menedżer `uv` i `pip` nie potrafią instalować zależności systemowych.  
 **Rozwiązanie:** Upewnij się, że spełniłeś wymagania opisane w sekcji Pakiety OS:
 `sudo apt-get install binutils libproj-dev gdal-bin`
+
+### Problem 6: Worker Celery wykonuje stary, "nieistniejący" kod (Błędy sygnatur i AttributeError)
+**Objaw:** Po zmianie nazwy metody w serwisie domenowym (np. z `recalculate_for_user` na `recalculate_for_profile`) i zaktualizowaniu zadania w `tasks.py`, zadania w kolejce nadal wybuchają z błędem typu "Obiekt nie posiada takiej metody". Lintery (`make check`) nie zgłaszają żadnych problemów.
+**Przyczyna:** Celery Workers to długożyjące procesy operacyjne. Wczytują one wszystkie moduły Pythona do pamięci RAM przy starcie i **nigdy** same z siebie ich nie odświeżają, ignorując zapisy w plikach `.py` dokonywane w trakcie developmentu.
+**Rozwiązanie:** Po **KAŻDEJ** zmianie w kodzie logicznym zlokalizowanym w `domain/`, `application/` lub `tasks.py`, należy bezwzględnie "zabić" proces Workera w terminalu (`Ctrl+C`) i uruchomić go ponownie (`uv run celery -A config worker -l info`).

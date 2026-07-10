@@ -82,63 +82,36 @@ AppError (bazowa)
 
 ---
 
-## Wzorzec Globalnego Handlera (Django Middleware)
+## Wzorzec Globalnego Handlera i Defensywnych Widoków
 
-W architekturze opartej na Django, unifikacja błędów jest rozwiązywana poprzez napisanie centralnego Middleware, który wyłapuje wszystkie nieobsłużone w widokach instancje `AppError` (oraz ucieczki `Exception`). Dzięki temu poszczególne widoki API w `apps/` nie dublują kodu blokami `try/except`.
+Z powodu specyfiki narzędzi testowych Django (biblioteka `RequestFactory` używana w testach integracyjnych omija stos Middleware), wdrożono architekturę dwupoziomową:
+
+1. **Defensywne Widoki (API):** Każdy kontroler API (`views.py`) posiada obowiązek jawnego złapania `ApplicationException` i przekazania go do lokalnego helpera `_handle_application_exception`, który formatuje błąd do RFC 7807.
+2. **Middleware Ostatniej Szansy:** Zredukowany `RFC7807ErrorMiddleware` działa wyłącznie jako wstrzykiwacz `request_id` do logów oraz "Catch-All" dla krytycznych, nieobsłużonych awarii kodu (500 Internal Error).
 
 ```python
-# infrastructure/middleware/error_handling.py
-import uuid
-import traceback
-from django.http import JsonResponse
-from loguru import logger
-from application.exceptions import AppError
-
+# Przykład minimalnego Middleware dla błędów 500
 class RFC7807ErrorMiddleware:
-    """Middleware formatujący wyjątki do standardu RFC 7807 Problem Details."""
-    
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        # 1. Wstrzyknięcie unikalnego request_id do kontekstu każdego zapytania
         request.request_id = f"req_{uuid.uuid4().hex[:8]}"
-        
-        # Pchamy request_id do globalnego kontekstu Loguru
         with logger.contextualize(request_id=request.request_id):
-            try:
-                return self.get_response(request)
-            except AppError as exc:
-                # 2. Obsługa znanych błędów domenowych (4xx)
-                payload = {
-                    "type": f"https://api.pttk-badges.pl/errors/{exc.error_type}",
-                    "title": exc.title,
-                    "status": exc.status_code,
-                    "detail": str(exc),
-                    "instance": request.path,
-                    "request_id": request.request_id,
-                }
-                
-                # Opcjonalne dołączenie listy błędów walidacyjnych, jeśli istnieją i status to 422
-                if exc.status_code == 422 and getattr(exc, "errors", None):
-                    payload["errors"] = exc.errors
-                    
-                return JsonResponse(payload, status=exc.status_code)
-                
-            except Exception as exc:
-                # 3. ZASADA 500: Nieoczekiwane błędy serwera (Zabezpieczenie przed wyciekiem)
-                logger.error("Nieobsłużony błąd serwera", exc_info=True)
-                
-                payload = {
-                    "type": "https://api.pttk-badges.pl/errors/internal-error",
-                    "title": "Wewnętrzny Błąd Serwera",
-                    "status": 500,
-                    "detail": "Wystąpił nieoczekiwany problem z przetworzeniem zapytania.",
-                    "instance": request.path,
-                    "request_id": request.request_id,
-                }
-                return JsonResponse(payload, status=500)
-```
+            return self.get_response(request)
+
+    def process_exception(self, request, exception: Exception):
+        # Wyjątki domenowe (4xx) są łapane w widokach. Jeśli kod tu dotarł = Twardy Pad Aplikacji (500)
+        logger.exception("Nieobsłużony błąd serwera podczas przetwarzania żądania HTTP.")
+        return JsonResponse({
+            "type": "https://api.pttk-badges.pl/errors/internal-error",
+            "title": "Wewnętrzny Błąd Serwera",
+            "status": 500,
+            "detail": "Wystąpił nieoczekiwany problem z przetworzeniem zapytania.",
+            "instance": request.path,
+            "request_id": getattr(request, "request_id", "unknown"),
+        }, status=500)
+```        
 
 *(Middleware należy dodać do `settings.py` na początku listy `MIDDLEWARE`).*
 

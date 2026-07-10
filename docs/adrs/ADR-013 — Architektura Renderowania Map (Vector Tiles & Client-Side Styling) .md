@@ -81,6 +81,21 @@ Wdrożono architekturę dwutorową z rygorystycznym podziałem ładunku (Payload
 
 ---
 
+## Decyzja (Zaktualizowana)
+
+Wybieramy natywne generowanie kafelków MVT przy użyciu funkcji `ST_AsMVT` i `ST_AsMVTGeom` z bazy PostGIS. 
+W trakcie wdrożenia podjęliśmy 3 krytyczne decyzje uszczelniające ten proces:
+1. **Obejście utraty precyzji BigInt (PBF):** Binarne kafelki PBF ucinały duże wartości `id` (typ `BigAutoField` w Django), powodując błąd w MapLibre (brakujące lub losowe ID poligonów). Wymusiliśmy rzutowanie kluczy na tekst w surowym SQL: `t.id::text AS db_id_str`. Frontend używa wyłącznie atrybutu tekstowego.
+2. **Whitelisting i ochrona przed SQL Injection:** Ponieważ nazwy tabel muszą być wstrzykiwane bezpośrednio do SQL (`FROM {table_name}`), zablokowaliśmy wektor ataku tworząc twardą, "białą listę" dozwolonych tabel w warstwie Aplikacji (`LAYER_TO_TABLE_MAP`). Pozwoliło to na bezpieczne zignorowanie alarmu lintera Bandit (`# noqa: S608`).
+3. **Kompresja GZIP w locie:** Kafelki MVT muszą być serwowane skompresowane. Use Case przed zapisem do pamięci Redis samodzielnie kompresuje bajty biblioteką z biblioteki standardowej (`gzip.compress`), a widok HTTP deklaruje `Content-Encoding: gzip`.
+
+## Konsekwencje
+- Widoki mapy są ładowane poniżej 50ms, bez obciążania procesora.
+- Django nie korzysta z ORM do generowania MVT, co łamie spójność frameworka, ale zwraca stukrotny zysk wydajnościowy.
+- Skrypty JS w kliencie muszą jawnie wymuszać odświeżanie cache przeglądarek poprzez doklejanie parametru `?v=X` przy zmianie logiki SQL, aby przełamać agresywne buforowanie przeglądarek.
+
+---
+
 ## Warunek rewizji
 
 Dokument poddać rewizji, w sytuacji gdy zapytania kafelkowe w czasie rzeczywistym `ST_AsMVT` z wykorzystaniem rzutowania zaczną wyczerpywać procesor bazy PostGIS przy wysokim ruchu użytkowników. W takim przypadku należy rozważyć wprowadzenie statycznego serwera kafelków wektorowych (np. `Martin` lub `Tegola`), który połączy się w trybie "Read-Only" z naszym modelem CQRS, omijając całkowicie wątki wykonawcze frameworka Django.
