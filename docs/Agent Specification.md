@@ -177,6 +177,25 @@ Zabrania się wstrzykiwania logiki z użyciem tagów `{{ }}` z Django Templates 
 - Poleganie na alfabetycznym `Meta.ordering` z modeli w skryptach audytujących, co gubi kontekst chronologiczny błędów.
 - **Hardkodowanie harmonogramów Celery Beat:** Zakazuje się modyfikowania pliku `config/celery.py` w celu dodania słownika `app.conf.beat_schedule`. Harmonogramy są zarządzane operacyjnie wyłącznie przez interfejs graficzny bazy danych (`django-celery-beat`), zgodnie z zasadą Operational Excellence.
 
+---
+
+### AGENT-DEVOPS-CODE — Infrastruktura, Docker i CI/CD
+
+**Obszar:** `docker/`, `compose.yml`, `scripts/`  
+**Typ:** kodujący / architektoniczny
+
+**Zasady:**
+1. **Wzorzec Docker Compose:** Obowiązuje współczesny standard plikowy:
+   - `compose.yml` (Baza infrastruktury: PostGIS, Redis, Celery).
+   - `compose.override.yml` (Domyślnie ładowany do pracy DEV, montujący wolumeny lokalne).
+   - `compose.test.yml` (Dla CI/CD, uruchamiający efemeryczne bazy danych).
+   - `compose.prod.yml` (Wdrażany na serwerze docelowym, zawiera Gunicorn, Caddy).
+2. **Multi-Stage Dockerfile:** Zakazuje się tworzenia osobnych plików (np. `Dockerfile.dev`, `Dockerfile.prod`). Obowiązuje jeden plik wykorzystujący Targety (np. `FROM base AS development`, `FROM builder AS production`). Kod do obrazu produkcyjnego wprowadzany jest przez `COPY`, a kod w DEV przez wolumeny (`volumes`).
+3. **Pliki Środowiskowe (Env Files):** Zakazuje się wpisywania sekretów w plikach `compose`. Hasła podlegają wstrzykiwaniu z jawnie zdefiniowanych plików (np. `.env.dev`, `.env.prod`), zachowując ujednolicony standard DSN (Data Source Name).
+4. **Kolejność Odtwarzania Systemu:** Skrypt podnoszący aplikację na jakimkolwiek środowisku musi przestrzegać następującej, atomowej kolejności: `start postgis` ➔ `migrate` ➔ `restore_reference_data` ➔ `calculate_object_regions_task` ➔ `collectstatic` ➔ `start app`.
+
+---
+
 ## Wzorzec: Użycie DSN (Data Source Name) w `settings.py`
 
 Zabrania się definiowania w pliku `settings.py` (oraz wymuszania przekazywania przez `.env`) rozbitych zmiennych środowiskowych dla połączeń z bazami danych lub usługami (np. `DB_HOST`, `DB_USER`, `DB_PASSWORD`). 

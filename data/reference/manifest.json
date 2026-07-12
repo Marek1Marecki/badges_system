@@ -1,5 +1,5 @@
 {
-    "snapshot_version": "2026-07-04T07:22:57.162414+00:00",
+    "snapshot_version": "2026-07-11T22:03:30.929364+00:00",
     "description": "Pe\u0142ny, sp\u00f3jny Snapshot Systemu Referencyjnego PTTK",
     "files": [
         "01_regions.json.gz",
@@ -9,7 +9,7 @@
         "05_badge_news.json.gz"
     ],
     "statistics": {
-        "regions": 624,
+        "regions": 695,
         "tourist_objects": 1163,
         "badges": 72,
         "badge_versions": 115,
