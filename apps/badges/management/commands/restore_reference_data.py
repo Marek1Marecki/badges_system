@@ -12,8 +12,19 @@ from django.db import transaction
 class Command(BaseCommand):
     help = "Odtwarza autorytatywny stan systemu PTTK z plików Snapshotu i weryfikuje Manifest."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Symuluje proces odtwarzania sprawdzając poprawność plików Manifestu, bez modyfikacji bazy danych.",
+        )
+
     def handle(self, *args, **options):
+        is_dry_run = options["dry_run"]
         data_dir = Path(settings.BASE_DIR) / "data" / "reference"
+
+        if is_dry_run:
+            self.stdout.write(self.style.WARNING("=== TRYB DRY RUN (Symulacja Przywracania) ==="))
 
         if not data_dir.exists():
             self.stdout.write(self.style.ERROR(f"Katalog {data_dir} nie istnieje!"))
@@ -28,8 +39,10 @@ class Command(BaseCommand):
                 manifest = json.load(f)
                 files_to_load = manifest.get("files", [])
 
-            self.stdout.write(self.style.WARNING(f"Znaleziono Snapshot: {manifest.get('snapshot_version')}"))
-            self.stdout.write(self.style.SUCCESS(f"Statystyki: {json.dumps(manifest.get('statistics', {}), indent=2)}"))
+            self.stdout.write(self.style.WARNING(f"Znaleziono Snapshot z dnia: {manifest.get('snapshot_version')}"))
+            self.stdout.write(
+                self.style.SUCCESS(f"Statystyki z Manifestu: {json.dumps(manifest.get('statistics', {}), indent=2)}")
+            )
         else:
             self.stdout.write(self.style.ERROR("Brak pliku manifest.json! Używam domyślnej listy plików."))
             files_to_load = [
@@ -39,6 +52,20 @@ class Command(BaseCommand):
                 "04_osm_mappings.json.gz",
                 "05_badge_news.json.gz",
             ]
+
+        self.stdout.write(self.style.WARNING("\nPliki gotowe do załadowania:"))
+        for filename in files_to_load:
+            file_path = data_dir / filename
+            if file_path.exists():
+                self.stdout.write(self.style.SUCCESS(f" [OK] {filename}"))
+            else:
+                self.stdout.write(self.style.ERROR(f" [BRAK] {filename}"))
+
+        if is_dry_run:
+            self.stdout.write(
+                self.style.SUCCESS("\n✅ Symulacja zakończona. Baza danych PostGIS nie została naruszona.")
+            )
+            return
 
         self.stdout.write(self.style.WARNING("\nRozpoczynam Przywracanie Systemu (Restore)..."))
 
@@ -63,7 +90,7 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"Błąd przeliczania sąsiadów: {e}"))
 
-        # 2. Przeliczamy przynależność obiektów do regionów (CQRS)
+        # 4. Przeliczamy przynależność obiektów do regionów (CQRS)
         from apps.badges.models import TouristObject
         from bootstrap import get_container
 

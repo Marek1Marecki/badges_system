@@ -113,10 +113,10 @@ Aplikacja operuje na dwóch fundamentalnie różnych typach danych, które podle
    - *Zasada Propagacji:* Odtwarzalne z repozytorium za pomocą komendy `restore_reference_data`. Bazy danych we wszystkich środowiskach (DEV, TEST, PROD) są traktowane jako "odtwarzacze" (Runtime Store) dla tych definicji, a nie miejsce ich projektowania.
 
 ### Przeznaczenie Środowisk
-- **DEV (Lokalne):** Sandbox (Piaskownica) dla developera. Miejsce projektowania nowych odznak przez panel Admina. **Zasada:** Po zaprojektowaniu odznaki w DEV, musi ona zostać "zamrożona" komendą `export_reference_data` do plików JSON, zacommitowana do Gita i przepchnięta w górę, stając się częścią kodu aplikacji.
-- **TEST (CI / Lokalne testy):** Środowisko odtwarzane w pełni automatycznie (`migrate` -> `restore_reference_data` -> `pytest`). Zapewnia 100% determinizmu w testach przestrzennych PostGIS, ponieważ zawsze startuje z identycznej wersji "Złotego Standardu" Gór z repozytorium.
-- **PRE-PROD (Staging):** Identyczne z produkcją. Środowisko weryfikacji migracji i testów E2E (Playwright).
-- **PROD:** Serwer produkcyjny. Połknięcie nowych Odznak PTTK na produkcji odbywa się poprzez wdrożenie nowej wersji z Gita i uruchomienie skryptu przywracającego.
+- **DEV (Lokalne):** Sandbox (Piaskownica) dla developera. **To jedyne środowisko uprawnione do tworzenia Danych Referencyjnych.** Po zaprojektowaniu odznaki w DEV, musi ona zostać wyeksportowana komendą `export_reference_data` do plików `.json.gz`, zacommitowana do Git i przepchnięta w górę, stając się częścią kodu aplikacji.
+- **TEST (CI / Lokalne testy):** Środowisko ulotne (Ephemeral). Odtwarzane w pełni automatycznie przy każdym Commit (`migrate` -> `restore_reference_data` -> `pytest`). Posiada własną, szybko niszczoną bazę danych (często w RAM/tmpfs), by gwarantować izolację i szybkość.
+- **PRE-PROD (Staging):** Wierna kopia nadchodzącej Produkcji. Służy **wyłącznie do weryfikacji** (Playwright, Testy E2E, Regresja), a **NIGDY** do edycji Danych Referencyjnych. Posiada własnych "Sztucznych Turystów", których dane nigdy nie są przenoszone wyżej.
+- **PROD:** Serwer docelowy. Źródło prawdy o danych użytkowników (User Data). Połknięcie nowych Odznak PTTK na produkcji odbywa się poprzez wdrożenie nowej wersji z Gita, wykonanie migracji (`migrate`) i wywołanie komendy `restore_reference_data`. Bazy danych pomiędzy środowiskami NIGDY nie są replikowane w górę ani w dół.
 
 ---
 

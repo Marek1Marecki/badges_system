@@ -16,6 +16,13 @@ from django.core.management.base import BaseCommand
 class Command(BaseCommand):
     help = "Eksportuje cały Snapshot systemu PTTK (obiekty, odznaki, regiony) oraz generuje Manifest."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Symuluje eksport wyświetlając statystyki, bez faktycznego tworzenia plików.",
+        )
+
     def _compress_file(self, file_path: Path) -> Path:
         """Kompresuje plik JSON do GZIP i usuwa oryginał."""
         gz_path = file_path.with_suffix(".json.gz")
@@ -31,13 +38,43 @@ class Command(BaseCommand):
         return int(model.objects.count())
 
     def handle(self, *args, **options):
+        is_dry_run = options["dry_run"]
         output_dir = Path(settings.BASE_DIR) / "data" / "reference"
+
+        if is_dry_run:
+            self.stdout.write(self.style.WARNING("=== TRYB DRY RUN (Symulacja Eksportu) ==="))
+
+        self.stdout.write(self.style.WARNING("Zbieranie statystyk bazy danych..."))
+
+        # Statystyki do Manifestu (liczone przed zrzutem)
+        region_models = [
+            "CountryModel",
+            "VoivodeshipModel",
+            "ProvinceModel",
+            "SubprovinceModel",
+            "MacroregionModel",
+            "MesoregionModel",
+            "TouristRegionModel",
+        ]
+
+        stats = {
+            "regions": sum(self._get_model_count("badges", model) for model in region_models),
+            "tourist_objects": self._get_model_count("badges", "TouristObject"),
+            "badges": self._get_model_count("badges", "BadgeModel"),
+            "badge_versions": self._get_model_count("badges", "BadgeVersionModel"),
+            "osm_mappings": self._get_model_count("badges", "OsmTypeMapping"),
+            "badge_news": self._get_model_count("badges", "BadgeNewsItem"),
+        }
+
+        self.stdout.write(self.style.SUCCESS(f"Obecny stan bazy: {json.dumps(stats, indent=2)}"))
+
+        if is_dry_run:
+            self.stdout.write(self.style.SUCCESS("\n✅ Symulacja zakończona. Żadne pliki nie zostały nadpisane."))
+            return
+
+        # Właściwy Export
         output_dir.mkdir(parents=True, exist_ok=True)
-
-        self.stdout.write(self.style.WARNING("Rozpoczynam tworzenie Snapshotu bazy referencyjnej..."))
-
-        # Statystyki do Manifestu
-        stats = {}
+        self.stdout.write(self.style.WARNING("\nRozpoczynam tworzenie plików (Eksport)..."))
 
         # 1. Terytoria (GIS)
         regions_file = output_dir / "01_regions.json"
@@ -54,16 +91,12 @@ class Command(BaseCommand):
             output=str(regions_file),
         )
         gz_regions = self._compress_file(regions_file)
-        stats["regions"] = self._get_model_count("badges", "MesoregionModel") + self._get_model_count(
-            "badges", "MacroregionModel"
-        )
         self.stdout.write(self.style.SUCCESS(f"✅ Regiony -> {gz_regions.name}"))
 
         # 2. Baza Obiektów PTTK
         objects_file = output_dir / "02_tourist_objects.json"
         call_command("dumpdata", "badges.TouristObject", indent=2, output=str(objects_file))
         gz_objects = self._compress_file(objects_file)
-        stats["tourist_objects"] = self._get_model_count("badges", "TouristObject")
         self.stdout.write(self.style.SUCCESS(f"✅ Obiekty -> {gz_objects.name}"))
 
         # 3. System Odznak
@@ -78,22 +111,18 @@ class Command(BaseCommand):
             output=str(badges_file),
         )
         gz_badges = self._compress_file(badges_file)
-        stats["badges"] = self._get_model_count("badges", "BadgeModel")
-        stats["badge_versions"] = self._get_model_count("badges", "BadgeVersionModel")
         self.stdout.write(self.style.SUCCESS(f"✅ Regulaminy -> {gz_badges.name}"))
 
         # 4. Słowniki konfiguracyjne systemu (Mapowania OSM)
         osm_mappings_file = output_dir / "04_osm_mappings.json"
         call_command("dumpdata", "badges.OsmTypeMapping", indent=2, output=str(osm_mappings_file))
         gz_mappings = self._compress_file(osm_mappings_file)
-        stats["osm_mappings"] = self._get_model_count("badges", "OsmTypeMapping")
         self.stdout.write(self.style.SUCCESS(f"✅ Mapowania OSM -> {gz_mappings.name}"))
 
         # 5. Archiwum Aktualności
         news_file = output_dir / "05_badge_news.json"
         call_command("dumpdata", "badges.BadgeNewsItem", indent=2, output=str(news_file))
         gz_news = self._compress_file(news_file)
-        stats["badge_news"] = self._get_model_count("badges", "BadgeNewsItem")
         self.stdout.write(self.style.SUCCESS(f"✅ Archiwum Aktualności -> {gz_news.name}"))
 
         # --- GENEROWANIE MANIFESTU ---

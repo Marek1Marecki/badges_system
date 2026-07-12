@@ -34,10 +34,10 @@ class TestOsmRepository:
     def test_get_object_for_osm_fetch_returns_none_when_not_found(self, mock_model):
         """Zwraca None gdy obiekt nie istnieje."""
         repo = OsmRepository()
-        
+
         class DoesNotExist(Exception):
             pass
-        
+
         mock_model.DoesNotExist = DoesNotExist
         mock_model.objects.get.side_effect = DoesNotExist()
 
