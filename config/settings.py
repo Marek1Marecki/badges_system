@@ -1,10 +1,11 @@
 """Django settings for config project."""
 
 from pathlib import Path
-from urllib.parse import urlparse
 
 from infrastructure.config.app_settings import AppSettings
 
+# --- JEDNO ŹRÓDŁO PRAWDY DLA KONFIGURACJI ---
+# Pydantic wczytuje zmienne z odpowiednich plików .env od razu przy imporcie tego pliku.
 app_settings_config = AppSettings()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -16,25 +17,42 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ==========================================
 SECRET_KEY = app_settings_config.secret_key
 DEBUG = app_settings_config.debug
-ALLOWED_HOSTS = [host.strip() for host in app_settings_config.allowed_hosts.split(",")]
 
+# Twarde hosty potrzebne do działania Dockera (Healthcheck i ruch lokalny wewnątrz kontenera)
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"]
+
+# Doklejenie prawdziwych domen z Twoich plików `.env` z chronionej instancji Pydantic (bez białych znaków)
+if app_settings_config.allowed_hosts_str:
+    env_hosts = [h.strip() for h in app_settings_config.allowed_hosts_str.split(",") if h.strip()]
+    ALLOWED_HOSTS.extend(env_hosts)
 
 # ==========================================
 # DATABASE (Parsowanie z DATABASE_URL)
 # ==========================================
-db_url = urlparse(app_settings_config.database_url)
+# db_url = urlparse(app_settings_config.database_url)
+#
+# DATABASES = {
+#    "default": {
+#        "ENGINE": "django.contrib.gis.db.backends.postgis",
+#        "NAME": db_url.path.lstrip("/"),
+#        "USER": db_url.username,
+#        "PASSWORD": db_url.password,
+#        "HOST": db_url.hostname,
+#        "PORT": str(db_url.port or 5432),
+#    }
+# }
+
+import dj_database_url
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.contrib.gis.db.backends.postgis",
-        "NAME": db_url.path.lstrip("/"),
-        "USER": db_url.username,
-        "PASSWORD": db_url.password,
-        "HOST": db_url.hostname,
-        "PORT": str(db_url.port or 5432),
-    }
+    "default": dj_database_url.config(
+        default=app_settings_config.database_url,  # To musi wskazywać na Pydantic, nie os.environ!
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
-
+# Upewnijmy się, że używamy silnika PostGIS
+DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
 
 # ===============================
 # CELERY & REDIS CONFIGURATION

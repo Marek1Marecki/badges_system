@@ -48,5 +48,12 @@
 | **(Sync)** | `TouristObject` | UC-011 `RunOsmNightWatchmanUseCase` | S-02 (Poison Pill), Ochrona WAF | `test_osm_adapter.py` | ✔ |
 | **(Klastry)**| `TouristObject` | UC-012 `TouristObject.clean()` | C-01 (Płaska Gwiazda) | `test_tourist_object_clean.py` | ✔ |
 
+## 6. Operacje i Utrzymanie Danych (Data Stewardship)
+
+| Story | Aggregate / Entity | Use Case | Domain Rule / Invariant | Plik Testowy | Status |
+|:---|:---|:---|:---|:---|:---:|
+| **Snapshot Referencyjny** | Single Source of Truth w Repozytorium Gita | `export_reference_data.py`, `manifest.json` | Deterministyczne odtwarzanie środowiska za pomocą `restore_reference_data.py`. |
+| **Idempotencja DataOps** | Ochrona przed duplikacją na PROD | Zapisano w `TEST_STRATEGY.md` | Test `test_restore_reference_data_is_idempotent` weryfikujący podwójny przebieg. |
+
 ---
 **Podsumowanie pokrycia:** Wymagania z Fazy C posiadają 100% powiązanie z fizycznymi plikami testowymi dla warstw logiki.

@@ -1,0 +1,130 @@
+# ==============================================================================
+# compose.preprod.yml — ŚRODOWISKO PRE-PROD (Staging / Walidacja Release Candidate)
+#
+# Zgodnie z ADR-020: ten sam, już zbudowany obraz `production` co PROD
+# (Build Once, Deploy Many, ADR-020 pkt 5), ale z odciętą, syntetyczną bazą.
+# Wyłącznie do testów E2E, `check --deploy` i symulacji wdrożeń. ZAKAZ
+# ręcznych zmian danych referencyjnych i konfiguracji na tym środowisku
+# (ADR-020, punkt 1).
+#
+# ⚠️  UWAGA — RYZYKO POMYŁKI Z PROD: ten plik CELOWO różni się od
+# compose.prod.yml warstwą ingress — `web` publikuje port 8000 BEZPOŚREDNIO
+# na hosta (bez Caddy/HTTPS), dla wygody szybkich testów E2E i debugowania.
+# NIGDY nie kopiuj tego pliku jako punktu wyjścia dla PROD — użyj
+# compose.prod.yml. Rozważcie ustawienie w swoim `.env` osobnej wartości
+# `COMPOSE_PROJECT_NAME=badges-preprod`, żeby `docker compose down`/`up`
+# wykonane przez pomyłkę w złym katalogu/kontekście nie trafiły w PROD.
+#
+# CELOWO brak `build:` — PRE-PROD wyłącznie POBIERA gotowy obraz z rejestru
+# (${IMAGE_NAME}:${IMAGE_TAG}). Obecność `build:` obok `image:` w tym samym
+# serwisie sugerowałaby, że PRE-PROD mógłby zbudować własną, potencjalnie inną
+# wersję obrazu niż ta faktycznie testowana — co unieważniłoby całą gwarancję
+# "ten sam artefakt na PRE-PROD i PROD".
+#
+# Sekrety (POSTGRES_PASSWORD, DJANGO_SECRET_KEY, itp.) pochodzą WYŁĄCZNIE ze
+# zmiennych środowiskowych hosta / menedżera sekretów CI — nigdy z pliku na
+# dysku (plik .env.preprod nie jest kopiowany do obrazu — patrz .dockerignore).
+# ENV_FILE=.env.preprod pełni tu funkcję IDENTYFIKATORA PROFILU konfiguracji
+# odczytywanego przez AppSettings, nie gwarancji fizycznej obecności pliku —
+# w tym środowisku plik .env.preprod nie istnieje na dysku kontenera
+# (env_file_required=False, patrz 20-configuration-contract.md).
+#
+# Użycie (przykład, wartości wstrzykiwane przez pipeline CI/CD — obraz musi
+# być wcześniej zbudowany i wypchnięty do rejestru w osobnym kroku CI):
+#   docker compose -f compose.yml -f compose.preprod.yml run --rm web \
+#       ./scripts/release-database.sh
+#   docker compose -f compose.yml -f compose.preprod.yml run --rm web \
+#       ./scripts/release-application.sh
+#   docker compose -f compose.yml -f compose.preprod.yml up -d
+# ==============================================================================
+
+services:
+  db:
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${POSTGRES_DB:?}
+    # Brak `ports:` — baza PRE-PROD nie jest eksponowana na host (Zasada
+    # Izolacji Sieciowej, ADR-020, punkt 2).
+
+  redis:
+    # Brak `ports:` — jak wyżej.
+
+  web:
+    image: ${IMAGE_NAME:?}:${IMAGE_TAG:?}
+    restart: unless-stopped
+    # UWAGA: port publikowany BEZPOŚREDNIO na hosta — świadoma różnica
+    # względem PROD (tam wyłącznie przez Caddy). Patrz ostrzeżenie na górze
+    # pliku. Jeśli to środowisko ma być dostępne z zewnątrz (nie tylko przez
+    # tunel/VPN), rozważcie dodanie własnej warstwy proxy przed tym portem.
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV_FILE=.env.preprod
+      - APP_ENV=preproduction
+      - DEBUG=False
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:?}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
+      - POSTGRES_DB=${POSTGRES_DB:?}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:?}
+      # Wymagane WYŁĄCZNIE jeśli na tym środowisku uruchamiacie
+      # `./scripts/bootstrap.sh` (pierwsza inicjalizacja PRE-PROD) — patrz
+      # analogiczny komentarz w compose.override.yml.
+      - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:?}
+      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:?}
+      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:?}
+    volumes:
+      # Wolumen zapisywalny mimo `read_only: true` na reszcie systemu plików —
+      # `collectstatic` (release-application.sh) musi mieć gdzie pisać.
+      - static_volume:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Brak `volumes:` z kodem hosta — obraz jest niemutowalny.
+
+  celery_worker:
+    image: ${IMAGE_NAME:?}:${IMAGE_TAG:?}
+    restart: unless-stopped
+    entrypoint: ["/app/scripts/entrypoint.sh"]
+    command: ["uv", "run", "celery", "-A", "config", "worker", "-l", "info"]
+    environment:
+      - ENV_FILE=.env.preprod
+      - APP_ENV=preproduction
+      - DEBUG=False
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:?}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
+      - POSTGRES_DB=${POSTGRES_DB:?}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  static_volume:

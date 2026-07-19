@@ -1,0 +1,185 @@
+# ==============================================================================
+# compose.prod.yml — ŚRODOWISKO PROD
+#
+# Ten sam obraz `production` co PRE-PROD (Build Once, Deploy Many — ADR-020).
+# Różnica względem PRE-PROD NIE ogranicza się do "prawdziwych danych" — PROD
+# i PRE-PROD różnią się też WARSTWĄ INGRESS (PROD ma Caddy + porty 80/443
+# zamknięte za proxy; PRE-PROD eksponuje 8000 bezpośrednio dla wygody testów
+# E2E). Precyzyjniej: obraz aplikacji jest identyczny (Build Once), ale
+# środowiska są "runtime-equivalent poza warstwą ingress", nie pełnym klonem
+# 1:1 — to świadoma różnica, nie odstępstwo od ADR-020.
+#
+# WSZYSTKIE sekrety pochodzą ze zmiennych środowiska hosta / menedżera
+# sekretów (Docker Secrets, AWS Parameter Store, itp.) — ADR-020, punkt 4.
+# Plik .env.prod NIE powinien istnieć fizycznie na tym serwerze.
+#
+# Reference Data Release / Database Release / Application Release są
+# uruchamiane jako oddzielne, jednorazowe zadania przez pipeline CI/CD
+# (docker compose run --rm web ./scripts/release-*.sh), NIGDY automatycznie
+# przy starcie tego kontenera.
+#
+# Warstwa wejściowa: `proxy` (Caddy) jest jedynym serwisem publikującym porty
+# 80/443 na hosta. Gunicorn (`web`) NIE jest eksponowany bezpośrednio — tylko
+# wewnątrz sieci Compose, pod nazwą usługi `web:8000` (patrz Caddyfile).
+# ==============================================================================
+
+services:
+  db:
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${POSTGRES_DB:?}
+    # Brak `ports:` — Zasada Izolacji Sieciowej (ADR-020, punkt 2).
+
+  redis:
+    # Brak `ports:`.
+
+  proxy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # BEZ tej zmiennej Caddyfile cicho spadał na domyślne `localhost`
+      # (`{$DOMAIN_NAME:localhost}`) niezależnie od wartości w `.env` — bo
+      # zmienna nigdy nie trafiała do kontenera `proxy`. Wymagamy jej jawnie
+      # (`:?`), żeby PROD nigdy nie wystartował z podstawioną domeną domyślną.
+      - DOMAIN_NAME=${DOMAIN_NAME:?Ustaw DOMAIN_NAME w pliku .env}
+    volumes:
+      # ŚWIADOMY WYJĄTEK od pełnej "Immutable Infrastructure" (ADR-020, pkt 5):
+      # Caddyfile pochodzi z bind mountu z hosta, nie jest wypieczony w obrazie
+      # razem z resztą release'u. Dla małego/średniego wdrożenia to akceptowalny
+      # kompromis (prostota > pełna spójność artefaktu). Jeśli w przyszłości
+      # konfiguracja proxy zacznie się zmieniać równolegle z Release'ami
+      # aplikacji (a nie tylko sporadycznie, ręcznie) — rozważcie przeniesienie
+      # Caddyfile do osobnego, wersjonowanego obrazu (`registry/nazwa-caddy:tag`)
+      # budowanego przez ten sam pipeline CI, żeby cały release był artefaktem.
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - static_volume:/srv/staticfiles:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+  web:
+    image: ${IMAGE_NAME:?}:${IMAGE_TAG:?}
+    restart: unless-stopped
+    # Brak `ports:` na hosta — ruch wchodzi wyłącznie przez `proxy` (Caddy).
+    expose:
+      - "8000"
+    environment:
+      - ENV_FILE=.env.prod
+      - APP_ENV=production
+      - DEBUG=False
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:?}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
+      - POSTGRES_DB=${POSTGRES_DB:?}
+      # Wymagane przez broker/cache Celery (settings.py / AppSettings składa
+      # z tego CELERY_BROKER_URL analogicznie do database_url — patrz
+      # README-infra.md, sekcja "Znane luki").
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:?}
+    volumes:
+      # Wolumen zapisywalny mimo `read_only: true` — `collectstatic`
+      # (release-application.sh) musi mieć gdzie pisać. Caddy czyta z tego
+      # samego wolumenu w trybie tylko do odczytu (patrz serwis `proxy`).
+      - static_volume:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+  celery_worker:
+    image: ${IMAGE_NAME:?}:${IMAGE_TAG:?}
+    restart: unless-stopped
+    entrypoint: ["/app/scripts/entrypoint.sh"]
+    command: ["uv", "run", "celery", "-A", "config", "worker", "-l", "info"]
+    environment:
+      - ENV_FILE=.env.prod
+      - APP_ENV=production
+      - DEBUG=False
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:?}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
+      - POSTGRES_DB=${POSTGRES_DB:?}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Bez limitu Celery worker mógłby (np. przy zadaniu przetwarzającym duży
+    # plik GPX) zająć całą dostępną pamięć hosta i wypchnąć Postgres/Redis
+    # z RAM-u. Wartości dobrane wstępnie — dostosuj do realnego profilu obciążeń.
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+  celery_beat:
+    image: ${IMAGE_NAME:?}:${IMAGE_TAG:?}
+    restart: unless-stopped
+    entrypoint: ["/app/scripts/entrypoint.sh"]
+    command: ["uv", "run", "celery", "-A", "config", "beat", "-l", "info"]
+    environment:
+      - ENV_FILE=.env.prod
+      - APP_ENV=production
+      - DEBUG=False
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:?}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
+      - POSTGRES_DB=${POSTGRES_DB:?}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?}
+    depends_on:
+      redis:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Beat jest lekkim schedulerem (nie wykonuje zadań), niższy limit wystarcza.
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+
+volumes:
+  static_volume:
+  caddy_data:
+  caddy_config:

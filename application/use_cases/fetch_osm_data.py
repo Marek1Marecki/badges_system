@@ -4,16 +4,15 @@ Zgodnie z 14-domain-purity.md — zero importów apps/, django/, infrastructure/
 Zgodnie z 17-determinism-contract.md — czas wstrzykiwany przez ClockPort.
 """
 
-from typing import Any
-
 from application.exceptions import UseCaseError
 from application.ports.clock_port import ClockPort
+from application.ports.osm_port import OsmRepositoryPort
 
 
 class FetchOsmDataUseCase:
     """Pobiera dane pojedynczego obiektu z OSM i aktualizuje model."""
 
-    def __init__(self, osm_repository: Any, clock: ClockPort) -> None:
+    def __init__(self, osm_repository: OsmRepositoryPort, clock: ClockPort) -> None:
         """Inicjalizuje use case.
 
         Args:
@@ -40,19 +39,20 @@ class FetchOsmDataUseCase:
         if obj is None:
             raise UseCaseError(f"Obiekt o ID {object_id} nie istnieje.")
 
-        if not obj.get("osm_id"):
+        osm_id = obj.get("osm_id")
+        if not osm_id:
             return "Pominięto: Brak OSM ID."
 
-        osm_node = self._repo.fetch_from_osm(obj["osm_id"])
+        osm_node = self._repo.fetch_from_osm(osm_id)
         self._repo.update_object_from_osm(object_id, osm_node, obj)
 
-        return f"Sukces: Pobrano dane OSM dla {obj['osm_id']}."
+        return f"Sukces: Pobrano dane OSM dla {osm_id}."
 
 
 class RunOsmNightWatchmanUseCase:
     """Nocny skaner — wsadowa synchronizacja obiektów z OSM z wykrywaniem konfliktów."""
 
-    def __init__(self, osm_repository: Any, clock: ClockPort) -> None:
+    def __init__(self, osm_repository: OsmRepositoryPort, clock: ClockPort) -> None:
         """Inicjalizuje use case.
 
         Args:

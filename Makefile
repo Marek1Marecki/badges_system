@@ -8,7 +8,7 @@ MIN_COVERAGE ?= 80
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph check clean
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore
 
 help:
 	@echo "CORE targets:"
@@ -38,10 +38,11 @@ type-check:
 	uv run lint-imports
 
 test:
-	uv run pytest $(TEST_DIRS) -m "not integration and not ml"
+	ENV_FILE=.env.test uv run pytest -m "not integration"
+	#uv run pytest $(TEST_DIRS) -m "not integration and not ml"
 
 test-all:
-	uv run pytest $(TEST_DIRS) --create-db --nomigrations \
+	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) --create-db --nomigrations \
 		--cov=, --cov-report=term-missing \
 		--cov-fail-under=$(MIN_COVERAGE)
 
@@ -67,3 +68,24 @@ clean:
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "__pycache__" -not -path "./.venv/*" -exec rm -rf {} +
 	rm -rf .coverage htmlcov/ .pytest_cache/ .mypy_cache/ coverage.xml .ruff_cache/
+
+dev-up:      ## Uruchom środowisko DEV (bezpieczne na świeżym i istniejącym wolumenie)
+	./scripts/dev-up.sh
+
+dev-down:    ## Zatrzymaj środowisko DEV — NIGDY nie usuwa wolumenów z danymi
+	./scripts/dev-down.sh
+
+dev-reset:   ## DESTRUKCYJNE: usuwa wolumeny DEV i odbudowuje środowisko od zera (wymaga potwierdzenia)
+	./scripts/dev-reset.sh
+
+dev-status:  ## Diagnostyka: kontenery, PostgreSQL, Redis, migracje, Celery
+	./scripts/dev-status.sh
+
+dev-logs:    ## Podgląd logów wszystkich usług (Ctrl+C aby wyjść; opcjonalny arg = liczba linii)
+	./scripts/dev-logs.sh
+
+dev-backup:  ## Backup bazy DEV do ./backups/ (zawsze przez kontener, nigdy lokalny pg_dump)
+	./scripts/dev-backup.sh
+
+dev-restore: ## Odtworzenie backupu: make dev-restore FILE=./backups/nazwa.dump
+	./scripts/dev-restore.sh $(FILE)

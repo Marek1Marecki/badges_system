@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from infrastructure.adapters.persistence.django_map_repo import DjangoMapRepository
 
 

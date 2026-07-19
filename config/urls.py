@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.http import HttpResponse
 from django.urls import include, path
 
 from apps.tourists.views import (
@@ -15,7 +16,18 @@ from apps.tourists.views import (
     switch_profile_view,
 )
 
+
+def health_check(request):
+    """Zwraca natychmiastowe 200 OK dla Docker Healthcheck/Load Balancer."""
+    return HttpResponse("OK")
+
+
 urlpatterns = [
+    # --- INFRASTRUKTURA I API ---
+    path("health/", health_check, name="health_check"),
+    path("admin/", admin.site.urls),
+    path("api/", include("apps.api.urls")),
+    path("accounts/", include("allauth.urls")),
     # --- WIDOKI HTML TURYSTY (Faza C) ---
     path("", dashboard_view, name="home"),
     path("catalog/", badge_catalog_view, name="catalog"),
@@ -28,8 +40,4 @@ urlpatterns = [
     path("badge/<str:badge_code>/", badge_detail_view, name="badge_detail"),
     path("organizer/<int:organizer_id>/", organizer_detail_view, name="organizer_detail"),
     path("region/<str:region_level>/<int:region_id>/", region_detail_view, name="region_detail"),
-    # --- INFRASTRUKTURA I API ---
-    path("admin/", admin.site.urls),
-    path("api/", include("apps.api.urls")),
-    path("accounts/", include("allauth.urls")),
 ]

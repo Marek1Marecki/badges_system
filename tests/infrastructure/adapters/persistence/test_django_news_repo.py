@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from application.dto.news_dto import BadgeNewsDTO
 from infrastructure.adapters.persistence.django_news_repo import DjangoNewsRepository
 

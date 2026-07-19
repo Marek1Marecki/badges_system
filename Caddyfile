@@ -1,0 +1,31 @@
+# ==============================================================================
+# Caddyfile — reverse proxy dla PROD (compose.prod.yml)
+#
+# Caddy automatycznie zdobywa i odnawia certyfikaty TLS (Let's Encrypt) dla
+# domeny podanej w zmiennej DOMAIN_NAME — zero ręcznej konfiguracji ACME.
+#
+# Wymaga w .env: DOMAIN_NAME=twojadomena.pl
+#
+# UWAGA: celowo BEZ domyślnej wartości `:localhost` — compose.prod.yml już
+# wymusza obecność DOMAIN_NAME przez `${DOMAIN_NAME:?}` (fail-fast na
+# poziomie Compose), a brak fallbacku tutaj jest drugą, niezależną linią
+# obrony: gdyby ktoś kiedyś uruchomił ten obraz Caddy poza tym plikiem
+# compose (np. bezpośrednim `docker run`), pusty adres strony spowoduje
+# błąd startu Caddy zamiast cichego wystawienia certyfikatu dla `localhost`.
+# ==============================================================================
+
+{$DOMAIN_NAME} {
+    # Statyki serwowane bezpośrednio przez Caddy — Gunicorn nie musi tego robić.
+    handle_path /static/* {
+        root * /srv/staticfiles
+        file_server
+    }
+
+    handle {
+        reverse_proxy web:8000 {
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    encode gzip
+}

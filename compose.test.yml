@@ -1,0 +1,59 @@
+# ==============================================================================
+# compose.test.yml — ŚRODOWISKO TEST (Efemeryczne CI)
+#
+# Zgodnie z ADR-020: TEST nie utrzymuje trwałego stanu między uruchomieniami.
+# Efemeryczność jest zapewniona przez CYKL ŻYCIA (unikalna nazwa projektu +
+# `down -v` po zakończeniu), a nie przez tmpfs — dzięki temu plik nie zależy
+# od zaawansowanych tagów scalania Compose (`!reset`/`!override`, wymagających
+# Docker Compose >= 2.24) i pozostaje przenośny między wersjami CI runnerów.
+#
+# Obraz `testing` ma kod ZAMROŻONY (COPY . wykonane przy buildzie) — brak
+# wolumenu z hosta. Plik .env.test jest wykluczony przez .dockerignore, więc
+# realne wartości muszą być wstrzyknięte tutaj, jawnie, przez `environment:`
+# (zgodnie z env_file_required=False w AppSettings — fallback na os.environ).
+#
+# Użycie (obowiązkowo z unikalną nazwą projektu i pełnym sprzątaniem po sobie):
+#   docker compose -p ci-${CI_RUN_ID} -f compose.yml -f compose.test.yml \
+#       up -d --wait db redis
+#   docker compose -p ci-${CI_RUN_ID} -f compose.yml -f compose.test.yml \
+#       run --rm web
+#   docker compose -p ci-${CI_RUN_ID} -f compose.yml -f compose.test.yml \
+#       down -v --remove-orphans
+# ==============================================================================
+
+services:
+  db:
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Ustaw POSTGRES_USER w .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Ustaw POSTGRES_PASSWORD w .env}
+      POSTGRES_DB: ${POSTGRES_DB:?Ustaw POSTGRES_DB w .env}
+    # Brak `ports:` — baza TEST nie jest eksponowana na host.
+
+  redis:
+    command: ["redis-server"]
+    # Brak `ports:` — jak wyżej.
+
+  web:
+    build:
+      context: .
+      target: testing
+    environment:
+      - ENV_FILE=.env.test
+      - APP_ENV=test
+      - DEBUG=False
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:?Ustaw POSTGRES_USER w .env}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Ustaw POSTGRES_PASSWORD w .env}
+      - POSTGRES_DB=${POSTGRES_DB:?Ustaw POSTGRES_DB w .env}
+      - CELERY_TASK_ALWAYS_EAGER=True
+      - EMAIL_BACKEND=django.core.mail.backends.locmem.EmailBackend
+      - GOOGLE_OAUTH_CLIENT_ID=mock-client-id
+      - GOOGLE_OAUTH_CLIENT_SECRET=mock-client-secret
+      - MAPY_CZ_API_KEY=mock-api-key
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Brak `volumes:` z kodem hosta — kod jest zamrożony w obrazie 'testing'.

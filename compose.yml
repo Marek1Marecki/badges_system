@@ -1,0 +1,69 @@
+# ==============================================================================
+# compose.yml — WSPÓLNA BAZA dla wszystkich środowisk (DEV/TEST/PRE-PROD/PROD)
+#
+# Zgodnie z ADR-020: Docker nie zna konfiguracji Django (DEBUG, SECRET_KEY,
+# LOG_LEVEL...) — to wyłącznie domena AppSettings/Pydantic. Ten plik zna
+# jedynie to, czego wymagają same obrazy bazy danych i cache (POSTGRES_*),
+# bo są to procesy spoza Django, nieświadome istnienia Pydantic.
+#
+# Zmienne POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB pochodzą z pliku
+# `.env` w katalogu głównym (auto-ładowany przez Docker Compose) — jest to
+# PLIK COMPOSE, odrębny od plików .env.dev/.env.test/.env.preprod/.env.prod
+# czytanych przez Pydantic wewnątrz kontenera web/celery.
+#
+# Ten plik NIGDY nie definiuje portów ani wolumenów aplikacyjnych specyficznych
+# dla środowiska — to rola compose.override.yml / compose.test.yml /
+# compose.preprod.yml / compose.prod.yml.
+# ==============================================================================
+
+services:
+  db:
+    # Tag przypięty do minor+patch (nie `latest`, nie samo `15`) — zgodnie
+    # z filozofią 08-base-image-policy.md tego projektu: pinujemy minor/patch
+    # w pliku, a dokładny digest logujemy w CI jako ślad audytowy (tak jak
+    # dla obrazu bazowego Pythona), zamiast ręcznie utrzymywać pełny SHA tutaj,
+    # co wymagałoby aktualizacji przy każdym drobnym patchu bezpieczeństwa.
+    image: postgis/postgis:18-3.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Ustaw POSTGRES_USER w pliku .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Ustaw POSTGRES_PASSWORD w pliku .env}
+      POSTGRES_DB: ${POSTGRES_DB:?Ustaw POSTGRES_DB w pliku .env}
+      PGDATA: /var/lib/postgresql/18/docker
+    volumes:
+      - postgis_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    # Wersja przypięta (nie ruchomy tag `7-alpine`) — zgodnie z Build Once,
+    # Deploy Many (ADR-020, pkt 5) i polityką tagowania obrazów bazowych.
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    # --maxmemory + --maxmemory-policy: bez limitu Redis (broker Celery i
+    # ewentualny cache) mógłby przy wzroście ruchu konkurować o RAM z
+    # PostgreSQL na tym samym hoście. `noeviction` jest bezpieczniejsze niż
+    # domyślne polityki usuwające klucze — wolimy jawny błąd zapisu (Celery
+    # obsłuży retry) niż ciche utracenie zadania/wpisu z powodu eviction.
+    # Wartość progu nadpisywalna przez zmienną środowiskową per środowisko.
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory ${REDIS_MAXMEMORY:-256mb}
+      --maxmemory-policy noeviction
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgis_data:
+    name: badges_system_postgis_data
+  redis_data:
+    name: badges_system_redis_data

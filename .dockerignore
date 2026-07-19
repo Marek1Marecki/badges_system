@@ -1,0 +1,64 @@
+# ==============================================================================
+# .dockerignore — zgodny z 07-docker-contract.md
+# Zasada: wątpliwość = wykluczyć. Wyjątek: data/reference/ (Golden Set, ADR-020).
+# ==============================================================================
+
+# Środowisko wirtualne — lokalny .venv może ważyć kilka GB
+.venv/
+env/
+
+# Repozytorium git — nie ujawniamy historii w obrazie
+.git/
+.gitignore
+
+# Sekrety — NIGDY nie kopiujemy do obrazu (10-secrets-management.md)
+.env
+.env.*
+!.env.example
+
+# Dane — domyślnie ignorowane, ALE data/reference/ jest Single Source of Truth
+# dla Reference Data Release (ADR-020) i MUSI trafić do obrazu.
+data/*
+!data/reference/
+!data/reference/**
+media/
+db.sqlite3
+
+# Narzędzia developerskie — nie należą do RUNTIME PRODUKCYJNEGO
+#
+# UWAGA: `tests/` CELOWO NIE jest tutaj wykluczone. .dockerignore filtruje
+# build context dla WSZYSTKICH etapów naraz (nie ma sposobu, żeby wykluczyć
+# katalog tylko z jednego stage'u przez ten plik) — wykluczenie `tests/` tutaj
+# uniemożliwiłoby uruchomienie pytest w etapie `testing`. Zamiast tego kod
+# testowy jest usuwany jawnie z obrazu `production` przez `RUN rm -rf /app/tests`
+# w samym Dockerfile (Minimal Surface bez blokowania CI).
+Makefile
+docs/
+docs_sphinx/
+.pre-commit-config.yaml
+
+# Cache i artefakty
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.egg-info/
+
+# CI i konfiguracja IDE
+.github/
+.gitlab/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logi
+*.log

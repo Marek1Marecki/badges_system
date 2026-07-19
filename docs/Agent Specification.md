@@ -188,11 +188,13 @@ Zabrania się wstrzykiwania logiki z użyciem tagów `{{ }}` z Django Templates 
 1. **Wzorzec Docker Compose:** Obowiązuje współczesny standard plikowy:
    - `compose.yml` (Baza infrastruktury: PostGIS, Redis, Celery).
    - `compose.override.yml` (Domyślnie ładowany do pracy DEV, montujący wolumeny lokalne).
-   - `compose.test.yml` (Dla CI/CD, uruchamiający efemeryczne bazy danych).
+   - `compose.test.yml` (Dla CI/CD. **KRYTYCZNE:** To środowisko jest efemeryczne i bezwzględnie musi ulegać autodestrukcji po wykonaniu pipeline'u. Zabrania się podpinania w tym pliku wolumenów trwałych (tzw. named volumes) dla bazy danych czy Redis. Dane testowe muszą żyć wyłącznie w pamięci RAM lub w wolumenach tymczasowych dockera czyszczonych flagą `--rm` / `-v`).
    - `compose.prod.yml` (Wdrażany na serwerze docelowym, zawiera Gunicorn, Caddy).
 2. **Multi-Stage Dockerfile:** Zakazuje się tworzenia osobnych plików (np. `Dockerfile.dev`, `Dockerfile.prod`). Obowiązuje jeden plik wykorzystujący Targety (np. `FROM base AS development`, `FROM builder AS production`). Kod do obrazu produkcyjnego wprowadzany jest przez `COPY`, a kod w DEV przez wolumeny (`volumes`).
 3. **Pliki Środowiskowe (Env Files):** Zakazuje się wpisywania sekretów w plikach `compose`. Hasła podlegają wstrzykiwaniu z jawnie zdefiniowanych plików (np. `.env.dev`, `.env.prod`), zachowując ujednolicony standard DSN (Data Source Name).
 4. **Kolejność Odtwarzania Systemu:** Skrypt podnoszący aplikację na jakimkolwiek środowisku musi przestrzegać następującej, atomowej kolejności: `start postgis` ➔ `migrate` ➔ `restore_reference_data` ➔ `calculate_object_regions_task` ➔ `collectstatic` ➔ `start app`.
+5. **Zasada Destructive Command Lock:** Wszelkie komendy zarządzania Django (`management commands`), które wykonują operacje destrukcyjne na danych (np. `restore_reference_data.py` używający `loaddata` do nadpisywania tabel referencyjnych), muszą mieć wbudowany bezpiecznik (Guard Clause). Jeśli w bazie istnieją już rekordy, skrypt ma obowiązek rzucić wyjątkiem `CommandError` i przerwać działanie, chyba że administrator jawnie przekaże flagę `--force`. Zapobiega to przypadkowemu nadpisaniu bazy PROD.
+6. **Kontekst Środowiskowy (Environment Switch):** Kontenery w plikach `compose.prod.yml` i `compose.test.yml` MUSZĄ mieć jawnie zdefiniowaną zmienną `ENV_FILE=.env.prod` (lub `test`) w sekcji `environment:`, aby walidator `pydantic-settings` wiedział, z jakiego schematu nazewniczego operować (nawet jeśli flagą `env_file_required=False` dopuszczamy brak samego fizycznego pliku).
 
 ---
 

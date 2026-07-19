@@ -10,15 +10,20 @@ Zgodnie z 22-ports-adapters-dto-contract.md:
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
+from application.ports.osm_port import (
+    OsmNodeData,
+    TouristObjectOsmSnapshot,
+    TouristObjectOsmSyncSnapshot,
+)
 from infrastructure.adapters.osm_adapter import OsmAdapterError, OsmDataExtractor, OverpassClient
 
 
 class OsmRepository:
     """Zarządza pobieraniem danych OSM i zapisem wyników do bazy Django."""
 
-    def get_object_for_osm_fetch(self, object_id: int) -> dict[str, Any] | None:
+    def get_object_for_osm_fetch(self, object_id: int) -> TouristObjectOsmSnapshot | None:
         """Zwraca dane obiektu potrzebne do pobrania z OSM lub None."""
         from apps.badges.models import TouristObject
 
@@ -38,7 +43,7 @@ class OsmRepository:
             "type": obj.type,
         }
 
-    def fetch_from_osm(self, osm_id: str) -> Any:
+    def fetch_from_osm(self, osm_id: str) -> OsmNodeData:
         """Pobiera dane węzła z Overpass API.
 
         Raises:
@@ -47,7 +52,7 @@ class OsmRepository:
         client = OverpassClient()
         return client.fetch_object(osm_id)
 
-    def fetch_multiple_from_osm(self, osm_ids: list[str]) -> dict[str, Any] | None:
+    def fetch_multiple_from_osm(self, osm_ids: list[str]) -> dict[str, OsmNodeData] | None:
         """Pobiera dane wielu węzłów z Overpass API.
 
         Returns:
@@ -55,11 +60,16 @@ class OsmRepository:
         """
         client = OverpassClient()
         try:
-            return client.fetch_multiple_objects(osm_ids)
+            return cast("dict[str, OsmNodeData]", client.fetch_multiple_objects(osm_ids))
         except OsmAdapterError:
             return None
 
-    def update_object_from_osm(self, object_id: int, osm_node: Any, current_data: dict[str, Any]) -> None:
+    def update_object_from_osm(
+        self,
+        object_id: int,
+        osm_node: OsmNodeData,
+        current_data: TouristObjectOsmSnapshot,
+    ) -> None:
         """Aktualizuje obiekt turystyczny danymi z OSM (Data Override — chroni ręczne dane)."""
         from django.contrib.gis.geos import Point
 
@@ -106,7 +116,7 @@ class OsmRepository:
         obj.osm_error = None
         obj.save()
 
-    def get_objects_for_sync(self, batch_size: int) -> list[dict[str, Any]]:
+    def get_objects_for_sync(self, batch_size: int) -> list[TouristObjectOsmSyncSnapshot]:
         """Zwraca partię obiektów do synchronizacji (najdawniej sprawdzane)."""
         from django.db.models import F
 
@@ -164,7 +174,12 @@ class OsmRepository:
             defaults={"old_value": old_value, "new_value": new_value},
         )
 
-    def detect_and_save_conflicts(self, object_id: int, current_data: dict[str, Any], osm_node: Any) -> int:
+    def detect_and_save_conflicts(
+        self,
+        object_id: int,
+        current_data: TouristObjectOsmSyncSnapshot,
+        osm_node: OsmNodeData,
+    ) -> int:
         """Porównuje dane lokalne z OSM i zapisuje konflikty.
 
         Returns:

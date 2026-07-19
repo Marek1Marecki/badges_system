@@ -7,90 +7,100 @@ Zgodnie z 20-configuration-contract.md:
 """
 
 import os
+from urllib.parse import quote_plus
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Jedyne dozwolone os.getenv w infrastructure/ — wybór pliku .env per środowisko.
-# Na produkcji sekrety są wstrzykiwane przez env kontenera, plik nie istnieje.
-_env_file = os.getenv("ENV_FILE", ".env")
+# Mechanizm ochronny z Audytu: Zabezpieczamy się przed wczytaniem produkcyjnych haseł w DEV
+# Jeśli zmienna ENV_FILE nie została podana z zewnątrz (np. przez Makefile / Docker),
+# domyślnie używamy środowiska deweloperskiego.
+_env_file = os.getenv("ENV_FILE", ".env.dev")
 
 
 class AppSettings(BaseSettings):
-    """Centralna konfiguracja aplikacji.
-
-    Wczytuje zmienne z pliku .env (lub ENV_FILE) oraz ze środowiska kontenera.
-    Przy braku pliku nie rzuca błędu — produkcja dostarcza wartości przez env.
-    Błąd brakującej wymaganej zmiennej jest wykrywany przy starcie aplikacji.
-    """
+    """Centralne ustawienia aplikacji pobierane ze zmiennych środowiskowych."""
 
     model_config = SettingsConfigDict(
-        env_file=_env_file,
+        # Czyta najpierw zmienne współdzielone, a potem nadpisuje je specyficznymi dla środowiska.
+        env_file=(".env.shared", _env_file),
         env_file_encoding="utf-8",
-        case_sensitive=False,
+        # env_file_required=False,
+        extra="ignore",
     )
 
-    # ------------------------------------------------------------------
-    # Django
-    # ------------------------------------------------------------------
-    secret_key: str
-    debug: bool = False
-    allowed_hosts: str = "localhost,127.0.0.1"
+    # --- KONFIGURACJA PODSTAWOWA ---
     app_env: str = "development"
+    debug: bool = False
+    secret_key: str = "unsafe-default-key-for-dev-only-do-not-use"  # noqa: S105
+    language_code: str = "pl"
+    time_zone: str = "Europe/Warsaw"
 
-    # ------------------------------------------------------------------
-    # Baza danych (PostGIS)
-    # ------------------------------------------------------------------
-    database_url: str
+    # Przechwytuje zmienną ALLOWED_HOSTS z pliku środowiskowego jako ciąg (np. "mojadomena.pl,www.mojadomena.pl")
+    allowed_hosts_str: str = Field(default="", validation_alias="ALLOWED_HOSTS")
 
-    # ------------------------------------------------------------------
-    # Celery / Redis
-    # ------------------------------------------------------------------
-    celery_broker_url: str = "redis://localhost:6379/0"
-    celery_result_backend: str = "redis://localhost:6379/0"
+    # --- BAZA DANYCH ---
+    postgres_user: str = "postgres"
+    postgres_password: str = "password"  # noqa: S105
+    postgres_db: str = "badges_system_db"
+    postgres_host: str = Field(default="localhost")
+    postgres_port: int = 5432
 
-    # ------------------------------------------------------------------
-    # OSM / Overpass
-    # ------------------------------------------------------------------
-    overpass_api_url: str = "https://overpass-api.de/api/interpreter"
+    # --- REDIS / CELERY ---
+    redis_host: str = "redis"
+    redis_port: int = 6379
+
+    # --- AUTORYZACJA, OAUTH I ZEWNĘTRZNE API ---
+    google_oauth_client_id: str = ""
+    google_oauth_client_secret: str = ""
+    mapy_cz_api_key: str = ""
+
+    # --- KONFIGURACJA LOGÓW I INFRASTRUKTURY ---
+    log_level: str = "INFO"
+    log_json: bool = False
+
+    # Timeout dla zewnętrznych strzałów do OSM API (w sekundach)
     overpass_timeout_seconds: int = 30
 
-    # ------------------------------------------------------------------
-    # Logowanie
-    # ------------------------------------------------------------------
-    log_level: str = "INFO"
-    log_json: bool = False  # True na produkcji → JSON dla ELK/Loki
-
-    # ------------------------------------------------------------------
-    # Feature flags
-    # ------------------------------------------------------------------
-    feature_osm_night_watchman: bool = True
+    # --- FEATURE FLAGS ---
     feature_proximity_scan: bool = True
+    feature_osm_night_watchman: bool = True
+    feature_new_dashboard: bool = False
+    feature_export_pdf: bool = False
 
-    # ------------------------------------------------------------------
-    # Walidatory
-    # ------------------------------------------------------------------
-    @model_validator(mode="after")
-    def debug_not_in_production(self) -> AppSettings:
-        """Blokuje debug=True na produkcji."""
-        if self.debug and self.app_env == "production":
-            raise ValueError("debug=True jest zakazany w środowisku produkcyjnym")
-        return self
+    # === WŁAŚCIWOŚCI WYLICZANE (Czysty Python, omijamy konflikty Pydantic v2) ===
+
+    @property
+    def database_url(self) -> str:
+        """Automatycznie kompiluje pełny ciąg DSN (bezpieczne ze znakami specjalnymi)."""
+        pwd = quote_plus(self.postgres_password)
+        return f"postgis://{self.postgres_user}:{pwd}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+
+    @property
+    def celery_broker_url(self) -> str:
+        """Kompiluje URL do połączenia z Redisem."""
+        return f"redis://{self.redis_host}:{self.redis_port}/0"
+
+    @property
+    def celery_result_backend(self) -> str:
+        """Kompiluje URL do składowania wyników Celery w Redis."""
+        return f"redis://{self.redis_host}:{self.redis_port}/1"
+
+    # --- WALIDATORY PYDANTIC (Przywrócenie logiki testowanej przez pytest) ---
 
     @field_validator("log_level")
     @classmethod
-    def valid_log_level(cls, v: str) -> str:
-        """Waliduje poziom logowania."""
-        allowed = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
-        upper = v.upper()
-        if upper not in allowed:
-            raise ValueError(f"log_level musi być jednym z: {allowed}")
-        return upper
+    def validate_log_level(cls, v: str) -> str:
+        """Wymusza, by poziom logów był zawsze pisany dużymi literami i dozwolony."""
+        valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        upper_v = v.upper()
+        if upper_v not in valid_levels:
+            raise ValueError(f"Nieprawidłowy poziom logowania: {v}. Dozwolone: {valid_levels}")
+        return upper_v
 
-    # ------------------------------------------------------------------
-    # Autoryzacja i OAuth
-    # ------------------------------------------------------------------
-    google_oauth_client_id: str = ""
-    google_oauth_client_secret: str = ""
-
-    mapy_cz_api_key: str = ""
+    @model_validator(mode="after")
+    def validate_debug_in_production(self):
+        """Zabezpieczenie przed wyciekiem DEBUG=True na środowisko produkcyjne."""
+        if self.app_env == "production" and self.debug is True:
+            raise ValueError("debug=True jest zakazany")
+        return self

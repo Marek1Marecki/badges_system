@@ -45,6 +45,7 @@ Minimalny próg globalny dla tego projektu wynosi **80%** (skonfigurowany w `pyp
 - **Każdy Invariant z `INVARIANTS.md`** ma test, który celowo go narusza (np. podanie błędnego wieku do `MinAgeRule`).
 - **Logikę domenową bez bazy danych:** `VerifyBadgeUseCase` testowany z użyciem szybkich narzędzi `FakeBadgeRepository`.
 - **Ekstraktory:** Działanie `OsmDataExtractor` (wyciąganie nazw, wysokości, języków granicznych) na suchych słownikach JSON z OSM.
+- **Idempotentność Danych Referencyjnych (DataOps):** Wymagane jest pokrycie procesu `restore_reference_data` testem integracyjnym weryfikującym jego idempotentność. Test musi wykonać operację dwukrotnie na tym samym snapshocie referencyjnym, na końcu wykonując asercję potwierdzającą brak zmian w bazie i brak duplikacji obiektów/relacji podczas drugiego przebiegu. Jest to jedyny dopuszczalny dowód na bezpieczeństwo uruchamiania tej komendy na środowisku produkcyjnym.
 
 ### ❌ Nie testujemy (i dlaczego)
 - **Live Overpass API w testach Unit:** Testy adaptera OSM (`test_osm_adapter.py`) używają mocków HTTP (`@patch`). Nie obciążamy publicznych, zewnętrznych serwerów w pipeline CI, zapobiegając fałszywym awariom (Flaky Tests) wynikającym z błędów 504.

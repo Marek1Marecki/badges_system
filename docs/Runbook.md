@@ -104,7 +104,6 @@ uv run python manage.py restore_reference_data --dry-run
 # Właściwe zniszczenie i odtworzenie bazy na podstawie zrzutu (w jednej transakcji)
 uv run python manage.py restore_reference_data
 ```
-```
 
 ---
 
@@ -203,3 +202,29 @@ sudo bash -c 'echo "nameserver 1.1.1.1" >> /etc/resolv.conf'
 **Objaw:** Po zmianie nazwy metody w serwisie domenowym (np. z `recalculate_for_user` na `recalculate_for_profile`) i zaktualizowaniu zadania w `tasks.py`, zadania w kolejce nadal wybuchają z błędem typu "Obiekt nie posiada takiej metody". Lintery (`make check`) nie zgłaszają żadnych problemów.
 **Przyczyna:** Celery Workers to długożyjące procesy operacyjne. Wczytują one wszystkie moduły Pythona do pamięci RAM przy starcie i **nigdy** same z siebie ich nie odświeżają, ignorując zapisy w plikach `.py` dokonywane w trakcie developmentu.
 **Rozwiązanie:** Po **KAŻDEJ** zmianie w kodzie logicznym zlokalizowanym w `domain/`, `application/` lub `tasks.py`, należy bezwzględnie "zabić" proces Workera w terminalu (`Ctrl+C`) i uruchomić go ponownie (`uv run celery -A config worker -l info`).
+
+---
+
+## 7. Bezpieczna migracja infrastruktury Dockera (Checklista)
+
+Zanim zmienisz nazwy plików `docker-compose.yml`, nazwy wolumenów lub wyczyścisz architekturę, **bezwzględnie** wykonaj poniższe kroki, aby uniknąć zjawiska "Zaginionej Bazy" (EC-069):
+
+1. **Zrób zrzut (Backup) obecnej bazy danych do pliku!**
+   ```bash
+   docker compose exec db pg_dump -U postgres badges_system_db | gzip > backup_przed_migracja_$(date +%Y%m%d).sql.gz
+    ```
+   
+---
+
+## 8. Uruchamianie Testów (Unit i Integracyjnych)
+
+System rygorystycznie oddziela szybkie testy jednostkowe (w 100% odcięte od bazy danych i API poprzez zaimplementowane `Fakes`) od testów integracyjnych operujących na PostGIS.
+
+### Testy Jednostkowe (Unit)
+Są to testy weryfikujące Czystą Domenę (`domain/rules/`) i logikę orkiestratorów. Uruchamiane lokalnie, bez konieczności stawiania infrastruktury Dockerowej.
+**Komenda (uruchamiana na Hoście):**
+```bash
+make test
+```
+
+---

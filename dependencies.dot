@@ -58,6 +58,7 @@ digraph G {
     "application.ports.map_port" [fillcolor="khaki"];
     "application.ports.mvt_port" [fillcolor="khaki"];
     "application.ports.news_port" [fillcolor="khaki"];
+    "application.ports.osm_port" [fillcolor="khaki"];
     "application.ports.user_progress_port" [fillcolor="khaki"];
   }
 
@@ -104,6 +105,7 @@ digraph G {
     "apps.badges.forms" [fillcolor="pink"];
     "apps.badges.management.commands.calculate_neighbors" [fillcolor="pink"];
     "apps.badges.management.commands.export_reference_data" [fillcolor="pink"];
+    "apps.badges.management.commands.lint_migrations" [fillcolor="pink"];
     "apps.badges.management.commands.restore_reference_data" [fillcolor="pink"];
     "apps.badges.migrations" [fillcolor="pink"];
     "apps.badges.migrations.0001_initial" [fillcolor="pink"];
@@ -152,6 +154,7 @@ digraph G {
   "application.use_cases.fetch_badge_news" -> "application.ports.news_port";
   "application.use_cases.fetch_osm_data" -> "application.exceptions";
   "application.use_cases.fetch_osm_data" -> "application.ports.clock_port";
+  "application.use_cases.fetch_osm_data" -> "application.ports.osm_port";
   "application.use_cases.get_mvt_tile" -> "application.exceptions";
   "application.use_cases.get_mvt_tile" -> "application.ports.cache_port";
   "application.use_cases.get_mvt_tile" -> "application.ports.mvt_port";
@@ -212,6 +215,7 @@ digraph G {
   "infrastructure.adapters.news_scraper" -> "infrastructure.exceptions";
   "infrastructure.adapters.osm_adapter" -> "apps.badges.models";
   "infrastructure.adapters.osm_adapter" -> "infrastructure.exceptions";
+  "infrastructure.adapters.osm_repository" -> "application.ports.osm_port";
   "infrastructure.adapters.osm_repository" -> "apps.badges.models";
   "infrastructure.adapters.osm_repository" -> "infrastructure.adapters.osm_adapter";
   "infrastructure.adapters.persistence.django_badge_repo" -> "application.ports.badge_repository_port";

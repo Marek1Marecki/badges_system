@@ -1,0 +1,124 @@
+# ==============================================================================
+# compose.override.yml — WARSTWA DEV
+#
+# Ładowana automatycznie przez `docker compose up` (bez -f). Jedyne środowisko,
+# w którym wolno uruchomić `export_reference_data` (ADR-020, macierz propagacji).
+#
+# Kod aplikacji trafia do kontenera przez wolumen (./:/app) — dlatego plik
+# .env.dev jest fizycznie obecny wewnątrz kontenera i Pydantic może go
+# odczytać na podstawie ENV_FILE. To NIE działa tak samo w PRE-PROD/PROD
+# (patrz compose.preprod.yml / compose.prod.yml).
+#
+# DEV_UID / DEV_GID (opcjonalne w .env, domyślnie 1000:1000) — przekazywane
+# jako build arg do stage'u `development`, żeby proces w kontenerze działał
+# z tym samym UID co użytkownik na hoście. Bez tego pliki tworzone przez
+# kontener w zamontowanym wolumenie ./:/app należałyby na hoście do roota.
+# Na Linuksie ustaw w swoim `.env`: `DEV_UID=$(id -u)` i `DEV_GID=$(id -g)`.
+#
+# Zalecane (nie wymagane): ustaw w swoim `.env` `COMPOSE_PROJECT_NAME=badges-dev`
+# — Compose używa tej nazwy do namespace'owania kontenerów/wolumenów/sieci.
+# Bez tego `docker compose down` wykonane przypadkiem w innym katalogu
+# projektu o tej samej nazwie folderu może trafić w niewłaściwe zasoby.
+# ==============================================================================
+
+services:
+  db:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  web:
+    build:
+      context: .
+      target: development
+      args:
+        USER_UID: ${DEV_UID:-1000}
+        USER_GID: ${DEV_GID:-1000}
+    ports:
+      - "8005:8005"
+    volumes:
+      - ./:/app
+    environment:
+      - ENV_FILE=.env.dev
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Wymagane WYŁĄCZNIE przez `docker compose exec web ./scripts/bootstrap.sh`
+      # (manage.py createsuperuser --noinput czyta je bezpośrednio z
+      # os.environ kontenera, nie z pliku .env.dev czytanego przez Pydantic —
+      # to dwie różne warstwy, patrz nagłówek pliku i README-infra.md).
+      - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:?Ustaw DJANGO_SUPERUSER_USERNAME w pliku .env}
+      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:?Ustaw DJANGO_SUPERUSER_EMAIL w pliku .env}
+      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:?Ustaw DJANGO_SUPERUSER_PASSWORD w pliku .env}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_worker:
+    build:
+      context: .
+      target: development
+      args:
+        USER_UID: ${DEV_UID:-1000}
+        USER_GID: ${DEV_GID:-1000}
+    command: uv run celery -A config worker -l info
+    volumes:
+      - ./:/app
+    environment:
+      - ENV_FILE=.env.dev
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_beat:
+    build:
+      context: .
+      target: development
+      args:
+        USER_UID: ${DEV_UID:-1000}
+        USER_GID: ${DEV_GID:-1000}
+    command: uv run celery -A config beat -l info
+    volumes:
+      - ./:/app
+    environment:
+      - ENV_FILE=.env.dev
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # Uruchamiany tylko na żądanie: docker compose --profile monitoring up flower
+  flower:
+    build:
+      context: .
+      target: development
+      args:
+        USER_UID: ${DEV_UID:-1000}
+        USER_GID: ${DEV_GID:-1000}
+    profiles:
+      - monitoring
+    # Składnia `?` wymusza zatrzymanie startu, jeśli hasło nie jest ustawione
+    # w pliku `.env` (Zero Trust — brak cichych fallbacków typu admin:admin).
+    command: >
+      uv run celery -A config flower --port=5555
+      --basic_auth="${FLOWER_USER:?Ustaw FLOWER_USER w pliku .env}:${FLOWER_PASSWORD:?Ustaw FLOWER_PASSWORD w pliku .env}"
+    ports:
+      - "5555:5555"
+    volumes:
+      - ./:/app
+    environment:
+      - ENV_FILE=.env.dev
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy

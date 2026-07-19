@@ -382,3 +382,43 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 **Status:** `resolved`  
 **Opis:** Podczas refaktoryzacji agenci LLM generują przestarzały kod: `except json.JSONDecodeError, ValueError:`. W Pythonie 3 powoduje to natychmiastowy `SyntaxError` — serwer w ogóle nie wystartuje.  
 **Rozwiązanie / workaround:** Prawidłowa składnia: `except (json.JSONDecodeError, ValueError):`. Egzekwowane przez linter Ruff.
+
+### EC-071 — "Zaginiona" baza danych po refaktoryzacji plików Docker Compose
+**Obszar:** `compose.yml`, Wolumeny Dockera  
+**Status:** `resolved`  
+**Opis:** Zmiana struktury plików z `docker-compose.dev.yml` na `compose.yml` lub zmiana nazwy zdefiniowanego wolumenu (np. z `db_data` na `postgis_data`) powoduje, że przy kolejnym `docker compose up` system tworzy nową, całkowicie pustą bazę danych. Stare dane nie są kasowane, ale zostają "odcięte" (Orphaned Volume), co sprawia wrażenie utraty danych.
+**Rozwiązanie / workaround:** Zawsze należy weryfikować nazwy wolumenów komendą `docker volume ls`. Nazwa wolumenu w nowym pliku `compose.yml` musi być w 100% identyczna ze starą. Kategorycznie zabrania się używania komendy `docker compose down -v` w środowisku posiadającym dane referencyjne.
+
+### EC-072 — Błąd autoryzacji do PostGIS po zmianie hasła w pliku `.env`
+**Obszar:** `compose.yml`, `PostgreSQL`, `.env`  
+**Status:** `resolved`  
+**Opis:** Jeśli wolumen bazy danych (PostgreSQL) został już raz zainicjowany, baza zapamiętuje użytkownika i hasło w swoich wewnętrznych plikach systemowych. Zmiana zmiennych `POSTGRES_USER` lub `POSTGRES_PASSWORD` w plikach `.env.*` dla istniejącego wolumenu nie zmienia hasła w bazie, ale powoduje, że aplikacja (Django/Celery) próbuje zalogować się nowym hasłem, co skutkuje błędem autentykacji (Connection Refused).
+**Rozwiązanie / workaround:** Rotacja haseł w już istniejących, podpiętych bazach musi być wykonywana za pomocą zapytań SQL (`ALTER USER`), a nie poprzez zmianę `.env`. Nowe środowiska `.env` muszą być wyrównane z hasłami użytymi przy pierwszej inicjalizacji kontenera.
+
+### EC-073 — Utrata zadań asynchronicznych (In-Flight Tasks) przy restarcie Redis
+**Obszar:** `compose.yml`, `Celery`, `Redis`  
+**Status:** `resolved`  
+**Opis:** W przypadku użycia domyślnego obrazu `redis:7-alpine` jako brokera wiadomości, dane trzymane są wyłącznie w pamięci RAM. Jeśli kontener zostanie zrestartowany w trakcie wykonywania długiego zadania przez Workera (np. `PoiScoringService`), zlecenie to bezpowrotnie przepada.
+**Rozwiązanie / workaround:** W środowisku produkcyjnym `compose.prod.yml` Redis musi mieć włączoną persystencję AOF (Append-Only File) poprzez dodanie komendy `command: redis-server --appendonly yes` oraz zdefiniowany podpięty wolumen fizyczny.
+
+### EC-074 — Interpolacja zmiennych `env_file` w Docker Compose
+**Obszar:** `compose.yml`, `app_settings.py`  
+**Status:** `resolved`  
+**Opis:** Użycie konstrukcji typu `DATABASE_URL=postgis://${USER}:${PASS}@db/` wewnątrz pliku np. `.env.dev` ładowanego przez klauzulę `env_file` w Docker Compose skutkuje brakiem interpolacji. Docker przekazuje do kontenera surowy, nieprzetworzony string z dolarami, co powoduje natychmiastowe błędy połączenia bibliotek ORM (np. dj-database-url).
+**Rozwiązanie / workaround:** Twardy zakaz stosowania interpolacji zmiennych zależnych w plikach `.env`. Konfiguracja DSN (Data Source Name) musi być programowo składana ze składowych atomowych (`POSTGRES_USER`, `POSTGRES_PASSWORD` itp.) wewnątrz walidatora konfiguracji aplikacji (`pydantic.computed_field` w `app_settings.py`), zachowując jedno źródło prawdy.
+
+### EC-075 — Healthcheck w Dockerze a `ALLOWED_HOSTS` w Django (Błąd 400)
+**Obszar:** `Dockerfile`, `config/settings.py`  
+**Status:** `resolved`  
+**Opis:** Implementacja sprzętowego HEALTHCHECK-a z wykorzystaniem wewnętrznego protokołu HTTP (odpytującego `localhost` z wnętrza kontenera) ulega niekończącej się awarii w środowisku produkcyjnym, na którym `ALLOWED_HOSTS` ograniczone jest do publicznych adresów domenowych. Django blokuje ruch z wewnątrz z błędem HTTP 400 (DisallowedHost).
+**Rozwiązanie / workaround:** Domena `"localhost"` oraz `"127.0.0.1"` muszą być na zawsze dodane jako stałe wartości do listy `ALLOWED_HOSTS` w pliku `settings.py`, chroniąc procesor monitorujący zdrowie kontenera.
+
+### EC-076 — Błąd połączenia `could not translate host name "db"` podczas testów lokalnych oraz ryzyko `exec`
+**Obszar:** `Makefile`, `app_settings.py`, `compose.yml`  
+**Status:** `resolved`  
+**Opis:** Występują dwa równoległe problemy z uruchamianiem testów w środowisku deweloperskim:
+1. Uruchomienie komendy `make test-all` na lokalnym systemie operacyjnym (Host) skutkuje błędem, ponieważ Host nie potrafi przetłumaczyć wirtualnej nazwy DNS Dockera ("db") na adres IP.
+2. Próba uruchomienia testów wewnątrz działającego kontenera za pomocą `docker compose exec web make test-all` jest **KRYTYCZNIE NIEBEZPIECZNA**. Kontener `web` uruchomiony z profilu DEV ma "zamrożone" w zmiennych procesu (os.environ) połączenie do deweloperskiej bazy danych (np. `badges_system_db`). Ponieważ w bibliotece `pydantic-settings` rzeczywiste zmienne środowiskowe mają wyższy priorytet niż zawartość pliku zadeklarowanego w `env_file`, użycie komendy `exec` zignoruje plik `.env.test`. Testy wyczyszczą i zniszczą bazę deweloperską.
+**Rozwiązanie / workaround:** 
+Zabrania się uruchamiania testów z użyciem komendy `exec`. Do czasu wdrożenia docelowego pliku `compose.test.yml`, **jedynym bezpiecznym sposobem** testowania integracyjnego jest wykonanie polecenia bezpośrednio na Hoście z jawnym przekierowaniem hosta na odsłonięty port bazy Dockera:
+`POSTGRES_HOST=localhost make test-all`.
