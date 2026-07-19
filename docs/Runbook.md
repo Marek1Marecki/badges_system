@@ -83,29 +83,10 @@ Lokalna baza danych (DEV) traktowana jest jako "Środowisko Robocze" (Sandbox). 
 ### Eksport danych (Zrzut Snapshotu)
 **Kiedy używać:** Zawsze, gdy za pomocą panelu Django Admin wprowadzisz nową odznakę, zmodyfikujesz regulamin, dodasz nowy szczyt lub zaimportujesz dane z OSM.
 
-**Komendy:**
+**Komenda:**
 ```bash
-# Sprawdza statystyki i pokazuje, co zostanie wyeksportowane (bez zapisu plików)
-uv run python manage.py export_reference_data --dry-run
-
-# Właściwy eksport i nadpisanie plików w folderze data/reference/
 uv run python manage.py export_reference_data
 ```
-Co się dzieje: System w ułamek sekundy zrzuca modele PTTK i GIS, kompresuje je algorytmem GZIP (zmniejszając rozmiar z ~100MB do ~10MB) i aktualizuje `manifest.json`. Pliki te musisz następnie zacommitować do repozytorium Gita.
-
-### Import danych (Odtwarzanie Środowiska)
-**Kiedy używać:** Podczas stawiania projektu na nowym komputerze, na środowiskach testowych (CI/CD), po awarii bazy danych lub przy inicjalizacji środowiska Produkcyjnego.
-
-**Komendy:**
-```bash
-# Odczytuje manifest i waliduje obecność plików .json.gz bez dotykania bazy danych
-uv run python manage.py restore_reference_data --dry-run
-
-# Właściwe zniszczenie i odtworzenie bazy na podstawie zrzutu (w jednej transakcji)
-uv run python manage.py restore_reference_data
-```
-
----
 
 ### Problem 5: Szare pinezki na mapie / Brak widocznej aktualizacji po zalogowaniu wejścia
 **Objaw:** Po dodaniu logu wejścia lub subskrybowaniu odznaki szczyty na mapie nie zmieniają koloru, a zysk (100/n) to nadal 0 pkt.
@@ -202,29 +183,3 @@ sudo bash -c 'echo "nameserver 1.1.1.1" >> /etc/resolv.conf'
 **Objaw:** Po zmianie nazwy metody w serwisie domenowym (np. z `recalculate_for_user` na `recalculate_for_profile`) i zaktualizowaniu zadania w `tasks.py`, zadania w kolejce nadal wybuchają z błędem typu "Obiekt nie posiada takiej metody". Lintery (`make check`) nie zgłaszają żadnych problemów.
 **Przyczyna:** Celery Workers to długożyjące procesy operacyjne. Wczytują one wszystkie moduły Pythona do pamięci RAM przy starcie i **nigdy** same z siebie ich nie odświeżają, ignorując zapisy w plikach `.py` dokonywane w trakcie developmentu.
 **Rozwiązanie:** Po **KAŻDEJ** zmianie w kodzie logicznym zlokalizowanym w `domain/`, `application/` lub `tasks.py`, należy bezwzględnie "zabić" proces Workera w terminalu (`Ctrl+C`) i uruchomić go ponownie (`uv run celery -A config worker -l info`).
-
----
-
-## 7. Bezpieczna migracja infrastruktury Dockera (Checklista)
-
-Zanim zmienisz nazwy plików `docker-compose.yml`, nazwy wolumenów lub wyczyścisz architekturę, **bezwzględnie** wykonaj poniższe kroki, aby uniknąć zjawiska "Zaginionej Bazy" (EC-069):
-
-1. **Zrób zrzut (Backup) obecnej bazy danych do pliku!**
-   ```bash
-   docker compose exec db pg_dump -U postgres badges_system_db | gzip > backup_przed_migracja_$(date +%Y%m%d).sql.gz
-    ```
-   
----
-
-## 8. Uruchamianie Testów (Unit i Integracyjnych)
-
-System rygorystycznie oddziela szybkie testy jednostkowe (w 100% odcięte od bazy danych i API poprzez zaimplementowane `Fakes`) od testów integracyjnych operujących na PostGIS.
-
-### Testy Jednostkowe (Unit)
-Są to testy weryfikujące Czystą Domenę (`domain/rules/`) i logikę orkiestratorów. Uruchamiane lokalnie, bez konieczności stawiania infrastruktury Dockerowej.
-**Komenda (uruchamiana na Hoście):**
-```bash
-make test
-```
-
----
