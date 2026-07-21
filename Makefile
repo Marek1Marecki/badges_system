@@ -8,7 +8,7 @@ MIN_COVERAGE ?= 80
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify
 
 help:
 	@echo "CORE targets:"
@@ -89,3 +89,10 @@ dev-backup:  ## Backup bazy DEV do ./backups/ (zawsze przez kontener, nigdy loka
 
 dev-restore: ## Odtworzenie backupu: make dev-restore FILE=./backups/nazwa.dump
 	./scripts/dev-restore.sh $(FILE)
+
+test-run:    ## Środowisko TEST — szybkie testy jednostkowe (efemeryczne, sprząta po sobie)
+	./scripts/test-run.sh
+
+verify:      ## Pełna weryfikacja przed push/PR: make check + TEST (release scripts + pełny suite)
+	./scripts/verify.sh
+	

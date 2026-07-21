@@ -17,57 +17,42 @@ class TestBuildTouristRegionGeometryUseCase:
         uc = BuildTouristRegionGeometryUseCase(repo)
         assert uc._repo == repo
 
-    def test_execute_raises_when_region_not_found(self):
-        """Test błędu gdy region nie istnieje."""
+    def test_execute_returns_false_when_region_not_found(self):
+        """Test zwracania False gdy region nie istnieje."""
         repo = MagicMock()
-        repo.get_tourist_region.return_value = None
+        repo.update_region_geometry.return_value = False
         uc = BuildTouristRegionGeometryUseCase(repo)
 
-        with pytest.raises(UseCaseError, match="nie istnieje"):
-            uc.execute(999)
+        result = uc.execute(999)
+        assert "Brak geometrii" in result
 
     def test_execute_success(self):
         """Test pomyślnego zbudowania geometrii regionu."""
         repo = MagicMock()
-        region = MagicMock()
-        region.name = "Tatry"
-        repo.get_tourist_region.return_value = region
-        repo.build_union_geometry.return_value = "GEOMETRY"
-        repo.find_object_ids_in_sub_regions.return_value = [1, 2, 3]
+        repo.update_region_geometry.return_value = True
         uc = BuildTouristRegionGeometryUseCase(repo)
 
         result = uc.execute(1)
         assert "Sukces" in result
-        assert "3 obiektów" in result
-        assert "Tatry" in result
-        repo.save_region_geometry.assert_called_once_with(1, "GEOMETRY")
-        repo.replace_tourist_region_entries.assert_called_once()
+        assert "1" in result
+        repo.update_region_geometry.assert_called_once_with(1)
 
     def test_execute_with_no_geometry(self):
-        """Test gdy build_union_geometry zwraca None."""
+        """Test gdy adapter zwraca False (brak geometrii do scalenia)."""
         repo = MagicMock()
-        region = MagicMock()
-        region.name = "Test Region"
-        repo.get_tourist_region.return_value = region
-        repo.build_union_geometry.return_value = None
-        repo.find_object_ids_in_sub_regions.return_value = [1, 2]
+        repo.update_region_geometry.return_value = False
         uc = BuildTouristRegionGeometryUseCase(repo)
 
         result = uc.execute(1)
-        assert "Sukces" in result
-        repo.save_region_geometry.assert_not_called()
-        repo.replace_tourist_region_entries.assert_called_once()
+        assert "Brak geometrii" in result
+        repo.update_region_geometry.assert_called_once_with(1)
 
     def test_execute_with_empty_object_list(self):
-        """Test gdy nie ma obiektów w regionie."""
+        """Test pomyślnego scalenia geometrii (nie sprawdza już listy obiektów)."""
         repo = MagicMock()
-        region = MagicMock()
-        region.name = "Empty Region"
-        repo.get_tourist_region.return_value = region
-        repo.build_union_geometry.return_value = "GEOMETRY"
-        repo.find_object_ids_in_sub_regions.return_value = []
+        repo.update_region_geometry.return_value = True
         uc = BuildTouristRegionGeometryUseCase(repo)
 
         result = uc.execute(1)
         assert "Sukces" in result
-        assert "0 obiektów" in result
+        repo.update_region_geometry.assert_called_once_with(1)

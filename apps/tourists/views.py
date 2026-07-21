@@ -1,6 +1,5 @@
 """Widoki HTML dla obszaru Turysty (Faza C - Frontend)."""
 
-from collections import defaultdict
 from typing import Any
 
 from django.contrib import messages
@@ -247,7 +246,7 @@ def badge_detail_view(request, badge_code: str):
     if progress and progress.version_id:
         target_version = progress.version
         try:
-            use_case = get_container()["verify_badge"]
+            use_case = get_container().verify_badge
             dto = VerifyBadgeRequestDTO(
                 profile_id=profile_id, badge_code=badge_code, cycle_number=progress.cycle_number
             )
@@ -451,185 +450,40 @@ def region_detail_view(request, region_level: str, region_id: int):
 
 @login_required
 def poi_ranking_view(request):
-    """Widok tabelaryczny pokazujący opłacalne szczyty, pogrupowane w Klastry (Rodziny)."""
+    """Widok: Ranking Poszczególnych Celów (Szczytów i Klastrów)."""
     profile_id = _get_active_profile_id(request)
-    cache_key = f"map_state:{profile_id}"
-    cached_data = cache.get(cache_key) or {}
 
-    scores = cached_data.get("scores", {})
-    colors = cached_data.get("colors", {})
+    # 1. Odpytujemy Czysty Serwis Odczytu
+    queries_service = get_container().explore_queries_service
+    dto_response = queries_service.get_poi_ranking(profile_id=profile_id)
 
-    # NOWE: Pobieramy kody odznak subskrybowanych przez ten profil
-    subscribed_badge_codes = list(
-        UserBadgeProgress.objects.filter(profile_id=profile_id).values_list("badge__code", flat=True)
-    )
-
-    def get_score(pid):
-        s = scores.get(pid, scores.get(str(pid), 0))
-        try:
-            return int(s)
-        except ValueError, TypeError:
-            return 0
-
-    def get_color(pid):
-        return colors.get(pid, colors.get(str(pid), "GRAY"))
-
-    valid_peak_ids = [int(pid) for pid in scores.keys() if get_score(pid) > 0 and get_color(pid) != "GRAY"]
-
-    from django.db.models import Q
-
-    peaks = (
-        TouristObject.objects.filter(Q(id__in=valid_peak_ids) | Q(child_objects__id__in=valid_peak_ids))
-        .select_related("parent_object")
-        .prefetch_related("badgeversionmodel_set__badge")
-        .distinct()
-    )
-
-    clusters = defaultdict(list)
-
-    for peak in peaks:
-        anchor_id = peak.parent_object_id if peak.parent_object_id else peak.id
-        clusters[anchor_id].append(peak)
-
-    ranking_data = []
-
-    for anchor_id, family_members in clusters.items():
-        cluster_score = sum(get_score(p.id) for p in family_members)
-
-        if cluster_score == 0:
-            continue
-
-        parent_node = next((p for p in family_members if p.id == anchor_id), None)
-        children_nodes = sorted([p for p in family_members if p.id != anchor_id], key=lambda x: x.name)
-
-        cluster_items = []
-
-        if parent_node:
-            cluster_items.append(
-                {
-                    "id": parent_node.id,
-                    "name": parent_node.name,
-                    "type": parent_node.type,
-                    "score": get_score(parent_node.id),
-                    "color": get_color(parent_node.id),
-                    "badges": [
-                        {"code": c, "name": n}
-                        for c, n in {
-                            bv.badge.code: bv.badge.name for bv in parent_node.badgeversionmodel_set.all()
-                        }.items()
-                    ],
-                    "is_child": False,
-                }
-            )
-
-        for child in children_nodes:
-            c_score = get_score(child.id)
-            if c_score > 0:
-                cluster_items.append(
-                    {
-                        "id": child.id,
-                        "name": child.name,
-                        "type": child.type,
-                        "score": c_score,
-                        "color": get_color(child.id),
-                        "badges": [
-                            {"code": c, "name": n}
-                            for c, n in {
-                                bv.badge.code: bv.badge.name for bv in child.badgeversionmodel_set.all()
-                            }.items()
-                        ],
-                        "is_child": True,
-                    }
-                )
-
-        if not cluster_items:
-            continue
-
-        cluster_name = parent_node.name if parent_node else cluster_items[0]["name"]
-        is_family = bool(len(cluster_items) > 1 or (parent_node and children_nodes))
-
-        ranking_data.append(
-            {
-                "cluster_id": anchor_id,
-                "cluster_name": cluster_name,
-                "cluster_score": cluster_score,
-                "is_family": is_family,
-                "items": cluster_items,
-            }
-        )
-
-    ranking_data.sort(key=lambda x: x["cluster_score"], reverse=True)
-
-    return render(
-        request,
-        "tourists/ranking.html",
-        {
-            "ranking": ranking_data,
-            "subscribed_badge_codes": subscribed_badge_codes,
-        },
-    )
+    context = {
+        "active_progresses": dto_response.active_progresses,
+        "subscribed_badge_codes": dto_response.subscribed_badge_codes,
+        "ranking_data": dto_response.ranking,
+    }
+    return render(request, "tourists/ranking.html", context)
 
 
 @login_required
 def region_ranking_view(request):
-    """Widok tabelaryczny pokazujący skumulowany ranking dla całych regionów."""
+    """Widok: Skumulowany ranking dla całych regionów z podziałem na poziomy."""
     profile_id = _get_active_profile_id(request)
 
-    LEVELS = {
-        "MESOREGION": "Mezoregiony",
-        "TOURIST_REGION": "Regiony Turystyczne (PTTK)",
-        "MACROREGION": "Makroregiony",
-        "SUBPROVINCE": "Podprowincje",
-        "PROVINCE": "Prowincje",
-        "VOIVODESHIP": "Województwa",
+    # Bezpieczne pobieranie poziomu z URL, z domyślnym przejściem na MEZOREGION
+    level = request.GET.get("level", "MESOREGION").upper()
+    if level not in ["VOIVODESHIP", "MACROREGION", "MESOREGION"]:
+        level = "MESOREGION"
+
+    # 1. Odpytujemy Czysty Serwis Odczytu
+    queries_service = get_container().explore_queries_service
+    dto_response = queries_service.get_region_ranking(profile_id=profile_id, level=level)
+
+    context = {
+        "ranking_data": dto_response.ranking,
+        "current_level": level,
     }
-
-    active_level = request.GET.get("level", "MESOREGION").upper()
-    if active_level not in LEVELS:
-        active_level = "MESOREGION"
-
-    cache_key = f"map_state:{profile_id}"
-    cached_data = cache.get(cache_key) or {}
-
-    scores = cached_data.get("scores", {})
-    colors = cached_data.get("colors", {})
-
-    valid_peak_ids = []
-    for pid_str, score in scores.items():
-        if score > 0 and colors.get(pid_str) != "GRAY":
-            valid_peak_ids.append(int(pid_str))
-
-    regions_agg = defaultdict(lambda: {"score": 0, "peak_count": 0})
-
-    if valid_peak_ids:
-        region_caches = ObjectRegionCache.objects.filter(
-            tourist_object_id__in=valid_peak_ids, region_level=active_level
-        )
-
-        for rc in region_caches:
-            peak_score = scores.get(rc.tourist_object_id, scores.get(str(rc.tourist_object_id), 0))
-            if peak_score > 0:
-                key = (rc.region_level, rc.region_id, rc.region_name)
-                regions_agg[key]["score"] += peak_score
-                regions_agg[key]["peak_count"] += 1
-
-    ranking_data = []
-    for (level, rid, name), data in regions_agg.items():
-        ranking_data.append(
-            {"level": level, "id": rid, "name": name, "total_score": data["score"], "peak_count": data["peak_count"]}
-        )
-
-    ranking_data.sort(key=lambda x: x["total_score"], reverse=True)
-
-    return render(
-        request,
-        "tourists/region_ranking.html",
-        {
-            "ranking": ranking_data,
-            "levels": LEVELS,
-            "active_level": active_level,
-        },
-    )
+    return render(request, "tourists/region_ranking.html", context)
 
 
 @login_required

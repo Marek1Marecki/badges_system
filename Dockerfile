@@ -10,6 +10,19 @@ ARG PYTHON_BASE=python:3.14-slim-bookworm
 # Wersja uv przypięta jawnie — brak `latest` (08-base-image-policy.md)
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.5.11
 
+# ==============================================================================
+# 0. ETAP POMOCNICZY — źródło binarki `uv`
+#
+# WAŻNE: `COPY --from=${UV_IMAGE}` (odwołanie do wartości ARG bezpośrednio
+# w --from) działa niedeterministycznie w BuildKit — bez cache trafienia
+# kończy się błędem: "variable expansion is not supported for --from, define
+# a new stage with FROM using ARG from global scope as a workaround". To
+# jest dokładnie ten workaround: `FROM $ARG` (obsługiwane w pełni, także
+# z cache miss) jest dozwolone, samo `COPY --from=$ARG` — nie zawsze.
+# Wszystkie kolejne stage'e kopiują uv z NAZWY tego stage'u, nigdy ze zmiennej.
+# ==============================================================================
+FROM ${UV_IMAGE} AS uv_source
+
 
 # ==============================================================================
 # 1. ETAP BAZOWY — wspólne zmienne środowiskowe, brak instalacji pakietów
@@ -30,7 +43,6 @@ WORKDIR /app
 # 2. ETAP BUILDER — kompilacja zależności (GDAL/PROJ/psycopg), instalacja uv
 # ==============================================================================
 FROM base AS builder
-ARG UV_IMAGE
 
 # Ciężki toolchain do kompilacji rozszerzeń C / bindingów GIS.
 # Ten stage NIGDY nie trafia do obrazu production (tylko /opt/venv jest kopiowane).
@@ -41,7 +53,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         g++ \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=${UV_IMAGE} /uv /usr/local/bin/uv
+COPY --from=uv_source /uv /usr/local/bin/uv
 
 # Instalacja zależności BEZ instalowania samego projektu (uniknięcie
 # editable-install przy braku jeszcze skopiowanego kodu źródłowego).
@@ -57,7 +69,6 @@ RUN uv sync --frozen --no-dev
 # 3. ETAP ROZWOJOWY (DEVELOPMENT) — pełne zależności dev, kod z volume mount
 # ==============================================================================
 FROM base AS development
-ARG UV_IMAGE
 # UID/GID dopasowane do hosta dewelopera (domyślnie 1000:1000 — typowy pierwszy
 # użytkownik na Linuksie). Bez tego proces działałby jako root i pliki tworzone
 # w zamontowanym wolumenie ./:/app miałyby właściciela root na hoście.
@@ -72,7 +83,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         g++ \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=${UV_IMAGE} /uv /usr/local/bin/uv
+COPY --from=uv_source /uv /usr/local/bin/uv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY pyproject.toml uv.lock README.md ./
@@ -125,6 +136,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libgdal32 \
         libproj25 \
     && rm -rf /var/lib/apt/lists/*
+
+# Binarka `uv` — WYMAGANA, bo scripts/release-*.sh i bootstrap.sh wołają
+# `uv run python manage.py ...`. Bez tego kopiowania te skrypty działałyby
+# w DEV/TEST (mają swój własny `uv` z etapu development/builder), ale
+# kończyłyby się błędem "uv: command not found" dopiero przy pierwszym
+# uruchomieniu na PRE-PROD/PROD — dokładnie ten rodzaj błędu, który ujawnia
+# się późno, bo wcześniejsze środowiska go maskują.
+COPY --from=uv_source /uv /usr/local/bin/uv
 
 # Hardening: usunięcie narzędzi paczkujących (vendored CVE w obrazie bazowym).
 # `|| true` jest tu ŚWIADOMYM wyjątkiem od zasady "nie maskuj błędów" —

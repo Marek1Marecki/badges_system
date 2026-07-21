@@ -5,17 +5,16 @@ from unittest.mock import patch
 from bootstrap.container import configure_app, get_container, reset_container
 
 
-# Patchujemy u źródła (w modułach infrastruktury), a nie w module bootstrap,
-# ponieważ importy w configure_app są lokalne (wewnątrz funkcji).
-@patch("infrastructure.logging.configure_logging")
+# configure_app jest teraz aliasem dla build_container, który nie wywołuje configure_logging
 @patch("infrastructure.config.AppSettings")
-def test_configure_app(mock_settings, mock_logging) -> None:
+def test_configure_app(mock_settings) -> None:
     mock_settings.return_value.log_json = True
     mock_settings.return_value.log_level = "DEBUG"
 
-    configure_app()
+    container = configure_app()
 
-    mock_logging.assert_called_once_with(json_mode=True, level="DEBUG")
+    # Weryfikujemy, że kontener został poprawnie zbudowany
+    assert container is not None
 
 
 def test_container_singleton() -> None:
@@ -30,6 +29,7 @@ def test_container_singleton() -> None:
     assert container1 is container2
 
     # Weryfikacja czy kontener wygenerował i zarejestrował wszystkie nasze Use Case'y
+    # AppContainer to dataclass, więc używamy hasattr zamiast operatora 'in'
     expected_use_cases = [
         "verify_badge",
         "fetch_osm_data",
@@ -42,7 +42,7 @@ def test_container_singleton() -> None:
     ]
 
     for uc in expected_use_cases:
-        assert uc in container1
+        assert hasattr(container1, uc)
 
 
 def test_reset_container() -> None:

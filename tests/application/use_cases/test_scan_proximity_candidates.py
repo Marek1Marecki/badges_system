@@ -7,13 +7,19 @@ from application.use_cases.scan_proximity_candidates import ScanProximityCandida
 
 def test_scan_proximity_candidates_use_case() -> None:
     repo = MagicMock()
-    # Zwraca 2 znalezione pary bliskich obiektów
-    repo.find_proximity_candidates.return_value = [(1, 2, 10.0), (3, 4, 20.0)]
-    # Pierwszy tworzy nową parę (True), drugi to stary wpis który już istniał (False)
-    repo.create_proximity_candidate.side_effect = [True, False]
+    # Zwraca 1 obiekt do przetworzenia z geometrią
+    geom_mock = MagicMock()
+    repo.get_unprocessed_objects.return_value = [(1, geom_mock)]
+    # Zwraca 2 pobliskie obiekty
+    repo.find_nearby_objects.return_value = [2, 3]
+    # Zapisuje 1 nową parę (deduplikacja w adapterze)
+    repo.save_candidate_pairs.return_value = 1
 
     uc = ScanProximityCandidatesUseCase(repo)
     result = uc.execute()
 
-    assert "Utworzono 1 nowych" in result
-    assert repo.create_proximity_candidate.call_count == 2
+    assert "Zakończono" in result
+    assert "1 nowych kandydatów" in result
+    repo.get_unprocessed_objects.assert_called_once_with(limit=100)
+    repo.find_nearby_objects.assert_called_once_with(1, geom_mock, distance_m=150.0)
+    repo.save_candidate_pairs.assert_called_once_with(parent_id=1, child_ids=[2, 3])

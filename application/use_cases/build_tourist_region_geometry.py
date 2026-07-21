@@ -1,52 +1,25 @@
-"""Przypadek użycia: Budowanie geometrii Regionu Turystycznego.
+"""Przypadek użycia: Złączanie geometrii (ST_Union) w regionach turystycznych."""
 
-Zgodnie z 14-domain-purity.md — zero importów apps/, django/, infrastructure/.
-"""
-
-from typing import Any
-
-from application.exceptions import UseCaseError
+from application.ports.region_cache_port import TouristRegionGeometryRepositoryPort
 
 
 class BuildTouristRegionGeometryUseCase:
-    """Buduje geometrię Regionu Turystycznego i aktualizuje CQRS cache."""
+    """Złącza (ST_Union) składowe w 1 ogromny wielokąt (Poligon)."""
 
-    def __init__(self, region_cache_repository: Any) -> None:
-        """Inicjalizuje use case.
+    def __init__(self, geometry_repository: TouristRegionGeometryRepositoryPort) -> None:
+        """Inicjalizuje przypadek użycia.
 
         Args:
-            region_cache_repository: Adapter wykonujący operacje PostGIS.
+            geometry_repository: Port do zapisu/odczytu geometrii w PostGIS.
         """
-        self._repo = region_cache_repository
+        self._repo = geometry_repository
 
     def execute(self, region_id: int) -> str:
-        """Scala geometrię i aktualizuje cache obiektów turystycznych.
+        """Kompiluje obrys składników do jednego Poligonu i go zapisuje."""
+        # Oddelegowanie całkowitej brudnej roboty GIS i złączeń do Adaptera (infrastruktury)
+        success = self._repo.update_region_geometry(region_id)
 
-        Args:
-            region_id: ID TouristRegionModel do przeliczenia.
+        if not success:
+            return f"Brak geometrii do scalenia dla Regionu {region_id}."
 
-        Returns:
-            Komunikat tekstowy o statusie.
-
-        Raises:
-            UseCaseError: Gdy region nie istnieje.
-        """
-        region = self._repo.get_tourist_region(region_id)
-
-        if region is None:
-            raise UseCaseError(f"Region turystyczny o ID {region_id} nie istnieje.")
-
-        combined_geometry = self._repo.build_union_geometry(region_id)
-
-        if combined_geometry is not None:
-            self._repo.save_region_geometry(region_id, combined_geometry)
-
-        object_ids = self._repo.find_object_ids_in_sub_regions(region_id)
-
-        self._repo.replace_tourist_region_entries(
-            region_id=region_id,
-            region_name=region.name,
-            object_ids=object_ids,
-        )
-
-        return f"Sukces: Przypisano {len(object_ids)} obiektów do '{region.name}'."
+        return f"Sukces. Scalono geometrię Regionu {region_id}."

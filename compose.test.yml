@@ -34,6 +34,24 @@ services:
     # Brak `ports:` — jak wyżej.
 
   web:
+    # UWAGA — realny incydent w tym projekcie: bez jawnej, unikalnej nazwy
+    # `image:` Compose domyślnie taguje obraz jako `<nazwa_projektu>-web`.
+    # Jeśli ten plik zostanie kiedykolwiek uruchomiony BEZ `-p ci-...`
+    # (dokumentacja niżej to zaleca, ale nic wcześniej tego technicznie nie
+    # wymuszało), tag `<projekt>-web` pokrywa się z tagiem obrazu z
+    # `compose.override.yml` (target: development) — budowa tego pliku
+    # PO CICHU NADPISUJE obraz deweloperski obrazem testowym (inny ENTRYPOINT:
+    # `uv run pytest` zamiast `runserver`/braku entrypointu). Efekt: kolejne
+    # `docker compose run --rm web <cokolwiek>` w DEV podaje ten argument
+    # jako ścieżkę do pytest zamiast wykonać go jako polecenie. Jawna,
+    # zawsze-inna nazwa poniżej eliminuje to ryzyko strukturalnie — nawet
+    # przy zapomnianym `-p`, obrazy nigdy nie dzielą tagu.
+    image: badges_system-web-testing
+    # `pull_policy: build` — bez tego Compose najpierw PRÓBUJE pociągnąć ten
+    # tag z rejestru (którego nie ma — stąd myląca linia "pull access denied"
+    # w logu), dopiero potem buduje lokalnie. Funkcjonalnie nieszkodliwe
+    # (build i tak następuje), ale zbędnie niepokojące w logach CI.
+    pull_policy: build
     build:
       context: .
       target: testing
@@ -57,3 +75,26 @@ services:
       redis:
         condition: service_healthy
     # Brak `volumes:` z kodem hosta — kod jest zamrożony w obrazie 'testing'.
+
+# KRYTYCZNE — bez tej sekcji TEST dziedziczyłby SZTYWNE nazwy wolumenów
+# (`badges_system_postgis_data`/`badges_system_redis_data`) zadeklarowane
+# w compose.yml (ADR-025/Runda 5), bo compose.test.yml ładuje ten plik jako
+# bazę (`-f compose.yml -f compose.test.yml`). Efekt uboczny bez tej
+# poprawki: TEST próbuje podłączyć się do TYCH SAMYCH wolumenów co DEV,
+# niezależnie od `-p` — nazwa wolumenu w Dockerze nie podlega namespace'owaniu
+# po projekcie, jeśli `name:` jest ustawione na sztywno. `${COMPOSE_PROJECT_NAME}`
+# rozwiązuje się do wartości podanej przez `-p` w tym samym uruchomieniu
+# Compose, więc każdy przebieg TEST dostaje własne, unikalne wolumeny,
+# nigdy nie kolidujące z `badges_system_*` używanym przez DEV/PROD.
+volumes:
+  # Przyrostek `_test` jest DODATKOWYM zabezpieczeniem (obrona w głąb) —
+  # nawet gdyby ktoś uruchomił ten plik bezpośrednio, z pominięciem
+  # scripts/test-run.sh i bez flagi `-p` (Compose domyślnie użyłby wtedy
+  # nazwy katalogu jako projektu, czyli prawdopodobnie "badges_system" —
+  # dokładnie tej samej, której używa DEV), wynikowa nazwa wolumenu
+  # (`badges_system_test_postgis_data`) i tak NIGDY nie zbiegnie się z
+  # nazwą używaną przez DEV (`badges_system_postgis_data`, bez "_test").
+  postgis_data:
+    name: ${COMPOSE_PROJECT_NAME}_test_postgis_data
+  redis_data:
+    name: ${COMPOSE_PROJECT_NAME}_test_redis_data

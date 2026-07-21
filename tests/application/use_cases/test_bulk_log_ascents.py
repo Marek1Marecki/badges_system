@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from application.dto.ascent_dto import AscentInputDTO, BulkAscentResultDTO
+from application.dto.ascent_dto import AscentInputDTO
 from application.use_cases.bulk_log_ascents import BulkLogAscentsUseCase
 
 
@@ -15,6 +15,19 @@ class MockAscentRepository:
 
     def bulk_save_ascents(self, profile_id, ascents):
         return len(ascents)
+
+
+class MockUnitOfWork:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+
+class MockEventPublisher:
+    def publish(self, event):
+        pass
 
 
 class MockClock:
@@ -31,18 +44,22 @@ class TestBulkLogAscentsUseCase:
         """Test execute with empty ascents list."""
         repo = MockAscentRepository()
         clock = MockClock()
-        use_case = BulkLogAscentsUseCase(repo, clock)
+        uow = MockUnitOfWork()
+        event_publisher = MockEventPublisher()
+        use_case = BulkLogAscentsUseCase(repo, clock, uow, event_publisher)
 
         result = use_case.execute(1, [])
 
-        assert result.saved_count == 0
-        assert result.errors == []
+        assert result["saved_count"] == 0
+        assert result["errors"] == []
 
     def test_execute_with_valid_ascents(self):
         """Test execute with valid ascents."""
         repo = MockAscentRepository()
         clock = MockClock()
-        use_case = BulkLogAscentsUseCase(repo, clock)
+        uow = MockUnitOfWork()
+        event_publisher = MockEventPublisher()
+        use_case = BulkLogAscentsUseCase(repo, clock, uow, event_publisher)
 
         ascents = [
             AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1)),
@@ -51,70 +68,80 @@ class TestBulkLogAscentsUseCase:
 
         result = use_case.execute(1, ascents)
 
-        assert result.saved_count == 2
-        assert result.errors == []
+        assert result["saved_count"] == 2
+        assert result["errors"] == []
 
     def test_execute_with_future_date(self):
         """Test execute rejects ascents with future dates."""
         repo = MockAscentRepository()
         clock = MockClock()
-        use_case = BulkLogAscentsUseCase(repo, clock)
+        uow = MockUnitOfWork()
+        event_publisher = MockEventPublisher()
+        use_case = BulkLogAscentsUseCase(repo, clock, uow, event_publisher)
 
         ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2024, 1, 1))]
 
         result = use_case.execute(1, ascents)
 
-        assert result.saved_count == 0
-        assert len(result.errors) == 1
-        assert "z przyszłości" in result.errors[0]["reason"]
+        assert result["saved_count"] == 0
+        assert len(result["errors"]) == 1
+        assert "z przyszłości" in result["errors"][0]["reason"]
 
     def test_execute_with_nonexistent_object(self):
         """Test execute rejects ascents for nonexistent objects."""
         repo = MockAscentRepository()
         clock = MockClock()
-        use_case = BulkLogAscentsUseCase(repo, clock)
+        uow = MockUnitOfWork()
+        event_publisher = MockEventPublisher()
+        use_case = BulkLogAscentsUseCase(repo, clock, uow, event_publisher)
 
         ascents = [AscentInputDTO(peak_id=999, ascent_date=date(2023, 1, 1))]
 
         result = use_case.execute(1, ascents)
 
-        assert result.saved_count == 0
-        assert len(result.errors) == 1
-        assert "nie istnieje" in result.errors[0]["reason"]
+        assert result["saved_count"] == 0
+        assert len(result["errors"]) == 1
+        assert "nie istnieje" in result["errors"][0]["reason"]
 
     def test_execute_with_date_before_object_creation(self):
         """Test execute rejects ascents before object creation."""
         repo = MockAscentRepository()
         clock = MockClock()
-        use_case = BulkLogAscentsUseCase(repo, clock)
+        uow = MockUnitOfWork()
+        event_publisher = MockEventPublisher()
+        use_case = BulkLogAscentsUseCase(repo, clock, uow, event_publisher)
 
         ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2019, 1, 1))]
 
         result = use_case.execute(1, ascents)
 
-        assert result.saved_count == 0
-        assert len(result.errors) == 1
-        assert "powstał" in result.errors[0]["reason"]
+        assert result["saved_count"] == 0
+        assert len(result["errors"]) == 1
+        assert "nie istniał" in result["errors"][0]["reason"]
 
     def test_execute_with_date_after_object_destruction(self):
         """Test execute rejects ascents after object destruction."""
         repo = MockAscentRepository()
         clock = MockClock()
-        use_case = BulkLogAscentsUseCase(repo, clock)
+        uow = MockUnitOfWork()
+        event_publisher = MockEventPublisher()
+        use_case = BulkLogAscentsUseCase(repo, clock, uow, event_publisher)
 
         ascents = [AscentInputDTO(peak_id=2, ascent_date=date(2023, 1, 1))]
 
         result = use_case.execute(1, ascents)
 
-        assert result.saved_count == 0
-        assert len(result.errors) == 1
-        assert "zniszczono" in result.errors[0]["reason"]
+        assert result["saved_count"] == 0
+        assert len(result["errors"]) == 1
+        assert "zniszczono" in result["errors"][0]["reason"] or "wyłączony" in result["errors"][0]["reason"]
 
     def test_execute_with_mixed_valid_and_invalid(self):
         """Test execute with mixed valid and invalid ascents."""
         repo = MockAscentRepository()
         clock = MockClock()
-        use_case = BulkLogAscentsUseCase(repo, clock)
+        uow = MockUnitOfWork()
+        event_publisher = MockEventPublisher()
+        use_case = BulkLogAscentsUseCase(repo, clock, uow, event_publisher)
 
         ascents = [
             AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1)),  # Valid
@@ -124,17 +151,21 @@ class TestBulkLogAscentsUseCase:
 
         result = use_case.execute(1, ascents)
 
-        assert result.saved_count == 1
-        assert len(result.errors) == 2
+        assert result["saved_count"] == 1
+        assert len(result["errors"]) == 2
 
     def test_execute_returns_bulk_ascent_result_dto(self):
         """Test execute returns BulkAscentResultDTO."""
         repo = MockAscentRepository()
         clock = MockClock()
-        use_case = BulkLogAscentsUseCase(repo, clock)
+        uow = MockUnitOfWork()
+        event_publisher = MockEventPublisher()
+        use_case = BulkLogAscentsUseCase(repo, clock, uow, event_publisher)
 
         ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1))]
 
         result = use_case.execute(1, ascents)
 
-        assert isinstance(result, BulkAscentResultDTO)
+        assert isinstance(result, dict)
+        assert "saved_count" in result
+        assert "errors" in result

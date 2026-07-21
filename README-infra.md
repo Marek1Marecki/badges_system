@@ -10,7 +10,6 @@ który zapis ADR, i jak się ze sobą łączą.
 >   w obrazie `testing`, konflikt `image:`+`build:` w PRE-PROD łamiący Build
 >   Once/Deploy Many, brak wolumenu na statyki pod `read_only: true`) —
 >   wszystkie naprawione.
-
 > - Runda 2: audyt nie znalazł już błędów blokujących (P0), wskazał kilka
 >   P1/P2/P3 — również naprawione: jawna grupa `--group dev` w `uv sync`
 >   (stage `development`/`testing`, zamiast polegania na domyślnej
@@ -47,7 +46,6 @@ który zapis ADR, i jak się ze sobą łączą.
 >     zamiast "architektoniczny klon" dla relacji PRE-PROD/PROD, dodatkowe
 >     usunięcie plików infrastrukturalnych (compose*.yml, Dockerfile,
 >     Caddyfile, .env.example) z obrazu `production` (Minimal Surface).
-
 > - Runda 4: incydent operacyjny (świeży wolumen po `docker compose down` →
 >   `celery_beat` pada na nieistniejących tabelach, bo nikt jeszcze nie
 >   wykonał migracji) doprowadził do nazwania i sformalizowania zasady
@@ -60,7 +58,6 @@ który zapis ADR, i jak się ze sobą łączą.
 >   `scripts/dev-{up,down,reset,status,logs}.sh` oraz `Makefile.dev-snippet.mk`
 >   jako cienkie aliasy — jeden punkt wejścia używany identycznie lokalnie
 >   i w CI.
-
 > - Runda 5: **incydent utraty danych** w DEV — `dev-reset` usunął wolumeny
 >   bez wykonanego wcześniej backupu (1163 obiekty turystyczne, konta
 >   użytkowników; odzyskane z ręcznie posiadanego dumpa). Przyczyna główna:
@@ -77,6 +74,71 @@ który zapis ADR, i jak się ze sobą łączą.
 >   `dev-up`/`dev-down` na `dev-start`/`dev-stop` — utrzymano istniejące
 >   nazwy (spójne ze słownictwem samego `docker compose up`/`down`), zamiast
 >   wprowadzać churn bez wyraźnej korzyści.
+> - Runda 6: **incydent kolizji tagów obrazów** — `docker compose run --rm web
+>   ./scripts/release-database.sh` w DEV uruchamiał w rzeczywistości `pytest`
+>   (widoczne w logu: `collected 0 items`, `ERROR: not found:
+>   .../release-database.sh`), bo obraz otagowany jako `badges_system-web`
+>   został po cichu nadpisany obrazem ze stage'u `testing` (ENTRYPOINT
+>   `uv run pytest`) — `compose.test.yml` nie miał jawnej nazwy `image:`, więc
+>   przy uruchomieniu bez `-p ci-...` dzielił domyślny tag Compose
+>   (`<projekt>-web`) z obrazem `development` z `compose.override.yml`. Naprawa:
+>   `compose.test.yml` ma teraz jawną, na stałe odrębną nazwę
+>   `image: badges_system-web-testing`, która nie może kolidować z tagiem
+>   dev/prod niezależnie od tego, czy ktoś pamięta o `-p`. Naprawa doraźna dla
+>   już zepsutego środowiska: `docker compose build --no-cache web` (wymusza
+>   przebudowę z `target: development`, nadpisując zepsuty tag poprawnym
+>   obrazem).
+> - Runda 7: **`--no-cache` ujawnił błąd BuildKit** — `docker compose build
+>   --no-cache web` kończył się `failed to solve: variable expansion is not
+>   supported for --from, define a new stage with FROM using ARG from global
+>   scope as a workaround`. Przyczyna: `COPY --from=${UV_IMAGE}` (odwołanie do
+>   wartości ARG bezpośrednio w `--from=`) jest w BuildKit niedeterministyczne
+>   — działa przy trafieniu w cache z wcześniejszego builda, ale nie przy
+>   buildzie od zera. Naprawa: dodano dedykowany stage `FROM ${UV_IMAGE} AS
+>   uv_source` (jedyny w pełni wspierany sposób użycia ARG w tym kontekście),
+>   wszystkie stage'e kopiują teraz `uv` z NAZWY tego stage'u
+>   (`COPY --from=uv_source ...`), nie ze zmiennej. Przy tej samej okazji
+>   znaleziono i naprawiono powiązany, jeszcze nieujawniony błąd: stage
+>   `production` nigdy nie kopiował binarki `uv`, mimo że `scripts/release-*.sh`
+>   i `bootstrap.sh` jej wymagają (`uv run python manage.py ...`) — działałoby
+>   to w DEV/TEST (własny `uv` z etapu development/builder), ale kończyłoby
+>   się błędem `uv: command not found` dopiero przy pierwszym uruchomieniu
+>   tych skryptów na PRE-PROD/PROD.
+> - Runda 8: dodano `scripts/test-run.sh` (wrapper na środowisko TEST —
+>   domyślnie szybkie testy jednostkowe, `--full` dodatkowo weryfikuje sam
+>   PROCES wdrożenia przez uruchomienie `release-database.sh`/
+>   `release-application.sh` na świeżej, efemerycznej bazie, potem pełny
+>   suite bez filtra markerów) oraz `scripts/verify.sh` jako meta-skrypt
+>   przed `git push`/PR. Świadoma korekta propozycji audytora: `verify.sh`
+>   NIE duplikuje ruff/mypy/lint-imports/audit — te już żyją w `make check`
+>   (bezstanowy, bez Dockera, zgodnie z `01-makefile-contract.md`) i są tylko
+>   WYWOŁYWANE, nie przepisywane po raz drugi. Mutacyjne testowanie
+>   (`mutmut`/`cosmic-ray`) i import Golden Set do testów świadomie
+>   pozostawione poza tym skryptem — pierwsze jako odłożony na później etap,
+>   drugie jako odpowiedzialność konkretnych fixture'ów pytest, nie
+>   orkiestracji infrastruktury.
+> - Runda 9: **pierwsze realne `make test-run` ujawniło krytyczny błąd
+>   izolacji** — `compose.test.yml` ładuje `compose.yml` jako bazę, więc
+>   dziedziczył STAŁE nazwy wolumenów (`badges_system_postgis_data`/
+>   `badges_system_redis_data`) wprowadzone w Rundzie 5 jako zabezpieczenie
+>   DEV. Efekt: TEST próbował podłączyć się do TYCH SAMYCH wolumenów co DEV,
+>   niezależnie od unikalnej nazwy projektu (`-p ci-...`) — nazwa wolumenu
+>   w Dockerze nie jest automatycznie namespace'owana po projekcie, jeśli
+>   `name:` jest ustawione na sztywno. Naprawa: `compose.test.yml` nadpisuje
+>   `name:` obu wolumenów na `${COMPOSE_PROJECT_NAME}_test_postgis_data`/
+>   `..._redis_data` — poprawnie izolowane per uruchomienie ORAZ (obrona
+>   w głąb) nigdy nie kolidujące z nazwą DEV nawet przy zapomnianym `-p`
+>   (przyrostek `_test` gwarantuje to niezależnie od wartości
+>   `COMPOSE_PROJECT_NAME`). Dodano też widoczną weryfikację w
+>   `test-run.sh` (`docker volume ls`) — nie tylko deklaracja w komentarzu,
+>   konkretny dowód w logu każdego uruchomienia. Przy tej samej okazji:
+>   `web` w `compose.test.yml` dostał `pull_policy: build`, żeby usunąć
+>   mylącą linię `pull access denied` z logu (Compose próbował pociągnąć
+>   nieistniejący tag przed zbudowaniem lokalnie — nieszkodliwe, ale
+>   niepotrzebnie niepokojące). Trzy niepowodzenia testów z tego samego
+>   przebiegu (`test_kremenaros`, 2× `test_default_app_env_is_development`)
+>   NIE są błędami infrastruktury — patrz osobna notatka w odpowiedzi,
+>   w której ten incydent omówiono.
 
 ## Pliki i ich rola
 
@@ -87,7 +149,7 @@ który zapis ADR, i jak się ze sobą łączą.
 | `Caddyfile` | Reverse proxy z automatycznym HTTPS (Let's Encrypt), serwuje statyki i przekazuje ruch do Gunicorna. | PROD |
 | `compose.yml` | Wspólna baza: `db` (PostgreSQL 18, wolumen pod `/var/lib/postgresql` — patrz ADR-025), `redis`. Docker nie zna konfiguracji Django. | wszystkie |
 | `compose.override.yml` | Ładowany automatycznie przez `docker compose up`. Volume mount kodu, nieuprzywilejowany user dev, Flower (profil `monitoring`). | DEV |
-| `compose.test.yml` | Efemeryczne CI — izolacja przez unikalną nazwę projektu + `down -v`, nie przez tmpfs. | TEST |
+| `compose.test.yml` | Efemeryczne CI — izolacja przez unikalną nazwę projektu + `down -v`, nie przez tmpfs. Jawna nazwa `image: badges_system-web-testing` (nigdy nie koliduje z tagiem dev/prod, nawet bez `-p`). | TEST |
 | `compose.preprod.yml` | Wyłącznie `image:` (bez `build:`) — pobiera już zbudowany obraz z rejestru. Wolumen na statyki pod `read_only`. | PRE-PROD |
 | `compose.prod.yml` | Jak PRE-PROD + pełny hardening runtime + serwis `proxy` (Caddy) jako jedyny punkt wejścia z internetu. | PROD |
 | `ADR-025-postgresql-volume-layout.md` | Uzasadnienie mountu `/var/lib/postgresql` (nie `.../data`) dla PostgreSQL 18+ — reakcja na realny incydent utraty dostępu do danych opisany w historii zmian niżej. | wszystkie (dokumentacja) |
@@ -105,7 +167,9 @@ który zapis ADR, i jak się ze sobą łączą.
 | `scripts/dev-restore.sh` | Odtworzenie backupu — zawsze przez `docker compose exec db pg_restore` (nigdy lokalny binarny `pg_restore` — niedopasowanie wersji klient/serwer psuje odtwarzanie). Wymaga wpisania `odtworz-baze-dev`. | DEV |
 | `scripts/dev-status.sh` | Diagnostyka: kontenery, PostgreSQL, Redis, migracje, Celery worker, **poprawność mountu wolumenu Postgresa (ADR-025)**. Raportuje wszystkie problemy naraz (bez `set -e`). | DEV |
 | `scripts/dev-logs.sh` | Cienki wrapper na `docker compose logs -f --tail=N`. | DEV |
-| `Makefile.dev-snippet.mk` | Blok do wklejenia do głównego `Makefile` projektu — cienkie aliasy `dev-up`/`dev-down`/`dev-reset`/`dev-status`/`dev-logs`/`dev-backup`/`dev-restore` wywołujące powyższe skrypty. Logika żyje w skryptach, nie w Makefile. | DEV |
+| `scripts/test-run.sh` | Wrapper na środowisko TEST. Domyślnie: szybkie testy jednostkowe, efemeryczne (zawsze `down -v` na końcu, także przy błędzie — `trap EXIT`). `--full`: dodatkowo uruchamia `release-database.sh`/`release-application.sh` na świeżej bazie (weryfikacja PROCESU wdrożenia, nie tylko kodu) + pełny suite bez filtra markerów. | TEST |
+| `scripts/verify.sh` | Meta-skrypt przed `git push`/PR: `make check` (ruff/mypy/lint-imports/audit, host, bez Dockera) ➔ `test-run.sh --full`. Celowo NIE duplikuje logiki `make check`. | DEV (uruchamiane lokalnie) |
+| `Makefile.dev-snippet.mk` | Blok do wklejenia do głównego `Makefile` projektu — cienkie aliasy `dev-up`/`dev-down`/`dev-reset`/`dev-status`/`dev-logs`/`dev-backup`/`dev-restore`/`test-run`/`verify` wywołujące powyższe skrypty. Logika żyje w skryptach, nie w Makefile. | DEV |
 
 ## Zasada: Declarative Infrastructure, Imperative Operations
 
@@ -199,7 +263,15 @@ make dev-backup
 # DEV — Flower na żądanie
 docker compose --profile monitoring up -d flower
 
-# TEST — pojedynczy przebieg CI (przykład)
+# TEST — narzędzie weryfikacji jakości, NIE miejsce codziennej pracy
+# (DEV = programowanie; TEST = "czy to naprawdę działa w czystym środowisku")
+make test-run              # szybkie testy jednostkowe, efemeryczne
+./scripts/test-run.sh -k test_poi_scoring   # konkretny test — argumenty trafiają do pytest
+make verify                 # PRZED każdym git push / PR:
+                             #   make check (ruff/mypy/audit, host)
+                             #   + TEST --full (release scripts + pełny suite)
+
+# Ta sama sekwencja "ręcznie" (to właśnie robi test-run.sh pod spodem):
 export CI_RUN_ID=$(date +%s)
 docker compose -p ci-${CI_RUN_ID} -f compose.yml -f compose.test.yml up -d --wait db redis
 docker compose -p ci-${CI_RUN_ID} -f compose.yml -f compose.test.yml run --rm web
@@ -291,3 +363,25 @@ implementacja leży po stronie kodu Django, nie infrastruktury:
   luka blokująca, ale warto zweryfikować, że grupa nazywa się faktycznie
   `dev` w Waszym `pyproject.toml` (jeśli nazwa jest inna, np. `development`,
   trzeba to dopasować w Dockerfile).
+- **`scripts/test_osm.py` jest zbierany przez pytest jako test**, mimo że
+  leży w `scripts/`, nie w `tests/` — nazwa pliku pasuje do wzorca
+  `test_*.py`, więc pytest go kolekcjonuje niezależnie od katalogu. Test
+  ten wykonuje żywe zapytanie sieciowe do Overpass API (OSM) bez mockowania,
+  co jest sprzeczne z waszą własną zasadą z `TEST_STRATEGY.md`
+  ("Mockuj zawsze: Zewnętrzne HTTP") i powoduje niedeterministyczne
+  niepowodzenia (timeout) w środowisku TEST, które nie ma dostępu do
+  zewnętrznego internetu na tych samych warunkach co DEV. Dwa możliwe
+  rozwiązania po stronie kodu: (a) ograniczyć zbieranie testów przez pytest
+  do katalogu `tests/` (`[tool.pytest.ini_options] testpaths = ["tests"]`
+  w `pyproject.toml`), albo (b) przenieść ten plik poza wzorzec `test_*.py`
+  jeśli to celowy skrypt manualny, nie automatyczny test.
+- **Test `test_default_app_env_is_development`** (występuje dwukrotnie:
+  `tests/config/test_app_settings.py`, `tests/infrastructure/test_logging.py`)
+  zakłada na sztywno, że `APP_ENV` zawsze domyślnie równa się `'development'`
+  — założenie prawdziwe tylko w DEV. W środowisku TEST `compose.test.yml`
+  celowo ustawia `APP_ENV=test` (zgodnie z projektem wielu środowisk,
+  ADR-020) — to NIE jest błąd infrastruktury, to potwierdzenie, że
+  propagacja `APP_ENV` działa poprawnie. Test wymaga poprawki po stronie
+  aplikacji: albo powinien jawnie ustawiać/mockować `APP_ENV` zamiast polegać
+  na wartości ambientowej, albo nazwa/asercja testu powinna uwzględniać, że
+  wartość domyślna różni się między środowiskami.

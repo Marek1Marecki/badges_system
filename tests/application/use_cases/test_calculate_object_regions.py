@@ -20,77 +20,59 @@ class TestCalculateObjectRegionsUseCase:
         assert uc._repo == repo
         assert uc._clock == clock
 
-    def test_execute_raises_when_object_not_found(self):
-        """Test błędu gdy obiekt nie istnieje."""
+    def test_execute_skips_when_object_not_found(self):
+        """Test pomijania gdy obiekt nie istnieje (brak geometrii)."""
         repo = MagicMock()
-        repo.get_tourist_object.return_value = None
+        repo.check_object_geometry_and_tags.return_value = (False, {})
         clock = FakeClock()
         uc = CalculateObjectRegionsUseCase(repo, clock)
 
-        with pytest.raises(UseCaseError, match="nie istnieje"):
-            uc.execute(999)
+        uc.execute(999)
+        repo.check_object_geometry_and_tags.assert_called_once_with(999)
+        repo.clear_cache_for_object.assert_not_called()
 
     def test_execute_skips_when_no_geometry(self):
         """Test pomijania gdy obiekt nie ma geometrii."""
         repo = MagicMock()
-        obj = MagicMock()
-        obj.has_geom = False
-        obj.name = "Test Object"
-        repo.get_tourist_object.return_value = obj
+        repo.check_object_geometry_and_tags.return_value = (False, {})
         clock = FakeClock()
         uc = CalculateObjectRegionsUseCase(repo, clock)
 
-        result = uc.execute(1)
-        assert "Pominięto" in result
-        assert "nie ma geometrii" in result
+        uc.execute(1)
+        repo.check_object_geometry_and_tags.assert_called_once_with(1)
+        repo.clear_cache_for_object.assert_not_called()
 
     def test_execute_success(self):
         """Test pomyślnego obliczenia regionów."""
         repo = MagicMock()
-        obj = MagicMock()
-        obj.has_geom = True
-        obj.name = "Test Object"
-        obj.geom = "POINT(0 0)"
-        obj.osm_raw_tags = {"name:pl": "Test"}
-        obj.local_names = {}
-        repo.get_tourist_object.return_value = obj
-        repo.find_regions_for_point.return_value = [1, 2]
+        repo.check_object_geometry_and_tags.return_value = (True, {"name:pl": "Test"})
         clock = FakeClock()
         uc = CalculateObjectRegionsUseCase(repo, clock)
 
-        result = uc.execute(1)
-        assert "Sukces" in result
-        assert "2 regionów" in result
-        repo.replace_cache_for_object.assert_called_once_with(1, [1, 2])
+        uc.execute(1)
+        repo.check_object_geometry_and_tags.assert_called_once_with(1)
+        repo.clear_cache_for_object.assert_called_once_with(object_id=1)
+        repo.recalculate_all_region_levels.assert_called_once_with(1)
+        repo.recalculate_tourist_regions.assert_called_once_with(1)
+        repo.extract_and_save_local_names.assert_called_once_with(1, {"name:pl": "Test"})
+        repo.mark_object_as_ready.assert_called_once_with(1)
 
     def test_extract_and_save_local_names_with_empty_tags(self):
         """Test ekstrakcji nazw lokalnych z pustymi tagami."""
         repo = MagicMock()
-        obj = MagicMock()
-        obj.has_geom = True
-        obj.name = "Test Object"
-        obj.osm_raw_tags = None
-        obj.local_names = {}
-        repo.get_tourist_object.return_value = obj
-        repo.find_regions_for_point.return_value = []
+        repo.check_object_geometry_and_tags.return_value = (True, None)
         clock = FakeClock()
         uc = CalculateObjectRegionsUseCase(repo, clock)
 
         uc.execute(1)
-        repo.save_local_names.assert_not_called()
+        repo.extract_and_save_local_names.assert_not_called()
 
     def test_extract_and_save_local_names_with_tags(self):
         """Test ekstrakcji nazw lokalnych z tagami."""
         repo = MagicMock()
-        obj = MagicMock()
-        obj.has_geom = True
-        obj.name = "Test Object"
-        obj.osm_raw_tags = {"name:pl": "Test", "name:de": "Test_DE"}
-        obj.local_names = {}
-        repo.get_tourist_object.return_value = obj
-        repo.find_regions_for_point.return_value = []
+        repo.check_object_geometry_and_tags.return_value = (True, {"name:pl": "Test", "name:de": "Test_DE"})
         clock = FakeClock()
         uc = CalculateObjectRegionsUseCase(repo, clock)
 
         uc.execute(1)
-        repo.save_local_names.assert_called_once()
+        repo.extract_and_save_local_names.assert_called_once_with(1, {"name:pl": "Test", "name:de": "Test_DE"})

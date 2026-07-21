@@ -11,6 +11,23 @@ from application.use_cases.log_ascent import LogAscentUseCase
 from tests.fakes.clock import FakeClock
 
 
+class MockUnitOfWork:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+
+class MockEventPublisher:
+    def publish(self, event):
+        pass
+
+
+class MockPoiScoringService:
+    pass
+
+
 def _dto(ascent_date: date) -> AscentInputDTO:
     """Buduje DTO logu wejścia."""
     return AscentInputDTO(peak_id=42, ascent_date=ascent_date)
@@ -26,10 +43,17 @@ def _use_case(
     ascent_repo.ascent_exists.return_value = False  # Domyślnie brak duplikatu
     ascent_repo.save_ascent.return_value = 123
 
+    profile_repo = MagicMock()
+
+    poi_service = MockPoiScoringService()
+
     # FakeClock domyślnie zatrzymuje czas na dacie 2024-06-15
     clock = FakeClock()
 
-    return LogAscentUseCase(ascent_repo, clock), ascent_repo, clock
+    uow = MockUnitOfWork()
+    event_publisher = MockEventPublisher()
+
+    return LogAscentUseCase(ascent_repo, profile_repo, poi_service, clock, uow, event_publisher), ascent_repo, clock
 
 
 class TestLogAscentUseCase:
@@ -69,7 +93,7 @@ class TestLogAscentUseCase:
             lifespan=(date(2020, 1, 1), None),
         )
 
-        with pytest.raises(BitemporalTimeError, match="Obiekt powstał 2020-01-01"):
+        with pytest.raises(BitemporalTimeError, match="Obiekt nie istniał w dacie 2019-12-31"):
             use_case.execute(profile_id=1, dto=_dto(date(2019, 12, 31)))
 
         ascent_repo.save_ascent.assert_not_called()
@@ -80,7 +104,7 @@ class TestLogAscentUseCase:
             lifespan=(None, date(2023, 12, 31)),
         )
 
-        with pytest.raises(BitemporalTimeError, match="przestał istnieć 2023-12-31"):
+        with pytest.raises(BitemporalTimeError, match="został wyłączony lub zniszczony po 2023-12-31"):
             use_case.execute(profile_id=1, dto=_dto(date(2024, 1, 1)))
 
         ascent_repo.save_ascent.assert_not_called()

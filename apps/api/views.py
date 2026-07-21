@@ -13,6 +13,7 @@ dla nieoczekiwanych wyjątków w środowisku produkcyjnym.
 """
 
 import json
+from typing import Any
 
 from django.contrib.gis.measure import D
 from django.core.cache import cache
@@ -122,39 +123,36 @@ class AscentLogView(View):
         422: RFC 7807 — naruszenie bitemporalności (T-01) lub data z przyszłości (T-03)
     """
 
-    def post(self, request):
+    def post(self, request: Any) -> JsonResponse:
+        """Rejestruje nowe wejście na szczyt (US-C03)."""
         auth_error = _require_auth(request)
         if auth_error:
             return auth_error
 
+        profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id
+
         try:
             body = json.loads(request.body)
-        except json.JSONDecodeError, ValueError:  # <--- ZMIANA (nawiasy!)
+            ascent_input = AscentInputDTO(**body)
+        except (json.JSONDecodeError, ValueError) as e:
             return _problem_detail(
-                request,
-                "validation-failed",
-                "Nieprawidłowe dane wejściowe",
-                422,
-                "Ciało żądania musi być poprawnym dokumentem JSON.",
+                request=request,
+                error_type="validation-error",
+                title="Błąd Walidacji Danych Wejściowych",
+                status=422,
+                detail=str(e),
             )
 
         try:
-            dto = AscentInputDTO(**body)
-        except Exception as e:
-            return _problem_detail(request, "validation-failed", "Nieprawidłowe dane wejściowe", 422, str(e))
+            use_case = get_container().log_ascent
 
-        # SECURITY: profile_id zawsze z sesji — nigdy z ciała żądania
-        profile_id = request.profile.id
+            # WPISUJEMY TYLKO TO (UoW i Event Publisher są zaszyte w środku!)
+            ascent_id = use_case.execute(profile_id=profile_id, dto=ascent_input)
 
-        try:
-            use_case = get_container()["log_ascent"]
-            ascent_id = use_case.execute(profile_id=profile_id, dto=dto)
-            # Wybudza Redis po zalogowaniu wejścia!:
-            recalculate_poi_scores_task.delay(profile_id)
+            return JsonResponse({"ascent_id": ascent_id, "status": "CREATED"}, status=201)
+
         except ApplicationException as exc:
-            return _handle_application_exception(request, exc)
-
-        return JsonResponse({"ascent_id": ascent_id}, status=201)
+            return _handle_application_exception(exc, request.path)
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -169,29 +167,24 @@ class BadgeSubscribeView(View):
         422: RFC 7807 — brak regulaminu dla daty zakotwiczenia
     """
 
-    def post(self, request, badge_code: str):
+    def post(self, request: Any, badge_code: str) -> JsonResponse:
+        """Rozpoczyna zdobywanie nowej odznaki i zakotwicza regulamin (US-C05)."""
         auth_error = _require_auth(request)
         if auth_error:
             return auth_error
 
-        # Prawidłowe pobranie aktywnego profilu z sesji (lub domyślnego dla konta)
         profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id
 
         try:
-            use_case = get_container()["start_badge_progress"]
+            use_case = get_container().start_badge_progress
+
+            # WPISUJEMY TYLKO TO:
             progress_id = use_case.execute(profile_id=profile_id, badge_code=badge_code)
-            # Wybudza Redis po subskrypcji!:
-            # recalculate_poi_scores_task.delay(profile_id)
+
+            return JsonResponse({"progress_id": progress_id, "status": "SUBSCRIBED"}, status=201)
+
         except ApplicationException as exc:
-            return _handle_application_exception(request, exc)
-
-        from django.db import transaction
-
-        from apps.badges.tasks import recalculate_poi_scores_task
-
-        transaction.on_commit(lambda: recalculate_poi_scores_task.delay(profile_id))
-
-        return JsonResponse({"progress_id": progress_id, "status": "SUBSCRIBED"}, status=201)
+            return _handle_application_exception(exc, request.path)
 
     def delete(self, request, badge_code: str):
         auth_error = _require_auth(request)
@@ -201,19 +194,13 @@ class BadgeSubscribeView(View):
         profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id
 
         try:
-            use_case = get_container()["unsubscribe_badge"]
+            use_case = get_container().unsubscribe_badge
             use_case.execute(profile_id=profile_id, badge_code=badge_code)
+
+            return JsonResponse({"status": "UNSUBSCRIBED"}, status=200)
+
         except ApplicationException as exc:
-            return _handle_application_exception(request, exc)
-
-        # Inwalidacja cache! Pinezki na mapie muszą znowu stać się szare!
-        from django.db import transaction
-
-        from apps.badges.tasks import recalculate_poi_scores_task
-
-        transaction.on_commit(lambda: recalculate_poi_scores_task.delay(profile_id))
-
-        return JsonResponse({"status": "UNSUBSCRIBED"}, status=200)
+            return _handle_application_exception(exc, request.path)
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -245,7 +232,7 @@ class BadgeProgressView(View):
         )
 
         try:
-            use_case = get_container()["verify_badge"]
+            use_case = get_container().verify_badge
             result = use_case.execute(dto)
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
@@ -302,7 +289,7 @@ class MapObjectsView(View):
             return _problem_detail(request, "validation-failed", "Nieprawidłowe dane wejściowe", 422, str(e))
 
         try:
-            use_case = get_container()["explore_map"]
+            use_case = get_container().explore_map
             geojson_data = use_case.execute(dto)
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
@@ -338,7 +325,7 @@ class BadgeLogisticsView(View):
         profile_id = request.profile.id
 
         try:
-            use_case = get_container()["advance_logistic_status"]
+            use_case = get_container().advance_logistic_status
             use_case.execute(
                 profile_id=profile_id,
                 progress_id=progress_id,
@@ -360,7 +347,7 @@ class VectorTileView(View):
 
     def get(self, request, layer: str, z: int, x: int, y: int):
         try:
-            use_case = get_container()["get_mvt_tile"]
+            use_case = get_container().get_mvt_tile
             # Use Case zwraca skompresowane bajty (lub None) z DB/Redis
             tile_data = use_case.execute(layer, z, x, y)
         except ApplicationException as exc:
@@ -460,7 +447,7 @@ class GpxAnalyzeView(View):
         file_content = gpx_file.read()
 
         try:
-            use_case = get_container()["analyze_gpx_track"]
+            use_case = get_container().analyze_gpx_track
             result = use_case.execute(file_content)
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
@@ -475,43 +462,37 @@ class BulkAscentLogView(View):
     Masowy zapis logów (np. po akceptacji z GPX). Zwraca wynik częściowy.
     """
 
-    def post(self, request: HttpRequest) -> JsonResponse:
+    def post(self, request: Any) -> JsonResponse:
+        """Masowo rejestruje logi wejść z pliku GPX (US-C17)."""
         auth_error = _require_auth(request)
         if auth_error:
             return auth_error
 
-        try:
-            body = json.loads(request.body)
-            if not isinstance(body, list):
-                raise ValueError("Oczekiwano listy (tablicy) obiektów JSON.")
-        except (json.JSONDecodeError, ValueError) as e:
-            return _problem_detail(request, "validation-failed", "Nieprawidłowe dane", 422, str(e))
-
-        dtos = []
-        try:
-            for item in body:
-                dtos.append(AscentInputDTO(**item))
-        except Exception as e:
-            return _problem_detail(request, "validation-failed", "Błąd struktury wejść", 422, str(e))
-
-        # Prawidłowe pobranie aktywnego profilu (Model Rodzinny)
         profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id
 
         try:
-            use_case = get_container()["bulk_log_ascents"]
-            result = use_case.execute(profile_id=profile_id, ascents=dtos)
+            body = json.loads(request.body)
+            if not isinstance(body, list):
+                raise ValueError("Payload musi być listą obiektów JSON.")
+            ascents = [AscentInputDTO(**item) for item in body]
+        except (json.JSONDecodeError, ValueError) as e:
+            return _problem_detail(
+                request=request,
+                error_type="validation-error",
+                title="Błąd Walidacji Danych Wejściowych",
+                status=422,
+                detail=str(e),
+            )
+        try:
+            use_case = get_container().bulk_log_ascents
+
+            # WPISUJEMY TYLKO TO:
+            result = use_case.execute(profile_id=profile_id, ascents=ascents)
+
+            return JsonResponse(result, status=200)
+
         except ApplicationException as exc:
-            return _handle_application_exception(request, exc)
-
-        # ARCHITEKTURA: Inwalidujemy Cache 100/n, ale TYLKO jeśli faktycznie coś dodano!
-        if result.saved_count > 0:
-            from django.db import transaction
-
-            from apps.badges.tasks import recalculate_poi_scores_task
-
-            transaction.on_commit(lambda: recalculate_poi_scores_task.delay(profile_id))
-
-        return JsonResponse(result.model_dump(), status=200)
+            return _handle_application_exception(exc, request.path)
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -567,16 +548,20 @@ class ProfileUpgradeView(View):
         try:
             profile = get_object_or_404(TouristProfile, id=profile_id, user=request.user)
         except Http404:
-            return _problem_detail(request, "resource-not-found", "Zasób nie istnieje", 404, "Brak dostępu do profilu.")
+            return _problem_detail(
+                request=request,
+                error_type="resource-not-found",
+                title="Zasób nie istnieje",
+                status=404,
+                detail="Brak dostępu do profilu.",
+            )
 
         profile.active_plan = "PRO"
         profile.save(update_fields=["active_plan"])
 
-        # Opcjonalne przeliczenie map w tle
-        from django.db import transaction
+        # Opcjonalne przeliczenie map w tle. Ponieważ to atrapa API i operacja jest
+        # autocommited z ORM Django bez otwierania długiej transakcji, robimy to natychmiast:
 
-        from apps.badges.tasks import recalculate_poi_scores_task
-
-        transaction.on_commit(lambda: recalculate_poi_scores_task.delay(profile_id))
+        recalculate_poi_scores_task.delay(profile_id)
 
         return JsonResponse({"status": "UPGRADED"}, status=200)

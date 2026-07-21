@@ -33,8 +33,15 @@ def test_default_debug_is_false(monkeypatch) -> None:
     assert settings.debug is False
 
 
-def test_default_app_env_is_development() -> None:
-    settings = AppSettings(**VALID_MINIMAL)
+def test_default_app_env_is_development(monkeypatch):
+    """Testuje, czy domyślną wartością klasy (bez wpływu środowiska) jest development."""
+    # Izolujemy test od Dockera / .env
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.setenv("ENV_FILE", ".env.dummy_nonexistent")
+
+    from infrastructure.config.app_settings import AppSettings
+    settings = AppSettings()
+
     assert settings.app_env == "development"
 
 

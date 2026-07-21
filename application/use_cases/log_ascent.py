@@ -8,7 +8,11 @@ Zgodnie z Invariantem D-04: Blokuje zapisywanie duplikatów dla danego dnia.
 from application.dto.ascent_dto import AscentInputDTO
 from application.exceptions import BitemporalTimeError, ConflictError, UseCaseError
 from application.ports.clock_port import ClockPort
-from application.ports.user_progress_port import AscentLogRepositoryPort
+from application.ports.event_publisher_port import DomainEventPublisherPort
+from application.ports.uow_port import UnitOfWorkPort
+from application.ports.user_progress_port import AscentLogRepositoryPort, TouristProfileRepositoryPort
+from application.services.poi_scoring_service import PoiScoringService
+from domain.events import UserProgressStateChanged
 
 
 class LogAscentUseCase:
@@ -17,11 +21,19 @@ class LogAscentUseCase:
     def __init__(
         self,
         ascent_repository: AscentLogRepositoryPort,
+        profile_repository: TouristProfileRepositoryPort,
+        poi_service: PoiScoringService,
         clock: ClockPort,
+        uow: UnitOfWorkPort,
+        event_publisher: DomainEventPublisherPort,
     ) -> None:
-        """Wstrzykuje repozytorium wejść oraz dostawcę czasu (ClockPort)."""
+        """Inicjuje przypadek użycia logowania wejścia."""
         self._ascent_repo = ascent_repository
+        self._profile_repo = profile_repository
+        self._poi_service = poi_service
         self._clock = clock
+        self._uow = uow
+        self._event_publisher = event_publisher
 
     def execute(self, profile_id: int, dto: AscentInputDTO) -> int:
         """Wykonuje operację logowania wejścia.
@@ -46,19 +58,13 @@ class LogAscentUseCase:
         # 2. Weryfikacja Bitemporalna (Invariant T-01)
         lifespan = self._ascent_repo.get_object_lifespan(dto.peak_id)
         if lifespan is None:
-            raise UseCaseError(f"Obiekt turystyczny (ID: {dto.peak_id}) nie istnieje.")
+            raise UseCaseError(f"Obiekt o ID {dto.peak_id} nie istnieje w bazie.")
 
         existence_start, existence_end = lifespan
-
         if existence_start and dto.ascent_date < existence_start:
-            raise BitemporalTimeError(
-                f"Niewiarygodna data: Obiekt powstał {existence_start}, a data wejścia to {dto.ascent_date}."
-            )
-
+            raise BitemporalTimeError(f"Obiekt nie istniał w dacie {dto.ascent_date}.")
         if existence_end and dto.ascent_date > existence_end:
-            raise BitemporalTimeError(
-                f"Niewiarygodna data: Obiekt przestał istnieć {existence_end}, a data wejścia to {dto.ascent_date}."
-            )
+            raise BitemporalTimeError(f"Obiekt został wyłączony lub zniszczony po {existence_end}.")
 
         # 3. Zabezpieczenie przed duplikatami / Upsert (Invariant D-04)
         if self._ascent_repo.ascent_exists(profile_id=profile_id, peak_id=dto.peak_id, ascent_date=dto.ascent_date):
@@ -66,12 +72,15 @@ class LogAscentUseCase:
                 f"Wejście na obiekt {dto.peak_id} w dniu {dto.ascent_date} zostało już wcześniej zalogowane."
             )
 
-        # 4. Zapis faktu (Delegacja do adaptera bazy danych)
-        ascent_id = self._ascent_repo.save_ascent(
-            profile_id=profile_id,
-            peak_id=dto.peak_id,
-            ascent_date=dto.ascent_date,
-        )
+        # 4. Krok: Atomowy zapis i Powiadomienie (Unit Of Work)
+        with self._uow:
+            ascent_id = self._ascent_repo.save_ascent(
+                profile_id=profile_id,
+                peak_id=dto.peak_id,
+                ascent_date=dto.ascent_date,
+            )
+            # Uruchamiamy powiadomienie (odpali to Celery, gdy transakcja z commituje się w db)
+            self._event_publisher.publish(UserProgressStateChanged(profile_id=profile_id))
 
         # Wskazówka implementacyjna Fazy C:
         # Zgodnie z Event-Driven Cache Invalidation, warstwa API wywołująca ten UseCase

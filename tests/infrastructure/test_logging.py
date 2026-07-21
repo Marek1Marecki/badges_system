@@ -33,8 +33,13 @@ def test_default_debug_is_false(monkeypatch) -> None:
     assert settings.debug is False
 
 
-def test_default_app_env_is_development() -> None:
-    settings = AppSettings(**VALID_MINIMAL)
+def test_default_app_env_is_development(monkeypatch):
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.setenv("ENV_FILE", ".env.dummy_nonexistent")
+
+    from infrastructure.config.app_settings import AppSettings
+    settings = AppSettings()
+
     assert settings.app_env == "development"
 
 

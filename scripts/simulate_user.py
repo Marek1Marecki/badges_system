@@ -23,7 +23,7 @@ def run_simulation() -> None:
 
     # 1. Pobieramy gotowy, okablowany Use Case z kontenera
     container = get_container()
-    verify_badge_use_case = container["verify_badge"]
+    verify_badge_use_case = container.verify_badge  # <--- ZMIANA: używamy odwołania obiektowego, nie słownika
 
     # 2. Tworzymy żądanie dla hipotetycznego turysty o ID = 1
     dto = VerifyBadgeRequestDTO(profile_id=1, badge_code="KGP", cycle_number=1)
@@ -35,7 +35,7 @@ def run_simulation() -> None:
         result = verify_badge_use_case.execute(dto)
         print(f"\n✅ WYNIK WERYFIKACJI:\n{result}")
     except Exception as e:
-        # Błąd jest jak najbardziej spodziewany, jeśli w bazie nie masz usera o ID 1
+        # Błąd jest jak najbardziej spodziewany, jeśli w bazie nie masz profilu o ID 1
         # lub turysta ten nie rozpoczął jeszcze zdobywania KGP!
         print(f"\n⚠️ PRZERWANO (Spodziewany wyjątek biznesowy):\n{e}")
 

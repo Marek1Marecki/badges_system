@@ -11,6 +11,19 @@ from tests.fakes.clock import FakeClock
 from tests.fakes.user_progress_repository import FakeTouristRepository
 
 
+class MockUnitOfWork:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+
+class MockEventPublisher:
+    def publish(self, event):
+        pass
+
+
 class TestStartBadgeProgressUseCase:
     """Testuje logikę zakotwiczania regulaminu (US-C05) i limitów (US-C01c)."""
 
@@ -22,6 +35,8 @@ class TestStartBadgeProgressUseCase:
         badge_repo = MagicMock()
         badge_repo.get_version_id_for_date.return_value = 42
         clock = FakeClock()
+        uow = MockUnitOfWork()
+        event_publisher = MockEventPublisher()
 
         uc = StartBadgeProgressUseCase(
             progress_repository=repo,
@@ -29,6 +44,8 @@ class TestStartBadgeProgressUseCase:
             profile_repository=repo,  # <--- DODANO WSTRZYKNIĘCIE PROFILU
             badge_repository=badge_repo,
             clock=clock,
+            uow=uow,
+            event_publisher=event_publisher,
         )
 
         progress_id = uc.execute(profile_id=1, badge_code="KGP")
@@ -45,8 +62,10 @@ class TestStartBadgeProgressUseCase:
         badge_repo = MagicMock()
         badge_repo.get_version_id_for_date.return_value = 10
         clock = FakeClock()
+        uow = MockUnitOfWork()
+        event_publisher = MockEventPublisher()
 
-        uc = StartBadgeProgressUseCase(repo, repo, repo, badge_repo, clock)  # 3x repo
+        uc = StartBadgeProgressUseCase(repo, repo, badge_repo, repo, clock, uow, event_publisher)  # 3x repo
 
         progress_id = uc.execute(profile_id=1, badge_code="KGP")
 
@@ -60,7 +79,9 @@ class TestStartBadgeProgressUseCase:
         badge_repo = MagicMock()
         badge_repo.get_version_id_for_date.return_value = None
 
-        uc = StartBadgeProgressUseCase(repo, repo, repo, badge_repo, FakeClock())
+        uc = StartBadgeProgressUseCase(
+            repo, repo, badge_repo, repo, FakeClock(), MockUnitOfWork(), MockEventPublisher()
+        )
 
         with pytest.raises(UseCaseError, match="Brak opublikowanej wersji regulaminu"):
             uc.execute(profile_id=1, badge_code="KGP")
@@ -75,7 +96,9 @@ class TestStartBadgeProgressUseCase:
         badge_repo = MagicMock()
         badge_repo.get_version_id_for_date.return_value = 42
 
-        uc = StartBadgeProgressUseCase(repo, repo, repo, badge_repo, FakeClock())
+        uc = StartBadgeProgressUseCase(
+            repo, repo, badge_repo, repo, FakeClock(), MockUnitOfWork(), MockEventPublisher()
+        )
 
-        with pytest.raises(UseCaseError, match="Osiągnąłeś limit jednocześnie zdobywanych odznak"):
+        with pytest.raises(UseCaseError, match="Przekroczono limit pakietu"):
             uc.execute(profile_id=1, badge_code="KGP")

@@ -3,34 +3,40 @@
 Zgodnie z 14-domain-purity.md — zero importów apps/, django/, infrastructure/.
 """
 
-from typing import Any
+from application.ports.region_cache_port import ProximityCandidateRepositoryPort
+
+SEARCH_RADIUS_METERS = 150.0
 
 
 class ScanProximityCandidatesUseCase:
     """Skanuje bazę szukając par obiektów bliskich sobie (Radar 150m)."""
 
-    SEARCH_RADIUS_METERS = 150.0
-
-    def __init__(self, region_cache_repository: Any) -> None:
+    def __init__(self, proximity_repository: ProximityCandidateRepositoryPort) -> None:
         """Inicjalizuje use case.
 
         Args:
-            region_cache_repository: Adapter z metodami przestrzennymi.
+            proximity_repository: Adapter z metodami przestrzennymi.
         """
-        self._repo = region_cache_repository
+        self._repo = proximity_repository
 
     def execute(self) -> str:
-        """Wykonuje pełny skan bazy obiektów turystycznych.
+        """Wykonuje skanowanie radarem przestrzennym (ST_DWithin).
 
         Returns:
-            Komunikat tekstowy z wynikiem skanowania.
+            Tekstowy raport o ilości zapisanych potencjalnych klastrów.
         """
-        pairs = self._repo.find_proximity_candidates(self.SEARCH_RADIUS_METERS)
+        # Szukamy kandydatów z portu (100 z wierzchu)
+        unprocessed = self._repo.get_unprocessed_objects(limit=100)
 
-        created_count = 0
-        for obj_a_id, obj_b_id, distance in pairs:
-            created = self._repo.create_proximity_candidate(obj_a_id, obj_b_id, distance)
-            if created:
-                created_count += 1
+        total_pairs = 0
+        for obj_id, geom in unprocessed:
+            if not geom:
+                continue
 
-        return f"Skanowanie zakończone. Utworzono {created_count} nowych kandydujących par."
+            # Promień 150 metrów
+            nearby_ids = self._repo.find_nearby_objects(obj_id, geom, distance_m=SEARCH_RADIUS_METERS)
+            if nearby_ids:
+                saved = self._repo.save_candidate_pairs(parent_id=obj_id, child_ids=nearby_ids)
+                total_pairs += saved
+
+        return f"Zakończono. Zapisano {total_pairs} nowych kandydatów do klastrowania."
