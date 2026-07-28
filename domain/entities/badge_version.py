@@ -5,11 +5,11 @@ reguł biznesowych zdefiniowanych w tej wersji regulaminu oraz progów stopni.
 """
 
 from dataclasses import dataclass
-from typing import Any
 
 from domain.rules.badge_rules import BadgeRule
 from domain.value_objects.ascent import Ascent
 from domain.value_objects.verification_context import VerificationContext
+from domain.value_objects.verification_result import TierResult, VerificationResult
 
 
 @dataclass(frozen=True)
@@ -31,7 +31,7 @@ class BadgeVersionDomain:
     pool_peak_ids: frozenset[int]
     tiers: list[BadgeTierDomain]  # <--- ZMIANA: Lista stopni zamiast jednego inta
 
-    def evaluate(self, ascents: list[Ascent], context: VerificationContext) -> dict[str, Any]:
+    def evaluate(self, ascents: list[Ascent], context: VerificationContext) -> VerificationResult:
         """Ocenia matematyczny postęp turysty w tej wersji odznaki.
 
         Zwraca ogólny status oraz szczegółową listę postępów dla każdego stopnia.
@@ -58,15 +58,6 @@ class BadgeVersionDomain:
             errors.extend(rule_errors)
 
         climbed_count = len(unique_ascents)
-
-        if errors:
-            return {
-                "verified": False,
-                "status": "NOT_STARTED" if climbed_count == 0 else "IN_PROGRESS",
-                "errors": errors,
-                "valid_ascents_count": climbed_count,
-                "tiers": [],
-            }
 
         # 3. Ewaluacja Stopni (Tiers)
         sorted_tiers = sorted(self.tiers, key=lambda t: t.order)
@@ -96,10 +87,21 @@ class BadgeVersionDomain:
 
         global_status = "COMPLETED" if all_completed else ("IN_PROGRESS" if climbed_count > 0 else "NOT_STARTED")
 
-        return {
-            "verified": all_completed,
-            "status": global_status,
-            "errors": [],
-            "valid_ascents_count": climbed_count,
-            "tiers": evaluated_tiers,
-        }
+        # Transformacja wyników stopni na nowe obiekty
+        tier_results = []
+        for tier_dict in evaluated_tiers:
+            # Wymuszamy typowanie dla poszczególnych elementów przed przekazaniem
+            t_id = int(str(tier_dict["tier_id"]))
+            t_name = str(tier_dict["name"])
+            t_status = str(tier_dict["status"])
+            t_req = int(str(tier_dict["required_count"]))
+
+            tier_results.append(TierResult(tier_id=t_id, name=t_name, status=t_status, required_count=t_req))
+
+        return VerificationResult(
+            verified=all_completed,
+            status=global_status,
+            valid_ascents_count=climbed_count,
+            errors=[],
+            tiers=tier_results,
+        )

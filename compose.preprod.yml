@@ -11,9 +11,24 @@
 # compose.prod.yml warstwą ingress — `web` publikuje port 8000 BEZPOŚREDNIO
 # na hosta (bez Caddy/HTTPS), dla wygody szybkich testów E2E i debugowania.
 # NIGDY nie kopiuj tego pliku jako punktu wyjścia dla PROD — użyj
-# compose.prod.yml. Rozważcie ustawienie w swoim `.env` osobnej wartości
-# `COMPOSE_PROJECT_NAME=badges-preprod`, żeby `docker compose down`/`up`
-# wykonane przez pomyłkę w złym katalogu/kontekście nie trafiły w PROD.
+# compose.prod.yml. Izolacja nazwy projektu (żeby `docker compose down`/`up`
+# nie trafiły w DEV/PROD na tej samej maszynie) jest wymuszona przez
+# `scripts/preprod-run.sh` — patrz szczegółowe uzasadnienie niżej. Nie
+# wystarczy tu "rozważenie" ustawienia zmiennej ręcznie — bez tego skryptu
+# domyślna nazwa projektu Compose koliduje z DEV, jeśli oba środowiska
+# działają z tego samego katalogu repo.
+#
+# NA TEJ SAMEJ MASZYNIE CO DEV: UŻYWAJ WYŁĄCZNIE `scripts/preprod-run.sh`,
+# NIGDY gołego `docker compose -f compose.yml -f compose.preprod.yml ...`.
+# Powód: bez jawnej nazwy projektu, wywołanie z tego samego katalogu co DEV
+# dostaje TĘ SAMĄ domyślną nazwę projektu (nazwę katalogu) — kontenery
+# PRE-PROD nazywałyby się identycznie jak kontenery DEV (`badges_system-db-1`),
+# co jest poważniejszym ryzykiem niż sama kolizja nazw wolumenów (naprawiona
+# osobno, patrz sekcja `volumes:` niżej). `preprod-run.sh` wymusza osobną
+# nazwę projektu (`badges_preprod`) jako zmienną powłoki — CELOWO NIE przez
+# wpisanie `COMPOSE_PROJECT_NAME` do współdzielonego pliku `.env`, bo to
+# zmieniłoby też domyślną nazwę projektu dla zwykłego `docker compose up`
+# używanego przez DEV.
 #
 # CELOWO brak `build:` — PRE-PROD wyłącznie POBIERA gotowy obraz z rejestru
 # (${IMAGE_NAME}:${IMAGE_TAG}). Obecność `build:` obok `image:` w tym samym
@@ -29,13 +44,11 @@
 # w tym środowisku plik .env.preprod nie istnieje na dysku kontenera
 # (env_file_required=False, patrz 20-configuration-contract.md).
 #
-# Użycie (przykład, wartości wstrzykiwane przez pipeline CI/CD — obraz musi
-# być wcześniej zbudowany i wypchnięty do rejestru w osobnym kroku CI):
-#   docker compose -f compose.yml -f compose.preprod.yml run --rm web \
-#       ./scripts/release-database.sh
-#   docker compose -f compose.yml -f compose.preprod.yml run --rm web \
-#       ./scripts/release-application.sh
-#   docker compose -f compose.yml -f compose.preprod.yml up -d
+# Użycie (przez preprod-run.sh — patrz uzasadnienie na górze pliku; obraz
+# musi być wcześniej zbudowany i wypchnięty do rejestru w osobnym kroku CI):
+#   ./scripts/preprod-run.sh run --rm web ./scripts/release-database.sh
+#   ./scripts/preprod-run.sh run --rm web ./scripts/release-application.sh
+#   ./scripts/preprod-run.sh up -d
 # ==============================================================================
 
 services:
@@ -127,4 +140,24 @@ services:
       - no-new-privileges:true
 
 volumes:
+  # KRYTYCZNE — bez tej sekcji PRE-PROD dziedziczyłby DOSŁOWNIE TE SAME
+  # zahardkodowane nazwy wolumenów (`badges_system_postgis_data`/
+  # `badges_system_redis_data`) co DEV (zdefiniowane w compose.yml, Runda 5).
+  # To jest ta sama klasa błędu co incydent z compose.test.yml (Runda 9),
+  # ale poważniejsza w skutkach: `release-database.sh` migruje bezpośrednio
+  # skonfigurowaną `POSTGRES_DB`, bez przypadkowej ochrony jaką dawało
+  # tworzenie osobnej bazy `test_*` przez pytest-django. Bez tej poprawki
+  # PRE-PROD i DEV dzieliłyby dosłownie ten sam plik danych PostgreSQL —
+  # przy jednoczesnym uruchomieniu obu środowisk ryzyko uszkodzenia klastra
+  # (dwa procesy Postgres piszące do tego samego katalogu), a przy
+  # sekwencyjnym — PRE-PROD faktycznie migrowałby/nadpisywał realną bazę DEV.
+  #
+  # Nazwa jest STAŁA (nie parametryzowana przez ${COMPOSE_PROJECT_NAME} jak
+  # w compose.test.yml) — w odróżnieniu od TEST, PRE-PROD nie jest efemeryczne
+  # per-uruchomienie, tylko relatywnie trwałe środowisko, więc stała,
+  # jednoznaczna nazwa jest tu właściwsza niż parametryzowana.
+  postgis_data:
+    name: badges_system_preprod_postgis_data
+  redis_data:
+    name: badges_system_preprod_redis_data
   static_volume:

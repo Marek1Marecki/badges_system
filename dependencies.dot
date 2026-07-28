@@ -16,6 +16,7 @@ digraph G {
     "domain.value_objects" [fillcolor="lightblue"];
     "domain.value_objects.ascent" [fillcolor="lightblue"];
     "domain.value_objects.verification_context" [fillcolor="lightblue"];
+    "domain.value_objects.verification_result" [fillcolor="lightblue"];
   }
 
   subgraph cluster_application {
@@ -237,6 +238,7 @@ digraph G {
   "domain.entities.badge_version" -> "domain.rules.badge_rules";
   "domain.entities.badge_version" -> "domain.value_objects.ascent";
   "domain.entities.badge_version" -> "domain.value_objects.verification_context";
+  "domain.entities.badge_version" -> "domain.value_objects.verification_result";
   "domain.rules.badge_rules" -> "domain.value_objects.ascent";
   "domain.rules.badge_rules" -> "domain.value_objects.verification_context";
   "infrastructure.adapters.celery_event_publisher" -> "application.ports.event_publisher_port";

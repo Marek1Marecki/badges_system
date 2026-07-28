@@ -4,6 +4,7 @@ from datetime import date
 from unittest.mock import MagicMock
 
 from application.services.poi_scoring_service import PoiScoringService
+from domain.value_objects.verification_result import TierResult, VerificationResult
 from tests.fakes.clock import FakeClock
 
 
@@ -59,7 +60,9 @@ class TestPoiScoringServiceMissingCoverage:
 
         badge_version = MagicMock()
         badge_version.pool_peak_ids = [1, 2, 3]
-        badge_version.evaluate.return_value = {"valid_ascents_count": 0}
+        badge_version.evaluate.return_value = VerificationResult(
+            verified=False, status="NOT_STARTED", valid_ascents_count=0, errors=[], tiers=[]
+        )
         badge_repo.get_latest_badge_version.return_value = badge_version
 
         ascent_repo.get_all_ascents_for_user.return_value = []
@@ -166,7 +169,9 @@ class TestPoiScoringServiceMissingCoverage:
 
         badge_version = MagicMock()
         badge_version.pool_peak_ids = [1]
-        badge_version.evaluate.return_value = {"valid_ascents_count": 0}
+        badge_version.evaluate.return_value = VerificationResult(
+            verified=False, status="NOT_STARTED", valid_ascents_count=0, errors=[], tiers=[]
+        )
         badge_repo.get_badge_version_by_id.return_value = badge_version
 
         ascent_repo.get_all_ascents_for_user.return_value = []
@@ -204,9 +209,27 @@ class TestPoiScoringServiceMissingCoverage:
         badge_version = MagicMock()
         badge_version.pool_peak_ids = [1, 2]
         badge_version.evaluate.side_effect = [
-            {"valid_ascents_count": 0},  # current
-            {"valid_ascents_count": 1, "required_count": 1},  # sim for peak 1
-            {"valid_ascents_count": 1, "required_count": 2},  # sim for peak 2
+            VerificationResult(
+                verified=False,
+                status="NOT_STARTED",
+                valid_ascents_count=0,
+                errors=[],
+                tiers=[TierResult(tier_id=1, name="Standard", status="NOT_STARTED", required_count=2)],
+            ),  # current
+            VerificationResult(
+                verified=True,
+                status="COMPLETED",
+                valid_ascents_count=1,
+                errors=[],
+                tiers=[TierResult(tier_id=1, name="Standard", status="COMPLETED", required_count=1)],
+            ),  # sim for peak 1
+            VerificationResult(
+                verified=False,
+                status="IN_PROGRESS",
+                valid_ascents_count=1,
+                errors=[],
+                tiers=[TierResult(tier_id=1, name="Standard", status="IN_PROGRESS", required_count=2)],
+            ),  # sim for peak 2
         ]
         badge_repo.get_badge_version_by_id.return_value = badge_version
 
@@ -244,7 +267,9 @@ class TestPoiScoringServiceMissingCoverage:
 
         badge_version = MagicMock()
         badge_version.pool_peak_ids = [1]
-        badge_version.evaluate.return_value = {"valid_ascents_count": 0}
+        badge_version.evaluate.return_value = VerificationResult(
+            verified=False, status="NOT_STARTED", valid_ascents_count=0, errors=[], tiers=[]
+        )
         badge_repo.get_badge_version_by_id.return_value = badge_version
 
         ascent_repo.get_all_ascents_for_user.return_value = []
@@ -287,7 +312,9 @@ class TestPoiScoringServiceMissingCoverage:
 
         badge_version1 = MagicMock()
         badge_version1.pool_peak_ids = [1]
-        badge_version1.evaluate.return_value = {"valid_ascents_count": 0}
+        badge_version1.evaluate.return_value = VerificationResult(
+            verified=False, status="NOT_STARTED", valid_ascents_count=0, errors=[], tiers=[]
+        )
         badge_repo.get_badge_version_by_id.side_effect = [badge_version1, badge_version1]
 
         ascent_dto = MagicMock()

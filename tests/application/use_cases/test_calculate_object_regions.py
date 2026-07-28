@@ -2,9 +2,6 @@
 
 from unittest.mock import MagicMock
 
-import pytest
-
-from application.exceptions import UseCaseError
 from application.use_cases.calculate_object_regions import CalculateObjectRegionsUseCase
 from tests.fakes.clock import FakeClock
 

@@ -8,7 +8,7 @@ MIN_COVERAGE ?= 80
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down
 
 help:
 	@echo "CORE targets:"
@@ -95,4 +95,20 @@ test-run:    ## Środowisko TEST — szybkie testy jednostkowe (efemeryczne, spr
 
 verify:      ## Pełna weryfikacja przed push/PR: make check + TEST (release scripts + pełny suite)
 	./scripts/verify.sh
+
+preprod:     ## Dowolna komenda compose na PRE-PROD z wymuszoną izolacją od DEV: make preprod ARGS="up -d"
+	./scripts/preprod-run.sh $(ARGS)
+
+
+preprod-deploy: ## PRE-PROD: bezpieczna kolejność (Database Release -> Application Release -> start)
+	./scripts/preprod-deploy.sh
+
+preprod-status: ## PRE-PROD: diagnostyka (kontenery, PostgreSQL, Redis, migracje, Celery, wolumen ADR-025)
+	./scripts/preprod-status.sh
+
+preprod-logs:   ## PRE-PROD: podgląd logów (Ctrl+C aby wyjść)
+	./scripts/preprod-run.sh logs -f --tail=100
+
+preprod-down:   ## PRE-PROD: zatrzymanie (bez -v — sam skrypt ostrzega, jeśli dodasz ARGS="down -v")
+	./scripts/preprod-run.sh down
 	

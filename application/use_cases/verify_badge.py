@@ -87,27 +87,29 @@ class VerifyBadgeUseCase:
         )
 
         # 7. EWALUACJA W CZYSTEJ DOMENIE
-        result = badge_version.evaluate(domain_ascents, context)
+        domain_result = badge_version.evaluate(ascents=domain_ascents, context=context)
 
         # =========================================================
-        # 7b. PRAWA NABYTE: Retroaktywne odbieranie odznak (Dylemat 2)
+        # 7b. PRAWA NABYTE: Retroaktywne odbieranie odznak
         # =========================================================
-        # Jeśli turysta w przeszłości zdobył odznakę, a zmiana profilu
-        # (np. dodanie daty urodzenia) nagle spowodowała błąd reguły wieku,
-        # system szanuje historię i wymusza zachowanie statusu COMPLETED.
-        if progress.domain_status == "COMPLETED":
-            result["status"] = "COMPLETED"
-            result["verified"] = True
-            result["errors"] = []
-            for tier in result.get("tiers", []):
-                tier["status"] = "COMPLETED"
+        final_status = "COMPLETED" if progress.domain_status == "COMPLETED" else domain_result.status
 
-        # 8. Zapisujemy zmaterializowany wynik w bazie
-        new_status = result["status"]
-        if new_status != progress.domain_status:
-            self._progress_repo.update_domain_status(progress.progress_id, new_status)
+        # 8. Zapisujemy zmaterializowany wynik w bazie, używając 'final_status'
+        if final_status != progress.domain_status:
+            self._progress_repo.update_domain_status(progress.progress_id, final_status)
 
-        return result
+        # 9. Formatujemy wynik do wyjścia DTO/API (zgodnie z AUDYT-124 będziemy
+        #    tu z czasem wpinać OutputDTO, ale na razie zwracamy kompatybilny słownik)
+        return {
+            "verified": domain_result.verified if final_status != "COMPLETED" else True,
+            "status": final_status,
+            "valid_ascents_count": domain_result.valid_ascents_count,
+            "errors": domain_result.errors,
+            "tiers": [
+                {"tier_id": t.tier_id, "name": t.name, "status": t.status, "required_count": t.required_count}
+                for t in domain_result.tiers
+            ],
+        }
 
     def _get_completed_badges(self, profile_id: int) -> frozenset[str]:
         """Pobiera kody odznak, które turysta ukończył."""

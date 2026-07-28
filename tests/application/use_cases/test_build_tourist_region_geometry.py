@@ -2,9 +2,6 @@
 
 from unittest.mock import MagicMock
 
-import pytest
-
-from application.exceptions import UseCaseError
 from application.use_cases.build_tourist_region_geometry import BuildTouristRegionGeometryUseCase
 
 

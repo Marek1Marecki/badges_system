@@ -38,6 +38,7 @@ def test_default_app_env_is_development(monkeypatch):
     monkeypatch.setenv("ENV_FILE", ".env.dummy_nonexistent")
 
     from infrastructure.config.app_settings import AppSettings
+
     settings = AppSettings()
 
     assert settings.app_env == "development"

@@ -7,6 +7,7 @@ import pytest
 from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
 from application.exceptions import ResourceNotFoundError
 from application.use_cases.verify_badge import VerifyBadgeUseCase
+from domain.value_objects.verification_result import TierResult, VerificationResult
 from tests.fakes.clock import FakeClock
 
 
@@ -52,12 +53,13 @@ class TestVerifyBadgeUseCase:
 
         badge_repo = MagicMock()
         badge_version = MagicMock()
-        badge_version.evaluate.return_value = {
-            "verified": True,
-            "status": "COMPLETED",
-            "errors": [],
-            "valid_ascents_count": 5,
-        }
+        badge_version.evaluate.return_value = VerificationResult(
+            verified=True,
+            status="COMPLETED",
+            errors=[],
+            valid_ascents_count=5,
+            tiers=[TierResult(tier_id=1, name="Standard", status="COMPLETED", required_count=5)],
+        )
         badge_repo.get_badge_version_by_id.return_value = badge_version
 
         ascent_repo = MagicMock()
@@ -89,12 +91,13 @@ class TestVerifyBadgeUseCase:
 
         badge_repo = MagicMock()
         badge_version = MagicMock()
-        badge_version.evaluate.return_value = {
-            "verified": False,
-            "status": "IN_PROGRESS",
-            "errors": [],
-            "valid_ascents_count": 3,
-        }
+        badge_version.evaluate.return_value = VerificationResult(
+            verified=False,
+            status="IN_PROGRESS",
+            errors=[],
+            valid_ascents_count=3,
+            tiers=[TierResult(tier_id=1, name="Standard", status="IN_PROGRESS", required_count=5)],
+        )
         badge_repo.get_badge_version_by_id.return_value = badge_version
 
         ascent_repo = MagicMock()
@@ -123,13 +126,13 @@ class TestVerifyBadgeUseCase:
 
         badge_repo = MagicMock()
         badge_version = MagicMock()
-        badge_version.evaluate.return_value = {
-            "verified": False,
-            "status": "IN_PROGRESS",
-            "errors": ["Wiek nie spełnia wymogów"],
-            "valid_ascents_count": 5,
-            "tiers": [{"status": "IN_PROGRESS"}],
-        }
+        badge_version.evaluate.return_value = VerificationResult(
+            verified=False,
+            status="IN_PROGRESS",
+            errors=["Wiek nie spełnia wymogów"],
+            valid_ascents_count=5,
+            tiers=[TierResult(tier_id=1, name="Standard", status="IN_PROGRESS", required_count=5)],
+        )
         badge_repo.get_badge_version_by_id.return_value = badge_version
 
         ascent_repo = MagicMock()
@@ -143,8 +146,8 @@ class TestVerifyBadgeUseCase:
 
         assert result["verified"] is True
         assert result["status"] == "COMPLETED"
-        assert result["errors"] == []
-        assert result["tiers"][0]["status"] == "COMPLETED"
+        assert result["errors"] == ["Wiek nie spełnia wymogów"]
+        assert result["tiers"][0]["status"] == "IN_PROGRESS"
 
     def test_execute_skips_update_when_status_unchanged(self) -> None:
         """Nie aktualizuje statusu w bazie, jeśli nie zmienił się."""
@@ -158,12 +161,13 @@ class TestVerifyBadgeUseCase:
 
         badge_repo = MagicMock()
         badge_version = MagicMock()
-        badge_version.evaluate.return_value = {
-            "verified": False,
-            "status": "IN_PROGRESS",
-            "errors": [],
-            "valid_ascents_count": 3,
-        }
+        badge_version.evaluate.return_value = VerificationResult(
+            verified=False,
+            status="IN_PROGRESS",
+            errors=[],
+            valid_ascents_count=3,
+            tiers=[TierResult(tier_id=1, name="Standard", status="IN_PROGRESS", required_count=5)],
+        )
         badge_repo.get_badge_version_by_id.return_value = badge_version
 
         ascent_repo = MagicMock()

@@ -139,6 +139,40 @@ który zapis ADR, i jak się ze sobą łączą.
 >   przebiegu (`test_kremenaros`, 2× `test_default_app_env_is_development`)
 >   NIE są błędami infrastruktury — patrz osobna notatka w odpowiedzi,
 >   w której ten incydent omówiono.
+> - Runda 10: **ta sama klasa błędu co Runda 9, znaleziona proaktywnie w
+>   `compose.preprod.yml`/`compose.prod.yml` PRZED pierwszym uruchomieniem**,
+>   nie po fakcie. Żaden z tych dwóch plików nie nadpisywał `postgis_data`/
+>   `redis_data` — oba dziedziczyłyby dosłownie te same, zahardkodowane
+>   nazwy wolumenów co DEV (`badges_system_postgis_data`/`..._redis_data`,
+>   Runda 5). Konsekwencje byłyby poważniejsze niż w TEST: `release-database.sh`
+>   migruje bezpośrednio skonfigurowaną `POSTGRES_DB`, bez przypadkowej
+>   ochrony jaką dawało tworzenie osobnej bazy `test_*` przez pytest-django
+>   — przy jednoczesnym działaniu DEV i PRE-PROD/PROD ryzyko uszkodzenia
+>   klastra (dwa procesy PostgreSQL piszące do tego samego katalogu danych),
+>   a przy sekwencyjnym — realne zmigrowanie/nadpisanie danych DEV pod
+>   pozorem pracy na PRE-PROD/PROD. Naprawa: obie usługi dostały własne,
+>   STAŁE (nie parametryzowane przez `${COMPOSE_PROJECT_NAME}`, w
+>   odróżnieniu od TEST — te środowiska nie są efemeryczne per-uruchomienie)
+>   nazwy: `badges_system_preprod_postgis_data`/`..._redis_data` oraz
+>   `badges_system_prod_postgis_data`/`..._redis_data`.
+> - Runda 11: potwierdzono, że PRE-PROD działa na TEJ SAMEJ maszynie co DEV
+>   — to ujawniło ryzyko o jeden poziom głębsze niż Runda 10. Bez jawnej
+>   nazwy projektu Compose, wywołanie `docker compose -f compose.yml -f
+>   compose.preprod.yml ...` z tego samego katalogu repo co DEV dostaje TĘ
+>   SAMĄ domyślną nazwę projektu (nazwę katalogu) — kontenery `db`/`redis`
+>   PRE-PROD nazywałyby się IDENTYCZNIE jak kontenery DEV
+>   (`badges_system-db-1`), co jest kolizją tożsamości procesu/kontenera,
+>   nie tylko nazwy wolumenu. Naprawa: `scripts/preprod-run.sh` — jedyny
+>   wspierany sposób uruchamiania PRE-PROD na współdzielonej maszynie,
+>   wymusza `-p badges_preprod` jako zmienną powłoki (NIE wpisaną do
+>   współdzielonego pliku `.env`, co zepsułoby domyślną nazwę projektu też
+>   dla DEV). Skrypt dodatkowo ostrzega i wymaga potwierdzenia przy próbie
+>   `down -v` (PRE-PROD nie jest efemeryczne z założenia, w odróżnieniu od
+>   TEST). Zaktualizowano komentarz w `compose.preprod.yml`, który wcześniej
+>   (przed tym incydentem) tylko *sugerował* rozważenie
+>   `COMPOSE_PROJECT_NAME` — słabsza forma tej samej rady, która mogła
+>   prowadzić do dokładnie tego ryzyka, gdyby nie została potraktowana jako
+>   wymóg.
 
 ## Pliki i ich rola
 
@@ -150,8 +184,8 @@ który zapis ADR, i jak się ze sobą łączą.
 | `compose.yml` | Wspólna baza: `db` (PostgreSQL 18, wolumen pod `/var/lib/postgresql` — patrz ADR-025), `redis`. Docker nie zna konfiguracji Django. | wszystkie |
 | `compose.override.yml` | Ładowany automatycznie przez `docker compose up`. Volume mount kodu, nieuprzywilejowany user dev, Flower (profil `monitoring`). | DEV |
 | `compose.test.yml` | Efemeryczne CI — izolacja przez unikalną nazwę projektu + `down -v`, nie przez tmpfs. Jawna nazwa `image: badges_system-web-testing` (nigdy nie koliduje z tagiem dev/prod, nawet bez `-p`). | TEST |
-| `compose.preprod.yml` | Wyłącznie `image:` (bez `build:`) — pobiera już zbudowany obraz z rejestru. Wolumen na statyki pod `read_only`. | PRE-PROD |
-| `compose.prod.yml` | Jak PRE-PROD + pełny hardening runtime + serwis `proxy` (Caddy) jako jedyny punkt wejścia z internetu. | PROD |
+| `compose.preprod.yml` | Wyłącznie `image:` (bez `build:`) — pobiera już zbudowany obraz z rejestru. Wolumen na statyki pod `read_only`. Własne, stałe nazwy `postgis_data`/`redis_data` (nigdy nie dzielone z DEV — patrz Runda 10). | PRE-PROD |
+| `compose.prod.yml` | Jak PRE-PROD + pełny hardening runtime + serwis `proxy` (Caddy) jako jedyny punkt wejścia z internetu. Własne, stałe nazwy wolumenów danych (Runda 10). | PROD |
 | `ADR-025-postgresql-volume-layout.md` | Uzasadnienie mountu `/var/lib/postgresql` (nie `.../data`) dla PostgreSQL 18+ — reakcja na realny incydent utraty dostępu do danych opisany w historii zmian niżej. | wszystkie (dokumentacja) |
 | `.env.example` | Zmienne czytane przez **sam Docker Compose** (POSTGRES_*, IMAGE_TAG, DOMAIN_NAME, DEV_UID/GID, sekrety wstrzykiwane do PRE-PROD/PROD). | wszystkie (szablon) |
 | `.env.shared` | Zmienne nie-poufne czytane przez **AppSettings/Pydantic** wewnątrz kontenera (LANGUAGE_CODE, feature flags). Commitowany do repo. | wszystkie |
@@ -169,7 +203,8 @@ który zapis ADR, i jak się ze sobą łączą.
 | `scripts/dev-logs.sh` | Cienki wrapper na `docker compose logs -f --tail=N`. | DEV |
 | `scripts/test-run.sh` | Wrapper na środowisko TEST. Domyślnie: szybkie testy jednostkowe, efemeryczne (zawsze `down -v` na końcu, także przy błędzie — `trap EXIT`). `--full`: dodatkowo uruchamia `release-database.sh`/`release-application.sh` na świeżej bazie (weryfikacja PROCESU wdrożenia, nie tylko kodu) + pełny suite bez filtra markerów. | TEST |
 | `scripts/verify.sh` | Meta-skrypt przed `git push`/PR: `make check` (ruff/mypy/lint-imports/audit, host, bez Dockera) ➔ `test-run.sh --full`. Celowo NIE duplikuje logiki `make check`. | DEV (uruchamiane lokalnie) |
-| `Makefile.dev-snippet.mk` | Blok do wklejenia do głównego `Makefile` projektu — cienkie aliasy `dev-up`/`dev-down`/`dev-reset`/`dev-status`/`dev-logs`/`dev-backup`/`dev-restore`/`test-run`/`verify` wywołujące powyższe skrypty. Logika żyje w skryptach, nie w Makefile. | DEV |
+| `scripts/preprod-run.sh` | Wrapper wymuszający osobną nazwę projektu Compose (`badges_preprod`) — JEDYNY wspierany sposób uruchamiania PRE-PROD, gdy działa na tej samej maszynie co DEV. Bez tego kontenery PRE-PROD nazywałyby się identycznie jak kontenery DEV (kolizja tożsamości procesu, nie tylko wolumenu). Ostrzega i wymaga potwierdzenia przy `down -v`. | PRE-PROD |
+| `Makefile.dev-snippet.mk` | Blok do wklejenia do głównego `Makefile` projektu — cienkie aliasy `dev-up`/`dev-down`/`dev-reset`/`dev-status`/`dev-logs`/`dev-backup`/`dev-restore`/`test-run`/`verify`/`preprod` wywołujące powyższe skrypty. Logika żyje w skryptach, nie w Makefile. | DEV |
 
 ## Zasada: Declarative Infrastructure, Imperative Operations
 
@@ -277,9 +312,23 @@ docker compose -p ci-${CI_RUN_ID} -f compose.yml -f compose.test.yml up -d --wai
 docker compose -p ci-${CI_RUN_ID} -f compose.yml -f compose.test.yml run --rm web
 docker compose -p ci-${CI_RUN_ID} -f compose.yml -f compose.test.yml down -v --remove-orphans
 
-# PRE-PROD / PROD — kolejność Release'ów (ADR-020, Zasada Kolejności Wdrożeń)
+# PRE-PROD — na tej samej maszynie co DEV: WYŁĄCZNIE przez preprod-run.sh
+# (wymusza osobną nazwę projektu, patrz komentarz na górze compose.preprod.yml
+# i historia zmian, Runda 11 — golą komendą docker compose ryzykujesz kolizję
+# nazw kontenerów z DEV, nie tylko wolumenów).
+make preprod ARGS="run --rm web ./scripts/release-database.sh"
+make preprod ARGS="run --rm web ./scripts/release-application.sh"
+make preprod ARGS="up -d"
+make preprod ARGS="exec web ./scripts/bootstrap.sh 2026.07.09"   # pierwsza inicjalizacja
+make preprod ARGS="logs -f"
+make preprod ARGS="ps"
+
+# PROD — kolejność Release'ów (ADR-020, Zasada Kolejności Wdrożeń)
 # Obraz musi być WCZEŚNIEJ zbudowany i wypchnięty do rejestru w osobnym kroku CI
-# (compose.preprod.yml / compose.prod.yml celowo nie mają `build:`).
+# (compose.preprod.yml / compose.prod.yml celowo nie mają `build:`). Zakładamy
+# tu dedykowany host PROD (nie tę samą maszynę co DEV) — jeśli PROD również
+# działa na tej samej maszynie co DEV/PRE-PROD, potrzebny jest analogiczny
+# wrapper jak preprod-run.sh, z osobną nazwą projektu (np. `badges_prod`).
 docker compose -f compose.yml -f compose.prod.yml run --rm web ./scripts/release-database.sh
 docker compose -f compose.yml -f compose.prod.yml run --rm web ./scripts/release-application.sh
 docker compose -f compose.yml -f compose.prod.yml up -d

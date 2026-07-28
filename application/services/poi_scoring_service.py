@@ -102,7 +102,7 @@ class PoiScoringService:
 
             # 1. Oceń aktualny stan, aby znaleźć aktualną liczbę ważnych wejść
             current_eval = badge_version.evaluate(domain_ascents, context)
-            curr_valid_count = current_eval.get("valid_ascents_count", 0)
+            curr_valid_count = current_eval.valid_ascents_count
 
             unconsumed_peak_ids = {a.peak_id for a in domain_ascents}
 
@@ -125,14 +125,19 @@ class PoiScoringService:
                 else:
                     # Symulacja: "A co gdyby turysta wszedł tu dzisiaj?"
                     sim_ascent = Ascent(peak_id=peak_id, ascent_date=today_date, region_ids=frozenset())
+                    # Zwraca obiekt VerificationResult, a nie słownik
                     sim_eval = badge_version.evaluate(domain_ascents + [sim_ascent], context)
-                    sim_valid_count = sim_eval.get("valid_ascents_count", 0)
+                    sim_valid_count = sim_eval.valid_ascents_count  # <--- ZMIANA (odczyt z obiektu)
 
                     # Jeśli to wirtualne wejście podbiło licznik, znaczy że szczyt jest ważny!
                     if sim_valid_count > curr_valid_count:
                         color = "RED"
 
-                        target = sim_eval.get("required_count", len(badge_version.pool_peak_ids))
+                        # Pobieramy docelowy próg z najwyższego niedokończonego stopnia
+                        # (Ponieważ Domena wspiera teraz wiele stopni, szukamy pierwszego, który nie jest COMPLETED)
+                        pending_tier = next((t for t in sim_eval.tiers if t.status != "COMPLETED"), None)
+                        target = pending_tier.required_count if pending_tier else len(badge_version.pool_peak_ids)
+
                         missing_after_ascent = max(target - sim_valid_count, 0)
 
                         if missing_after_ascent == 0:

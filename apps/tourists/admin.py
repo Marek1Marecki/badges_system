@@ -6,6 +6,7 @@ aby utrzymać spójny motyw wizualny Tailwind CSS.
 """
 
 from django.contrib import admin
+from django.contrib.sites.models import Site
 from unfold.admin import ModelAdmin
 
 from apps.tourists.models import AscentLog, TouristProfile, UserBadgeProgress
@@ -113,3 +114,16 @@ class UserBadgeProgressAdmin(ModelAdmin):
     def version_code(self, obj: UserBadgeProgress) -> str:
         """Ułatwia podgląd wersji w głównej liście."""
         return obj.version.version_code if obj.version else "BRAK (Oczekuje)"
+
+
+# --- UNFOLDYZACJA ZEWNĘTRZNYCH PACZEK (Zgodnie z EC-043) ---
+
+# Unregister default Site model provided by Django
+admin.site.unregister(Site)
+
+
+# Re-register with Unfold's ModelAdmin
+@admin.register(Site)
+class SiteAdmin(ModelAdmin):
+    list_display = ("domain", "name")
+    search_fields = ("domain", "name")

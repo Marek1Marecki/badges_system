@@ -5,7 +5,7 @@
   </marker>
 </defs>
 <rect width="100%" height="100%" fill="#f7f7f5" />
-<rect x="40" y="40" width="256" height="580" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
+<rect x="40" y="40" width="256" height="634" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
 <text x="58" y="64" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#26313d">domain</text>
 <rect x="320" y="40" width="256" height="1552" rx="16" fill="#ffffff" stroke="#b8bec7" stroke-width="1.5" />
 <text x="338" y="64" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#26313d">application</text>
@@ -115,6 +115,7 @@
 <path d="M 278.0 206.0 C 355.0 206.0, -19.0 422.0, 58.0 422.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 278.0 206.0 C 355.0 206.0, -19.0 530.0, 58.0 530.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 278.0 206.0 C 355.0 206.0, -19.0 584.0, 58.0 584.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
+<path d="M 278.0 206.0 C 355.0 206.0, -19.0 638.0, 58.0 638.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 278.0 422.0 C 355.0 422.0, -19.0 530.0, 58.0 530.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 278.0 422.0 C 355.0 422.0, -19.0 584.0, 58.0 584.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
 <path d="M 1118.0 206.0 C 1293.0 206.0, 443.0 314.0, 618.0 314.0" fill="none" stroke="#5b6470" stroke-width="1.6" opacity="0.8" marker-end="url(#arrow)" />
@@ -319,6 +320,8 @@
 <text x="70" y="535" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">domain.value_objects.ascent</text>
 <rect x="58" y="566" width="220" height="36" rx="10" fill="lightblue" stroke="#7f8a96" stroke-width="1.2" />
 <text x="70" y="589" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">domain.value_objects.verification_context</text>
+<rect x="58" y="620" width="220" height="36" rx="10" fill="lightblue" stroke="#7f8a96" stroke-width="1.2" />
+<text x="70" y="643" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">domain.value_objects.verification_result</text>
 <rect x="898" y="80" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
 <text x="910" y="103" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2933">infrastructure</text>
 <rect x="898" y="134" width="220" height="36" rx="10" fill="orange" stroke="#7f8a96" stroke-width="1.2" />
