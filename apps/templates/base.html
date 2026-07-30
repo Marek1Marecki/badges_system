@@ -45,7 +45,9 @@
 
 </head>
 
-<body class="bg-gray-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden" hx-ext="json-enc">
+<body class="bg-gray-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden"
+      hx-ext="json-enc"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
     <!-- Pasek Nawigacyjny -->
     <nav class="bg-sky-900 text-white p-4 flex justify-between items-center shadow-md z-10 relative">
@@ -124,7 +126,6 @@
         crossorigin="anonymous"
     ></script>
 
-    <!-- HTMX JSON encoder (wymagany przez hx-ext="json-enc") -->
     <script
         src="https://unpkg.com/htmx.org@1.9.11/dist/ext/json-enc.js"
         integrity="sha384-nRnAvEUI7N/XvvowiMiq7oEI04gOXMCqD3Bidvedw+YNbj7zTQACPlRI3Jt3vYM4"

@@ -22,7 +22,7 @@ from application.use_cases.log_ascent import LogAscentUseCase
 from application.use_cases.scan_proximity_candidates import ScanProximityCandidatesUseCase
 from application.use_cases.start_badge_progress import StartBadgeProgressUseCase
 from application.use_cases.unsubscribe_badge import UnsubscribeBadgeUseCase
-from application.use_cases.verify_badge import VerifyBadgeUseCase
+from application.use_cases.verify_badge import EvaluateBadgeProgressQuery, UpdateBadgeProgressCommand
 from infrastructure.adapters.celery_event_publisher import CeleryEventPublisher
 from infrastructure.adapters.clock import SystemClock
 from infrastructure.adapters.django_cache import DjangoCacheAdapter
@@ -59,7 +59,8 @@ class AppContainer:
     scan_proximity_candidates: ScanProximityCandidatesUseCase
     start_badge_progress: StartBadgeProgressUseCase
     unsubscribe_badge: UnsubscribeBadgeUseCase
-    verify_badge: VerifyBadgeUseCase
+    evaluate_badge_progress: EvaluateBadgeProgressQuery
+    update_badge_progress: UpdateBadgeProgressCommand
     poi_scoring_service: PoiScoringService
     explore_queries_service: ExploreQueriesService
 
@@ -151,12 +152,22 @@ def build_container() -> AppContainer:
             uow=uow,
             event_publisher=event_publisher,
         ),
-        verify_badge=VerifyBadgeUseCase(
+        evaluate_badge_progress=EvaluateBadgeProgressQuery(
             progress_repository=tourist_repo,
             ascent_repository=tourist_repo,
             profile_repository=tourist_repo,
             badge_repository=badge_repo,
             clock=clock,
+        ),
+        update_badge_progress=UpdateBadgeProgressCommand(
+            query_service=EvaluateBadgeProgressQuery(
+                progress_repository=tourist_repo,
+                ascent_repository=tourist_repo,
+                profile_repository=tourist_repo,
+                badge_repository=badge_repo,
+                clock=clock,
+            ),
+            progress_repository=tourist_repo,
         ),
         poi_scoring_service=poi_scoring_service,
         explore_queries_service=explore_queries_service,

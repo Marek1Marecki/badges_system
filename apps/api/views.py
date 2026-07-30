@@ -19,9 +19,7 @@ from django.contrib.gis.measure import D
 from django.core.cache import cache
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
-from django.utils.decorators import method_decorator
 from django.views import View
-from django.views.decorators.csrf import csrf_exempt
 
 from application.dto.ascent_dto import AscentInputDTO
 from application.dto.map_dto import MapExploreRequestDTO
@@ -29,7 +27,6 @@ from application.dto.user_context_dto import (
     LogisticStatusUpdateDTO,
     UpdateProfileRequestDTO,
 )
-from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
 from application.exceptions import (
     ApplicationException,
     BitemporalTimeError,
@@ -106,7 +103,6 @@ def _handle_application_exception(request, exc: ApplicationException) -> JsonRes
 # ---------------------------------------------------------------------------
 
 
-@method_decorator(csrf_exempt, name="dispatch")
 class AscentLogView(View):
     """POST /api/v1/ascents/
 
@@ -155,7 +151,6 @@ class AscentLogView(View):
             return _handle_application_exception(exc, request.path)
 
 
-@method_decorator(csrf_exempt, name="dispatch")
 class BadgeSubscribeView(View):
     """POST /api/v1/badges/{badge_code}/subscribe/
 
@@ -203,7 +198,6 @@ class BadgeSubscribeView(View):
             return _handle_application_exception(exc, request.path)
 
 
-@method_decorator(csrf_exempt, name="dispatch")
 class BadgeProgressView(View):
     """GET /api/v1/badges/{badge_code}/progress/
 
@@ -225,22 +219,19 @@ class BadgeProgressView(View):
 
         cycle_number = int(request.GET.get("cycle", 1))
 
-        dto = VerifyBadgeRequestDTO(
-            profile_id=request.profile.id,
-            badge_code=badge_code,
-            cycle_number=cycle_number,
-        )
+        # Nie potrzebujemy tu w ogóle obiektu DTO (skoro UseCase przyjmuje proste parametry!)
+        # Wyciągamy po prostu bezpiecznie profile_id z sesji (Ochrona IDOR z AUDYT-070)
+        profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id
 
         try:
-            use_case = get_container().verify_badge
-            result = use_case.execute(dto)
+            use_case = get_container().evaluate_badge_progress
+            result = use_case.execute(profile_id=profile_id, badge_code=badge_code, cycle_number=cycle_number)
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
 
         return JsonResponse(result, status=200)
 
 
-@method_decorator(csrf_exempt, name="dispatch")
 class MapObjectsView(View):
     """GET /api/v1/map/objects?bbox={min_lon,min_lat,max_lon,max_lat}
 
@@ -297,7 +288,6 @@ class MapObjectsView(View):
         return JsonResponse(geojson_data, status=200)
 
 
-@method_decorator(csrf_exempt, name="dispatch")
 class BadgeLogisticsView(View):
     """PATCH /api/v1/progress/{progress_id}/logistics/
 
@@ -338,7 +328,6 @@ class BadgeLogisticsView(View):
         return JsonResponse({"status": "UPDATED", "logistic_status": dto.logistic_status}, status=200)
 
 
-@method_decorator(csrf_exempt, name="dispatch")  # <--- DODANA ZGODNOŚĆ DEKORATORA
 class VectorTileView(View):
     """GET /api/v1/tiles/{layer}/{z}/{x}/{y}.pbf
 
@@ -364,7 +353,6 @@ class VectorTileView(View):
         return response
 
 
-@method_decorator(csrf_exempt, name="dispatch")
 class NearbyObjectsView(View):
     """GET /api/v1/objects/{id}/nearby/
 
@@ -419,7 +407,6 @@ class NearbyObjectsView(View):
         return JsonResponse({"type": "FeatureCollection", "features": features})
 
 
-@method_decorator(csrf_exempt, name="dispatch")
 class GpxAnalyzeView(View):
     """POST /api/v1/gpx/analyze/
 
@@ -455,7 +442,6 @@ class GpxAnalyzeView(View):
         return JsonResponse(result.model_dump(), status=200)
 
 
-@method_decorator(csrf_exempt, name="dispatch")
 class BulkAscentLogView(View):
     """POST /api/v1/ascents/bulk/
 
@@ -495,7 +481,6 @@ class BulkAscentLogView(View):
             return _handle_application_exception(exc, request.path)
 
 
-@method_decorator(csrf_exempt, name="dispatch")
 class ProfileSettingsView(View):
     """PATCH /api/v1/profiles/{profile_id}/
 
@@ -533,7 +518,6 @@ class ProfileSettingsView(View):
         return JsonResponse({"status": "UPDATED"}, status=200)
 
 
-@method_decorator(csrf_exempt, name="dispatch")
 class ProfileUpgradeView(View):
     """POST /api/v1/profiles/{profile_id}/upgrade/
 

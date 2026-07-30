@@ -3,12 +3,15 @@
 Zgodnie z US-C06: Oblicza postęp On-Demand.
 Zgodnie z P-02 (EC-030): Odfiltrowuje zużyte wejścia z poprzednich cykli.
 Zgodnie z TD-02: Wstrzykuje wiek i kluby turysty do Czystej Domeny.
+
+Zawiera rozdzielone ścieżki (Command/Query Responsibility Segregation):
+1. EvaluateBadgeProgressQuery - Tylko odczyt z pamięci RAM (bezpieczny dla GET).
+2. UpdateBadgeProgressCommand - Wymuszenie fizycznego zapisu do bazy.
 """
 
 from typing import Any
 
-from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
-from application.exceptions import ResourceNotFoundError, UseCaseError
+from application.exceptions import ResourceNotFoundError
 from application.ports.badge_repository_port import BadgeRepositoryPort
 from application.ports.clock_port import ClockPort
 from application.ports.user_progress_port import (
@@ -17,10 +20,11 @@ from application.ports.user_progress_port import (
     UserProgressRepositoryPort,
 )
 from domain.value_objects.verification_context import VerificationContext
+from domain.value_objects.verification_result import VerificationResult
 
 
-class VerifyBadgeUseCase:
-    """Orkiestruje ostateczny proces weryfikacji odznaki w oparciu o stan bazy."""
+class EvaluateBadgeProgressQuery:
+    """Odczytuje aktualny stan i ewaluuje postęp matematyczny w locie bez zapisu do bazy."""
 
     def __init__(
         self,
@@ -30,88 +34,95 @@ class VerifyBadgeUseCase:
         badge_repository: BadgeRepositoryPort,
         clock: ClockPort,
     ) -> None:
-        """Wstrzykuje repozytoria portów oraz deterministyczny zegar."""
+        """Inicjalizuje serwis odczytu i oceny postępów turysty."""
         self._progress_repo = progress_repository
         self._ascent_repo = ascent_repository
         self._profile_repo = profile_repository
         self._badge_repo = badge_repository
         self._clock = clock
 
-    def execute(self, request: VerifyBadgeRequestDTO) -> dict[str, Any]:
-        """Przeprowadza weryfikację logów wejść z bazy danych."""
-        # 1. Pobieramy "Zakotwiczenie" turysty (Prawa Nabyte)
-        progress = self._progress_repo.get_progress(
-            profile_id=request.profile_id, badge_code=request.badge_code, cycle_number=request.cycle_number
-        )
+    def execute(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> dict[str, Any]:
+        """Weryfikuje status matematyczny w locie."""
+        # 1. Pobieramy postęp by mieć referencję do zakotwiczonej wersji (P-01)
+        progress = self._progress_repo.get_progress(profile_id, badge_code, cycle_number)
         if not progress:
-            # ResourceNotFoundError → 404 przez middleware
-            raise ResourceNotFoundError(f"Turysta nie subskrybuje odznaki {request.badge_code}.")
+            raise ResourceNotFoundError(f"Turysta nie subskrybuje odznaki '{badge_code}'.")
 
-        if not progress.version_id:
-            return {"verified": False, "status": "NOT_STARTED", "errors": [], "valid_ascents_count": 0}
+        # 2. Jeśli nie ma wersji, próbujemy podpiąć najnowszą (do podglądu UI)
+        target_version_id = progress.version_id
+        if not target_version_id:
+            # Używamy portu zwracającego bezpośrednio czysty INT z bazy
+            today = self._clock.now().date()
+            target_version_id = self._badge_repo.get_version_id_for_date(badge_code, today)
 
-        # 2. Pobieramy Czystą Domenę z bazy
-        badge_version = self._badge_repo.get_badge_version_by_id(progress.version_id)
-        if not badge_version:
-            raise UseCaseError("Regulamin przypisany do tej odznaki nie istnieje w bazie.")
+        # Upewniamy się, że version_id jest typu int przed wyszukaniem
+        if not isinstance(target_version_id, int):
+            raise ResourceNotFoundError("Brak zdefiniowanego regulaminu dla tej odznaki.")
 
-        # 3. Pobieramy profil turysty (Wiek, Kluby)
-        profile = self._profile_repo.get_profile(request.profile_id)
-        birth_date = profile.birth_date if profile else None
-        club_dates = profile.club_join_dates if profile else {}
+        # 3. Pobieramy pełną domenę (regulaminy + stopnie)
+        domain_badge_version = self._badge_repo.get_badge_version_by_id(target_version_id)
+        if not domain_badge_version:
+            raise ResourceNotFoundError("Nie udało się odtworzyć struktury odznaki.")
 
-        # 4. Ustalamy "Ocięcie" logów dla Pętli Prestiżu (Invariant P-02)
+        # 4. Pobieramy logi (odcinając zużyte w poprzednich cyklach P-02)
         cutoff_date = None
-        if request.cycle_number > 1:
-            prev_cycle = self._progress_repo.get_progress(
-                request.profile_id, request.badge_code, request.cycle_number - 1
-            )
-            # Jeśli poprzedni cykl jest zamknięty, odcinamy stare logi po dacie zamknięcia
-            if prev_cycle and prev_cycle.logistic_status_date:
-                cutoff_date = prev_cycle.logistic_status_date
+        if cycle_number > 1:
+            previous_progress = self._progress_repo.get_progress(profile_id, badge_code, cycle_number - 1)
+            # Używamy poprawnego pola z DTO
+            cutoff_date = previous_progress.logistic_status_date if previous_progress else None
 
-        # 5. Pobieramy "Niezużyte" logi z bazy
-        ascents_dto = self._ascent_repo.get_unconsumed_ascents(
-            profile_id=request.profile_id,
-            badge_code=request.badge_code,
-            cutoff_date=cutoff_date,
-        )
+        ascents_dto = self._ascent_repo.get_unconsumed_ascents(profile_id, badge_code, cutoff_date=cutoff_date)
         domain_ascents = [dto.to_domain() for dto in ascents_dto]
 
-        # 6. Budujemy kontekst weryfikacyjny (Wstrzyknięcie Czasu i Stanu)
+        # 5. Kontekst Weryfikacyjny
+        profile_dto = self._profile_repo.get_profile(profile_id)
         context = VerificationContext(
             evaluation_time=self._clock.now(),
-            tourist_birth_date=birth_date,
-            club_join_dates=club_dates,
-            completed_badge_codes=self._get_completed_badges(request.profile_id),
+            tourist_birth_date=profile_dto.birth_date if profile_dto else None,
+            club_join_dates=profile_dto.club_join_dates if profile_dto else {},
+            completed_badge_codes=self._progress_repo.get_completed_badge_codes(profile_id),
         )
 
-        # 7. EWALUACJA W CZYSTEJ DOMENIE
-        domain_result = badge_version.evaluate(ascents=domain_ascents, context=context)
+        # 6. Matematyka w Czystej Domenie (Bez Side Effectów!)
+        domain_result: VerificationResult = domain_badge_version.evaluate(ascents=domain_ascents, context=context)
 
-        # =========================================================
-        # 7b. PRAWA NABYTE: Retroaktywne odbieranie odznak
-        # =========================================================
+        # 7. Ochrona Praw Nabytych (Jeśli w bazie ma COMPLETED, nic mu tego nie zabierze)
         final_status = "COMPLETED" if progress.domain_status == "COMPLETED" else domain_result.status
 
-        # 8. Zapisujemy zmaterializowany wynik w bazie, używając 'final_status'
-        if final_status != progress.domain_status:
-            self._progress_repo.update_domain_status(progress.progress_id, final_status)
-
-        # 9. Formatujemy wynik do wyjścia DTO/API (zgodnie z AUDYT-124 będziemy
-        #    tu z czasem wpinać OutputDTO, ale na razie zwracamy kompatybilny słownik)
         return {
             "verified": domain_result.verified if final_status != "COMPLETED" else True,
             "status": final_status,
             "valid_ascents_count": domain_result.valid_ascents_count,
             "errors": domain_result.errors,
             "tiers": [
-                {"tier_id": t.tier_id, "name": t.name, "status": t.status, "required_count": t.required_count}
+                {
+                    "tier_id": t.tier_id,
+                    "name": t.name,
+                    "status": t.status,
+                    "required_count": t.required_count,
+                }
                 for t in domain_result.tiers
             ],
         }
 
-    def _get_completed_badges(self, profile_id: int) -> frozenset[str]:
-        """Pobiera kody odznak, które turysta ukończył."""
-        progresses = self._progress_repo.get_active_progresses(profile_id)
-        return frozenset(p.badge_code for p in progresses if p.domain_status == "COMPLETED")
+
+class UpdateBadgeProgressCommand:
+    """Aktualizuje stan odznaki w bazie na podstawie wyliczeń domeny."""
+
+    def __init__(
+        self, query_service: EvaluateBadgeProgressQuery, progress_repository: UserProgressRepositoryPort
+    ) -> None:
+        """Inicjalizuje komendę wymuszającą weryfikację i zapis postępów w bazie danych."""
+        self._query_service = query_service
+        self._progress_repo = progress_repository
+
+    def execute(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> None:
+        """Przelicza i wymusza twardy zapis do bazy."""
+        progress = self._progress_repo.get_progress(profile_id, badge_code, cycle_number)
+        if not progress:
+            return
+
+        result = self._query_service.execute(profile_id, badge_code, cycle_number)
+
+        if result["status"] != progress.domain_status:
+            self._progress_repo.update_domain_status(progress.progress_id, result["status"])

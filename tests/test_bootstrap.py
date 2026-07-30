@@ -31,7 +31,8 @@ def test_container_singleton() -> None:
     # Weryfikacja czy kontener wygenerował i zarejestrował wszystkie nasze Use Case'y
     # AppContainer to dataclass, więc używamy hasattr zamiast operatora 'in'
     expected_use_cases = [
-        "verify_badge",
+        "evaluate_badge_progress",
+        "update_badge_progress",
         "fetch_osm_data",
         "calculate_object_regions",
         "build_tourist_region_geometry",

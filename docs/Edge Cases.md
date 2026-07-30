@@ -434,3 +434,71 @@ Wdrożono twarde reguły nadpisywania:
 **Status:** `resolved`  
 **Opis:** Po kliknięciu w przycisk logowania przeglądarka zostaje odrzucona przez serwery Google z błędem 401 (OAuth client was not found).  
 **Rozwiązanie / workaround:** Zjawisko to występuje z powodu błędu autoryzacji w chmurze (Google Cloud Console). Należy upewnić się, że zmienna `GOOGLE_OAUTH_CLIENT_ID` wczytywana z pliku `.env` jest dokładną kopią klucza z konsoli, a podany tam "Authorized redirect URI" w 100% odpowiada adresowi, z którego odpytuje nasza aplikacja deweloperska lub produkcyjna (np. `http://127.0.0.1:8005/accounts/google/login/callback/`).
+
+---
+
+## 7. Architektura Rodzinna i Błędy Stanu (Family Model & State)
+
+### EC-067 — Omyłkowe wywoływanie `request.profile` zamiast odczytu sesji
+**Obszar:** `apps/api/views.py` (i inne widoki HTTP)  
+**Status:** `resolved`  
+**Opis:** Po wdrożeniu Modelu Rodzinnego (gdzie jeden `request.user` posiada wiele `TouristProfile`), próby ułatwienia sobie pobierania profilu w kodzie poprzez skrót `profile_id = request.profile.id` kończą się krytycznym błędem `AttributeError: 'WSGIRequest' object has no attribute 'profile'`.  
+**Rozwiązanie / workaround:** Twardy nakaz korzystania z wyciągania identyfikatora z sesji HTTP. Każdy widok API musi bezwzględnie weryfikować aktywny kontekst używając: `profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id`.
+
+### EC-068 — Zjawisko "Zaginionego Profilu" na starych kontach (Lazy Initialization Bypass)
+**Obszar:** `apps/tourists/views.py`  
+**Status:** `resolved`  
+**Opis:** Konta utworzone na początku fazy deweloperskiej (np. za pomocą komendy `createsuperuser` w terminalu) nie posiadają podpiętego rekordu w tabeli `TouristProfile`, ponieważ zostały utworzone przed wpięciem sygnału `post_save`. Wejście takiego użytkownika na główną stronę powodowało błąd 500 w helperze odczytującym ID z bazy.  
+**Rozwiązanie / workaround:** Odbudowano mechanizm "Leniwego Ładowania" w helperze `_get_active_profile_id`. Jeśli system nie znajdzie profilu, w ułamku sekundy automatycznie i "po cichu" zakłada domyślny, darmowy profil (`is_main_profile=True`, pakiet `FREE`) powiązany z zalogowanym użytkownikiem.
+
+---
+
+## 8. Pułapki Infrastruktury Docker i MVT (DevOps Gotchas)
+
+### EC-069 — Utrata danych w PostgreSQL po zmianie nazwy wolumenu Dockera
+**Obszar:** `compose.yml`, Wolumeny Dockera  
+**Status:** `resolved`  
+**Opis:** Zmiana struktury plików Compose lub zmiana nazwy przypisanego wolumenu (np. z `db_data` na `postgis_data`) powoduje, że przy kolejnym `docker compose up` system tworzy nową, całkowicie pustą bazę danych. Stare dane nie są kasowane fizycznie, ale zostają "odcięte" (Orphaned Volume), symulując utratę dorobku.
+**Rozwiązanie / workaround:** Świadomość administracyjna. Przed modyfikacją nazw usług w Dockerze zawsze weryfikuje się punkt montowania poleceniem `docker volume ls | grep postgres`. Zabrania się usuwania bazy komendą `down -v` poza celowym resetem w skryptach lokalnych.
+
+### EC-070 — Rozjazd uwierzytelnienia PostGIS po zmianie pliku `.env`
+**Obszar:** `compose.yml`, `PostgreSQL`, pliki `.env`  
+**Status:** `resolved`  
+**Opis:** Baza PostgreSQL zapamiętuje dane uwierzytelniające (`POSTGRES_PASSWORD`) podane przy pierwszej inicjalizacji na pustym wolumenie dyskowym. Zmiana hasła w pliku środowiskowym `.env` po zainicjowaniu dysku nie zmienia hasła w samej bazie danych. W efekcie kontenery z Django i Celery próbują zalogować się z użyciem "nowego" hasła i wybuchają błędem `Connection Refused` (Brak autoryzacji).
+**Rozwiązanie / workaround:** Utrzymanie identycznych danych logowania dla bazy DEV lub jawna zmiana hasła poprzez zapytanie `ALTER USER` bezpośrednio w powłoce SQL. Zmiana hasła w `.env` skutkuje wyłącznie na w pełni świeżych środowiskach (TEST, PRE-PROD).
+
+### EC-071 — Utrata zadań asynchronicznych (In-Flight Tasks) przy restarcie Redis
+**Obszar:** `compose.yml`, `Celery`, `Redis`  
+**Status:** `resolved`  
+**Opis:** W przypadku użycia domyślnego obrazu `redis:7-alpine` jako brokera wiadomości, dane trzymane są wyłącznie w ulotnej pamięci RAM. Jeśli kontener zostanie zrestartowany w trakcie wykonywania długiego zadania przez Workera (np. `PoiScoringService`), zlecenie z kolejki bezpowrotnie przepada (Zjawisko Task Drop).
+**Rozwiązanie / workaround:** Zdefiniowanie dyrektyw w `compose.yml`: Wymuszenie twardego limitu pamięci (`--maxmemory-policy noeviction`) oraz aktywacja trybu AOF (`--appendonly yes`) zapobiegają cichemu usuwaniu zadań kosztem ewentualnego zawieszenia przy przepełnieniu (co jest obsługiwane logiką `retry` w Celery).
+
+### EC-072 — Brak interpolacji zmiennych `env_file` w Docker Compose
+**Obszar:** `compose.yml`, `.env`, konfiguracja DSN  
+**Status:** `resolved`  
+**Opis:** Użycie konstrukcji interpolacyjnej typu `DATABASE_URL=postgis://${USER}:${PASS}@db/` wewnątrz pliku ładowanego przez klauzulę `env_file` (np. `.env.dev`) w Docker Compose skutkuje brakiem rozwiązania zmiennych. Docker wstrzykuje do kontenera surowy, nieprzetworzony ciąg znaków z symbolami dolara, co powoduje natychmiastowe błędy połączenia biblioteki `dj-database-url`.
+**Rozwiązanie / workaround:** Całkowite porzucenie interpolacji na poziomie plików konfiguracyjnych Dockera. DSN (Data Source Name) kompilowany jest programowo i dynamicznie w czystym Pythonie wewnątrz `app_settings.py` (przy użyciu `@computed_field` z modułu Pydantic) w oparciu o czyste, rozbite zmienne składowe (User, Pass, DB, Port).
+
+### EC-073 — Błąd HTTP 400 zablokowany przez Healthcheck i `ALLOWED_HOSTS`
+**Obszar:** `Dockerfile`, `config/settings.py`  
+**Status:** `resolved`  
+**Opis:** Aplikacja działa poprawnie, lecz kontener w Dockerze wchodzi w cykl powtarzających się restartów ze statusem "Unhealthy". Wdrożony sprzętowy Healthcheck (wykonujący natywne zapytanie HTTP GET na `localhost:8000/health/` wewnątrz kontenera) uderza w zaporę Django `ALLOWED_HOSTS`. Ponieważ w środowisku docelowym akceptujemy tylko nazwy domen, ruch z wewnętrznego `localhost` zostaje odrzucony błędem HTTP 400 (DisallowedHost).
+**Rozwiązanie / workaround:** Dodano na twardo wpisy `"localhost"`, `"127.0.0.1"`, `"[::1]"` do stałej części tablicy `ALLOWED_HOSTS` w pliku `settings.py`, co "udrożniło" weryfikację zdrowia usługi z jednoczesnym dynamicznym rozszerzaniem reszty listy za pomocą danych wstrzykniętych z Pydantica.
+
+### EC-074 — Błąd połączenia `could not translate host name "db"` podczas testów hosta
+**Obszar:** `Makefile`, Środowisko `TEST`  
+**Status:** `resolved`  
+**Opis:** Wykonanie komendy `make test-all` na komputerze programisty (poza kontenerem) kończy się natychmiastowym błędem połączenia PostgreSQL. Mechanizm izolacji środowisk narzuca dla testów plik `.env.test`, w którym zmienna hosta zdefiniowana jest na sztywno jako `POSTGRES_HOST=db`. Host nie posiada wiedzy o strukturze sieciowej (DNS) wewnątrz wirtualnego środowiska Dockera, więc nie potrafi namierzyć węzła "db".
+**Rozwiązanie / workaround:** Tryb wywołania wymusza rozdzielenie: Testy mogą być odpalane wprost przez hermetyczny kontener `docker compose run --rm web` ORAZ, w przypadku testowania bezpośrenio z maszyny hosta, można obejść problem manualnie wywołując nadpisanie portów wystawionych przez docker-compose: `POSTGRES_HOST=localhost make test-all`.
+
+### EC-075 — Ślepe założenia dotyczące środowiska w testach `pytest`
+**Obszar:** `tests/config/test_app_settings.py`  
+**Status:** `resolved`  
+**Opis:** Testy jednostkowe zakładające wartości z pliku `.env.dev` (np. `APP_ENV=development` lub `POSTGRES_USER`) wybuchają błędem `AssertionError` przy uruchomieniu w wyizolowanym kontenerze testowym (środowisko `TEST`), gdzie plik `.env.test` nadpisuje środowisko celowo na `APP_ENV=test`.
+**Rozwiązanie / workaround:** Zastosowano wzorzec izolacji testów za pomocą obiektu `monkeypatch` w Pyteście. Przed zainstancjonowaniem klasy `AppSettings` w teście, kod wymusza twardy reset zmiennych systemowych (`monkeypatch.delenv("APP_ENV", raising=False)` oraz `monkeypatch.setenv("ENV_FILE", ".env.dummy")`), aby test weryfikował absolutnie "gołą" (bez domyślnego wstrzykiwania ze środowiska) klasę konfiguracyjną.
+
+### EC-076 — Testy poboczne skryptów łączące się z Internetem
+**Obszar:** `scripts/test_osm.py`  
+**Status:** `resolved`  
+**Opis:** Pytest przy standardowej komendzie zbiera wszystkie pliki pasujące do wzorca `test_*.py` z głównego katalogu. Spowodowało to omyłkowe zebranie przez skaner pliku `scripts/test_osm.py`, który nie był testem jednostkowym, lecz manualnym poligonem doświadczalnym wykonującym prawdziwe (żywe) żądania do zewnętrznego Overpass API. Spowolniało to potok CI/CD i narażało środowisko `TEST` na błędy 404 (timeout sieciowy we Francji).
+**Rozwiązanie / workaround:** W pliku `pyproject.toml` na stałe przypisano flagę konfiguracyjną `testpaths = ["tests"]`, twardo zawężając poszukiwania modułu testowego wyłącznie do katalogu wirtualnego, chroniąc `scripts/` przed automatycznym wykonaniem w pipeline.

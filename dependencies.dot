@@ -201,17 +201,16 @@ digraph G {
   "application.use_cases.unsubscribe_badge" -> "application.ports.uow_port";
   "application.use_cases.unsubscribe_badge" -> "application.ports.user_progress_port";
   "application.use_cases.unsubscribe_badge" -> "domain.events";
-  "application.use_cases.verify_badge" -> "application.dto.verify_badge_dto";
   "application.use_cases.verify_badge" -> "application.exceptions";
   "application.use_cases.verify_badge" -> "application.ports.badge_repository_port";
   "application.use_cases.verify_badge" -> "application.ports.clock_port";
   "application.use_cases.verify_badge" -> "application.ports.user_progress_port";
   "application.use_cases.verify_badge" -> "domain.value_objects.verification_context";
+  "application.use_cases.verify_badge" -> "domain.value_objects.verification_result";
   "apps.api.urls" -> "apps.api.views";
   "apps.api.views" -> "application.dto.ascent_dto";
   "apps.api.views" -> "application.dto.map_dto";
   "apps.api.views" -> "application.dto.user_context_dto";
-  "apps.api.views" -> "application.dto.verify_badge_dto";
   "apps.api.views" -> "application.exceptions";
   "apps.api.views" -> "apps.badges.models";
   "apps.api.views" -> "apps.badges.tasks";
@@ -232,7 +231,6 @@ digraph G {
   "apps.tourists.migrations.0001_initial" -> "apps.tourists.models";
   "apps.tourists.models" -> "apps.badges.models";
   "apps.tourists.signals" -> "apps.tourists.models";
-  "apps.tourists.views" -> "application.dto.verify_badge_dto";
   "apps.tourists.views" -> "apps.badges.models";
   "apps.tourists.views" -> "apps.tourists.models";
   "domain.entities.badge_version" -> "domain.rules.badge_rules";

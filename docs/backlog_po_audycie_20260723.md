@@ -232,10 +232,10 @@ Pozostajemy przy wbudowanym pakiecie `uuid` z biblioteki standardowej (Python `s
 Widoki `ProfileSettingsView` oraz `NearbyObjectsView` w `apps/api/views.py` łamią podstawową zasadę Czystej Architektury. Zawierają one bezpośrednie wywołania modeli Django (ORM) takie jak `.save()`, `get_object_or_404` czy zapytania przestrzenne GIS, omijając całkowicie warstwę Aplikacji (Use Cases) oraz Porty.
 
 **Action Items (Do wdrożenia w przyszłości):**
-- [ ] Utworzyć `UpdateProfileUseCase` i DTO aktualizacji profilu w warstwie Aplikacji.
-- [ ] Zmodyfikować `ProfileSettingsView`, by wywoływał nowy Use Case przez Kontener DI, zamiast bezpośrednio zapisywać dane w bazie.
-- [ ] Przenieść zapytanie przestrzenne (`ST_DWithin`) z `NearbyObjectsView` do adaptera `DjangoMapRepository` i wywoływać je przez port.
-- [ ] Dodać regułę do lintera `audit_contracts.py` zabraniającą importu `apps.badges.models` wewnątrz `apps/api/views.py`.
+- [X] Utworzyć `UpdateProfileUseCase` i DTO aktualizacji profilu w warstwie Aplikacji.
+- [X] Zmodyfikować `ProfileSettingsView`, by wywoływał nowy Use Case przez Kontener DI, zamiast bezpośrednio zapisywać dane w bazie.
+- [X] Przenieść zapytanie przestrzenne (`ST_DWithin`) z `NearbyObjectsView` do adaptera `DjangoMapRepository` i wywoływać je przez port.
+- [X] Dodać regułę do lintera `audit_contracts.py` zabraniającą importu `apps.badges.models` wewnątrz `apps/api/views.py`.
 
 **Komentarz Architekta:**
 Klasyczny wyciek logiki do kontrolerów powstały podczas szybkiego dowożenia funkcji Fazy C. Jest to bardzo szkodliwe dla izolacji testów i musi zostać wyczyszczone jako priorytet przed rozwojem aplikacji.
@@ -1432,8 +1432,8 @@ Klasyczne "odcięcie frontendu od backendu". Backend to umie (bo przyjmuje param
 Chociaż usunęliśmy wczoraj "Djangowe" dekoratory klasowe na rzecz helpera `_require_auth`, to nasz helper sprawdza tylko istnienie zalogowanego profilu. Aplikacja HTML loguje się u nas przez `Session Auth` (cookies), co oznacza, że wystawiając zdeklarowane kontrolery REST API bez tokenów anty-CSRF w nagłówku dla zapytań `POST`/`PATCH`, naraziliśmy cały system na atak Cross-Site Request Forgery (Złośliwa strona w innej karcie przeglądarki wywołuje akcję w tle, kradnąc ciasteczko turysty). 
 
 **Action Items (Do wdrożenia w najbliższych łatkach):**
-- [ ] Wymusić w dokumentacji HTMX dołączanie tokena: `<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>`.
-- [ ] Usunąć tagi `@csrf_exempt` ze wszystkich widoków w `apps/api/views.py` (jeśli jeszcze się tam ostały pod jakąkolwiek postacią).
+- [X] Wymusić w dokumentacji HTMX dołączanie tokena: `<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>`.
+- [X] Usunąć tagi `@csrf_exempt` ze wszystkich widoków w `apps/api/views.py` (jeśli jeszcze się tam ostały pod jakąkolwiek postacią).
 - [ ] Dodać politykę `CORS_ALLOWED_ORIGINS` jeśli planowane jest otwarcie API na zewnętrznych klientów mobilnych, albo twardy wariant autoryzacji z `JWT`.
 
 **Komentarz Architekta:**
@@ -1940,8 +1940,8 @@ To jest najpoważniejsze naruszenie granic heksagonalnych w całym kodzie. Model
 Narzędzie `.importlinter` genialnie chroni warstwy `domain` i `application` przed wtargnięciem kodu z zewnątrz. Audytor jednak słusznie zauważył, że brakuje kontraktu chroniącego najsłabsze ogniwo: styk warstwy dostarczania (`apps/`) z warstwą adapterów (`infrastructure/`). Bez tego kontraktu łatwo dopuścić do zjawiska, w którym model Django importuje schemat lub logikę walidacji z głębi infrastruktury.
 
 **Action Items (Do wdrożenia PRZEZ CIEBIE przed startem Playwright):**
-- [ ] Dodać do pliku `.importlinter` nowy blok kontraktu zakazujący importowania czegokolwiek z `infrastructure/` wewnątrz katalogu `apps/` (z ewentualnymi, twardo zdefiniowanymi wyjątkami dla wstrzykiwania `bootstrap` lub logów).
-- [ ] Dodać zasady ograniczające import z `apps/` wewnątrz `infrastructure/`.
+- [X] Dodać do pliku `.importlinter` nowy blok kontraktu zakazujący importowania czegokolwiek z `infrastructure/` wewnątrz katalogu `apps/` (z ewentualnymi, twardo zdefiniowanymi wyjątkami dla wstrzykiwania `bootstrap` lub logów).
+- [X] Dodać zasady ograniczające import z `apps/` wewnątrz `infrastructure/`.
 
 **Komentarz Architekta:**
 Złapano nas na połowicznym wdrożeniu Lintera. Zabezpieczyliśmy serce (Domenę), ale zapomnieliśmy ogrodzić murem przedpola.
@@ -2008,7 +2008,7 @@ Zjawisko to nazywa się *Primitive Obsession* (Obsesja Typów Prostych). W fazie
 Widok `BadgeProgressView` odbiera od turysty zapytanie `GET /api/v1/badges/{code}/progress/`. Zgodnie ze standardem HTTP, żądanie `GET` musi być bezpieczne i wolne od efektów ubocznych (Side Effects). Tymczasem, wywoływany przez niego `VerifyBadgeUseCase` posiada ukrytą logikę zapisu: jeśli w locie wyliczy, że postęp się zmienił, zapisuje go do bazy danych (`self._progress_repo.update_domain_status(...)`). 
 
 **Action Items (Do wdrożenia PRZED udostępnieniem API):**
-- [ ] Rozbić `VerifyBadgeUseCase` na dwa odrębne procesy:
+- [X] Rozbić `VerifyBadgeUseCase` na dwa odrębne procesy:
   1. `CalculateBadgeProgressQuery` (Zwraca zmaterializowane DTO bez zapisu - bezpieczne dla `GET`).
   2. `UpdateBadgeProgressCommand` (Wywoływane wyłącznie po zdarzeniach takich jak `AscentLoggedEvent`).
 
@@ -2263,8 +2263,8 @@ W zrefaktoryzowanym niedawno pliku `infrastructure/adapters/persistence/django_r
 Oznacza to, że jeśli góra należy do 6 regionów, wykonujemy 6 pojedynczych operacji `INSERT` do bazy danych. Przy importowaniu 1000 szczytów z manifestu (Seed Data), generuje to 6000 osobnych transakcji dyskowych!
 
 **Action Items (Do wdrożenia w Fazy Optymalizacji SRE):**
-- [ ] Zmodyfikować pętle w `recalculate_all_region_levels` oraz `recalculate_tourist_regions`, tak aby zbierały nowe obiekty do listy pamięci podręcznej Pythona (np. `batch_objects.append(ObjectRegionCache(...))`).
-- [ ] Po zakończeniu pętli wykonać pojedyncze uderzenie do bazy danych za pomocą metody `ObjectRegionCache.objects.bulk_create(batch_objects)`.
+- [X] Zmodyfikować pętle w `recalculate_all_region_levels` oraz `recalculate_tourist_regions`, tak aby zbierały nowe obiekty do listy pamięci podręcznej Pythona (np. `batch_objects.append(ObjectRegionCache(...))`).
+- [X] Po zakończeniu pętli wykonać pojedyncze uderzenie do bazy danych za pomocą metody `ObjectRegionCache.objects.bulk_create(batch_objects)`.
 
 **Komentarz Architekta:**
 Klasyczny błąd implementacyjny przy budowaniu Cache'u (tzw. Pętla Insertów). Zmiana tego na `bulk_create` to jedna linijka kodu, która skróci czas komendy `restore_reference_data` o 80%.
@@ -2312,8 +2312,8 @@ Złapano nas na tzw. Anti-Pattern: *Swallowing Exceptions*. Ciche błędy przest
 W widokach API (`apps/api/views.py`) wrzucamy ładunek JSON prosto do Pydantica, np. `AscentInputDTO(**body)`. Obecnie widok obejmuje to try-exceptem tylko dla `json.JSONDecodeError` oraz generycznego `ValueError`. Jeśli Pydantic rzuci własny błąd walidacji `ValidationError` (bo np. data ma zły format lub `peak_id` to string zamiast int), w niektórych widokach może to "wylecieć" poza blok i spowodować niesformatowany błąd 500, omijając nasz rygorystyczny format RFC 7807.
 
 **Action Items (Do wdrożenia w Fazy Security API):**
-- [ ] Otworzyć `apps/api/views.py` i we wszystkich endpointach przyjmujących payload, objąć tworzenie DTO blokiem: `except ValidationError as e: return _problem_detail(..., detail=e.errors())`.
-- [ ] (Alternatywa) Stworzyć w `RFC7807ErrorMiddleware` globalne mapowanie dla błędu `pydantic.ValidationError`.
+- [X] Otworzyć `apps/api/views.py` i we wszystkich endpointach przyjmujących payload, objąć tworzenie DTO blokiem: `except ValidationError as e: return _problem_detail(..., detail=e.errors())`.
+- [X] (Alternatywa) Stworzyć w `RFC7807ErrorMiddleware` globalne mapowanie dla błędu `pydantic.ValidationError`.
 
 **Komentarz Architekta:**
 Klasyczny błąd na styku walidacji. Nasz system wyrzuca świetne błędy, gdy odzywa się Czysta Domena, ale rzuca nieestetyczny śmietnik, jeśli turysta wyśle zły typ zmiennej w JSON-ie. 

@@ -25,3 +25,14 @@ forbidden_modules =
     infrastructure
     apps
     django
+
+[importlinter:contract:apps-purity]
+name = Apps Delivery Layer must not import infrastructure directly (except allowed integrations)
+type = forbidden
+source_modules = apps
+forbidden_modules =
+    infrastructure
+ignore_imports =
+    apps.tourists.context_processors -> infrastructure.config.map_layers
+    apps.badges.tasks -> infrastructure.adapters.osm_adapter
+    apps.badges.models -> infrastructure.schemas.badge_rules_schema

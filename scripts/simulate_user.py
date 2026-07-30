@@ -23,7 +23,7 @@ def run_simulation() -> None:
 
     # 1. Pobieramy gotowy, okablowany Use Case z kontenera
     container = get_container()
-    verify_badge_use_case = container.verify_badge  # <--- ZMIANA: używamy odwołania obiektowego, nie słownika
+    verify_badge_use_case = container.evaluate_badge_progress
 
     # 2. Tworzymy żądanie dla hipotetycznego turysty o ID = 1
     dto = VerifyBadgeRequestDTO(profile_id=1, badge_code="KGP", cycle_number=1)
@@ -32,7 +32,9 @@ def run_simulation() -> None:
 
     # 3. Wykonanie weryfikacji
     try:
-        result = verify_badge_use_case.execute(dto)
+        result = verify_badge_use_case.execute(
+            profile_id=dto.profile_id, badge_code=dto.badge_code, cycle_number=dto.cycle_number
+        )
         print(f"\n✅ WYNIK WERYFIKACJI:\n{result}")
     except Exception as e:
         # Błąd jest jak najbardziej spodziewany, jeśli w bazie nie masz profilu o ID 1

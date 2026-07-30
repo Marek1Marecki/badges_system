@@ -9,7 +9,6 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from application.dto.verify_badge_dto import VerifyBadgeRequestDTO
 from apps.badges.models import (
     BadgeModel,
     BadgeTierModel,
@@ -246,11 +245,9 @@ def badge_detail_view(request, badge_code: str):
     if progress and progress.version_id:
         target_version = progress.version
         try:
-            use_case = get_container().verify_badge
-            dto = VerifyBadgeRequestDTO(
-                profile_id=profile_id, badge_code=badge_code, cycle_number=progress.cycle_number
-            )
-            evaluation = use_case.execute(dto)
+            query_service = get_container().evaluate_badge_progress
+            # Zmienna w szablonie nazywa się 'evaluation'
+            evaluation = query_service.execute(profile_id=profile_id, badge_code=badge.code)
         except Exception:
             evaluation = None
     else:

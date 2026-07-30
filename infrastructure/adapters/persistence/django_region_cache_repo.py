@@ -3,7 +3,6 @@
 from typing import Any
 
 from application.dto.region_cache_dto import ObjectRegionDTO
-
 from application.ports.region_cache_port import RegionCacheRepositoryPort
 from apps.badges.models import ObjectRegionCache, TouristObject, TouristRegionModel
 
@@ -88,18 +87,27 @@ class DjangoRegionCacheRepository(RegionCacheRepositoryPort):
             ("MesoregionModel", "MESOREGION"),
         ]
 
+        objects_to_create = []
+
         for model_name, level_name in levels:
             model = apps.get_model("badges", model_name)
             regions = model.objects.filter(shape__distance_lte=(obj.geom, D(m=50)))
             for r in regions:
-                ObjectRegionCache.objects.create(
-                    tourist_object_id=object_id, region_id=r.id, region_level=level_name, distance_meters=0.0
+                objects_to_create.append(
+                    ObjectRegionCache(
+                        tourist_object_id=object_id, region_id=r.id, region_level=level_name, distance_meters=0.0
+                    )
                 )
+
+        # Pojedynczy, masowy zapis do bazy danych!
+        if objects_to_create:
+            ObjectRegionCache.objects.bulk_create(objects_to_create)
 
     def recalculate_tourist_regions(self, object_id: int) -> None:
         from apps.badges.models import ObjectRegionCache, TouristRegionModel
 
         current_cache = list(ObjectRegionCache.objects.filter(tourist_object_id=object_id))
+        objects_to_create = []
 
         for tr in TouristRegionModel.objects.all():
             related_components = self.get_related_regions(tr.id)
@@ -110,6 +118,12 @@ class DjangoRegionCacheRepository(RegionCacheRepositoryPort):
             )
 
             if is_inside:
-                ObjectRegionCache.objects.create(
-                    tourist_object_id=object_id, region_id=tr.id, region_level="TOURIST_REGION", distance_meters=0.0
+                objects_to_create.append(
+                    ObjectRegionCache(
+                        tourist_object_id=object_id, region_id=tr.id, region_level="TOURIST_REGION", distance_meters=0.0
+                    )
                 )
+
+        # Pojedynczy, masowy zapis do bazy danych!
+        if objects_to_create:
+            ObjectRegionCache.objects.bulk_create(objects_to_create)
