@@ -1,4 +1,5 @@
 import os
+import threading
 
 import pytest
 from django.core.management import call_command
@@ -11,8 +12,17 @@ def get_session_cookie(username: str) -> str:
     from io import StringIO
 
     out = StringIO()
-    call_command("create_test_session", username, stdout=out)
-    return out.getvalue().strip().split("\n")[-1]
+    result = [None]
+
+    def run() -> None:
+        call_command("create_test_session", username, stdout=out)
+        result[0] = out.getvalue()
+
+    thread = threading.Thread(target=run)
+    thread.start()
+    thread.join()
+
+    return result[0].strip().split("\n")[-1]
 
 
 @pytest.fixture(scope="session")
