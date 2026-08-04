@@ -38,6 +38,16 @@ jobs:
       - name: Pobieranie repozytorium
         uses: actions/checkout@v4
 
+      - name: Instalacja zależności systemowych (GDAL, GEOS, PROJ)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gdal-bin \
+            libgdal-dev \
+            libgeos-dev \
+            libproj-dev \
+            libspatialite7
+
       - name: Konfiguracja narzędzia UV
         uses: astral-sh/setup-uv@v5
         with:
