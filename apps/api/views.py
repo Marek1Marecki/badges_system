@@ -148,7 +148,7 @@ class AscentLogView(View):
             return JsonResponse({"ascent_id": ascent_id, "status": "CREATED"}, status=201)
 
         except ApplicationException as exc:
-            return _handle_application_exception(exc, request.path)
+            return _handle_application_exception(request, exc)
 
 
 class BadgeSubscribeView(View):
@@ -179,7 +179,7 @@ class BadgeSubscribeView(View):
             return JsonResponse({"progress_id": progress_id, "status": "SUBSCRIBED"}, status=201)
 
         except ApplicationException as exc:
-            return _handle_application_exception(exc, request.path)
+            return _handle_application_exception(request, exc)
 
     def delete(self, request, badge_code: str):
         auth_error = _require_auth(request)
@@ -195,7 +195,7 @@ class BadgeSubscribeView(View):
             return JsonResponse({"status": "UNSUBSCRIBED"}, status=200)
 
         except ApplicationException as exc:
-            return _handle_application_exception(exc, request.path)
+            return _handle_application_exception(request, exc)
 
 
 class BadgeProgressView(View):
@@ -478,7 +478,7 @@ class BulkAscentLogView(View):
             return JsonResponse(result, status=200)
 
         except ApplicationException as exc:
-            return _handle_application_exception(exc, request.path)
+            return _handle_application_exception(request, exc)
 
 
 class ProfileSettingsView(View):

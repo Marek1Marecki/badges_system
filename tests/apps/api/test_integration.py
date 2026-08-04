@@ -445,13 +445,15 @@ class TestGpxAnalyzeView:
         assert response.status_code == 422
 
     def test_returns_422_when_file_too_large(self, factory, mock_user, use_cases) -> None:
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
         from apps.api.views import GpxAnalyzeView
 
-        request = factory.post("/api/v1/gpx/analyze/")
+        large_content = b"x" * (11 * 1024 * 1024)
+        mock_file = SimpleUploadedFile("test.gpx", large_content, content_type="application/gpx+xml")
+
+        request = factory.post("/api/v1/gpx/analyze/", data={"file": mock_file})
         request.user = mock_user
-        mock_file = MagicMock()
-        mock_file.size = 11 * 1024 * 1024  # 11MB
-        request.FILES = {"file": mock_file}
 
         response = GpxAnalyzeView.as_view()(request)
 
