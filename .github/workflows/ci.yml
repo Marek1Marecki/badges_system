@@ -61,6 +61,9 @@ jobs:
       - name: Instalacja zależności (z grupy DEV)
         run: uv sync --frozen --group dev --python 3.14
 
+      - name: Aktualizacja Ruff do najnowszej wersji
+        run: uv tool upgrade ruff
+
       - name: Weryfikacja formatowania kodu (Ruff Format)
         run: uv run ruff format --check domain application infrastructure apps bootstrap scripts
 
