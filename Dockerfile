@@ -120,6 +120,9 @@ ENV PATH="/opt/venv/bin:$PATH"
 # niezależnie od konfiguracji domyślnych grup.
 RUN uv sync --frozen --group dev
 
+# Instalacja przeglądarek Playwright i zależności systemowych
+RUN playwright install --with-deps chromium
+
 #ENTRYPOINT ["uv", "run", "pytest"]
 CMD ["uv", "run", "pytest", "-m", "not integration"]
 
