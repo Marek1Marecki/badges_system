@@ -220,7 +220,7 @@ jobs:
           timeout 60 bash -c 'until curl -s http://localhost:8008/ > /dev/null; do sleep 2; done'
 
       - name: Uruchomienie testów e2e
-        run: E2E_BASE_URL=http://localhost:8008 uv run pytest tests/e2e -m e2e --no-header -q
+        run: docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T web-e2e uv run pytest tests/e2e -m e2e --no-header -q
 
       - name: Zapisanie logów Dockera (zawsze)
         if: always()

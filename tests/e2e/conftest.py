@@ -1,23 +1,18 @@
 import os
-import subprocess
 
 import pytest
+from django.core.management import call_command
 from playwright.sync_api import BrowserContext, Page
 
 BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:8008")
-E2E_COMPOSE_FILES = os.getenv("E2E_COMPOSE_FILES", "-f compose.yml -f compose.test.yml -f compose.e2e.yml")
-E2E_SERVICE = os.getenv("E2E_SERVICE", "web-e2e")
 
 
 def get_session_cookie(username: str) -> str:
-    cmd = [
-        "docker", "compose",
-        *E2E_COMPOSE_FILES.split(),
-        "exec", "-T", E2E_SERVICE,
-        "python", "manage.py", "create_test_session", username,
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    return result.stdout.strip().split("\n")[-1]
+    from io import StringIO
+
+    out = StringIO()
+    call_command("create_test_session", username, stdout=out)
+    return out.getvalue().strip().split("\n")[-1]
 
 
 @pytest.fixture(scope="session")
