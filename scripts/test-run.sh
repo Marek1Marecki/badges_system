@@ -82,9 +82,9 @@ if [ "$FULL" = true ]; then
     # (`-m "not integration"`) — w trybie --full chcemy WSZYSTKO, więc
     # zawsze przekazujemy jawny argument, nawet gdy użytkownik nic nie podał.
     if [ ${#PYTEST_ARGS[@]} -eq 0 ]; then
-        "${COMPOSE[@]}" run --rm web -v
+        "${COMPOSE[@]}" run --rm web uv run pytest -v
     else
-        "${COMPOSE[@]}" run --rm web "${PYTEST_ARGS[@]}"
+        "${COMPOSE[@]}" run --rm web uv run pytest "${PYTEST_ARGS[@]}"
     fi
 else
     echo ""
@@ -92,7 +92,7 @@ else
     if [ ${#PYTEST_ARGS[@]} -eq 0 ]; then
         "${COMPOSE[@]}" run --rm web
     else
-        "${COMPOSE[@]}" run --rm web "${PYTEST_ARGS[@]}"
+        "${COMPOSE[@]}" run --rm web uv run pytest "${PYTEST_ARGS[@]}"
     fi
 fi
 
