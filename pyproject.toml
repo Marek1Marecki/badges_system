@@ -50,8 +50,10 @@ DJANGO_SETTINGS_MODULE = "config.settings"
 # Pozwala wtyczce pytest-django rozpoznać, że używamy jej do uruchomienia bazy danych
 python_files = ["test_*.py", "*_test.py"]
 testpaths = ["tests"]
+# Twarde przypisanie dozwolonych markerów w projekcie:
 markers = [
-    "integration: testy dotykające bazy danych lub zewnętrznych API",
+    "integration: Oznacza testy wymagajace dzialajacej bazy danych PostGIS (deselekcjonowane przez 'not integration')",
+    "e2e: Oznacza testy End-to-End przegladarkowe (Playwright)",
 ]
 addopts = ["--strict-markers", "--cov=.", "--cov-fail-under=80"]
 filterwarnings = [

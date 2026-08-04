@@ -95,12 +95,24 @@ class Command(BaseCommand):
         from bootstrap import get_container
 
         try:
-            use_case = get_container().calculate_object_regions  # <--- ZMIANA
-            # Pobieramy wszystkie zwalidowane obiekty i puszczamy w pętli przez Use Case
-            object_ids = TouristObject.objects.values_list("id", flat=True)
-            for obj_id in object_ids:
+            use_case = get_container().calculate_object_regions
+            object_ids = list(TouristObject.objects.values_list("id", flat=True))
+            total_objects = len(object_ids)
+
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Rozpoczynamy przeliczanie przestrzenne CQRS dla {total_objects} "
+                    f"obiektów (To może potrwać kilka minut)..."
+                )
+            )
+
+            for index, obj_id in enumerate(object_ids, 1):
                 use_case.execute(object_id=obj_id)
-            self.stdout.write(self.style.SUCCESS(f"✅ Odbudowano tabelę CQRS dla {len(object_ids)} obiektów."))
+                # Drukujemy log co 50 obiektów, żeby pokazać, że skrypt nie wisi!
+                if index % 50 == 0 or index == total_objects:
+                    self.stdout.write(f"  ...przetworzono {index}/{total_objects} szczytów")
+
+            self.stdout.write(self.style.SUCCESS(f"✅ Odbudowano tabelę CQRS dla {total_objects} obiektów."))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"Błąd przeliczania CQRS: {e}"))
 

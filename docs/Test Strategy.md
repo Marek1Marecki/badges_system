@@ -157,3 +157,14 @@ Zgodnie z koncepcją "Bazy jako Odtwarzacza", kategorycznie rozdzielamy dane uż
 3. **Integralność Snapshotu:** Pakiet danych z `data/reference/*.json.gz` to spójny graf (Aggregate). Zawsze musi być wgrywany w całości. Próba wgrania tylko np. regionów z pominięciem odznak skończy się błędami referencyjnymi.
 
 ---
+
+## Strategia Testów End-to-End (E2E / Playwright)
+
+Testy te pełnią rolę ostatecznego weryfikatora dla ścieżek krytycznych systemu (Happy Paths), testując w 100% zmontowane środowisko (`PRE-PROD`). Z racji wysokiego kosztu utrzymania i czasu wykonywania, w testach E2E nie sprawdzamy skomplikowanych krawędzi matematyki domenowej (od tego są testy jednostkowe z atrapą czasu).
+
+**Wzorzec Bypass Authentication (Omijanie OAuth):**
+W środowiskach zintegrowanych logowanie Google OAuth wymagałoby rozwiązywania Captcha lub odbierania SMS-ów przez robota, co czyni testy kruchymi (Flaky). 
+- **Zabrania się:** Modyfikowania kodu produkcyjnego (wyłączania warunków logowania dla testów).
+- **Zasada działania:** W pliku `tests/e2e/conftest.py` wykorzystywana jest fiktura (np. `logged_in_context`), która za pomocą komendy administracyjnej Django (`create_test_session.py`) generuje i zatwierdza w bazie danych ważne ciastko sesji (Session Cookie). Ciasteczko to jest bezpośrednio wstrzykiwane do silnika Chromium w Playwright. Dzięki temu robot porusza się po systemie jako pełnoprawny, uwierzytelniony "Testowy Turysta" omijając zewnętrzny ekran logowania.
+
+---
