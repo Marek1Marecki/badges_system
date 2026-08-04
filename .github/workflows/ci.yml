@@ -1,0 +1,75 @@
+name: CI Pipeline
+
+# Uruchamia się przy wypychaniu na main oraz przy każdym Pull Requescie
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  static-analysis-and-unit-tests:
+    name: Code Quality & Unit Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Pobieranie repozytorium
+        uses: actions/checkout@v4
+
+      - name: Konfiguracja narzędzia UV
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.11"
+          enable-cache: true
+
+      - name: Konfiguracja Pythona (3.14 / 3.12 compatibility)
+        # Zależnie od tego jak zdefiniowaliśmy to w .python-version, wymuszamy tu bazę
+        run: uv python install 3.12
+
+      - name: Instalacja zależności (z grupy DEV)
+        run: uv sync --frozen --group dev
+
+      - name: Uruchomienie Linterów Kodowych (Ruff)
+        run: uv run ruff check domain application infrastructure apps bootstrap scripts
+
+      - name: Weryfikacja Typów (Mypy)
+        run: uv run mypy domain application infrastructure apps bootstrap scripts
+
+      - name: Weryfikacja Kontraktów Czystej Architektury (Import Linter)
+        run: uv run lint-imports
+
+      - name: Audyt SRE (Ochrona przed wyciekami i zakazanym API)
+        run: uv run python scripts/audit_contracts.py
+
+      - name: Testy Jednostkowe (Unit Tests)
+        # Zabezpieczamy wykonanie wywołując jawnie z .env.test
+        run: ENV_FILE=.env.test uv run pytest tests -m "not integration and not e2e"
+
+  integration-tests:
+    name: Infrastructure & Integration Tests
+    needs: static-analysis-and-unit-tests # Uruchamia się tylko jeśli lintery i unity przejdą!
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Pobieranie repozytorium
+        uses: actions/checkout@v4
+
+      - name: Cache dla obrazów Dockera (Optymalizacja czasu CI)
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Generowanie testowych środowisk i kluczy (Security Bypass)
+        run: |
+          cp .env.example .env
+          echo "DEV_UID=1000" >> .env
+          echo "DEV_GID=1000" >> .env
+          echo "DJANGO_SECRET_KEY=tajny_klucz_do_testow_ci" > .env.test
+
+      - name: Próba Generalna Środowiska (test-run.sh --full)
+        # To wywoła nasz genialny skrypt, który stawia w locie bazę PostGIS,
+        # robi migracje, testuje release i odpala Pełne Pytesty!
+        run: ./scripts/test-run.sh --full
