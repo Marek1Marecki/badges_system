@@ -80,6 +80,8 @@ jobs:
         run: |
           cp .env.example .env
           echo "DJANGO_SECRET_KEY=$(openssl rand -hex 32)" > .env.test
+          echo "DJANGO_DEBUG=False" >> .env.test
+          echo "LOG_LEVEL=DEBUG" >> .env.test
 
       - name: Testy Jednostkowe (Unit Tests)
         # Dodano generowanie fizycznych raportów dla zespołu i debugowania
@@ -134,6 +136,8 @@ jobs:
           echo "POSTGRES_USER=test_user" >> .env
           echo "POSTGRES_PASSWORD=test_password" >> .env
           echo "DJANGO_SECRET_KEY=tajny_klucz_do_testow_ci" > .env.test
+          echo "DJANGO_DEBUG=False" >> .env.test
+          echo "LOG_LEVEL=DEBUG" >> .env.test
 
       - name: Budowanie obrazów Dockera
         run: docker compose -f compose.yml -f compose.test.yml build --no-cache --pull=false web
