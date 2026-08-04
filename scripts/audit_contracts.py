@@ -17,9 +17,10 @@ import html
 import pathlib
 import re
 import sys
-import tomllib
 from collections import defaultdict
 from dataclasses import dataclass, field
+
+import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 EXPORT_GRAPH = True
@@ -68,7 +69,7 @@ class AuditConfig:
     bootstrap_paths: list[pathlib.Path] = field(default_factory=list)
 
     @classmethod
-    def from_pyproject(cls) -> AuditConfig:
+    def from_pyproject(cls) -> "AuditConfig":
         pyproject = ROOT / "pyproject.toml"
         config = cls()
 

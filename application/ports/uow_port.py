@@ -1,5 +1,7 @@
 """Port dla Wzorca Unit of Work (Granice Transakcji)."""
 
+from __future__ import annotations
+
 from typing import Any, Protocol
 
 

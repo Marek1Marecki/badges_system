@@ -35,7 +35,7 @@ class DjangoGpxParser(GpxParserPort):
                 lat = float(pt.attrib["lat"])
                 lon = float(pt.attrib["lon"])
                 points.append((lon, lat))  # GEOS używa formatu (X, Y) -> (Lon, Lat)
-            except KeyError, ValueError:
+            except (KeyError, ValueError):
                 continue
 
         if len(points) < 2:

@@ -1,5 +1,7 @@
 """Implementacja Unit of Work za pomocą transakcji Django ORM."""
 
+from __future__ import annotations
+
 from typing import Any
 
 from django.db import transaction
