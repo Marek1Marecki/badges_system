@@ -136,7 +136,7 @@ jobs:
           echo "DJANGO_SECRET_KEY=tajny_klucz_do_testow_ci" > .env.test
 
       - name: Budowanie obrazów Dockera
-        run: docker compose -f compose.yml -f compose.test.yml build --no-cache --pull=never web
+        run: docker compose -f compose.yml -f compose.test.yml build --no-cache --pull=false web
 
       - name: Sprawdź skrypty w obrazie testowym
         run: docker compose -f compose.yml -f compose.test.yml run --rm web ls -la /app/scripts/
