@@ -102,19 +102,29 @@ jobs:
       - name: Pobieranie repozytorium
         uses: actions/checkout@v4
 
+      - name: Instalacja zależności systemowych (GDAL, GEOS, PROJ)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gdal-bin \
+            libgdal-dev \
+            libgeos-dev \
+            libproj-dev \
+            libspatialite8t64
+
       - name: Konfiguracja narzędzia UV (dla celów zapytań CI)
         uses: astral-sh/setup-uv@v5
         with:
           version: "0.5.11"
           enable-cache: true
 
-      - name: Cache dla obrazów Dockera (Optymalizacja czasu budowy)
-        uses: actions/cache@v4
+      - name: Konfiguracja Pythona 3.14
+        uses: actions/setup-python@v5
         with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
+          python-version: "3.14"
+
+      - name: Instalacja zależności (z grupy DEV)
+        run: uv sync --frozen --group dev --python 3.14
 
       - name: Generowanie testowych środowisk i kluczy asymetrycznych
         # Generowanie super-bezpiecznego, kryptograficznego klucza bez naruszania logów w Gicie
@@ -126,17 +136,27 @@ jobs:
           echo "POSTGRES_PASSWORD=test_password" >> .env
           echo "DJANGO_SECRET_KEY=tajny_klucz_do_testow_ci" > .env.test
 
+      - name: Budowanie obrazów Dockera
+        run: docker compose build
+
+      - name: Cache dla obrazów Dockera (Optymalizacja czasu budowy)
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       - name: Próba Generalna Środowiska (test-run.sh --full)
         run: ./scripts/test-run.sh --full
 
-      - name: Zapisz ewentualne zrzuty błędów (Dzienniki Kontenerów Dockera)
-        if: failure()
-        run: docker compose -f compose.yml -f compose.test.yml logs > integration-test-docker-logs.txt
+      - name: Zapisanie logów Dockera (zawsze)
+        if: always()
+        run: docker compose -f compose.yml -f compose.test.yml logs > integration-test-docker-logs.txt || true
 
-      - name: Archiwizacja Zrzutów po Błędach
-        if: failure()
+      - name: Upload logów Dockera jako artefakt
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: docker-integration-logs
+          name: integration-test-docker-logs
           path: integration-test-docker-logs.txt
-          retention-days: 7
