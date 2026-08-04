@@ -51,7 +51,7 @@ services:
     # tag z rejestru (którego nie ma — stąd myląca linia "pull access denied"
     # w logu), dopiero potem buduje lokalnie. Funkcjonalnie nieszkodliwe
     # (build i tak następuje), ale zbędnie niepokojące w logach CI.
-    pull_policy: build
+    pull_policy: never
     build:
       context: .
       target: testing
