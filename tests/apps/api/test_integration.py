@@ -5,9 +5,25 @@ Strategia: RequestFactory + MagicMock user + patch na get_container.
 
 import json
 from datetime import date
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+
+class UseCaseContainer:
+    def __init__(self, cases: dict):
+        self._cases = dict(cases)
+        for key, value in self._cases.items():
+            setattr(self, key, value)
+
+    def __getitem__(self, key):
+        return self._cases[key]
+
+    def __setitem__(self, key, value):
+        self._cases[key] = value
+        setattr(self, key, value)
+
 
 # ZMIANA: Zezwalamy na dostęp do bazy dla transaction.on_commit
 pytestmark = [pytest.mark.integration, pytest.mark.django_db]
@@ -50,7 +66,7 @@ def mock_user():
 
 @pytest.fixture
 def use_cases():
-    """Zwraca dict mocków Use Case'ów i patch na get_container."""
+    """Zwraca kontener mocków Use Case'ów i patch na get_container."""
     cases = {
         "log_ascent": MagicMock(),
         "start_badge_progress": MagicMock(),
@@ -58,9 +74,14 @@ def use_cases():
         "explore_map": MagicMock(),
         "advance_logistic_status": MagicMock(),
         "unsubscribe_badge": MagicMock(),
+        "get_mvt_tile": MagicMock(),
+        "evaluate_badge_progress": MagicMock(),
+        "bulk_log_ascents": MagicMock(),
+        "analyze_gpx_track": MagicMock(),
     }
-    with patch("apps.api.views.get_container", return_value=cases):
-        yield cases
+    container = UseCaseContainer(cases)
+    with patch("apps.api.views.get_container", return_value=container):
+        yield container
 
 
 # ---------------------------------------------------------------------------
@@ -615,7 +636,7 @@ class TestNearbyObjectsView:
             response = NearbyObjectsView.as_view()(request, object_id=1)
 
             assert response.status_code == 200
-            data = response.json()
+            data = json.loads(response.content)
             assert data["type"] == "FeatureCollection"
             assert data["features"] == []
 
@@ -643,7 +664,7 @@ class TestNearbyObjectsView:
                 response = NearbyObjectsView.as_view()(request, object_id=1)
 
                 assert response.status_code == 200
-                data = response.json()
+                data = json.loads(response.content)
                 assert len(data["features"]) == 1
                 assert data["features"][0]["properties"]["is_center"] is True
 

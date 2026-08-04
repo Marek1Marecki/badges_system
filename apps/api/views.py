@@ -312,7 +312,7 @@ class BadgeLogisticsView(View):
             return _problem_detail(request, "validation-failed", "Błąd Walidacji", 422, str(e))
 
         # SECURITY: Identyfikacja użytkownika zawsze z sesji
-        profile_id = request.profile.id
+        profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id
 
         try:
             use_case = get_container().advance_logistic_status
