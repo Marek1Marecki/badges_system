@@ -61,7 +61,7 @@ check:
 	uv run ruff check $(PY_DIRS)
 	uv run mypy $(PY_DIRS)
 	uv run lint-imports
-	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) -m "not integration"
+	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) -m "not integration and not e2e"
 	uv run python scripts/audit_contracts.py
 
 clean:

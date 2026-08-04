@@ -165,3 +165,70 @@ jobs:
         with:
           name: integration-test-docker-logs
           path: integration-test-docker-logs.txt
+
+  e2e-tests:
+    name: E2E / Playwright Tests
+    needs: integration-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Pobieranie repozytorium
+        uses: actions/checkout@v4
+
+      - name: Instalacja zależności systemowych (GDAL, GEOS, PROJ)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gdal-bin \
+            libgdal-dev \
+            libgeos-dev \
+            libproj-dev
+
+      - name: Konfiguracja narzędzia UV
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.11"
+          enable-cache: true
+
+      - name: Konfiguracja Pythona 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Instalacja zależności (z grupy DEV)
+        run: uv sync --frozen --group dev --python 3.14
+
+      - name: Generowanie testowych środowisk i kluczy asymetrycznych
+        run: |
+          cp .env.example .env
+          echo "DEV_UID=1000" >> .env
+          echo "DEV_GID=1000" >> .env
+          echo "POSTGRES_USER=test_user" >> .env
+          echo "POSTGRES_PASSWORD=test_password" >> .env
+          echo "DJANGO_SECRET_KEY=$(openssl rand -hex 32)" > .env.test
+          echo "DJANGO_DEBUG=False" >> .env.test
+          echo "LOG_LEVEL=DEBUG" >> .env.test
+
+      - name: Budowanie obrazów Dockera
+        run: docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml build web-e2e
+
+      - name: Uruchomienie infrastruktury i serwera Django
+        run: |
+          docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml up -d db redis web-e2e
+          docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T web-e2e python manage.py migrate
+          docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T web-e2e python manage.py createsuperuser --noinput --username admin --email admin@example.com --password admin
+          timeout 60 bash -c 'until curl -s http://localhost:8008/ > /dev/null; do sleep 2; done'
+
+      - name: Uruchomienie testów e2e
+        run: E2E_BASE_URL=http://localhost:8008 uv run pytest tests/e2e -m e2e --no-header -q
+
+      - name: Zapisanie logów Dockera (zawsze)
+        if: always()
+        run: docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml logs > e2e-docker-logs.txt || true
+
+      - name: Upload logów Dockera jako artefakt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-docker-logs
+          path: e2e-docker-logs.txt
