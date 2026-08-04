@@ -45,7 +45,7 @@ jobs:
           enable-cache: true
 
       - name: Konfiguracja Pythona i synchronizacja projektu
-        run: uv python install
+        run: uv python install 3.14
 
       - name: Instalacja zależności (z grupy DEV)
         run: uv sync --frozen --group dev
