@@ -204,7 +204,7 @@ class TestBadgeProgressView:
     def test_progress_200_returns_evaluation_result(self, factory, mock_user, use_cases) -> None:
         from apps.api.views import BadgeProgressView
 
-        use_cases["verify_badge"].execute.return_value = {
+        use_cases["evaluate_badge_progress"].execute.return_value = {
             "verified": False,
             "status": "IN_PROGRESS",
             "errors": [],
@@ -223,7 +223,7 @@ class TestBadgeProgressView:
         from application.exceptions import ResourceNotFoundError
         from apps.api.views import BadgeProgressView
 
-        use_cases["verify_badge"].execute.side_effect = ResourceNotFoundError("Nie subskrybuje")
+        use_cases["evaluate_badge_progress"].execute.side_effect = ResourceNotFoundError("Nie subskrybuje")
 
         request = factory.get("/api/v1/badges/KGP/progress/")
         request.user = mock_user
