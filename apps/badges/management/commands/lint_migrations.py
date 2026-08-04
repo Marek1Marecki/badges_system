@@ -146,7 +146,6 @@ class Command(BaseCommand):
             raise CommandError(
                 f"Linter migracji: {len(blocked_found)} zablokowana(ych) operacja(i). Database Release zatrzymany."
             )
-
         self.stdout.write(
             self.style.SUCCESS(
                 f"Linter migracji: OK ({len(app_labels)} aplikacji sprawdzonych, "
