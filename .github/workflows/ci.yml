@@ -109,8 +109,7 @@ jobs:
             gdal-bin \
             libgdal-dev \
             libgeos-dev \
-            libproj-dev \
-            libspatialite8t64
+            libproj-dev
 
       - name: Konfiguracja narzędzia UV (dla celów zapytań CI)
         uses: astral-sh/setup-uv@v5
@@ -137,7 +136,7 @@ jobs:
           echo "DJANGO_SECRET_KEY=tajny_klucz_do_testow_ci" > .env.test
 
       - name: Budowanie obrazów Dockera
-        run: docker compose build
+        run: docker compose -f compose.yml -f compose.test.yml build web
 
       - name: Cache dla obrazów Dockera (Optymalizacja czasu budowy)
         uses: actions/cache@v4
