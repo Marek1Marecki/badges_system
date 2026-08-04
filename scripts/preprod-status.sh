@@ -13,7 +13,13 @@
 
 # Skrypt działa NA HOŚCIE — `.env` trzeba wczytać jawnie (patrz to samo
 # uzasadnienie w dev-status.sh / dev-backup.sh).
-if [ -f .env ]; then
+# Wczytujemy sekrety preprod do diagnostyki
+if [ -f .env.preprod.secrets ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source .env.preprod.secrets
+    set +a
+elif [ -f .env ]; then
     set -a
     # shellcheck disable=SC1091
     source .env
@@ -48,13 +54,20 @@ check "Redis odpowiada (PING)" \
     bash -c "./scripts/preprod-run.sh exec -T redis redis-cli ping | grep -q PONG"
 
 check "Django check (bez --deploy — to jest już zweryfikowane w release-application.sh)" \
-    bash -c "./scripts/preprod-run.sh exec -T web uv run python manage.py check"
+    bash -c "./scripts/preprod-run.sh exec -T web python manage.py check"
 
 check "Migracje zastosowane (migrate --check)" \
-    bash -c "./scripts/preprod-run.sh exec -T web uv run python manage.py migrate --check"
+    bash -c "./scripts/preprod-run.sh exec -T web python manage.py migrate --check"
 
 check "Celery worker odpowiada (inspect ping)" \
-    bash -c "./scripts/preprod-run.sh exec -T celery_worker uv run celery -A config inspect ping | grep -qi pong"
+    bash -c "./scripts/preprod-run.sh exec -T celery_worker celery -A config inspect ping | grep -qi pong"
+
+# UWAGA — granica tej kontroli: Celery Beat (w przeciwieństwie do workera)
+# nie ma wbudowanego mechanizmu odpowiedzi na "ping" — to scheduler, nie
+# konsument zadań. Sprawdzamy więc wyłącznie, czy kontener w ogóle działa
+# (nie: czy faktycznie coś planuje) — ta sama granica co w dev-status.sh.
+check "Kontener celery_beat działa (tylko status procesu, nie funkcjonalność)" \
+    bash -c "./scripts/preprod-run.sh ps celery_beat --status running --format '{{.Name}}' | grep -q ."
 
 # Kontrola poprawności mountu wolumenu PostgreSQL (ADR-025) — ten sam
 # incydent i to samo uzasadnienie co w dev-status.sh, tylko celujące
@@ -79,16 +92,13 @@ else
     FAILURES=$((FAILURES + 1))
 fi
 
-echo ""
 echo "=== Sanity check danych ==="
-# Te same tabele co w dev-status.sh — patrz tam uzasadnienie nazw. Zero
-# rekordów jest tu OCZEKIWANE przed pierwszym `bootstrap.sh` na tym
-# środowisku; po nim dane referencyjne (badges/tourist_objects) powinny
-# odpowiadać wersji snapshotu zgodnej z planowanym wdrożeniem PROD
-# (ADR-020, macierz propagacji) — dane użytkownika (users/profiles) są tu
-# z założenia fikcyjne, niski/zerowy licznik nie jest niepokojący.
+# Odpytujemy poprawną bazę PRE-PROD. Wymuszamy załadowanie sekretów z fallbackiem
+DB_NAME=${POSTGRES_DB:-badges_preprod_db}
+
+# UWAGA: Używamy dokładnych nazw tabel wygenerowanych przez Django ORM z naszego ostatecznego projektu!
 DATA_CHECK=$(./scripts/preprod-run.sh exec -T db psql \
-    -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-badges_system_db}" \
+    -U "${POSTGRES_USER:-postgres}" -d "$DB_NAME" \
     -tA -F'|' -c "
 SELECT
   (SELECT count(*) FROM auth_user),
@@ -112,8 +122,8 @@ if [ -n "$DATA_CHECK" ]; then
     report_count "Tourist objects" "$N_OBJECTS"
     report_count "Profiles (fikcyjne z założenia — ADR-020)" "$N_PROFILES"
 else
-    echo "⚠ Nie udało się odczytać liczby rekordów (środowisko jeszcze nie uruchomione?"
-    echo "  Uruchom najpierw: make preprod-deploy)"
+    echo "⚠ Nie udało się odczytać liczby rekordów. (Baza '$DB_NAME' może nie istnieć lub nazwy tabel ORM różnią się od spodziewanych)."
+    echo "  Uruchom najpierw: make preprod-deploy oraz upewnij się o wykonaniu skryptu bootstrap.sh"
 fi
 
 echo ""

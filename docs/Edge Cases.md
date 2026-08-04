@@ -502,3 +502,39 @@ Wdrożono twarde reguły nadpisywania:
 **Status:** `resolved`  
 **Opis:** Pytest przy standardowej komendzie zbiera wszystkie pliki pasujące do wzorca `test_*.py` z głównego katalogu. Spowodowało to omyłkowe zebranie przez skaner pliku `scripts/test_osm.py`, który nie był testem jednostkowym, lecz manualnym poligonem doświadczalnym wykonującym prawdziwe (żywe) żądania do zewnętrznego Overpass API. Spowolniało to potok CI/CD i narażało środowisko `TEST` na błędy 404 (timeout sieciowy we Francji).
 **Rozwiązanie / workaround:** W pliku `pyproject.toml` na stałe przypisano flagę konfiguracyjną `testpaths = ["tests"]`, twardo zawężając poszukiwania modułu testowego wyłącznie do katalogu wirtualnego, chroniąc `scripts/` przed automatycznym wykonaniem w pipeline.
+
+### EC-077 — Zderzenie tożsamości środowisk przez domyślne nazewnictwo wolumenów i projektów
+**Obszar:** `compose.preprod.yml`, `compose.test.yml`, Docker Volume  
+**Status:** `resolved`  
+**Opis:** Pomimo definicji odrębnych zmiennych środowiskowych i portów dla DEV i PRE-PROD, uruchomienie środowiska z tego samego katalogu źródłowego (bez jawnie podanej nazwy projektu przez `-p` lub `COMPOSE_PROJECT_NAME`) powodowało współdzielenie **fizycznych wolumenów bazy danych** (`badges_system_postgis_data`). W najgorszym scenariuszu, uruchomienie PRE-PROD wykonywało migracje bezpośrednio na bazie z danymi DEV, prowadząc do zniszczenia danych testowych i rozspójnienia klastra PostgreSQL.
+**Rozwiązanie / workaround:** Zastosowano dwa twarde zabezpieczenia ("Defense in Depth"). Po pierwsze, każdy z plików `.yml` w sekcji `volumes` deklaruje **twardą, unikalną nazwę** (np. `badges_system_preprod_postgis_data`), nadpisując globalne definicje z `compose.yml`. Po drugie, zabrania się ręcznego używania `docker compose` dla środowisk wyższych na tej samej maszynie — wprowadzono rygorystyczne skrypty opakowujące (`preprod-run.sh` i `test-run.sh`), które zawsze i bezwarunkowo wymuszają argument `-p` separujący konteksty.
+
+### EC-078 — Nadpisywanie tagów obrazów przy współdzielonych środowiskach (Tag Collisions)
+**Obszar:** `compose.test.yml`, `compose.override.yml`, Docker Image  
+**Status:** `resolved`  
+**Opis:** W pliku `compose.test.yml` brakowało jawnej definicji `image:`. Docker przy budowaniu obrazów domyślnie używa nazwy usługi (np. `web`) z nazwą projektu. Gdy środowisko TEST dzieliło domyślną nazwę projektu z DEV, kompilacja etapu `testing` po cichu **nadpisywała obraz ze środowiska DEV** nowym obrazem testowym. Skutkowało to zmianą wbudowanego punktu wejścia (`entrypoint` zmieniał się na `pytest` zamiast powłoki Django), całkowicie psując komendy w środowisku deweloperskim.
+**Rozwiązanie / workaround:** W pliku `compose.test.yml` zadeklarowano twardą, stałą nazwę `image: badges_system-web-testing`, która nigdy nie skoliduje z tagami DEV i PROD niezależnie od tego, czy programista pominie argument `-p` przy uruchamianiu.
+
+### EC-079 — Błąd 127 (Command Not Found) po przebudowie entrypointu
+**Obszar:** `Dockerfile`, `scripts/entrypoint.sh`  
+**Status:** `resolved`  
+**Opis:** Kontenery oparte o obraz produkcyjny uległy awarii (CrashLoopBackOff) przy próbie uruchomienia, rzucając błąd `Restarting (127)`. Jest to sygnał od wbudowanego w Linuksa środowiska powłoki, że skrypt zdefiniowany w `ENTRYPOINT` stracił (lub nigdy nie otrzymał) flagi wykonywalności (`+x`) na poziomie systemu hosta przed wbudowaniem w obraz Dockera. 
+**Rozwiązanie / workaround:** Zapewniono komendę `RUN chmod +x` dla katalogu ze skryptami bezpośrednio w etapie `production` w pliku `Dockerfile`. W skrajnych przypadkach zablokowania powłoki należy zresetować system plików: `chmod +x scripts/*.sh` lokalnie przed wywołaniem `docker build`.
+
+### EC-080 — Kolizja poleceń `uv run` z polityką `read_only: true` (OS Error 30)
+**Obszar:** `compose.preprod.yml`, `uv` package manager  
+**Status:** `resolved`  
+**Opis:** Uruchomienie narzędzi lub skryptów w środowisku `PRE-PROD` korzystających z polecenia `uv run python ...` spowodowało krytyczny błąd `Read-only file system (os error 30)`. Narzędzie `uv` przy każdym wywołaniu próbuje zaktualizować pamięć podręczną kompilacji (`.cache`) lub pobrać pliki. Parametr `read_only: true` wymuszony z powodów bezpieczeństwa SRE całkowicie blokuje takie zapisy.
+**Rozwiązanie / workaround:** Całkowite wyeliminowanie `uv run` z komend produkcyjnych i skryptów wdrożeniowych (np. `bootstrap.sh`, `celery_worker command`). Obraz produkcyjny musi wywoływać czysty proces interpretera wprost z zainstalowanego środowiska (np. `python manage.py ...` lub `celery -A ...`), które nie próbuje manipulować strukturą dyskową.
+
+### EC-081 — Gunicorn wyparty z zależności środowiskowych przez `uv sync --no-dev`
+**Obszar:** `pyproject.toml`, `Dockerfile`  
+**Status:** `resolved`  
+**Opis:** Wdrożenie zasady kompilacji zaleceń produkcyjnych (`--no-dev`) pozbawiło obraz kluczowych serwerów i usług, skutkując błędem `exec: gunicorn: not found`. Wynika to z pozostawienia narzędzi takich jak `gunicorn` czy `whitenoise` w grupie nieoficjalnej lub pominięcia ich w twardej deklaracji w pliku konfiguracyjnym projektu.
+**Rozwiązanie / workaround:** Serwery ASGI/WSGI (np. `gunicorn`) oraz middleware obsługi plików statycznych na produkcji (np. `whitenoise`) muszą być zdefiniowane w bloku głównych zależności `[project.dependencies]` w `pyproject.toml`, a nie tylko doinstalowywane ręcznie w lokalnym środowisku.
+
+### EC-082 — Przeciek starych implementacji Mypy (`AppContainer is not subscriptable`) do skryptów pobocznych
+**Obszar:** `manage.py`, Skrypty Customowe  
+**Status:** `resolved`  
+**Opis:** Nawet po pozytywnym wdrożeniu `make check` dla wszystkich głównych katalogów, skrypt zarządzający `restore_reference_data` wyrzucił błąd w fazie produkcyjnej: `AppContainer object is not subscriptable`. Była to resztka z poprzedniego etapu (dostęp po kluczu słownikowym), której linter nie wychwycił, ponieważ domyślnie omija skanowanie folderów z narzędziami `management/commands` we frameworku Django.
+**Rozwiązanie / workaround:** Każda refaktoryzacja warstw fundamentalnych (Kontener DI) wymaga jawnej weryfikacji wszystkich skryptów w katalogach poleceń (`commands/`) pod kątem zgodności z nowymi typami obiektów (np. zmiana z `get_container()["..."]` na `get_container()....`). Zalecono rozszerzenie konfiguracji lintera o te katalogi w `pyproject.toml`.

@@ -95,7 +95,7 @@ class Command(BaseCommand):
         from bootstrap import get_container
 
         try:
-            use_case = get_container()["calculate_object_regions"]
+            use_case = get_container().calculate_object_regions  # <--- ZMIANA
             # Pobieramy wszystkie zwalidowane obiekty i puszczamy w pętli przez Use Case
             object_ids = TouristObject.objects.values_list("id", flat=True)
             for obj_id in object_ids:

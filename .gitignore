@@ -54,6 +54,7 @@ venv.bak/
 .env.local
 .env.development
 .env.production
+.env.preprod.secrets
 .env.test
 docker-compose.override.yml
 local_settings.py

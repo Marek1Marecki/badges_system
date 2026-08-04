@@ -173,6 +173,67 @@ który zapis ADR, i jak się ze sobą łączą.
 >   `COMPOSE_PROJECT_NAME` — słabsza forma tej samej rady, która mogła
 >   prowadzić do dokładnie tego ryzyka, gdyby nie została potraktowana jako
 >   wymóg.
+> - Runda 12: pytanie "czy PRE-PROD potrzebuje pełnego zestawu komend jak
+>   DEV/TEST?" ujawniło realną lukę, nie tylko kwestię wygody —
+>   `dev-status.sh` ma na sztywno wpisaną nazwę kontenera
+>   `badges_system-db-1`, więc nie działał na kontenerach `badges_preprod-*`.
+>   Dodano `scripts/preprod-deploy.sh` (analogon `dev-up.sh` — collapsuje
+>   3-krokową sekwencję release'ów w jedną komendę, zawsze przez
+>   `preprod-run.sh`) i `scripts/preprod-status.sh` (osobny skrypt, nie
+>   parametryzacja `dev-status.sh` — uniknięcie ryzyka pomyłki, który tryb
+>   jest aktywny). Świadomie NIE dodano `preprod-backup`/`preprod-restore`:
+>   dane użytkownika na PRE-PROD są z założenia fikcyjne (ADR-020, macierz
+>   propagacji) — nie ma tam danych wartych tej samej ochrony co realne dane
+>   DEV (Runda 5). Świadomie NIE dodano osobnej `preprod-reset`:
+>   `preprod-run.sh` już ostrzega i wymaga potwierdzenia przy `down -v`,
+>   dodatkowa nazwana komenda niczego by nie zabezpieczyła mocniej.
+> - Runda 13: przesłanie PRAWDZIWYCH plików `.env`/`.env.dev` (zamiast
+>   opierania się na założeniach) ujawniło trzy realne błędy w
+>   `compose.preprod.yml`/`compose.prod.yml`, obecne od momentu ich
+>   pierwszego powstania:
+>   1. **Zła nazwa zmiennej sekretu** — pliki zawierały `DJANGO_SECRET_KEY`,
+>      podczas gdy prawdziwy `.env.dev` pokazuje, że `AppSettings` czyta
+>      `SECRET_KEY`. Bez tej poprawki Django na PRE-PROD/PROD wystartowałoby
+>      z wartością domyślną/pustą zamiast realnego sekretu.
+>   2. **Brak `CELERY_BROKER_URL`/`CELERY_RESULT_BACKEND`** — poprzednie
+>      rundy (audyt "Największe ryzyko: brak CELERY_BROKER_URL") błędnie
+>      założyły, że `AppSettings` oblicza te wartości z `REDIS_HOST`/`PORT`
+>      analogicznie do `database_url`. Prawdziwy `.env.dev` pokazuje, że są
+>      to osobne, bezpośrednio ustawiane zmienne — dodane wprost
+>      (`redis://redis:6379/0`, z nazwą usługi Compose, nie `localhost`
+>      jak w `.env.dev`, bo tamta wartość jest poprawna tylko dla Redis
+>      wystawionego na hosta w DEV).
+>   3. **Całkowity brak `GOOGLE_OAUTH_*`/`MAPY_CZ_API_KEY`/`OVERPASS_*`/
+>      `LOG_*`/`FEATURE_*`** w obu plikach compose — logowanie Google i mapy
+>      Mapy.cz cicho nie działałyby na PRE-PROD/PROD, bez żadnego jawnego
+>      błędu przy starcie. Dodane z wartościami domyślnymi tam, gdzie to
+>      bezpieczne (`LOG_LEVEL`, flagi funkcji), i jako `${VAR:?}` tam, gdzie
+>      brak wartości oznacza realnie zepsutą funkcję (OAuth, Mapy.cz).
+>
+>   Przy tej samej okazji: **dodano brakujący serwis `celery_beat` do
+>   `compose.preprod.yml`** (wcześniej nieobecny — sprzeczne z zasadą
+>   "runtime-equivalent poza warstwą ingress" z Rundy 10/11: różnica miała
+>   dotyczyć tylko sieci/proxy, nie brakujących usług w runtime). Oba pliki
+>   przebudowano z użyciem YAML anchor (`x-preprod-app-env`/`x-prod-app-env`)
+>   dla wspólnego bloku zmiennych — eliminuje to ryzyko rozjazdu między
+>   `web`/`celery_worker`/`celery_beat` przy przyszłych zmianach (jedno
+>   miejsce definicji zamiast trzech kopii tej samej listy). `.env.example`
+>   i `scripts/preprod-status.sh` zaktualizowane odpowiednio (dodana kontrola
+>   `celery_beat`, wcześniej niemożliwa, bo serwis nie istniał).
+> - Runda 14: kontrola spójności po Rundzie 13 ujawniła tę samą klasę błędu
+>   jeszcze w jednym miejscu — `.env.shared` używał `DJANGO_DEBUG` zamiast
+>   zweryfikowanego względem `.env.dev` `DEBUG`, oraz zawierał dwie fikcyjne
+>   flagi funkcji (`FEATURE_NEW_DASHBOARD`/`FEATURE_EXPORT_PDF`) sprzed
+>   zobaczenia prawdziwego pliku `.env.dev` — niezwiązane z rzeczywistą
+>   aplikacją. Poprawione na `DEBUG` oraz prawdziwe
+>   `FEATURE_OSM_NIGHT_WATCHMAN`/`FEATURE_PROXIMITY_SCAN`. Przypomnienie na
+>   przyszłość: `.env.shared` dotyczy WYŁĄCZNIE DEV (fizycznie obecny przez
+>   volume mount) — TEST/PRE-PROD/PROD nie widzą tego pliku
+>   (`.dockerignore` wyklucza `.env.*` z obrazu), więc ich odpowiedniki tych
+>   samych ustawień żyją bezpośrednio w blokach `environment:` w
+>   `compose.test.yml`/`compose.preprod.yml`/`compose.prod.yml` — te dwa
+>   miejsca trzeba aktualizować razem, gdy pojawi się nowa zmienna
+>   współdzielona.
 
 ## Pliki i ich rola
 
@@ -204,7 +265,9 @@ który zapis ADR, i jak się ze sobą łączą.
 | `scripts/test-run.sh` | Wrapper na środowisko TEST. Domyślnie: szybkie testy jednostkowe, efemeryczne (zawsze `down -v` na końcu, także przy błędzie — `trap EXIT`). `--full`: dodatkowo uruchamia `release-database.sh`/`release-application.sh` na świeżej bazie (weryfikacja PROCESU wdrożenia, nie tylko kodu) + pełny suite bez filtra markerów. | TEST |
 | `scripts/verify.sh` | Meta-skrypt przed `git push`/PR: `make check` (ruff/mypy/lint-imports/audit, host, bez Dockera) ➔ `test-run.sh --full`. Celowo NIE duplikuje logiki `make check`. | DEV (uruchamiane lokalnie) |
 | `scripts/preprod-run.sh` | Wrapper wymuszający osobną nazwę projektu Compose (`badges_preprod`) — JEDYNY wspierany sposób uruchamiania PRE-PROD, gdy działa na tej samej maszynie co DEV. Bez tego kontenery PRE-PROD nazywałyby się identycznie jak kontenery DEV (kolizja tożsamości procesu, nie tylko wolumenu). Ostrzega i wymaga potwierdzenia przy `down -v`. | PRE-PROD |
-| `Makefile.dev-snippet.mk` | Blok do wklejenia do głównego `Makefile` projektu — cienkie aliasy `dev-up`/`dev-down`/`dev-reset`/`dev-status`/`dev-logs`/`dev-backup`/`dev-restore`/`test-run`/`verify`/`preprod` wywołujące powyższe skrypty. Logika żyje w skryptach, nie w Makefile. | DEV |
+| `scripts/preprod-deploy.sh` | Analogon `dev-up.sh` dla PRE-PROD: collapsuje bezpieczną kolejność (Database Release ➔ Application Release ➔ start) w jedną komendę. Celowo NIE buduje obrazu — zgodnie z Build Once/Deploy Many obraz musi już istnieć z osobnego kroku CI. | PRE-PROD |
+| `scripts/preprod-status.sh` | Analogon `dev-status.sh`, ale poprawnie celujący w kontenery `badges_preprod-*` — `dev-status.sh` ma na sztywno wpisaną nazwę `badges_system-db-1` i nie zadziała tu bez modyfikacji. Ta sama kontrola mountu wolumenu (ADR-025), migracji, Celery. | PRE-PROD |
+| `Makefile.dev-snippet.mk` | Blok do wklejenia do głównego `Makefile` projektu — cienkie aliasy `dev-*`/`test-run`/`verify`/`preprod`/`preprod-deploy`/`preprod-status`/`preprod-logs`/`preprod-down` wywołujące powyższe skrypty. Logika żyje w skryptach, nie w Makefile. | DEV |
 
 ## Zasada: Declarative Infrastructure, Imperative Operations
 
@@ -316,12 +379,23 @@ docker compose -p ci-${CI_RUN_ID} -f compose.yml -f compose.test.yml down -v --r
 # (wymusza osobną nazwę projektu, patrz komentarz na górze compose.preprod.yml
 # i historia zmian, Runda 11 — golą komendą docker compose ryzykujesz kolizję
 # nazw kontenerów z DEV, nie tylko wolumenów).
-make preprod ARGS="run --rm web ./scripts/release-database.sh"
-make preprod ARGS="run --rm web ./scripts/release-application.sh"
-make preprod ARGS="up -d"
-make preprod ARGS="exec web ./scripts/bootstrap.sh 2026.07.09"   # pierwsza inicjalizacja
-make preprod ARGS="logs -f"
+#
+# Zbuduj i otaguj obraz NAJPIERW (osobny krok, PRE-PROD nie ma `build:`):
+#   docker build --target production -t ${IMAGE_NAME}:${IMAGE_TAG} .
+make preprod-deploy                  # = release-database + release-application + up -d
+make preprod-status                  # diagnostyka (analogon dev-status.sh dla PRE-PROD)
+make preprod-logs                    # podgląd logów
+make preprod ARGS="exec web ./scripts/bootstrap.sh 2026.07.09"   # tylko raz, przy nowym środowisku
+make preprod-down                    # zatrzymanie — NIE usuwa wolumenów (bez -v)
+
+# Dowolna inna komenda compose (escape hatch, gdy nazwane aliasy nie wystarczą):
 make preprod ARGS="ps"
+make preprod ARGS="exec web bash"
+
+# ŚWIADOMIE bez preprod-backup/preprod-restore: dane użytkownika na PRE-PROD
+# są z założenia fikcyjne (ADR-020, macierz propagacji) — nie ma tu danych
+# wartych ochrony backupem tak jak w DEV. Jednorazowo, jeśli potrzeba:
+#   make preprod ARGS="exec db pg_dump -U ... "
 
 # PROD — kolejność Release'ów (ADR-020, Zasada Kolejności Wdrożeń)
 # Obraz musi być WCZEŚNIEJ zbudowany i wypchnięty do rejestru w osobnym kroku CI

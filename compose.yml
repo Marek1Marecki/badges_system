@@ -18,19 +18,26 @@
 
 services:
   db:
-    # Tag przypięty do minor+patch (nie `latest`, nie samo `15`) — zgodnie
-    # z filozofią 08-base-image-policy.md tego projektu: pinujemy minor/patch
-    # w pliku, a dokładny digest logujemy w CI jako ślad audytowy (tak jak
-    # dla obrazu bazowego Pythona), zamiast ręcznie utrzymywać pełny SHA tutaj,
-    # co wymagałoby aktualizacji przy każdym drobnym patchu bezpieczeństwa.
+    # PostgreSQL 18 (przez PostGIS) — WAŻNE: patrz ADR-025 (PostgreSQL Volume
+    # Layout). Wersja i ścieżka montowania wolumenu NIE są tu niezależnymi
+    # decyzjami — od PG 18 oficjalny obraz zmienił domyślny PGDATA na
+    # /var/lib/postgresql/<major>/docker (osobny podkatalog per wersja), co
+    # wymaga montowania RODZICA (/var/lib/postgresql), nie konkretnej ścieżki
+    # danych — inaczej `pg_upgrade --link` między wersjami nie zadziała, a przy
+    # niedopasowaniu wolumenu do wersji obrazu Postgres tworzy nową, PUSTĄ
+    # bazę zamiast rozpoznać istniejące dane (to dokładnie tak stracono dane
+    # w tym projekcie — patrz ADR-025, Kontekst).
     image: postgis/postgis:18-3.6-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?Ustaw POSTGRES_USER w pliku .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Ustaw POSTGRES_PASSWORD w pliku .env}
       POSTGRES_DB: ${POSTGRES_DB:?Ustaw POSTGRES_DB w pliku .env}
-      PGDATA: /var/lib/postgresql/18/docker
     volumes:
+      # RODZIC katalogu danych, NIE konkretna wersja/podkatalog. Poprawne dla
+      # PG 18+. Migrujący z wcześniejszej wersji tego pliku (PG 15,
+      # `/var/lib/postgresql/data`) — patrz ADR-025 sekcja "Migracja
+      # istniejącego wolumenu" PRZED zmianą tej linii na środowisku z danymi.
       - postgis_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
@@ -63,6 +70,19 @@ services:
       retries: 5
 
 volumes:
+  # Jawna nazwa (`name:`) — niezależna od nazwy projektu Compose
+  # (COMPOSE_PROJECT_NAME / -p / nazwa katalogu). Bez tego uruchomienie
+  # `docker compose` z inną nazwą projektu tworzy NOWY, pusty wolumen o innej
+  # nazwie wygenerowanej automatycznie (`<projekt>_postgis_data`), zamiast
+  # podpiąć się pod istniejące dane — ta sama klasa ryzyka co niedopasowanie
+  # PGDATA opisane w ADR-025, tylko na poziomie tożsamości wolumenu, nie
+  # ścieżki wewnątrz niego.
+  #
+  # PRZED ZMIANĄ TEJ NAZWY na istniejącym środowisku z danymi: sprawdź
+  # `docker volume ls`, czy nazwa poniżej zgadza się z już istniejącym
+  # wolumenem. Jeśli nie — to NIE jest bezpieczna zmiana "w locie": zrób
+  # `./scripts/dev-backup.sh` najpierw (patrz ADR-025, ta sama zasada
+  # co przy zmianie wersji obrazu Postgresa).
   postgis_data:
     name: badges_system_postgis_data
   redis_data:

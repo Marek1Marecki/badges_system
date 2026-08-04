@@ -99,7 +99,6 @@ verify:      ## Pełna weryfikacja przed push/PR: make check + TEST (release scr
 preprod:     ## Dowolna komenda compose na PRE-PROD z wymuszoną izolacją od DEV: make preprod ARGS="up -d"
 	./scripts/preprod-run.sh $(ARGS)
 
-
 preprod-deploy: ## PRE-PROD: bezpieczna kolejność (Database Release -> Application Release -> start)
 	./scripts/preprod-deploy.sh
 
@@ -111,4 +110,3 @@ preprod-logs:   ## PRE-PROD: podgląd logów (Ctrl+C aby wyjść)
 
 preprod-down:   ## PRE-PROD: zatrzymanie (bez -v — sam skrypt ostrzega, jeśli dodasz ARGS="down -v")
 	./scripts/preprod-run.sh down
-	

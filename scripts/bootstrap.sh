@@ -33,21 +33,21 @@ fi
 echo "=== BOOTSTRAP ŚRODOWISKA (snapshot: ${SNAPSHOT_ID}) ==="
 
 echo "[1/4] Migracje bazy danych..."
-uv run python manage.py migrate --noinput
+python manage.py migrate --noinput
 
 echo "[2/4] Walidacja i wgrywanie Danych Referencyjnych..."
-uv run python manage.py validate_reference_manifest --snapshot="${SNAPSHOT_ID}"
-uv run python manage.py restore_reference_data --snapshot="${SNAPSHOT_ID}" ${FORCE_FLAG}
+# python manage.py validate_reference_manifest --snapshot="${SNAPSHOT_ID}" # TODO: wdrożyć w kodzie (znana luka)
+python manage.py restore_reference_data ${FORCE_FLAG}
 
 echo "[3/4] Przeliczanie sąsiadów geograficznych..."
-uv run python manage.py calculate_neighbors
+python manage.py calculate_neighbors
 
 echo "[4/4] Tworzenie superużytkownika (pomijane, jeśli już istnieje)..."
 # UWAGA: celowo NIE używamy `|| true` wokół createsuperuser — to maskowałoby
 # każdy błąd (np. brak połączenia z bazą, złą konfigurację), nie tylko
 # "użytkownik już istnieje". Sprawdzamy istnienie jawnie i pomijamy krok tylko
 # w tym jednym, oczekiwanym przypadku; każdy inny błąd przerywa skrypt (set -e).
-SUPERUSER_EXISTS=$(uv run python manage.py shell -c "
+SUPERUSER_EXISTS=$(python manage.py shell -c "
 from django.contrib.auth import get_user_model
 print(get_user_model().objects.filter(is_superuser=True).exists())
 " 2>/dev/null | tail -n 1)
@@ -55,7 +55,7 @@ print(get_user_model().objects.filter(is_superuser=True).exists())
 if [ "$SUPERUSER_EXISTS" = "True" ]; then
     echo "Superużytkownik już istnieje — pomijam."
 else
-    uv run python manage.py createsuperuser --noinput
+    python manage.py createsuperuser --noinput
 fi
 
 echo "=== BOOTSTRAP ZAKOŃCZONY ==="

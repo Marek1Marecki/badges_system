@@ -36,13 +36,22 @@
 # wersję obrazu niż ta faktycznie testowana — co unieważniłoby całą gwarancję
 # "ten sam artefakt na PRE-PROD i PROD".
 #
-# Sekrety (POSTGRES_PASSWORD, DJANGO_SECRET_KEY, itp.) pochodzą WYŁĄCZNIE ze
-# zmiennych środowiskowych hosta / menedżera sekretów CI — nigdy z pliku na
-# dysku (plik .env.preprod nie jest kopiowany do obrazu — patrz .dockerignore).
-# ENV_FILE=.env.preprod pełni tu funkcję IDENTYFIKATORA PROFILU konfiguracji
-# odczytywanego przez AppSettings, nie gwarancji fizycznej obecności pliku —
-# w tym środowisku plik .env.preprod nie istnieje na dysku kontenera
-# (env_file_required=False, patrz 20-configuration-contract.md).
+# ZMIENNE APLIKACYJNE — WERYFIKACJA WZGLĘDEM PRAWDZIWEGO .env.dev (nie
+# zgadywane): nazwy poniżej (SECRET_KEY, CELERY_BROKER_URL/RESULT_BACKEND,
+# GOOGLE_OAUTH_*, MAPY_CZ_API_KEY, OVERPASS_*, LOG_*, FEATURE_*) zostały
+# zweryfikowane względem realnego pliku .env.dev projektu — poprzednia
+# wersja tego pliku błędnie zakładała `DJANGO_SECRET_KEY` (poprawnie:
+# `SECRET_KEY`) i pomijała całkowicie OAuth/Mapy.cz/OSM/logging/feature
+# flags, co uciszyłoby te funkcje na PRE-PROD bez żadnego jawnego błędu.
+#
+# Sekrety (POSTGRES_PASSWORD, SECRET_KEY, GOOGLE_OAUTH_CLIENT_SECRET, itp.)
+# pochodzą WYŁĄCZNIE ze zmiennych środowiskowych hosta / menedżera sekretów
+# CI — nigdy z pliku na dysku (plik .env.preprod nie jest kopiowany do obrazu
+# — patrz .dockerignore). ENV_FILE=.env.preprod pełni tu funkcję
+# IDENTYFIKATORA PROFILU konfiguracji odczytywanego przez AppSettings, nie
+# gwarancji fizycznej obecności pliku — w tym środowisku plik .env.preprod
+# nie istnieje na dysku kontenera (env_file_required=False, patrz
+# 20-configuration-contract.md).
 #
 # Użycie (przez preprod-run.sh — patrz uzasadnienie na górze pliku; obraz
 # musi być wcześniej zbudowany i wypchnięty do rejestru w osobnym kroku CI):
@@ -50,6 +59,40 @@
 #   ./scripts/preprod-run.sh run --rm web ./scripts/release-application.sh
 #   ./scripts/preprod-run.sh up -d
 # ==============================================================================
+
+x-preprod-app-env: &preprod-app-env
+  ENV_FILE: .env.preprod
+  APP_ENV: preproduction
+  DEBUG: "False"
+  POSTGRES_HOST: db
+  POSTGRES_PORT: "5432"
+  POSTGRES_USER: ${POSTGRES_USER:?}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+  POSTGRES_DB: ${POSTGRES_DB:?}
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  # Zweryfikowane względem .env.dev — AppSettings czyta CELERY_BROKER_URL
+  # bezpośrednio, NIE oblicza go z REDIS_HOST/PORT (w odróżnieniu od
+  # database_url, które faktycznie jest computed_field). "redis" tutaj to
+  # nazwa usługi w sieci Compose — nie "localhost" jak w .env.dev (tamta
+  # wartość jest poprawna tylko dla Redis wystawionego na hosta w DEV).
+  CELERY_BROKER_URL: redis://redis:6379/0
+  CELERY_RESULT_BACKEND: redis://redis:6379/0
+  SECRET_KEY: ${SECRET_KEY:?}
+  ALLOWED_HOSTS: ${ALLOWED_HOSTS:?}
+  OVERPASS_API_URL: ${OVERPASS_API_URL:-https://overpass-api.de/api/interpreter}
+  OVERPASS_TIMEOUT_SECONDS: ${OVERPASS_TIMEOUT_SECONDS:-40}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  LOG_JSON: ${LOG_JSON:-True}
+  FEATURE_OSM_NIGHT_WATCHMAN: ${FEATURE_OSM_NIGHT_WATCHMAN:-True}
+  FEATURE_PROXIMITY_SCAN: ${FEATURE_PROXIMITY_SCAN:-True}
+  # Wymagane do działania logowania Google i integracji Mapy.cz — bez tych
+  # zmiennych funkcje te cicho nie działałyby na PRE-PROD (poprzednia wersja
+  # tego pliku ich w ogóle nie przekazywała).
+  GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:?}
+  GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:?}
+  MAPY_CZ_API_KEY: ${MAPY_CZ_API_KEY:?}
+  UV_CACHE_DIR: /tmp/.uv-cache  # Wymusza zapisy cache do zadeklarowanego wolumenu tmpfs, by nie uderzać w system read_only
 
 services:
   db:
@@ -71,26 +114,15 @@ services:
     # pliku. Jeśli to środowisko ma być dostępne z zewnątrz (nie tylko przez
     # tunel/VPN), rozważcie dodanie własnej warstwy proxy przed tym portem.
     ports:
-      - "8000:8000"
+      - "8008:8000"
     environment:
-      - ENV_FILE=.env.preprod
-      - APP_ENV=preproduction
-      - DEBUG=False
-      - POSTGRES_HOST=db
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=${POSTGRES_USER:?}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
-      - POSTGRES_DB=${POSTGRES_DB:?}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:?}
+      <<: *preprod-app-env
       # Wymagane WYŁĄCZNIE jeśli na tym środowisku uruchamiacie
       # `./scripts/bootstrap.sh` (pierwsza inicjalizacja PRE-PROD) — patrz
       # analogiczny komentarz w compose.override.yml.
-      - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:?}
-      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:?}
-      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:?}
+      DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME:?}
+      DJANGO_SUPERUSER_EMAIL: ${DJANGO_SUPERUSER_EMAIL:?}
+      DJANGO_SUPERUSER_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD:?}
     volumes:
       # Wolumen zapisywalny mimo `read_only: true` na reszcie systemu plików —
       # `collectstatic` (release-application.sh) musi mieć gdzie pisać.
@@ -113,22 +145,36 @@ services:
     image: ${IMAGE_NAME:?}:${IMAGE_TAG:?}
     restart: unless-stopped
     entrypoint: ["/app/scripts/entrypoint.sh"]
-    command: ["uv", "run", "celery", "-A", "config", "worker", "-l", "info"]
+    command: ["celery", "-A", "config", "worker", "-l", "info"]
     environment:
-      - ENV_FILE=.env.preprod
-      - APP_ENV=preproduction
-      - DEBUG=False
-      - POSTGRES_HOST=db
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=${POSTGRES_USER:?}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
-      - POSTGRES_DB=${POSTGRES_DB:?}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?}
+      <<: *preprod-app-env
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  celery_beat:
+    # BRAKOWAŁO tego serwisu w poprzedniej wersji pliku — PRE-PROD ma być
+    # "runtime-equivalent poza warstwą ingress" względem PROD (różnica ma
+    # dotyczyć WYŁĄCZNIE sieci/proxy, nie brakujących usług w runtime).
+    # Bez Beat nigdy nie zweryfikowalibyście na PRE-PROD, czy harmonogram
+    # zadań cyklicznych (np. FEATURE_OSM_NIGHT_WATCHMAN) działa poprawnie
+    # w danym Release Candidate, zanim trafi na PROD.
+    image: ${IMAGE_NAME:?}:${IMAGE_TAG:?}
+    restart: unless-stopped
+    entrypoint: ["/app/scripts/entrypoint.sh"]
+    command: ["celery", "-A", "config", "beat", "-l", "info"]
+    environment:
+      <<: *preprod-app-env
+    depends_on:
       redis:
         condition: service_healthy
     read_only: true

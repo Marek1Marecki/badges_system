@@ -140,6 +140,50 @@ API wymaga uwierzytelnienia. Aby ominąć konieczność budowania pełnego flow 
 
 ---
 
+## 5. Uruchamianie Wdrożeń Produkcyjnych (PRE-PROD / Staging)
+
+Środowisko `PRE-PROD` jest architektonicznym klonem (Twin) serwera `PROD` – posiada ten sam system plików (Read-Only), serwowanie przez Gunicorna, i obostrzenia bezpieczeństwa, z wyłączeniem warstwy Ingress (Caddy). Służy ono lokalnemu testowaniu stabilności nowych wersji przed wgraniem ich do chmury oraz odpalaniu testów wideo (Playwright).
+
+**Zasady:** Nigdy nie edytuj plików bezpośrednio na tym środowisku. Obraz nie przebudowuje się na żywo po zmianach w kodzie.
+
+### Jak podnieść PRE-PROD lokalnie?
+
+1. **Kompilacja i Wersjonowanie (Build Once):**
+   Zbuduj lokalnie (lub pobierz) docelowy obraz ze wstrzykniętą aplikacją (tag może być dowolny, polecamy hash z gita lub wersję):
+   ```bash
+   docker build --target production -t badges-system:latest .
+   ```
+2. **Definicja Sekretów:**
+   Stwórz plik `.env.preprod.secrets` i wstaw tam wszystkie klucze z `.env.example` (baza danych musi nazywać się inaczej niż na DEV, np. `badges_preprod_db`). Upewnij się, że zdefiniowałeś `IMAGE_TAG=latest`.
+3. **Wdrożenie Aplikacji i Bazy (Application Release):**
+   Wykorzystaj skrypt ujednolicający (który dba o wyizolowanie przestrzeni nazw):
+   ```bash
+   make preprod-deploy
+   ```
+4. **Bootstrapping (Pierwsze uruchomienie po starcie bazy):**
+   Zasil bazę "Złotym Standardem" ze snapshotów referencyjnych w Gicie.
+   ```bash
+   # UWAGA: Podstaw właściwą wersję snapshotu w miejsce daty (np. 2026.07.09)
+   make preprod ARGS="exec web ./scripts/bootstrap.sh TWOJA_DATA_SNAPSHOTU"
+   ```
+5. **Diagnostyka Środowiska (SRE):**
+   Uruchom sprawdzian odporności i podłączenia wolumenów bazy (ADR-025):
+   ```bash
+   make preprod-status
+   ```
+   Jeśli weryfikacja rekordów bazy w konsoli wskazuje na pomyślny wczyt szczytów i odznak, serwer `PRE-PROD` nasłuchuje lokalnie pod adresem: `http://localhost:8008/` (dla wdrożenia Gunicorna) i jest gotowy na przyjęcie testów Playwright.
+
+### Rollback (Wycofywanie zmian)
+Zgodnie ze strategią określoną w `ADR-024` (Expand and Contract), procedura wycofywania wersji zepsutego kodu ogranicza się wyłącznie do "revertowania" wskaźnika obrazu w pliku środowiskowym i powtórnego przepięcia ruchu na starszą aplikację:
+1. Zmień `IMAGE_TAG` w pliku `.env.preprod.secrets` na wcześniejszą, działającą wersję.
+2. Zastosuj komendę wdrożeniową: `make preprod-deploy`. 
+Aplikacja, dzięki kompatybilności wstecznej bazy, ożyje w poprzedniej wersji.
+```
+
+---
+
+---
+
 ## Logi i monitoring
 
 | Komponent | Gdzie szukać lokalnie | Środowisko docelowe (Produkcja) |

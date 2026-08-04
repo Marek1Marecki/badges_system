@@ -70,4 +70,14 @@ for arg in "$@"; do
     fi
 done
 
+# ==============================================================================
+# Ładowanie lokalnych sekretów (tylko na czas manualnych testów)
+# Na produkcji wartości te będą pochodzić bezpośrednio z systemu CI/CD (GitHub Secrets)
+# ==============================================================================
+if [ -f .env.preprod.secrets ]; then
+    set -a
+    source .env.preprod.secrets
+    set +a
+fi
+
 exec docker compose -p "${PROJECT_NAME}" -f compose.yml -f compose.preprod.yml "$@"

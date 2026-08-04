@@ -26,18 +26,22 @@ echo "[1/3] Walidacja zgodności migracji (gating)..."
 # Celowo NIE parsujemy tekstu `showmigrations --plan` przez grep — format
 # tego wyjścia jest szczegółem implementacyjnym Django i może się zmienić
 # między wersjami, podczas gdy kod wyjścia `--check` jest stabilnym kontraktem.
-if ! uv run python manage.py migrate --check; then
+# if ! uv run --no-sync python manage.py migrate --check; then
+if ! python manage.py migrate --check; then
     echo "BŁĄD: wykryto niezastosowane migracje."
     echo "Database Release musi zostać wykonany PRZED Application Release."
-    uv run python manage.py showmigrations --plan
+    # uv run --no-sync python manage.py showmigrations --plan
+    python manage.py showmigrations --plan
     exit 1
 fi
 echo "Migracje zgodne — kontynuuję."
 
 echo "[2/3] Zbieranie plików statycznych..."
-uv run python manage.py collectstatic --noinput --clear
+# uv run --no-sync python manage.py collectstatic --noinput --clear
+python manage.py collectstatic --noinput --clear
 
 echo "[3/3] Kontrola wdrożeniowa Django (check --deploy)..."
-uv run python manage.py check --deploy
+# uv run --no-sync python manage.py check --deploy
+python manage.py check --deploy
 
 echo "=== APPLICATION RELEASE ZAKOŃCZONY ==="

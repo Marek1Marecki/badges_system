@@ -26,21 +26,6 @@ if app_settings_config.allowed_hosts_str:
     env_hosts = [h.strip() for h in app_settings_config.allowed_hosts_str.split(",") if h.strip()]
     ALLOWED_HOSTS.extend(env_hosts)
 
-# ==========================================
-# DATABASE (Parsowanie z DATABASE_URL)
-# ==========================================
-# db_url = urlparse(app_settings_config.database_url)
-#
-# DATABASES = {
-#    "default": {
-#        "ENGINE": "django.contrib.gis.db.backends.postgis",
-#        "NAME": db_url.path.lstrip("/"),
-#        "USER": db_url.username,
-#        "PASSWORD": db_url.password,
-#        "HOST": db_url.hostname,
-#        "PORT": str(db_url.port or 5432),
-#    }
-# }
 
 import dj_database_url
 
@@ -107,6 +92,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "infrastructure.middleware.error_handling.RFC7807ErrorMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -155,9 +141,15 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
-STATIC_URL = "static/"
-STATICFILES_DIRS = [BASE_DIR / "apps" / "static"]
 SITE_ID = 1
+
+import os
+
+STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "apps", "static"),
+]
 
 # Ustawienie wymagane przez serwery OpenStreetMap (Tile Usage Policy)
 # Pozwala przeglądarce wysłać nagłówek Referer do obcych serwerów (jak OSM),
