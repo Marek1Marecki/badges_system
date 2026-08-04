@@ -44,11 +44,13 @@ jobs:
           version: "0.5.11"
           enable-cache: true
 
-      - name: Konfiguracja Pythona i synchronizacja projektu
-        run: uv python install 3.14
+      - name: Konfiguracja Pythona 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
 
       - name: Instalacja zależności (z grupy DEV)
-        run: uv sync --frozen --group dev
+        run: uv sync --frozen --group dev --python 3.14
 
       - name: Weryfikacja formatowania kodu (Ruff Format)
         run: uv run ruff format --check domain application infrastructure apps bootstrap scripts
