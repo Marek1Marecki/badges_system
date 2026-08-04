@@ -120,9 +120,11 @@ jobs:
         # Generowanie super-bezpiecznego, kryptograficznego klucza bez naruszania logów w Gicie
         run: |
           cp .env.example .env
-          echo "DEV_UID=$(id -u)" >> .env
-          echo "DEV_GID=$(id -g)" >> .env
-          echo "DJANGO_SECRET_KEY=$(openssl rand -hex 32)" > .env.test
+          echo "DEV_UID=1000" >> .env
+          echo "DEV_GID=1000" >> .env
+          echo "POSTGRES_USER=test_user" >> .env
+          echo "POSTGRES_PASSWORD=test_password" >> .env
+          echo "DJANGO_SECRET_KEY=tajny_klucz_do_testow_ci" > .env.test
 
       - name: Próba Generalna Środowiska (test-run.sh --full)
         run: ./scripts/test-run.sh --full
