@@ -120,8 +120,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 # niezależnie od konfiguracji domyślnych grup.
 RUN uv sync --frozen --group dev
 
-ENTRYPOINT ["uv", "run", "pytest"]
-CMD ["-m", "not integration"]
+#ENTRYPOINT ["uv", "run", "pytest"]
+CMD ["uv", "run", "pytest", "-m", "not integration"]
 
 
 # ==============================================================================
