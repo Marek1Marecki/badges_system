@@ -44,8 +44,8 @@ jobs:
           version: "0.5.11"
           enable-cache: true
 
-      - name: Konfiguracja Pythona (3.14 / 3.12 compatibility)
-        run: uv python install 3.12
+      - name: Konfiguracja Pythona i synchronizacja projektu
+        run: uv python install
 
       - name: Instalacja zależności (z grupy DEV)
         run: uv sync --frozen --group dev
