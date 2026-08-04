@@ -45,8 +45,7 @@ jobs:
             gdal-bin \
             libgdal-dev \
             libgeos-dev \
-            libproj-dev \
-            libspatialite7
+            libproj-dev
 
       - name: Konfiguracja narzędzia UV
         uses: astral-sh/setup-uv@v5
