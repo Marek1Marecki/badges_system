@@ -185,6 +185,8 @@ class TestBadgeSubscribeView:
     def test_subscribe_calls_use_case_with_correct_args(self, factory, mock_user, use_cases) -> None:
         from apps.api.views import BadgeSubscribeView
 
+        use_cases["start_badge_progress"].execute.return_value = 1
+
         request = factory.post("/api/v1/badges/KGP/subscribe/")
         request.user = mock_user
 
@@ -592,10 +594,10 @@ class TestErrorHandling:
 
         assert response.status_code == 200
         use_cases["explore_map"].execute.assert_called_once()
-        call_kwargs = use_cases["explore_map"].execute.call_args.kwargs
-        assert call_kwargs["badge_code"] == "KGP"
-        assert call_kwargs["region_level"] == "voivodeship"
-        assert call_kwargs["region_id"] == 5
+        call_args = use_cases["explore_map"].execute.call_args
+        assert call_args.args[0].badge_code == "KGP"
+        assert call_args.args[0].region_level == "voivodeship"
+        assert call_args.args[0].region_id == 5
 
     def test_map_objects_handles_dto_validation_error(self, factory, mock_user, use_cases) -> None:
         from apps.api.views import MapObjectsView
@@ -710,7 +712,7 @@ class TestProfileSettingsViewAdditional:
         with patch("apps.api.views.get_object_or_404", return_value=mock_profile):
             request = factory.patch(
                 "/api/v1/profiles/1/",
-                data=json.dumps({"invalid_field": "value"}),
+                data=json.dumps({"birth_date": "invalid-date"}),
                 content_type="application/json",
             )
             request.user = mock_user
@@ -920,12 +922,8 @@ class TestBulkAscentLogViewAdditional:
     def test_skips_cache_when_no_ascents_saved(self, factory, mock_user, use_cases) -> None:
         from apps.api.views import BulkAscentLogView
 
-        mock_result = MagicMock()
-        mock_result.saved_count = 0
-        mock_result.model_dump.return_value = {"saved_count": 0}
-
         use_cases["bulk_log_ascents"] = MagicMock()
-        use_cases["bulk_log_ascents"].execute.return_value = mock_result
+        use_cases["bulk_log_ascents"].execute.return_value = {"saved_count": 0}
 
         request = factory.post(
             "/api/v1/ascents/bulk/",

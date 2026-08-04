@@ -217,7 +217,12 @@ class BadgeProgressView(View):
         if auth_error:
             return auth_error
 
-        cycle_number = int(request.GET.get("cycle", 1))
+        try:
+            cycle_number = int(request.GET.get("cycle", 1))
+        except (TypeError, ValueError):
+            return _problem_detail(
+                request, "validation-failed", "Błąd Walidacji", 422, "Parametr 'cycle' musi być liczbą całkowitą."
+            )
 
         # Nie potrzebujemy tu w ogóle obiektu DTO (skoro UseCase przyjmuje proste parametry!)
         # Wyciągamy po prostu bezpiecznie profile_id z sesji (Ochrona IDOR z AUDYT-070)
@@ -301,7 +306,7 @@ class BadgeLogisticsView(View):
 
         try:
             body = json.loads(request.body)
-        except json.JSONDecodeError, ValueError:
+        except (json.JSONDecodeError, ValueError):
             return _problem_detail(
                 request, "validation-failed", "Nieprawidłowe dane", 422, "Ciało żądania musi być JSON."
             )
