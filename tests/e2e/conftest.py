@@ -1,28 +1,16 @@
 import os
-import threading
+import subprocess
 
 import pytest
-from django.core.management import call_command
 from playwright.sync_api import BrowserContext, Page
 
 BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:8008")
 
 
 def get_session_cookie(username: str) -> str:
-    from io import StringIO
-
-    out = StringIO()
-    result = [None]
-
-    def run() -> None:
-        call_command("create_test_session", username, stdout=out)
-        result[0] = out.getvalue()
-
-    thread = threading.Thread(target=run)
-    thread.start()
-    thread.join()
-
-    return result[0].strip().split("\n")[-1]
+    cmd = ["python", "manage.py", "create_test_session", username]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True, cwd="/app")
+    return result.stdout.strip().split("\n")[-1]
 
 
 @pytest.fixture(scope="session")
