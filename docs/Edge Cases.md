@@ -538,3 +538,15 @@ Wdrożono twarde reguły nadpisywania:
 **Status:** `resolved`  
 **Opis:** Nawet po pozytywnym wdrożeniu `make check` dla wszystkich głównych katalogów, skrypt zarządzający `restore_reference_data` wyrzucił błąd w fazie produkcyjnej: `AppContainer object is not subscriptable`. Była to resztka z poprzedniego etapu (dostęp po kluczu słownikowym), której linter nie wychwycił, ponieważ domyślnie omija skanowanie folderów z narzędziami `management/commands` we frameworku Django.
 **Rozwiązanie / workaround:** Każda refaktoryzacja warstw fundamentalnych (Kontener DI) wymaga jawnej weryfikacji wszystkich skryptów w katalogach poleceń (`commands/`) pod kątem zgodności z nowymi typami obiektów (np. zmiana z `get_container()["..."]` na `get_container()....`). Zalecono rozszerzenie konfiguracji lintera o te katalogi w `pyproject.toml`.
+
+### EC-083 — Blokada `SynchronousOnlyOperation` przy wywoływaniu ORM z fiktur Playwrighta
+**Obszar:** `tests/e2e/conftest.py`, `Playwright`, `Django ORM`  
+**Status:** `resolved`  
+**Opis:** Wstrzykiwanie sesji do przeglądarki wymagało wygenerowania ciasteczka przez komendę zarządzającą Django. Bezpośrednie wywołanie `call_command` z wnętrza fiktury Playwrighta (`logged_in_context`) skutkowało rzuceniem błędu `SynchronousOnlyOperation` przez Django. Wynika to z faktu, że silnik Playwright działa natywnie w pętli asynchronicznej (Async Event Loop), a Django ORM kategorycznie blokuje dostęp do bazy danych z wątków asynchronicznych bez użycia specjalnych adapterów (np. `sync_to_async`).
+**Rozwiązanie / workaround:** Zamiast walczyć z pętlą asynchroniczną i blokadami wątków `pytest-django`, wywołanie komendy zepchnięto na poziom systemu operacyjnego. Skrypt używa `subprocess.run(["python", "manage.py", "create_test_session", ...])` wewnątrz kontenera testowego. Tworzy to całkowicie nowy, synchroniczny podproces Pythona, omijając blokady pamięci asynchronicznej.
+
+### EC-084 — Globalny wymóg `Coverage` blokujący testy E2E
+**Obszar:** `pyproject.toml`, `GitHub Actions (ci.yml)`  
+**Status:** `resolved`  
+**Opis:** Plik konfiguracyjny projektu narzuca twardy wymóg: `fail-under=80` (minimum 80% pokrycia kodu testami). Uruchomienie potoku testów E2E, który z założenia "klika" tylko po wierzchu aplikacji (Smoke Tests), siłą rzeczy pokrywa jedynie mały procent linii kodu. Pytest kończył się z sukcesem dla testów, ale narzędzie `pytest-cov` rzucało kodem błędu 1, blokując cały pipeline CI na GitHubie.
+**Rozwiązanie / workaround:** W zadaniu GitHub Actions odpowiadającym za testy E2E nadpisano opcje konfiguracyjne w locie, stosując flagę `--override-ini="addopts="`. Neutralizuje to globalne ustawienia coverage, pozwalając testom E2E skupić się wyłącznie na poprawności funkcjonalnej, bez generowania bezużytecznych statystyk pokrycia.

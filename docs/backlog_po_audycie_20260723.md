@@ -1000,8 +1000,8 @@ Zasada DRY w testach. Do zrealizowania podczas "Sprzątania Posesji", gdy projek
 Audytor wyłapał, że projekt polega wyłącznie na manualnym uruchamianiu komendy `make check`. Brak zautomatyzowanego potoku CI (Continuous Integration), np. plików GitHub Actions, skutkuje tym, że programista może po prostu zignorować błędy (lub nie odpalić komendy) i wgrać kod bezpośrednio do głównej gałęzi (main). Ponadto brakuje oficjalnego wdrożenia narzędzia `import-linter` (brak pliku konfiguracji `.importlinter` z opisanymi regułami granic).
 
 **Action Items (Do wdrożenia w nadchodzącym sprincie DevOps):**
-- [ ] Utworzyć plik konfiguracyjny `.importlinter` (lub odpowiednik dla narzędzia `pydeps`), jawnie zakazujący importów z `apps` i `infrastructure` do `domain` i `application`.
-- [ ] Utworzyć plik potoku (np. `.github/workflows/ci.yml`), który zablokuje `git merge`, jeśli `make check` nie zakończy się ze statusem `0` (Success).
+- [X] Utworzyć plik konfiguracyjny `.importlinter` (lub odpowiednik dla narzędzia `pydeps`), jawnie zakazujący importów z `apps` i `infrastructure` do `domain` i `application`.
+- [X] Utworzyć plik potoku (np. `.github/workflows/ci.yml`), który zablokuje `git merge`, jeśli `make check` nie zakończy się ze statusem `0` (Success).
 
 **Komentarz Architekta:**
 "Nieufne środowisko" to fundament stabilnego produktu. Automatyzacja wyłapywania wycieków warstw i błędów Mypy oszczędzi nam połowy przyszłych Audytów! Zrobimy to, gdy zaczniemy formalizować środowiska z `compose.test.yml`.
@@ -1189,9 +1189,9 @@ Prosta integracja, która stanowi standardowy wymóg w korporacyjnych potokach w
 Mimo posiadania wysoce dojrzałej architektury konteneryzacji (Multi-stage `Dockerfile`, `compose.test.yml`, dedykowane skrypty wdrażające w `scripts/`), w repozytorium fizycznie nie istnieje żaden plik orkiestratora CI (np. w katalogu `.github/workflows/`). Oznacza to, że pomimo posiadania "części zamiennych", projekt pozbawiony jest w pełni zautomatyzowanego potoku, który samoczynnie weryfikowałby każdy Pull Request i zarządzał wdrożeniami (Continuous Integration / Continuous Deployment).
 
 **Action Items (Do wdrożenia PRZED Playwrightem / Prodem):**
-- [ ] Utworzyć plik definiujący potok CI (np. `.github/workflows/ci.yml`).
-- [ ] Skonfigurować w nim tzw. *Quality Gate*, który automatycznie, na środowisku efemerycznym GitHuba, uruchomi przygotowane uprzednio skrypty: weryfikację linterów (`make check`) oraz testy integracyjne infrastruktury (`./scripts/test-run.sh --full`).
-- [ ] Dodać zabezpieczenie blokujące połączenie gałęzi (Merge) w przypadku, gdy którykolwiek krok w potoku zakończy się statusem błędu.
+- [X] Utworzyć plik definiujący potok CI (np. `.github/workflows/ci.yml`).
+- [X] Skonfigurować w nim tzw. *Quality Gate*, który automatycznie, na środowisku efemerycznym GitHuba, uruchomi przygotowane uprzednio skrypty: weryfikację linterów (`make check`) oraz testy integracyjne infrastruktury (`./scripts/test-run.sh --full`).
+- [X] Dodać zabezpieczenie blokujące połączenie gałęzi (Merge) w przypadku, gdy którykolwiek krok w potoku zakończy się statusem błędu.
 
 **Komentarz Architekta:**
 Mamy gotowe, perfekcyjnie przetestowane skrypty (Bash/Make). Wpięcie ich w 40-linijkowy plik YAML dla GitHub Actions to teraz czysta formalność, która ostatecznie zamknie temat "Brakującego CI". Należy to zrobić w następnym kroku.
@@ -1744,8 +1744,8 @@ Niespójność nazewnictwa niszczy wiarygodność nawet najlepiej przetestowaneg
 Główny plik wejściowy do projektu (`README.md`) kieruje programistę pod nieistniejące pliki (np. `docs/VISION.md` zamiast `docs/Vision Statement.md`). Z kolei plik `SYSTEM_PROMPT.md` odwołuje się do nieistniejących plików `ADR-017` do `ADR-019`, wprowadzając deweloperów w błąd, że brakuje im wiedzy architektonicznej.
 
 **Action Items (Do wdrożenia PRZEZ CIEBIE w wolnej chwili):**
-- [ ] Skorygować linki w pliku `README.md`, by odpowiadały faktycznym nazwom plików (uwaga na spacje w nazwach w GitHubie - zastąpić `%20` lub zmienić nazwy plików na kebab-case).
-- [ ] Zaktualizować `SYSTEM_PROMPT.md` i listę ADR-ów, usuwając odwołania do pustych numerów (017-019) lub tworząc dla nich fizyczny plik objaśniający (Placeholder).
+- [X] Skorygować linki w pliku `README.md`, by odpowiadały faktycznym nazwom plików (uwaga na spacje w nazwach w GitHubie - zastąpić `%20` lub zmienić nazwy plików na kebab-case).
+- [X] Zaktualizować `SYSTEM_PROMPT.md` i listę ADR-ów, usuwając odwołania do pustych numerów (017-019) lub tworząc dla nich fizyczny plik objaśniający (Placeholder).
 
 **Komentarz Architekta:**
 Klasyczny przypadek "Martwych Linków" (Dead Links). Jest to drobnostka z perspektywy kodu, ale kluczowy błąd z perspektywy pierwszego wrażenia (Developer Experience).

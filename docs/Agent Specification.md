@@ -229,6 +229,17 @@ ARCHITEKTURA
 
 ---
 
+### AGENT-E2E-TESTING — Pisanie testów w Playwright
+
+**Obszar:** `tests/e2e/`, `compose.e2e.yml`  
+**Typ:** kodujący / recenzujący
+
+**Zasady:**
+1. **Wykonanie w Kontenerze:** Testy Playwright uruchamiane są ZAWSZE wewnątrz kontenera Docker (`web-e2e`), a nie na maszynie hosta. Zapewnia to obecność wymaganych przeglądarek (Chromium) w środowisku CI/CD.
+2. **Oderwanie od Danych Referencyjnych (Data Independence):** Kategorycznie zakazuje się pisania asercji sprawdzających istnienie konkretnych, twardych danych z bazy referencyjnej PTTK (np. `expect(page).to_contain_text("Rysy")`), chyba że test ten samodzielnie (i jawnie) ładuje te dane (Fixture). "Smoke Testy" E2E muszą sprawdzać strukturalne elementy UI (np. nagłówki "Katalog Odznak", komunikaty błędów, poprawne przekierowania adresów URL). Gwarantuje to, że testy przejdą niezależnie od tego, czy w środowisku został uruchomiony `restore_reference_data`.
+
+---
+
 ## Instrukcja obowiązkowa przed każdym zadaniem z kodowaniem
 
 Przed wygenerowaniem pierwszego bloku kodu, agent musi odpowiedzieć na 5 pytań w formie listy punktowanej:
@@ -243,12 +254,3 @@ Przed wygenerowaniem pierwszego bloku kodu, agent musi odpowiedzieć na 5 pytań
 ```
 
 ---
-
-## Historia zmian
-
-| Wersja | Data | Autor | Opis zmiany |
-|--------|------|-------|-------------|
-| 1.0 | 2026-05-29 | Dominik / AI Architect | Pierwsza wersja, dostosowana do Faz A/B. |
-| 1.1 | 2026-05-29 | AI Architect | Uzupełniono specyfikację pod Fazę C. |
-| 1.2 | 2026-05-30 | AI Architect | Dodano sekcję AGENT-DJANGO-ADMIN. |
-| 1.3 | 2026-05-31 | AI Architect | Dodano regułę optymalizacyjną dla zapytań GIS (indeksy GiST zamiast dokładnego dystansu) w sekcji AGENT-INFRA-CODE. |

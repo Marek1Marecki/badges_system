@@ -18,11 +18,15 @@
    /______________\
 ```
 
-| Poziom | Cel | Narzędzie | Czas | Uruchamiane |
-|--------|-----|-----------|------|-------------|
-| **Unit** | Czysta logika biznesowa, Wzorzec Strategii (Reguły), Invarianty | `pytest` + `Fake` repozytoria | < 5s | Każdy commit (`make check`) |
-| **Integration** | Adaptery bazodanowe (GeoDjango), weryfikacja zapytań HTTP do OSM | `pytest` + `@pytest.mark.django_db` | < 30s | W CI Pipeline (`make test-all`) |
-| **E2E** | Złożone przepływy GUI turysty | `Playwright` | > 1m | Przed wydaniem (Release) |
+### Zautomatyzowany Potok CI/CD (GitHub Actions)
+
+System wykorzystuje trzystopniowy proces weryfikacji (Gating Pipeline), w którym każdy kolejny etap zależy od pomyślnego przejścia poprzedniego:
+
+| Etap Jobu CI | Cel i Środowisko | Mechanika i Wymogi |
+|--------------|------------------|--------------------|
+| **1. Static & Unit** | Szybka weryfikacja kodu (Lintery, Mypy, Import-Linter) oraz Testów Jednostkowych. | Uruchamiany na gołym hoście Ubuntu. Czysty Python z pakietami w grupie `dev`. **Wymagane pokrycie 80% (`fail-under`).** |
+| **2. Integration**   | Weryfikacja bazy danych, migracji (`release-database.sh`) i adapterów infrastrukturalnych. | Uruchamiany z użyciem `compose.test.yml`. Testy operują na rzeczywistej bazie PostGIS podniesionej przez kontener. |
+| **3. E2E (Playwright)**| Symulacja użytkownika w przeglądarce, weryfikacja routingu, autoryzacji i renderingu HTMX. | Wykorzystuje wydzielony obraz `web-e2e` na porcie 8008. Posiada preinstalowane Chromium. **Wymóg:** Wyłączone zliczanie Coverage. |
 
 ---
 
