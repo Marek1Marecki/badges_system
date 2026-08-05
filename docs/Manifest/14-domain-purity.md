@@ -57,7 +57,7 @@ domain/
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import pandas       # ❌ nadal naruszenie kontraktu
+    import pandas  # ❌ nadal naruszenie kontraktu
     from pydantic import BaseModel  # ❌
 ```
 
@@ -93,6 +93,7 @@ DTO może importować Encję. Encja nie może importować DTO — nigdy.
 from dataclasses import dataclass
 from datetime import datetime
 
+
 @dataclass
 class Meeting:
     id: str
@@ -107,6 +108,7 @@ class Meeting:
 # application/dto/meeting_dtos.py — Pydantic DTO
 from pydantic import BaseModel, field_validator
 from domain.entities.meeting import Meeting  # DTO zna Encję ✓
+
 
 class MeetingInputDTO(BaseModel):
     title: str
@@ -127,6 +129,7 @@ class MeetingInputDTO(BaseModel):
             date=self.date,
             duration_minutes=self.duration_minutes,
         )
+
 
 class MeetingOutputDTO(BaseModel):
     id: str

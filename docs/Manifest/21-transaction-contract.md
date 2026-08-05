@@ -22,6 +22,7 @@ Use case nie wie czy używa Django ORM, SQLAlchemy czy pliku na dysku. Wie tylko
 from typing import Protocol, Self
 from types import TracebackType
 
+
 class UnitOfWorkPort(Protocol):
     def __enter__(self) -> Self: ...
     def __exit__(
@@ -70,6 +71,7 @@ from django.db import transaction as django_transaction
 from application.ports.unit_of_work import UnitOfWorkPort
 from infrastructure.adapters.persistence.meeting_repository import MeetingRepository
 
+
 class DjangoUnitOfWork:
     def __init__(self) -> None:
         self.meetings: MeetingRepository | None = None
@@ -102,6 +104,7 @@ class DjangoUnitOfWork:
 # infrastructure/adapters/persistence/sqlalchemy_uow.py
 from sqlalchemy.orm import Session
 from application.ports.unit_of_work import UnitOfWorkPort
+
 
 class SQLAlchemyUnitOfWork:
     def __init__(self, session_factory) -> None:
@@ -138,6 +141,7 @@ from collections import defaultdict
 from application.ports.unit_of_work import UnitOfWorkPort
 from tests.fakes.meeting_repository import FakeMeetingRepository
 
+
 class FakeUnitOfWork:
     def __init__(self) -> None:
         self.meetings = FakeMeetingRepository()
@@ -168,6 +172,7 @@ def test_commit_called_on_success() -> None:
     use_case.execute(MeetingInputDTO(title="Standup", duration_minutes=15))
     assert uow.committed is True
 
+
 def test_rollback_called_on_domain_error() -> None:
     uow = FakeUnitOfWork()
     use_case = ProcessMeeting(uow=uow, clock=FakeClock(), id_generator=SequentialIdGenerator())
@@ -191,10 +196,11 @@ Operacje zapisu muszą być bezpieczne przy wielokrotnym wywołaniu z tymi samym
 def create_meeting(self, dto: MeetingInputDTO) -> Meeting:
     return Meeting.objects.create(...)  # każde wywołanie tworzy nowy rekord
 
+
 # Nakaz — idempotentna operacja przez get_or_create lub upsert
 def save_meeting(self, meeting: Meeting) -> Meeting:
     obj, created = Meeting.objects.update_or_create(
-        id=meeting.id,                  # klucz idempotentności: ID wstrzyknięte przez use case
+        id=meeting.id,  # klucz idempotentności: ID wstrzyknięte przez use case
         defaults={
             "title": meeting.title,
             "duration_minutes": meeting.duration_minutes,
@@ -218,8 +224,10 @@ Transjentne błędy infrastruktury (timeout bazy, chwilowy brak sieci) powinny b
 import time
 from infrastructure.exceptions import PersistenceError
 
+
 def with_retry(max_attempts: int = 3, backoff_seconds: float = 0.5):
     """Dekorator retry z eksponencjalnym backoff dla operacji infrastrukturalnych."""
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             last_error: Exception | None = None
@@ -229,11 +237,11 @@ def with_retry(max_attempts: int = 3, backoff_seconds: float = 0.5):
                 except PersistenceError as e:
                     last_error = e
                     if attempt < max_attempts - 1:
-                        time.sleep(backoff_seconds * (2 ** attempt))
-            raise PersistenceError(
-                f"Operation failed after {max_attempts} attempts"
-            ) from last_error
+                        time.sleep(backoff_seconds * (2**attempt))
+            raise PersistenceError(f"Operation failed after {max_attempts} attempts") from last_error
+
         return wrapper
+
     return decorator
 
 
@@ -260,6 +268,7 @@ class MeetingService:
         with django.db.transaction.atomic():  # ❌ domena nie zna Django
             meeting = Meeting.objects.create(title=title)
             Notification.objects.create(meeting=meeting)
+
 
 # Nakaz — use case orkiestruje przez UoW Port
 class CreateMeetingAndNotify:

@@ -59,6 +59,7 @@ def _problem_detail(
             "status": status,
             "detail": detail,
             "instance": request.path,
+            "request_id": getattr(request, "request_id", "unknown"),
         },
         status=status,
     )

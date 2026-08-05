@@ -7,7 +7,7 @@
             <h2 class="text-3xl font-bold text-slate-800">Gdzie na weekend?</h2>
             <p class="text-gray-600">Regiony z największym sumarycznym potencjałem punktowym dla Twoich odznak.</p>
         </div>
-        <a href="{% url 'home' %}" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2 px-4 border border-gray-300 rounded shadow-sm transition">
+        <a data-testid="btn-show-map" href="{% url 'home' %}" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2 px-4 border border-gray-300 rounded shadow-sm transition">
             Pokaż na mapie 🗺️
         </a>
     </div>
@@ -15,10 +15,10 @@
     <!-- Zakładki (Tabs) -->
     <div class="border-b border-gray-200 mb-6">
         <nav class="-mb-px flex space-x-8">
-            <a href="{% url 'ranking' %}" class="whitespace-nowrap pb-4 px-1 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+            <a data-testid="tab-single-objects" href="{% url 'ranking' %}" class="whitespace-nowrap pb-4 px-1 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
                 Pojedyncze Obiekty
             </a>
-            <a href="{% url 'region_ranking' %}" class="whitespace-nowrap pb-4 px-1 border-b-2 border-sky-600 font-bold text-sky-600">
+            <a data-testid="tab-cumulative-regions" href="{% url 'region_ranking' %}" class="whitespace-nowrap pb-4 px-1 border-b-2 border-sky-600 font-bold text-sky-600">
                 Skumulowane Regiony
             </a>
         </nav>
@@ -27,7 +27,7 @@
     <!-- Sub-menu poziomów regionalnych (Pills) -->
     <div class="mb-6 flex flex-wrap gap-2">
         {% for level_code, level_name in levels.items %}
-            <a href="?level={{ level_code }}"
+            <a data-testid="region-level-{{ level_code }}" href="?level={{ level_code }}"
                class="px-4 py-2 rounded-full text-sm font-bold transition
                {% if active_level == level_code %}
                    bg-sky-600 text-white shadow-md
@@ -62,7 +62,7 @@
                     </td>
 
                     <td class="px-5 py-4 text-sm font-bold text-gray-800">
-                        <a href="{% url 'region_detail' item.level item.id %}" class="hover:text-sky-600 hover:underline">
+                        <a data-testid="link-region-{{ item.level }}-{{ item.id }}" href="{% url 'region_detail' item.level item.id %}" class="hover:text-sky-600 hover:underline">
                             {{ item.name }}
                         </a>
                     </td>

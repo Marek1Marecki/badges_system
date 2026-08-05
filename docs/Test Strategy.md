@@ -65,8 +65,7 @@ Logika PostGIS oraz widoków Django wymaga podniesienia środowiska.
    ```python
    @pytest.mark.integration
    @pytest.mark.django_db
-   def test_region_cache_populated_after_calculate():
-       ...
+   def test_region_cache_populated_after_calculate(): ...
    ```
 2. **Wymogi Bazy Danych:** Testy integracyjne uruchamiają wbudowany mechanizm bazy testowej Django, jednak z uwagi na rozszerzenia GeoDjango, wymagają działającej instancji PostGIS. Przed ich uruchomieniem należy upewnić się, że kontenery deweloperskie działają (`docker compose -f docker-compose.dev.yml up -d`).
 3. **Filtrowanie w CI i Makefile:** 
@@ -109,6 +108,7 @@ def use_cases():
     }
     with patch("apps.api.views.get_container", return_value=cases):
         yield cases
+
 
 def test_conflict_error_returns_409_rfc7807(factory, mock_user, use_cases):
     use_cases["log_ascent"].execute.side_effect = ConflictError("Duplikat")

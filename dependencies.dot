@@ -122,9 +122,12 @@ digraph G {
     "apps.badges.management.commands.export_reference_data" [fillcolor="pink"];
     "apps.badges.management.commands.lint_migrations" [fillcolor="pink"];
     "apps.badges.management.commands.restore_reference_data" [fillcolor="pink"];
+    "apps.badges.management.commands.validate_reference_manifest" [fillcolor="pink"];
     "apps.badges.migrations" [fillcolor="pink"];
     "apps.badges.migrations.0001_initial" [fillcolor="pink"];
     "apps.badges.models" [fillcolor="pink"];
+    "apps.badges.reference_data" [fillcolor="pink"];
+    "apps.badges.reference_data.constants" [fillcolor="pink"];
     "apps.badges.tasks" [fillcolor="pink"];
     "apps.badges.tests" [fillcolor="pink"];
     "apps.badges.views" [fillcolor="pink"];

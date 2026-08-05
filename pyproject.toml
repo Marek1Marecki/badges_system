@@ -32,6 +32,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "hypothesis>=6.116.0",
     "import-linter>=2.11",
     "mypy>=1.19.1",
     "playwright>=1.62.0",

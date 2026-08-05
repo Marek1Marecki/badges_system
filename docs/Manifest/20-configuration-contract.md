@@ -32,6 +32,7 @@ dependencies = ["pydantic-settings>=2.0.0"]
 # infrastructure/config.py
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class AppSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=_env_file,
@@ -67,8 +68,9 @@ from infrastructure.adapters.clock import SystemClock
 from infrastructure.adapters.uuid_generator import UuidGenerator
 from infrastructure.adapters.persistence.meeting_repository import MeetingRepository
 
+
 def build_container() -> dict:
-    settings = AppSettings()   # jedyne miejsce odczytu env
+    settings = AppSettings()  # jedyne miejsce odczytu env
 
     return {
         "create_meeting": CreateMeeting(
@@ -102,6 +104,7 @@ import os
 
 _env_file = os.getenv("ENV_FILE", ".env")  # jedyne dozwolone os.getenv w config
 
+
 class AppSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=_env_file,
@@ -127,6 +130,7 @@ ENV_FILE=.env.prod make docker-up
 ```python
 # infrastructure/config.py
 from pydantic import field_validator
+
 
 class AppSettings(BaseSettings):
     app_env: str = "development"
@@ -161,7 +165,7 @@ class GenerateReport:
     def __init__(
         self,
         repository: ReportRepositoryPort,
-        export_pdf_enabled: bool = False,   # wstrzykiwana flaga, nie os.getenv
+        export_pdf_enabled: bool = False,  # wstrzykiwana flaga, nie os.getenv
     ) -> None:
         self._repository = repository
         self._export_pdf_enabled = export_pdf_enabled
@@ -199,6 +203,7 @@ FEATURE_EXPORT_PDF=true make run
 import pytest
 from infrastructure.config import AppSettings
 
+
 @pytest.fixture
 def test_settings() -> AppSettings:
     return AppSettings(
@@ -206,7 +211,7 @@ def test_settings() -> AppSettings:
         secret_key="test-secret-key-not-for-production",
         app_env="test",
         debug=False,
-        feature_new_dashboard=True,   # włącz flagę dla testów
+        feature_new_dashboard=True,  # włącz flagę dla testów
     )
 ```
 
@@ -237,17 +242,22 @@ grep -r "os.getenv\|os.environ" domain/ application/
 ```python
 # Zakaz w domain/ i application/:
 import os
+
+
 class MeetingService:
     max_duration = int(os.getenv("MAX_DURATION", "60"))  # ❌
 
+
 # Zakaz — settings jako singleton globalny importowany wszędzie:
-from infrastructure.config import settings   # ❌ w domain/ i application/
-settings.database_url                        # domena nie zna konfiguracji
+from infrastructure.config import settings  # ❌ w domain/ i application/
+
+settings.database_url  # domena nie zna konfiguracji
+
 
 # Nakaz — wstrzykiwanie konkretnych wartości:
 class MeetingService:
     def __init__(self, max_duration: int) -> None:
-        self._max_duration = max_duration   # ✓
+        self._max_duration = max_duration  # ✓
 ```
 
 ---

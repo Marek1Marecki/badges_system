@@ -28,7 +28,7 @@
         <div class="p-6 space-y-6">
             <!-- Akcja (Zaloguj wejście) -->
             <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center shadow-sm">
-                <button hx-post="/api/v1/ascents/"
+                <button data-testid="btn-log-ascent" hx-post="/api/v1/ascents/"
                         hx-ext="json-enc"
                         hx-vals='{"peak_id": {{ obj.id }}, "ascent_date": "{% now "Y-m-d" %}"}'
                         hx-swap="none"
@@ -130,7 +130,7 @@
 </div>
 
 <!-- Kontener na błędy (np. Data z Przyszłości) -->
-<div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+<div id="toast-container" data-testid="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {

@@ -50,10 +50,10 @@ DataFrame nigdy nie wchodzi do `domain/`. Musi zostać przekształcony do:
 ```python
 # Zakaz:
 df["systolic"] = df["systolic"].fillna(0)  # maskuje błąd danych
-df = df.dropna()                            # cicha korekta
+df = df.dropna()  # cicha korekta
 
 # Nakaz:
-MeasurementsSchema.validate(df)             # błąd → wyjątek → zatrzymanie
+MeasurementsSchema.validate(df)  # błąd → wyjątek → zatrzymanie
 ```
 
 Brak danych lub błędny typ → wyjątek z precyzyjnym wskazaniem wiersza i kolumny.
@@ -82,6 +82,7 @@ Każdy schemat Pandera musi definiować dla każdej kolumny:
 import pandera as pa
 from pandera.typing import DataFrame, Series
 
+
 class MeasurementsSchema(pa.DataFrameModel):
     date: Series[pa.DateTime] = pa.Field(nullable=False)
     systolic: Series[int] = pa.Field(nullable=False, ge=60, le=250)
@@ -94,7 +95,7 @@ class MeasurementsSchema(pa.DataFrameModel):
 
     class Config:
         coerce = False  # Zakaz cichego rzutowania typów
-        strict = True   # Zakaz nieznanych kolumn
+        strict = True  # Zakaz nieznanych kolumn
 ```
 
 ### Mapowanie DataFrame → DTO w `application/`
@@ -140,27 +141,33 @@ from infrastructure.adapters.persistence.measurements_schema import Measurements
 
 fake = Faker()
 
+
 def make_valid_df(n: int = 5) -> pd.DataFrame:
     rows = []
     for _ in range(n):
         dia = fake.random_int(min=60, max=110)
         sys = dia + fake.random_int(min=10, max=50)
-        rows.append({
-            "date": fake.date_time_this_year(),
-            "systolic": sys,
-            "diastolic": dia,
-            "pulse": fake.random_int(min=50, max=100),
-        })
+        rows.append(
+            {
+                "date": fake.date_time_this_year(),
+                "systolic": sys,
+                "diastolic": dia,
+                "pulse": fake.random_int(min=50, max=100),
+            }
+        )
     return pd.DataFrame(rows)
+
 
 def test_valid_dataframe_passes():
     MeasurementsSchema.validate(make_valid_df())
+
 
 def test_invalid_type_raises():
     df = make_valid_df()
     df["systolic"] = "not_a_number"
     with pytest.raises(Exception):
         MeasurementsSchema.validate(df)
+
 
 def test_out_of_range_raises():
     df = make_valid_df()

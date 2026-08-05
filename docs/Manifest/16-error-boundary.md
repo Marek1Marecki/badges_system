@@ -44,11 +44,14 @@ Rzuca tylko `DomainException` i podklasy. Nigdy nie łapie wyjątków infrastruk
 class DomainException(Exception):
     """Bazowy wyjątek domenowy."""
 
+
 class ValidationError(DomainException):
     """Naruszenie reguły biznesowej."""
 
+
 class NotFoundError(DomainException):
     """Encja nie istnieje."""
+
 
 class ConflictError(DomainException):
     """Naruszenie niezmiennika domenowego."""
@@ -152,6 +155,7 @@ from loguru import logger
 from infrastructure.logging import configure_logging
 from bootstrap import build_container
 
+
 def main() -> None:
     configure_logging(json_mode=True)
     container = build_container()
@@ -165,6 +169,7 @@ def main() -> None:
         logger.exception("Unhandled exception — application shutting down")
         sys.exit(1)
 
+
 if __name__ == "__main__":
     main()
 ```
@@ -177,6 +182,7 @@ from loguru import logger
 if __name__ == "__main__":
     try:
         from django.core.management import execute_from_command_line
+
         execute_from_command_line(sys.argv)
     except Exception:
         logger.exception("Unhandled exception in management command")

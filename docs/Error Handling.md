@@ -103,14 +103,17 @@ class RFC7807ErrorMiddleware:
     def process_exception(self, request, exception: Exception):
         # Wyjątki domenowe (4xx) są łapane w widokach. Jeśli kod tu dotarł = Twardy Pad Aplikacji (500)
         logger.exception("Nieobsłużony błąd serwera podczas przetwarzania żądania HTTP.")
-        return JsonResponse({
-            "type": "https://api.pttk-badges.pl/errors/internal-error",
-            "title": "Wewnętrzny Błąd Serwera",
-            "status": 500,
-            "detail": "Wystąpił nieoczekiwany problem z przetworzeniem zapytania.",
-            "instance": request.path,
-            "request_id": getattr(request, "request_id", "unknown"),
-        }, status=500)
+        return JsonResponse(
+            {
+                "type": "https://api.pttk-badges.pl/errors/internal-error",
+                "title": "Wewnętrzny Błąd Serwera",
+                "status": 500,
+                "detail": "Wystąpił nieoczekiwany problem z przetworzeniem zapytania.",
+                "instance": request.path,
+                "request_id": getattr(request, "request_id", "unknown"),
+            },
+            status=500,
+        )
 ```        
 
 *(Middleware należy dodać do `settings.py` na początku listy `MIDDLEWARE`).*

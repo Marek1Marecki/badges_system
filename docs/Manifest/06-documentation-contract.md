@@ -114,8 +114,8 @@ uv add --group dev sphinx sphinx-rtd-theme sphinx-autodoc-typehints
 ```python
 extensions = [
     "sphinx.ext.autodoc",
-    "sphinx.ext.napoleon",   # obsługa Google Style
-    "sphinx.ext.viewcode",   # linki do kodu źródłowego
+    "sphinx.ext.napoleon",  # obsługa Google Style
+    "sphinx.ext.viewcode",  # linki do kodu źródłowego
 ]
 autodoc_default_options = {
     "members": True,

@@ -22,11 +22,9 @@ SNAPSHOT_ID="${1:?Użycie: release-reference-data.sh <snapshot_id>}"
 echo "=== REFERENCE DATA RELEASE (snapshot: ${SNAPSHOT_ID}) ==="
 
 echo "[1/3] Walidacja manifestu (checksum + compatible_schema)..."
-# uv run --no-sync python manage.py validate_reference_manifest --snapshot="${SNAPSHOT_ID}"
-# python manage.py validate_reference_manifest --snapshot="${SNAPSHOT_ID}" # TODO: Wdrożyć w kodzie (Znana luka)
+python manage.py validate_reference_manifest --snapshot="${SNAPSHOT_ID}"
 
 echo "[2/3] Odtwarzanie danych referencyjnych (operacja idempotentna)..."
-# uv run --no-sync python manage.py restore_reference_data --snapshot="${SNAPSHOT_ID}"
 python manage.py restore_reference_data --snapshot="${SNAPSHOT_ID}"
 
 echo "[3/3] Przeliczanie powiązań przestrzennych (sąsiedzi geograficzni)..."

@@ -36,7 +36,7 @@
                     <span class="text-teal-600 mt-0.5">⬆️</span>
                     <div>
                         <span class="text-xs text-teal-600 uppercase block leading-none">Należy do ({{ parent_level|slice:":3" }}):</span>
-                        <a href="{% url 'region_detail' parent_level parent_region.id %}" class="font-bold text-teal-800 hover:underline">
+                        <a data-testid="link-parent-region" href="{% url 'region_detail' parent_level parent_region.id %}" class="font-bold text-teal-800 hover:underline">
                             {{ parent_region.name }}
                         </a>
                     </div>
@@ -51,7 +51,7 @@
                         <span class="text-xs text-teal-600 uppercase block leading-none">Składa się z ({{ children_level|slice:":3" }}):</span>
                         <div class="flex flex-wrap gap-1 mt-1">
                             {% for child in children_regions %}
-                            <a href="{% url 'region_detail' children_level child.id %}" class="inline-block bg-white border border-teal-200 text-teal-700 px-2 py-0.5 rounded text-xs hover:bg-teal-600 hover:text-white transition">
+                            <a data-testid="link-child-region-{{ child.id }}" href="{% url 'region_detail' children_level child.id %}" class="inline-block bg-white border border-teal-200 text-teal-700 px-2 py-0.5 rounded text-xs hover:bg-teal-600 hover:text-white transition">
                                 {{ child.name }}
                             </a>
                             {% endfor %}
@@ -68,7 +68,7 @@
                         <span class="text-xs text-teal-600 uppercase block leading-none">Graniczy z (Sąsiedzi):</span>
                         <div class="flex flex-wrap gap-1 mt-1">
                             {% for neighbor in neighbors %}
-                            <a href="{% url 'region_detail' region_level neighbor.id %}" class="inline-block bg-white border border-teal-200 text-teal-700 px-2 py-0.5 rounded text-xs hover:bg-teal-600 hover:text-white transition shadow-sm">
+                            <a data-testid="link-neighbor-region-{{ neighbor.id }}" href="{% url 'region_detail' region_level neighbor.id %}" class="inline-block bg-white border border-teal-200 text-teal-700 px-2 py-0.5 rounded text-xs hover:bg-teal-600 hover:text-white transition shadow-sm">
                                 {{ neighbor.name }}
                             </a>
                             {% endfor %}
@@ -94,7 +94,7 @@
                             </span>
                         </td>
                         <td class="px-5 py-3 text-sm font-bold text-gray-800">
-                            <a href="{% url 'object_detail' item.id %}" class="hover:text-teal-600 hover:underline">{{ item.name }}</a>
+                            <a data-testid="link-region-object-{{ item.id }}" href="{% url 'object_detail' item.id %}" class="hover:text-teal-600 hover:underline">{{ item.name }}</a>
                         </td>
                         <td class="px-5 py-3 text-sm">
                             {% if item.color == 'RED' %}<span class="text-red-600 font-bold text-xs">Idź!</span>
@@ -124,7 +124,7 @@
 </div>
 
 <!-- Kontener na toasty błędów z HTMX (używane w popupach mapy) -->
-<div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+<div id="toast-container" data-testid="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
 <script type="module" src="{% static 'js/map/main.js' %}"></script>
 

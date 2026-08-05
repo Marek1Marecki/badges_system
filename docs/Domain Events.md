@@ -37,7 +37,7 @@ W obecnej fazie (Faza A/B), polecenia wysyłane do kolejki Redis muszą być pro
     "task_name": "fetch_osm_data_task",
     "args": [],
     "kwargs": {"object_id": int},  # JEDYNY PAYLOAD — ID encji
-    "eta": None,                   # null = natychmiastowe
+    "eta": None,  # null = natychmiastowe
 }
 ```
 

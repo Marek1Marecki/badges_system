@@ -1,6 +1,7 @@
 {
     "snapshot_version": "2026-07-11T22:03:30.929364+00:00",
     "description": "Pe\u0142ny, sp\u00f3jny Snapshot Systemu Referencyjnego PTTK",
+    "compatible_schema": "1.0",
     "files": [
         "01_regions.json.gz",
         "02_tourist_objects.json.gz",
@@ -8,6 +9,13 @@
         "04_osm_mappings.json.gz",
         "05_badge_news.json.gz"
     ],
+    "checksums": {
+        "01_regions.json.gz": "d3712a08265f8298a1517db718e275efb50a9e5b3f45ca30e6cb34f409f5da3e",
+        "02_tourist_objects.json.gz": "c923e97b7e84cbf0435cedb4570896b8c5034668fc549e689e4b817b8721991e",
+        "03_badges.json.gz": "0d8245e659cbf8d6d94dc6f171915fb3db5cf292051728208d316b8a893baa9f",
+        "04_osm_mappings.json.gz": "0acec14d115b60253e3cb9691ab4b4d70839cad611f25b6d1b3eebee74d46d5a",
+        "05_badge_news.json.gz": "bca725566b64a87903061e45b64cd4f9e993db6be5d177a78906216716adac11"
+    },
     "statistics": {
         "regions": 695,
         "tourist_objects": 1163,

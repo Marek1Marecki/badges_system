@@ -8,7 +8,7 @@ MIN_COVERAGE ?= 80
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e
 
 help:
 	@echo "CORE targets:"
@@ -92,6 +92,9 @@ dev-restore: ## Odtworzenie backupu: make dev-restore FILE=./backups/nazwa.dump
 
 test-run:    ## Środowisko TEST — szybkie testy jednostkowe (efemeryczne, sprząta po sobie)
 	./scripts/test-run.sh
+
+e2e:         ## Środowisko E2E — testy Playwright (efemeryczne, sprząta po sobie)
+	./scripts/e2e-run.sh
 
 verify:      ## Pełna weryfikacja przed push/PR: make check + TEST (release scripts + pełny suite)
 	./scripts/verify.sh

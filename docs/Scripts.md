@@ -66,9 +66,11 @@ Te skrypty są integralną częścią potoku CI (Continuous Integration). Urucha
 1. **Inicjalizacja Django:** Każdy nowy skrypt w tym katalogu, który musi odpytać bazę danych lub użyć logiki aplikacji, musi bezwzględnie posiadać na początku (przed jakimikolwiek importami z `apps/` lub `domain/`) sekwencję inicjalizującą:
    ```python
    import os, sys
+
    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
    import django
+
    django.setup()
    ```
 2. **Kapsułkowanie importów (Ruff E402):** Aby nie łamać zasad lintera (importy na poziomie modułu po wywołaniu funkcji), wszystkie importy z naszego systemu (np. `from apps.badges.models import...`) muszą znajdować się **wewnątrz głównej funkcji skryptu** (np. `def generate_report():`).

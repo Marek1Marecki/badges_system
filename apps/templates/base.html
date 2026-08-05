@@ -55,10 +55,10 @@
             <h1 class="text-xl font-bold tracking-wide">⛰️ PTTK Badges</h1>
             <!-- Główne Menu -->
             <div class="hidden md:flex gap-4 ml-4">
-                <a href="{% url 'home' %}" class="hover:text-sky-300 font-medium transition">Pulpit Mapy</a>
-                <a href="{% url 'ranking' %}" class="hover:text-sky-300 font-medium transition">Ranking Celów</a>
-                <a href="{% url 'catalog' %}" class="hover:text-sky-300 font-medium transition">Katalog Odznak</a>
-                <a href="{% url 'logistics' %}" class="hover:text-sky-300 font-bold transition flex items-center gap-1">
+                <a href="{% url 'home' %}" data-testid="nav-dashboard" class="hover:text-sky-300 font-medium transition">Pulpit Mapy</a>
+                <a href="{% url 'ranking' %}" data-testid="nav-ranking" class="hover:text-sky-300 font-medium transition">Ranking Celów</a>
+                <a href="{% url 'catalog' %}" data-testid="nav-catalog" class="hover:text-sky-300 font-medium transition">Katalog Odznak</a>
+                <a href="{% url 'logistics' %}" data-testid="nav-logistics" class="hover:text-sky-300 font-bold transition flex items-center gap-1">
                     📦 Moja Logistyka
                 </a>
             </div>
@@ -67,7 +67,7 @@
             {% if request.user.is_authenticated %}
                 <!-- DROPDOWN Z PROFILAMI (Konto Rodzinne) -->
                 <div class="relative group">
-                    <button class="font-medium text-sky-200 hover:text-white transition flex items-center gap-1 focus:outline-none py-2">
+                    <button data-testid="btn-profile-dropdown" class="font-medium text-sky-200 hover:text-white transition flex items-center gap-1 focus:outline-none py-2">
                         Witaj, {{ active_profile.nickname|default:request.user.email }}! <span class="text-[10px]">▼</span>
                     </button>
 
@@ -79,24 +79,24 @@
 
                         <div class="max-h-60 overflow-y-auto">
                             {% for p in user_profiles %}
-                            <a href="{% url 'switch_profile' p.id %}" class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-sky-50 transition border-b border-gray-100 {% if p.id == active_profile.id %}bg-sky-50 font-bold border-l-4 border-l-sky-500{% else %}border-l-4 border-l-transparent{% endif %}">
+                            <a href="{% url 'switch_profile' p.id %}" data-testid="profile-switch-{{ p.id }}" class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-sky-50 transition border-b border-gray-100 {% if p.id == active_profile.id %}bg-sky-50 font-bold border-l-4 border-l-sky-500{% else %}border-l-4 border-l-transparent{% endif %}">
                                 <span class="mr-1">{% if p.is_main_profile %}👑{% else %}👤{% endif %}</span> {{ p.nickname }}
                             </a>
                             {% endfor %}
                         </div>
 
-                        <a href="{% url 'profile' %}" class="block px-4 py-3 text-sm text-sky-700 font-bold hover:bg-sky-100 transition bg-slate-50">
+                        <a href="{% url 'profile' %}" data-testid="nav-profile-settings" class="block px-4 py-3 text-sm text-sky-700 font-bold hover:bg-sky-100 transition bg-slate-50">
                             ⚙️ Ustawienia Profili
                         </a>
                     </div>
                 </div>
 
-                <a href="{% url 'account_logout' %}" class="bg-sky-800 hover:bg-sky-700 px-3 py-1 rounded text-sm transition shadow-sm ml-2">Wyloguj</a>
+                <a href="{% url 'account_logout' %}" data-testid="btn-logout" class="bg-sky-800 hover:bg-sky-700 px-3 py-1 rounded text-sm transition shadow-sm ml-2">Wyloguj</a>
             {% else %}
                 <!-- PRZYCISK LOGOWANIA (Zabezpieczony formularz) -->
                 <form action="{% provider_login_url 'google' %}" method="post" class="m-0">
                     {% csrf_token %}
-                    <button type="submit" class="bg-white text-sky-900 font-bold px-4 py-2 rounded shadow hover:bg-sky-100 transition flex items-center gap-2 text-sm">
+                    <button data-testid="btn-login-google" type="submit" class="bg-white text-sky-900 font-bold px-4 py-2 rounded shadow hover:bg-sky-100 transition flex items-center gap-2 text-sm">
                         <svg class="w-4 h-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>

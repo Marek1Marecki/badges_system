@@ -101,6 +101,7 @@ def test_task_title_cannot_be_empty() -> None:
     with pytest.raises(ValidationError):
         Task(title="")
 
+
 # Test integracyjny — dotyka DB
 @pytest.mark.integration
 def test_task_save_to_db(db) -> None:
@@ -280,8 +281,8 @@ VCR nagrywa odpowiedź HTTP przy pierwszym uruchomieniu (`cassette`), przy kolej
 ```python
 @vcr.use_cassette(
     "tests/cassettes/google_sheets.yaml",
-    filter_headers=["authorization"],           # usuń nagłówki auth z cassette
-    filter_query_parameters=["key", "token"],   # usuń tokeny z URL
+    filter_headers=["authorization"],  # usuń nagłówki auth z cassette
+    filter_query_parameters=["key", "token"],  # usuń tokeny z URL
 )
 def test_fetch_returns_valid_schema():
     adapter = GoogleSheetsAdapter()

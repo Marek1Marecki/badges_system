@@ -26,8 +26,9 @@ import ast
 import pathlib
 import re
 import sys
-import tomllib
 from dataclasses import dataclass, field
+
+import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 

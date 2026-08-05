@@ -1,15 +1,18 @@
 import os
 import subprocess
+from pathlib import Path
 
 import pytest
 from playwright.sync_api import BrowserContext, Page
 
-BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:8008")
+BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:8009")
 
 
 def get_session_cookie(username: str) -> str:
     cmd = ["python", "manage.py", "create_test_session", username]
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True, cwd="/app")
+    result = subprocess.run(  # noqa: S603
+        cmd, capture_output=True, text=True, check=True, cwd=str(Path(__file__).resolve().parent.parent.parent)
+    )
     return result.stdout.strip().split("\n")[-1]
 
 

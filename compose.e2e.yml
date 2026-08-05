@@ -9,7 +9,7 @@ services:
       - ENV_FILE=.env.test
       - APP_ENV=test
       - DEBUG=False
-      - E2E_BASE_URL=http://localhost:8008
+      - E2E_BASE_URL=http://localhost:8009
       - POSTGRES_HOST=db
       - POSTGRES_PORT=5432
       - POSTGRES_USER=${POSTGRES_USER:?Ustaw POSTGRES_USER w .env}
@@ -20,9 +20,9 @@ services:
       - GOOGLE_OAUTH_CLIENT_ID=mock-client-id
       - GOOGLE_OAUTH_CLIENT_SECRET=mock-client-secret
       - MAPY_CZ_API_KEY=mock-api-key
-    command: python manage.py runserver 0.0.0.0:8008
+    command: python manage.py runserver 0.0.0.0:8009
     ports:
-      - "8008:8008"
+      - "8009:8009"
     depends_on:
       db:
         condition: service_healthy

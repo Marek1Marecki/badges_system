@@ -103,7 +103,7 @@ for prog in UserBadgeProgress.objects.all():
     print(f"Profile ID: {prog.profile_id} subskrybuje: {prog.badge.code}")
 
 print("\n--- CO SIEDZI W CACHE REDIS? ---")
-for u_id in get_user_model().objects.values_list('id', flat=True):
+for u_id in get_user_model().objects.values_list("id", flat=True):
     data = cache.get(f"map_state:{u_id}")
     print(f"User/Profile {u_id}: {'TAK (Liczba kluczy: ' + str(len(data.get('colors', {}))) + ')' if data else 'BRAK'}")
 ```

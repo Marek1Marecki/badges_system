@@ -36,7 +36,7 @@ echo "[1/4] Migracje bazy danych..."
 python manage.py migrate --noinput
 
 echo "[2/4] Walidacja i wgrywanie Danych Referencyjnych..."
-# python manage.py validate_reference_manifest --snapshot="${SNAPSHOT_ID}" # TODO: wdrożyć w kodzie (znana luka)
+python manage.py validate_reference_manifest --snapshot="${SNAPSHOT_ID}"
 python manage.py restore_reference_data ${FORCE_FLAG}
 
 echo "[3/4] Przeliczanie sąsiadów geograficznych..."

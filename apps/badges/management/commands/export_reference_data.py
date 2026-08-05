@@ -1,12 +1,14 @@
 """Tworzy Snapshot (zrzut) danych referencyjnych z bazy do zarchiwizowanych plików."""
 
 import gzip
+import hashlib
 import json
 import os
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
+from badges.reference_data.constants import REFERENCE_DATA_SCHEMA_VERSION
 from django.apps import apps
 from django.conf import settings
 from django.core.management import call_command
@@ -31,6 +33,14 @@ class Command(BaseCommand):
                 shutil.copyfileobj(f_in, f_out)
         os.remove(file_path)
         return gz_path
+
+    @staticmethod
+    def _sha256(file_path: Path) -> str:
+        h = hashlib.sha256()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
+                h.update(chunk)
+        return h.hexdigest()
 
     def _get_model_count(self, app_label: str, model_name: str) -> int:
         """Pobiera ilość rekordów w tabeli."""
@@ -126,10 +136,17 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"✅ Archiwum Aktualności -> {gz_news.name}"))
 
         # --- GENEROWANIE MANIFESTU ---
+        gz_files = [gz_regions.name, gz_objects.name, gz_badges.name, gz_mappings.name, gz_news.name]
+        checksums = {name: self._sha256(output_dir / name) for name in gz_files}
+
+        snapshot_version = datetime.now(UTC).strftime("%Y-%m-%d")  # noqa: TID251
+
         manifest_data = {
-            "snapshot_version": datetime.now(UTC).isoformat(),  # noqa: TID251
+            "snapshot_version": snapshot_version,
             "description": "Pełny, spójny Snapshot Systemu Referencyjnego PTTK",
-            "files": [gz_regions.name, gz_objects.name, gz_badges.name, gz_mappings.name, gz_news.name],
+            "compatible_schema": REFERENCE_DATA_SCHEMA_VERSION,
+            "files": gz_files,
+            "checksums": checksums,
             "statistics": stats,
         }
 

@@ -34,7 +34,8 @@ Kod który zależy od czasu, losowości lub środowiska jest kodem który nie je
 class Meeting:
     def __init__(self) -> None:
         self.created_at = datetime.now()  # niedeterministyczne
-        self.id = str(uuid.uuid4())       # niedeterministyczne
+        self.id = str(uuid.uuid4())  # niedeterministyczne
+
 
 # Nakaz — wstrzykiwanie przez konstruktor:
 @dataclass
@@ -55,8 +56,10 @@ Use case otrzymuje dostawcę czasu i generatora ID przez dependency injection:
 from typing import Protocol
 from datetime import datetime
 
+
 class ClockPort(Protocol):
     def now(self) -> datetime: ...
+
 
 class IdGeneratorPort(Protocol):
     def generate(self) -> str: ...
@@ -76,8 +79,8 @@ class CreateMeeting:
 
     def execute(self, dto: MeetingInputDTO) -> MeetingOutputDTO:
         meeting = Meeting(
-            id=self.id_generator.generate(),   # wstrzykiwane
-            created_at=self.clock.now(),       # wstrzykiwane
+            id=self.id_generator.generate(),  # wstrzykiwane
+            created_at=self.clock.now(),  # wstrzykiwane
             title=dto.title,
             duration_minutes=dto.duration_minutes,
         )
@@ -90,13 +93,16 @@ class CreateMeeting:
 # infrastructure/adapters/clock.py
 from datetime import datetime, timezone
 
+
 class SystemClock:
     def now(self) -> datetime:
         return datetime.now(tz=timezone.utc)
 
+
 class UuidGenerator:
     def generate(self) -> str:
         import uuid
+
         return str(uuid.uuid4())
 ```
 
@@ -106,12 +112,14 @@ class UuidGenerator:
 # tests/fakes/clock.py
 from datetime import datetime, timezone
 
+
 class FakeClock:
     def __init__(self, fixed_time: datetime | None = None) -> None:
         self._time = fixed_time or datetime(2026, 1, 1, tzinfo=timezone.utc)
 
     def now(self) -> datetime:
         return self._time
+
 
 class SequentialIdGenerator:
     def __init__(self) -> None:
@@ -150,12 +158,14 @@ class MeetingService:
     def __init__(self) -> None:
         self.max_duration = int(os.getenv("MAX_MEETING_DURATION", "120"))
 
+
 # Nakaz — AppSettings w bootstrap, wstrzykiwanie konkretnych wartości:
 # bootstrap.py
 from infrastructure.config import AppSettings
 
+
 def build_container() -> dict:
-    settings = AppSettings()   # jedyne miejsce odczytu env
+    settings = AppSettings()  # jedyne miejsce odczytu env
     return {
         "create_meeting": CreateMeeting(
             repository=MeetingRepositoryAdapter(),

@@ -30,7 +30,7 @@
                 <!-- STAN 1: Nie subskrybuje -->
                 <div class="bg-gray-50 border border-gray-200 p-6 rounded-lg text-center">
                     <h3 class="font-bold text-lg mb-2">Nie zdobywasz tej odznaki</h3>
-                    <button hx-post="/api/v1/badges/{{ badge.code }}/subscribe/"
+                    <button data-testid="btn-start-badge" hx-post="/api/v1/badges/{{ badge.code }}/subscribe/"
                             hx-swap="none"
                             hx-on::after-request="if(event.detail.successful) location.reload();"
                             class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded shadow transition">
@@ -41,7 +41,7 @@
                 <!-- Przycisk ucieczki na górze detali -->
                 {% if progress.domain_status != 'COMPLETED' %}
                 <div class="flex justify-end mb-4">
-                    <button hx-delete="/api/v1/badges/{{ badge.code }}/subscribe/"
+                    <button data-testid="btn-unsubscribe-badge" hx-delete="/api/v1/badges/{{ badge.code }}/subscribe/"
                             hx-swap="none" hx-confirm="Opuścić odznakę?" hx-on::after-request="if(event.detail.successful) window.location.href='{% url 'catalog' %}';"
                             class="text-xs text-red-500 hover:text-red-700 hover:underline flex items-center gap-1">
                         🗑️ Zrezygnuj
@@ -49,10 +49,10 @@
                 </div>
                 {% endif %}
                 <!-- STAN 2: Subskrybuje -->
-                <div class="flex justify-between items-center border-b pb-2">
+                <div data-testid="badge-progress-section" class="flex justify-between items-center border-b pb-2">
                     <h3 class="text-xl font-bold text-slate-800">Twój Postęp (Cykl {{ progress.cycle_number }})</h3>
                     <span class="font-mono text-sm px-2 py-1 rounded bg-sky-100 text-sky-800 font-bold">
-                        {% if evaluation %}{{ evaluation.valid_ascents_count }} / {{ evaluation.required_count|default:"Wszystkie" }}{% else %}Oczekuje...{% endif %}
+                        {% if evaluation %}<span data-testid="progress-text">{{ evaluation.valid_ascents_count }} / {{ evaluation.required_count|default:"Wszystkie" }}</span>{% else %}Oczekuje...{% endif %}
                     </span>
                 </div>
 
@@ -76,7 +76,7 @@
                                 <div class="flex-1">
                                     <div class="flex justify-between text-sm mb-1">
                                         <span class="font-bold text-gray-700">{{ tier.name }}</span>
-                                        <span class="{% if tier.status == 'COMPLETED' %}text-green-600 font-bold{% else %}text-gray-500{% endif %}">
+                                        <span data-testid="progress-status" class="{% if tier.status == 'COMPLETED' %}text-green-600 font-bold{% else %}text-gray-500{% endif %}">
                                             {% if tier.status == 'COMPLETED' %}ZDOBYTE!{% else %}Wymaga {{ tier.required_count }} wejść{% endif %}
                                         </span>
                                     </div>
@@ -95,7 +95,7 @@
 
                 <!-- OSOBISTY KANBAN (Logistyka) -> Wyświetlane TYLKO gdy matematyka = COMPLETED -->
                 {% if evaluation and evaluation.verified %}
-                    <div class="mt-6 bg-green-50 border border-green-200 p-5 rounded-xl shadow-inner text-center">
+                    <div data-testid="logistics-panel" class="mt-6 bg-green-50 border border-green-200 p-5 rounded-xl shadow-inner text-center">
                         <h3 class="font-bold text-green-900 text-lg mb-2">🎉 Zdobyleś wszystkie szczyty!</h3>
                         <p class="text-sm text-green-800 mb-4">
                             Aktualny status logistyczny: <br>
@@ -104,7 +104,7 @@
                             </span>
                         </p>
 
-                        <a href="{% url 'logistics' %}" class="inline-block bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-6 rounded-lg transition shadow-md w-full">
+                        <a data-testid="btn-manage-logistics" href="{% url 'logistics' %}" class="inline-block bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-6 rounded-lg transition shadow-md w-full">
                             📦 Zarządzaj w Osobistej Logistyce
                         </a>
                     </div>
@@ -118,7 +118,7 @@
                 {% if objects_list %}
                     <div class="space-y-2">
                         {% for obj in objects_list %}
-                            <div class="flex justify-between items-center bg-gray-50 hover:bg-sky-50 transition p-3 rounded-lg border border-gray-200">
+                            <div data-testid="object-list-item-{{ obj.id }}" class="flex justify-between items-center bg-gray-50 hover:bg-sky-50 transition p-3 rounded-lg border border-gray-200">
                                 <a href="{% url 'object_detail' obj.id %}" class="font-bold text-sky-700 hover:text-sky-900 hover:underline truncate mr-2">
                                     {{ obj.name }} {% if obj.altitude %}<span class="text-xs text-gray-500 font-normal">({{ obj.altitude }}m)</span>{% endif %}
                                 </a>
@@ -190,7 +190,7 @@
 </div>
 
 <!-- Kontener na błędy HTMX -->
-<div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+<div id="toast-container" data-testid="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
 <script type="module" src="{% static 'js/map/main.js' %}"></script>
 

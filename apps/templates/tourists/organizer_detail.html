@@ -14,7 +14,7 @@
                     <p><strong>📍 Kontakt:</strong> <span class="whitespace-pre-line">{{ organizer.contact_info }}</span></p>
                 {% endif %}
                 {% if organizer.club_rules_link %}
-                    <p><strong>📜 Regulamin klubu:</strong> <a href="{{ organizer.club_rules_link }}" target="_blank" class="text-sky-600 hover:underline">Otwórz na nowej karcie ↗</a></p>
+                    <p><strong>📜 Regulamin klubu:</strong>                         <a data-testid="link-club-rules" href="{{ organizer.club_rules_link }}" target="_blank" class="text-sky-600 hover:underline">Otwórz na nowej karcie ↗</a></p>
                 {% endif %}
                 {% if not organizer.has_publication_consent %}
                     <p class="text-xs text-amber-600 bg-amber-50 inline-block px-2 py-1 rounded border border-amber-200 mt-2">
@@ -33,7 +33,7 @@
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col hover:shadow-md transition">
             <div class="p-5 flex-1">
                 <h3 class="text-lg font-bold text-sky-900 leading-tight mb-2">
-                    <a href="{% url 'badge_detail' badge.code %}" class="hover:underline">{{ badge.name }}</a>
+                    <a data-testid="link-badge-detail-{{ badge.code }}" href="{% url 'badge_detail' badge.code %}" class="hover:underline">{{ badge.name }}</a>
                 </h3>
                 <p class="text-xs text-gray-500 font-mono mb-4">KOD: {{ badge.code }}</p>
 
@@ -46,11 +46,11 @@
 
             <div class="p-5 pt-0 mt-auto">
                 {% if badge.id in subscribed_ids %}
-                    <a href="{% url 'badge_detail' badge.code %}" class="block text-center w-full bg-sky-100 text-sky-800 hover:bg-sky-200 border border-sky-300 font-medium py-2 rounded transition">
+                    <a data-testid="link-badge-progress-{{ badge.code }}" href="{% url 'badge_detail' badge.code %}" class="block text-center w-full bg-sky-100 text-sky-800 hover:bg-sky-200 border border-sky-300 font-medium py-2 rounded transition">
                         Przejdź do Twojego Postępu
                     </a>
                 {% else %}
-                    <button hx-post="/api/v1/badges/{{ badge.code }}/subscribe/"
+                    <button data-testid="btn-subscribe-{{ badge.code }}" hx-post="/api/v1/badges/{{ badge.code }}/subscribe/"
                             hx-swap="none"
                             hx-on::after-request="if(event.detail.successful) location.reload();"
                             class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded transition shadow-sm">
@@ -68,7 +68,7 @@
 </div>
 
 <!-- Kontener na błędy HTMX -->
-<div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+<div id="toast-container" data-testid="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 <script>
 document.body.addEventListener('htmx:responseError', function(evt) {
     const errorData = JSON.parse(evt.detail.xhr.response);

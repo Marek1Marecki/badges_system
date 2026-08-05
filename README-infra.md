@@ -454,27 +454,11 @@ echo "include Makefile.dev-snippet.mk" >> Makefile
 Poniższe elementy są zakładane przez skrypty i pliki compose, ale ich
 implementacja leży po stronie kodu Django, nie infrastruktury:
 
-- **[BLOKUJĄCE] Widok `/health/`** zwracający `200 OK` bez wymogu
-  uwierzytelnienia (`ALLOWED_HOSTS` musi zawierać `localhost`/`127.0.0.1` dla
-  Docker `HEALTHCHECK`). Bez tego widoku obraz `production` wchodzi w pętlę
-  restartów (`Running → unhealthy → restart → ...`) od pierwszego uruchomienia.
-  Traktujcie to jako część Definition of Done tego Dockerfile'a, nie opcjonalne
-  dopracowanie na później. Docelowo rozważcie rozdzielenie na `/health/live`
-  (proces żyje) i `/health/ready` (DB/Redis/migracje gotowe), zgodnie
-  z konwencją Kubernetes.
-- Komenda zarządzająca `validate_reference_manifest` (walidacja `sha256`
-  zawartości snapshotu — nie manifestu — oraz pola `compatible_schema`).
-- Komenda zarządzająca `lint_migrations` (ADR-024, pkt 6) — statyczna
-  introspekcja `Migration.operations` względem whitelisty dozwolonych
-  operacji. Wywoływana w `release-database.sh` jako druga linia obrony;
-  podstawowe egzekwowanie powinno i tak odbywać się w CI na etapie PR.
 - Test regresyjny potwierdzający idempotentność `restore_reference_data`
   (dwukrotne uruchomienie na tym samym snapshocie bez zmiany stanu bazy) —
   wymagany przez ADR-020 jako obowiązkowa część potoku CI.
 - Rejestr Version Matrix (artefakt audytowy) — format i miejsce
   przechowywania świadomie pozostawione poza zakresem ADR-020 i tych plików.
-- `STATIC_ROOT` w `settings.py` musi wskazywać na `/app/staticfiles` —
-  zgodnie z wolumenem zamontowanym w `compose.preprod.yml`/`compose.prod.yml`.
 - Dla `compose.test.yml`: migracje test-database są aplikowane automatycznie
   przez `pytest-django` przy tworzeniu bazy testowej (zachowanie domyślne,
   o ile nie użyto `--no-migrations`) — nie wymaga osobnego kroku `migrate`

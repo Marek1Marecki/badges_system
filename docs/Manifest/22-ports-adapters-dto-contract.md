@@ -31,6 +31,7 @@ application/ports/
 from typing import Protocol
 from domain.entities.meeting import Meeting
 
+
 class MeetingRepositoryPort(Protocol):
     def save(self, meeting: Meeting) -> Meeting: ...
     def get_by_id(self, meeting_id: str) -> Meeting | None: ...
@@ -71,6 +72,7 @@ infrastructure/adapters/
 from domain.entities.meeting import Meeting
 from application.ports.meeting_repository import MeetingRepositoryPort
 from infrastructure.models import MeetingModel  # Django ORM model
+
 
 class DjangoMeetingRepository:
     """Implementuje MeetingRepositoryPort przez Django ORM."""
@@ -123,8 +125,10 @@ from pydantic import BaseModel, field_validator
 from datetime import datetime
 from domain.entities.meeting import Meeting
 
+
 class MeetingInputDTO(BaseModel):
     """Waliduje dane wejściowe use case'u. Wejście: zewnętrzne (HTTP, CLI, kolejka)."""
+
     title: str
     duration_minutes: int
 
@@ -152,6 +156,7 @@ class MeetingInputDTO(BaseModel):
 
 class MeetingOutputDTO(BaseModel):
     """Serializuje wynik use case'u. Wyjście: HTTP response, kolejka, plik."""
+
     id: str
     title: str
     is_long: bool
@@ -203,6 +208,7 @@ DTO może importować encję domenową żeby ją skonstruować. Encja domenowa n
 # domain/entities/meeting.py — dataclass jest właściwy
 from dataclasses import dataclass
 from datetime import datetime
+
 
 @dataclass
 class Meeting:
@@ -259,6 +265,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from application.dto.meeting_dtos import MeetingInputDTO
 from application.use_cases.create_meeting import CreateMeeting
+
 
 @api_view(["POST"])
 def create_meeting_view(request: Request) -> Response:

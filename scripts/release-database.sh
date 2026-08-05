@@ -38,22 +38,12 @@ set -e
 echo "=== DATABASE RELEASE ==="
 
 echo "[1/3] Linter migracji (ADR-024 — whitelist dozwolonych operacji)..."
-# Pod `set -e` brak tej komendy w Django (Unknown command) i tak bezpiecznie
-# przerwałby skrypt — poniższy warunek dodaje wyłącznie czytelniejszy
-# komunikat diagnostyczny, żeby odróżnić "linter nie istnieje jeszcze w
-# kodzie" od "linter istnieje i wykrył naruszenie whitelisty".
-
-# TYMCZASOWO ZAKOMENTOWANE: Linter zostanie wdrożony po stronie aplikacji w przyszłości.
-## if ! uv run --no-sync python manage.py lint_migrations; then
-#if ! python manage.py lint_migrations; then
-#    echo "BŁĄD: 'manage.py lint_migrations' zakończył się niepowodzeniem."
-#    echo "Możliwe przyczyny: (a) komenda nie jest jeszcze zaimplementowana"
-#   echo "w kodzie aplikacji — patrz ADR-024 pkt 6 i README-infra.md, albo"
-#   echo "(b) wykryto migrację naruszającą whitelistę dozwolonych operacji."
-#   echo "W obu przypadkach: DATABASE RELEASE zatrzymany."
-#    exit 1
-#fi
-echo "[Pominięto] manage.py lint_migrations nie jest jeszcze wdrożone."
+if ! python manage.py lint_migrations; then
+    echo "BŁĄD: 'manage.py lint_migrations' zakończył się niepowodzeniem."
+    echo "Możliwe przyczyny: (a) wykryto migrację naruszającą whitelistę dozwolonych operacji (ADR-024)."
+    echo "W obu przypadkach: DATABASE RELEASE zatrzymany."
+    exit 1
+fi
 
 echo "[2/3] Sprawdzanie zaległych migracji (plan)..."
 # uv run --no-sync python manage.py showmigrations --plan

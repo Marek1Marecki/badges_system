@@ -5,7 +5,6 @@ Strategia: RequestFactory + MagicMock user + patch na get_container.
 
 import json
 from datetime import date
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest

@@ -46,18 +46,16 @@ Jeden mechanizm, zero hardkodowania, działa dla każdego projektu.
 import os
 import sys
 
+
 def check_secrets() -> None:
     with open(".env.example") as f:
-        keys = [
-            line.split("=")[0].strip()
-            for line in f
-            if line.strip() and not line.startswith("#")
-        ]
+        keys = [line.split("=")[0].strip() for line in f if line.strip() and not line.startswith("#")]
     missing = [key for key in keys if not os.getenv(key)]
     if missing:
         print(f"Missing secrets: {', '.join(missing)}")
         sys.exit(1)
     print(f"All {len(keys)} secrets present.")
+
 
 if __name__ == "__main__":
     check_secrets()
@@ -105,6 +103,7 @@ class GodClient:
         self.db_url = os.getenv("DATABASE_URL")
         self.admin_token = os.getenv("ADMIN_TOKEN")
 
+
 # Nakaz — osobne klucze per adapter, per odpowiedzialność
 class ReadOnlySheetAdapter:
     def __init__(self, read_api_key: str) -> None:
@@ -136,6 +135,7 @@ Każde dane z zewnątrz (API, plik, formularz, CLI) traktujemy jako nieufne — 
 # Zakaz — użycie bez walidacji
 def process(data: dict) -> None:
     meeting_id = data["id"]  # KeyError lub injection
+
 
 # Nakaz — walidacja przez DTO
 def process(data: dict) -> None:

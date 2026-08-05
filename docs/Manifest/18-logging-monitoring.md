@@ -31,12 +31,14 @@ Standardowy moduł `logging` jest topory w konfiguracji JSON. Loguru jest zaleca
 import sys
 from loguru import logger
 
+
 def configure_logging(json_mode: bool = False) -> None:
     logger.remove()
     if json_mode:
-        logger.add(sys.stdout, serialize=True)   # JSON dla produkcji
+        logger.add(sys.stdout, serialize=True)  # JSON dla produkcji
     else:
-        logger.add(sys.stdout, colorize=True)    # Czytelny dla dev
+        logger.add(sys.stdout, colorize=True)  # Czytelny dla dev
+
 
 # Wywołanie w bootstrap aplikacji (json_mode pochodzi z AppSettings — nie z os.getenv):
 # configure_logging(json_mode=settings.app_env == "production")
@@ -92,6 +94,7 @@ Loguru implementuje to przez `logger.contextualize()` opartego o `contextvars` �
 import uuid
 from loguru import logger
 
+
 # Django middleware
 class CorrelationIdMiddleware:
     def __init__(self, get_response):
@@ -104,9 +107,11 @@ class CorrelationIdMiddleware:
             response["X-Request-ID"] = request_id
             return response
 
+
 # FastAPI middleware
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
+
 
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):

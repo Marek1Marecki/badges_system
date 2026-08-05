@@ -17,16 +17,16 @@
         <p class="text-xs text-sky-700 leading-tight mb-1">Wgraj ślad z zegarka (Garmin/Suunto/Locus). System sam znajdzie obiekty na Twojej trasie w promieniu 200m.</p>
 
         <input type="file" id="gpx-file-input" accept=".gpx, .xml" class="hidden">
-        <button onclick="document.getElementById('gpx-file-input').click()" id="gpx-upload-btn" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded shadow transition flex justify-center items-center gap-2">
+        <button data-testid="btn-gpx-upload" onclick="document.getElementById('gpx-file-input').click()" id="gpx-upload-btn" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded shadow transition flex justify-center items-center gap-2">
             📂 Wybierz plik ze śladem (.gpx)
         </button>
     </div>
 
-    <div id="badges-list" class="flex-1 overflow-y-auto p-4 space-y-3">
+    <div data-testid="dashboard-badges-list" id="badges-list" class="flex-1 overflow-y-auto p-4 space-y-3">
         {% for progress in active_progresses %}
-        <div class="border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow bg-white">
+        <div data-testid="dashboard-badge-{{ progress.badge.code }}" class="border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow bg-white">
             <h3 class="font-semibold text-gray-900">
-                <a href="{% url 'badge_detail' progress.badge.code %}" class="hover:text-sky-600 hover:underline">
+                <a data-testid="link-dashboard-badge-{{ progress.badge.code }}" href="{% url 'badge_detail' progress.badge.code %}" class="hover:text-sky-600 hover:underline">
                     {{ progress.badge.name }}
                 </a>
             </h3>
@@ -40,7 +40,7 @@
                 <span class="text-xs text-gray-500">Cykl: {{ progress.cycle_number }}</span>
             </div>
             <!-- Link do szczegółów odznaki z paskami postępu -->
-            <a href="{% url 'badge_detail' progress.badge.code %}"
+            <a data-testid="btn-badge-detail-{{ progress.badge.code }}" href="{% url 'badge_detail' progress.badge.code %}"
                class="mt-4 block text-center w-full text-sm bg-sky-600 text-white px-3 py-2 rounded-md hover:bg-sky-700 transition shadow-sm font-medium">
                 Pokaż szczegóły i postęp
             </a>
@@ -62,11 +62,11 @@
 
 
 <!-- Kontener na toasty błędów z HTMX -->
-<div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+<div data-testid="toast-container" id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
 
 <!-- NOWE: Wyskakujące Okienko (Modal) dla wyników GPX -->
-<div id="gpx-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+<div data-testid="gpx-modal" id="gpx-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
         <div class="p-4 bg-sky-900 text-white flex justify-between items-center">
             <h3 class="font-bold text-lg">📍 Znalezione Obiekty na Trasie</h3>
@@ -88,7 +88,7 @@
 
         <div class="p-4 bg-white border-t flex justify-end gap-3">
             <button onclick="closeGpxModal()" class="px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded hover:bg-gray-200 font-medium transition text-sm">Anuluj</button>
-            <button onclick="submitGpxAscents()" id="gpx-submit-btn" class="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-bold shadow transition text-sm flex items-center gap-2">
+            <button data-testid="gpx-submit-btn" onclick="submitGpxAscents()" id="gpx-submit-btn" class="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-bold shadow transition text-sm flex items-center gap-2">
                 ✅ Zapisz zaznaczone wejścia
             </button>
         </div>
