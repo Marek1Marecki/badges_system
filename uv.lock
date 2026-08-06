@@ -65,7 +65,6 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "pyjwt" },
     { name = "python-dateutil" },
-    { name = "pyvis" },
     { name = "redis" },
     { name = "requests" },
     { name = "whitenoise" },
@@ -82,6 +81,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-django" },
     { name = "pytest-playwright" },
+    { name = "pyvis" },
     { name = "ruff" },
     { name = "types-python-dateutil" },
 ]
@@ -107,7 +107,6 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.14.2" },
     { name = "pyjwt", specifier = ">=2.13.0" },
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
-    { name = "pyvis", specifier = ">=0.3.2" },
     { name = "redis", specifier = ">=7.4.0" },
     { name = "requests", specifier = ">=2.34.2" },
     { name = "whitenoise", specifier = ">=6.12.0" },
@@ -124,6 +123,7 @@ dev = [
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "pytest-django", specifier = ">=4.12.0" },
     { name = "pytest-playwright", specifier = ">=0.8.0" },
+    { name = "pyvis", specifier = ">=0.3.2" },
     { name = "ruff", specifier = ">=0.15.10" },
     { name = "types-python-dateutil", specifier = ">=2.9.0.20260408" },
 ]

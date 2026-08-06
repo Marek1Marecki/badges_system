@@ -59,7 +59,7 @@ jobs:
           python-version: "3.14"
 
       - name: Instalacja zależności (z grupy DEV)
-        run: uv sync --frozen --group dev --python 3.14
+          run: uv sync --frozen --group dev --python 3.14 --retries 3
       - name: Weryfikacja formatowania kodu (Ruff Format)
         run: uv run ruff format --check domain application infrastructure apps bootstrap scripts
 
@@ -124,7 +124,7 @@ jobs:
           python-version: "3.14"
 
       - name: Instalacja zależności (z grupy DEV)
-        run: uv sync --frozen --group dev --python 3.14
+          run: uv sync --frozen --group dev --python 3.14 --retries 3
 
       - name: Generowanie testowych środowisk i kluczy asymetrycznych
         # Generowanie super-bezpiecznego, kryptograficznego klucza bez naruszania logów w Gicie
@@ -196,7 +196,7 @@ jobs:
           python-version: "3.14"
 
       - name: Instalacja zależności (z grupy DEV)
-        run: uv sync --frozen --group dev --python 3.14
+          run: uv sync --frozen --group dev --python 3.14 --retries 3
 
       - name: Generowanie testowych środowisk i kluczy asymetrycznych
         run: |
