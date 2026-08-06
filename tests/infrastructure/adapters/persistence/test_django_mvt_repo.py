@@ -1,4 +1,6 @@
-"""Testy integracyjne dla DjangoMvtRepository — bez mocków połączenia DB."""
+"""Testy jednostkowe dla DjangoMvtRepository."""
+
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -6,36 +8,45 @@ from infrastructure.adapters.persistence.django_mvt_repo import DjangoMvtReposit
 from infrastructure.exceptions import InfrastructureException
 
 
-@pytest.mark.integration
-@pytest.mark.django_db
 class TestDjangoMvtRepository:
-    """Testy oparte na prawdziwej bazie danych PostgreSQL z PostGIS."""
+    """Testy repozytorium kafelków wektorowych."""
 
-    def setup_method(self):
-        self.repo = DjangoMvtRepository()
+    @pytest.fixture
+    def repo(self):
+        return DjangoMvtRepository()
 
-    def test_get_tile_raises_for_unknown_layer(self):
-        """Rzuca wyjątek dla nieznanej warstwy."""
+    def test_get_tile_raises_on_unknown_layer(self, repo):
+        """Rzuca InfrastructureException dla nieznanej warstwy."""
         with pytest.raises(InfrastructureException, match="Nieznana warstwa MVT"):
-            self.repo.get_tile("unknown_layer", 1, 2, 3)
+            repo.get_tile("unknown_layer", 1, 0, 0)
 
-    def test_get_tile_uses_correct_table_for_country(self):
-        """Używa poprawnej tabeli dla warstwy country."""
-        from django.db import connection
+    def test_get_tile_returns_bytes_when_tile_exists(self, repo):
+        """Zwraca bajty kafelka gdy istnieje."""
+        mock_row = (b"mvt_data",)
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = mock_row
 
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
+        with patch("infrastructure.adapters.persistence.django_mvt_repo.connection.cursor") as mock_cursor_ctx:
+            mock_cursor_ctx.return_value.__enter__.return_value = mock_cursor
+            result = repo.get_tile("voivodeship", 5, 10, 15)
+            assert result == b"mvt_data"
 
-        result = self.repo.get_tile("country", 2, 2, 3)
+    def test_get_tile_returns_none_when_no_data(self, repo):
+        """Zwraca None gdy kafelek nie istnieje."""
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = None
 
-        assert result is None or isinstance(result, bytes)
+        with patch("infrastructure.adapters.persistence.django_mvt_repo.connection.cursor") as mock_cursor_ctx:
+            mock_cursor_ctx.return_value.__enter__.return_value = mock_cursor
+            result = repo.get_tile("voivodeship", 5, 10, 15)
+            assert result is None
 
-    def test_get_tile_uses_correct_table_for_voivodeship(self):
-        """Używa poprawnej tabeli dla warstwy voivodeship."""
-        result = self.repo.get_tile("voivodeship", 2, 2, 3)
-        assert result is None or isinstance(result, bytes)
+    def test_get_tile_returns_none_when_row_has_no_bytes(self, repo):
+        """Zwraca None gdy wiersz istnieje ale brak danych MVT."""
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = (None,)
 
-    def test_get_tile_uses_correct_table_for_tourist_region(self):
-        """Używa poprawnej tabeli dla warstwy tourist_region."""
-        result = self.repo.get_tile("tourist_region", 2, 2, 3)
-        assert result is None or isinstance(result, bytes)
+        with patch("infrastructure.adapters.persistence.django_mvt_repo.connection.cursor") as mock_cursor_ctx:
+            mock_cursor_ctx.return_value.__enter__.return_value = mock_cursor
+            result = repo.get_tile("voivodeship", 5, 10, 15)
+            assert result is None

@@ -5,6 +5,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from apps.badges.tasks import (
+    build_tourist_region_geometry_task,
+    calculate_object_regions_task,
     fetch_badge_news_task,
     fetch_osm_data_task,
     recalculate_poi_scores_task,
@@ -137,3 +139,44 @@ class TestFetchBadgeNewsTask:
 
         with pytest.raises(Exception):
             fetch_badge_news_task()
+
+
+class TestCalculateObjectRegionsTask:
+    @patch("apps.badges.tasks.get_container")
+    def test_successful_calculation(self, mock_get_container, mock_container):
+        mock_get_container.return_value = mock_container
+        mock_container.calculate_object_regions.execute.return_value = None
+
+        result = calculate_object_regions_task(42)
+
+        mock_container.calculate_object_regions.execute.assert_called_once_with(object_id=42)
+        assert "CQRS wyliczony" in result
+        assert "42" in result
+
+    @patch("apps.badges.tasks.get_container")
+    def test_exception_handling_triggers_retry(self, mock_get_container, mock_container):
+        mock_get_container.return_value = mock_container
+        mock_container.calculate_object_regions.execute.side_effect = Exception("CQRS error")
+
+        with pytest.raises(Exception, match="CQRS error"):
+            calculate_object_regions_task(42)
+
+
+class TestBuildTouristRegionGeometryTask:
+    @patch("bootstrap.get_container")
+    def test_successful_build(self, mock_get_container, mock_container):
+        mock_get_container.return_value = mock_container
+        mock_container.build_tourist_region_geometry.execute.return_value = "Zbudowano"
+
+        result = build_tourist_region_geometry_task(1)
+
+        mock_container.build_tourist_region_geometry.execute.assert_called_once_with(1)
+        assert result == "Zbudowano"
+
+    @patch("bootstrap.get_container")
+    def test_exception_handling(self, mock_get_container, mock_container):
+        mock_get_container.return_value = mock_container
+        mock_container.build_tourist_region_geometry.execute.side_effect = Exception("Geometry error")
+
+        with pytest.raises(Exception, match="Geometry error"):
+            build_tourist_region_geometry_task(1)
