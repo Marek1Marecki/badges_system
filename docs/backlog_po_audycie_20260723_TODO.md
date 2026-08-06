@@ -760,22 +760,6 @@ Jest to klasyczne przejście z fazy "gaszenia pożarów" do fazy "optymalizacji 
 
 ---
 
-### [AUDYT-059] Pusty plik testowy dla `DjangoTouristRepository`
-**Obszar:** `Testy Integracyjne`  
-**Priorytet:** `🔴 KRYTYCZNY`  
-
-**Diagnoza Audytora:** 
-Najważniejszy adapter w systemie, `DjangoTouristRepository` (implementujący 3 porty aplikacyjne dla logów, profili i postępów), posiada w repozytorium plik testowy `test_django_tourist_repo.py` o rozmiarze 0 bajtów! Cała pewność co do działania zapisu wycieczek i obliczania praw nabytych opiera się na ręcznym klikaniu.
-
-**Action Items (Do wdrożenia PRZED Playwrightem):**
-- [ ] Napisać testy dla `DjangoTouristRepository` przy użyciu wbudowanych narzędzi `pytest-django` (`@pytest.mark.django_db`).
-- [ ] Przetestować rzucanie błędu (Idempotentność) przy zapisie duplikatu logu.
-
-**Komentarz Architekta:**
-Klasyczne przeoczenie przy szybkim refaktoringu monolitu. Testowanie ORM-a z rzeczywistą, wbudowaną w Pytest bazą (bez mocków) zabetonuje nam logikę turysty przed startem testów E2E.
-
----
-
 ### [AUDYT-060] Prawdziwa Integracja API bez fałszywych Mocków (Fake DI)
 **Obszar:** `Testy API`  
 **Priorytet:** `🟠 WYSOKI`  
@@ -835,22 +819,6 @@ Pliki takie jak `test_integration.py` i `test_badge_rules.py` używają lokalnie
 
 **Komentarz Architekta:**
 Zasada DRY w testach. Do zrealizowania podczas "Sprzątania Posesji", gdy projekt osiągnie stabilność funkcjonalną.
-
----
-
-### [AUDYT-064] Wdrożenie tarczy Gating Pipeline (Continuous Architecture Verification)
-**Obszar:** `DevOps / CI/CD`  
-**Priorytet:** `🔴 KRYTYCZNY`  
-
-**Diagnoza Audytora:** 
-Audytor wyłapał, że projekt polega wyłącznie na manualnym uruchamianiu komendy `make check`. Brak zautomatyzowanego potoku CI (Continuous Integration), np. plików GitHub Actions, skutkuje tym, że programista może po prostu zignorować błędy (lub nie odpalić komendy) i wgrać kod bezpośrednio do głównej gałęzi (main). Ponadto brakuje oficjalnego wdrożenia narzędzia `import-linter` (brak pliku konfiguracji `.importlinter` z opisanymi regułami granic).
-
-**Action Items (Do wdrożenia w nadchodzącym sprincie DevOps):**
-- [X] Utworzyć plik konfiguracyjny `.importlinter` (lub odpowiednik dla narzędzia `pydeps`), jawnie zakazujący importów z `apps` i `infrastructure` do `domain` i `application`.
-- [X] Utworzyć plik potoku (np. `.github/workflows/ci.yml`), który zablokuje `git merge`, jeśli `make check` nie zakończy się ze statusem `0` (Success).
-
-**Komentarz Architekta:**
-"Nieufne środowisko" to fundament stabilnego produktu. Automatyzacja wyłapywania wycieków warstw i błędów Mypy oszczędzi nam połowy przyszłych Audytów! Zrobimy to, gdy zaczniemy formalizować środowiska z `compose.test.yml`.
 
 ---
 
@@ -1563,38 +1531,6 @@ Obecnie w katalogu `domain/` brakuje podstawowego aktora biznesowego: Turysty (`
 
 **Komentarz Architekta:**
 Audytor dotknął sedna. Ograniczenie Czystej Domeny tylko do "Silnika Weryfikacyjnego" to pójście na skróty. Docelowo PTTK to nie tylko matematyka, to społeczność. Wraz ze wzrostem aplikacji turysta musi stać się pierwszoplanową encją w czystym Pythonie.
-
----
-
-### [AUDYT-109] Złamane zaufanie do struktury katalogów testów (QA Matrix vs Rzeczywistość)
-**Obszar:** `Dokumentacja / Testy`  
-**Priorytet:** `🔴 KRYTYCZNY (Zaufanie)`  
-
-**Diagnoza Audytora:** 
-Plik `docs/QA_MATRIX.md` oraz `Test Strategy.md` sztucznie kategoryzują testy na Unit i Integration, podając konkretne liczby, co sugeruje istnienie katalogów `tests/unit/` i `tests/integration/`. W rzeczywistości testy (mimo że ich liczba przekracza 590) są ustrukturyzowane w oparciu o moduły (`tests/application/`, `tests/domain/`). Wywołuje to u nowych deweloperów wrażenie "fałszywej statystyki" i braku pokrycia kodu.
-
-**Action Items (Do wdrożenia PRZEZ CIEBIE w wolnej chwili):**
-- [ ] Zaktualizować plik `docs/QA_MATRIX.md` tak, aby nazwy kategorii odpowiadały rzeczywistym folderom w projekcie (np. Zastąpić "Unit Tests" słowami "Domain & Application Tests").
-- [ ] Dodać krótki plik `tests/README.md` opisujący, gdzie dokładnie znajdują się testy jednostkowe, a gdzie integracyjne, ucinając domysły.
-
-**Komentarz Architekta:**
-Niespójność nazewnictwa niszczy wiarygodność nawet najlepiej przetestowanego systemu. Skoro wybraliśmy organizację folderów per-moduł, dokumentacja QA musi to bezwzględnie odzwierciedlać.
-
----
-
-### [AUDYT-110] Luki w odnośnikach "Żywej Dokumentacji" (README & ADR)
-**Obszar:** `Dokumentacja / Onboarding`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Główny plik wejściowy do projektu (`README.md`) kieruje programistę pod nieistniejące pliki (np. `docs/VISION.md` zamiast `docs/Vision Statement.md`). Z kolei plik `SYSTEM_PROMPT.md` odwołuje się do nieistniejących plików `ADR-017` do `ADR-019`, wprowadzając deweloperów w błąd, że brakuje im wiedzy architektonicznej.
-
-**Action Items (Do wdrożenia PRZEZ CIEBIE w wolnej chwili):**
-- [X] Skorygować linki w pliku `README.md`, by odpowiadały faktycznym nazwom plików (uwaga na spacje w nazwach w GitHubie - zastąpić `%20` lub zmienić nazwy plików na kebab-case).
-- [X] Zaktualizować `SYSTEM_PROMPT.md` i listę ADR-ów, usuwając odwołania do pustych numerów (017-019) lub tworząc dla nich fizyczny plik objaśniający (Placeholder).
-
-**Komentarz Architekta:**
-Klasyczny przypadek "Martwych Linków" (Dead Links). Jest to drobnostka z perspektywy kodu, ale kluczowy błąd z perspektywy pierwszego wrażenia (Developer Experience).
 
 ---
 

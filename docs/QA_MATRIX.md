@@ -1,19 +1,20 @@
 # QA Matrix — Macierz Śledzenia Jakości
 
 > **Wersja:** 1.0  
-> **Cel:** Centrum dowodzenia dla inżynierów Testów Automatycznych (QA) i Playwright.
+> **Cel:** Centrum dowodzenia dla inżynierów Testów Automatycznych (QA) i Playwright.  
+> **Uwaga:** Kategorie testów odpowiadają folderom w `tests/` według warstw architektury heksagonalnej (nie według sztucznego podziału Unit/Integration).
 
 ---
 
 ## 1. Statystyki Pokrycia Systemu (Current State)
 
-| Typ Wymagania / Testu | Liczba Zdefiniowana | Liczba Zrealizowana | Pokrycie |
-|:---|:---:|:---:|:---:|
-| User Stories (Faza A-C) | 16 | 16 | 100% |
-| Reguły Domenowe (Sito) | 12 | 12 | 100% |
-| Unit Tests (Logika RAM) | 480 | 480 | 100% |
-| Integration Tests (PostGIS/DB) | 30 | 30 | 100% |
-| **Testy E2E (Playwright)** | **5** (Draft) | **0** | **0%** |
+| Typ Wymagania / Testu | Lokalizacja w Repo | Liczba Zdefiniowana | Liczba Zrealizowana | Pokrycie |
+|:---|:---|:---:|:---:|:---:|
+| User Stories (Faza A-C) | `tests/application/`, `tests/apps/api/` | 16 | 16 | 100% |
+| Reguły Domenowe (Sito) | `tests/domain/` | 12 | 12 | 100% |
+| Domain & Application Tests | `tests/domain/`, `tests/application/` | ~500 | ~500 | ~100% |
+| Infrastructure & Integration Tests | `tests/infrastructure/`, `tests/apps/` | ~120 | ~120 | ~75% |
+| **Testy E2E (Playwright)** | `tests/e2e/` | **5** (Draft) | **0** | **0%** |
 
 *(Ogólne pokrycie kodu: >82% w czasie <15s)*
 

@@ -9,13 +9,15 @@
 ## Piramida testów systemu PTTK Badges
 
 ```text
-         /\
-        /e2e\        ← Faza C: Przepływy logistyki książeczek [Playwright — planowane]
-       /──────\
-      /integr. \     ← Średnio: Django Admin, PostGIS (ST_DWithin), OSM Adapter
-     /────────── \
-    /   unit      \  ← Dużo: Reguły w `domain/`, Use Cases w `application/`
-   /______________\
+          /\
+         /e2e\        ← Faza C: Przepływy logistyki książeczek [Playwright — planowane]
+        /──────\
+       /integr. \     ← Średnio: Adaptery infrastrukturalne, Django Admin, PostGIS (ST_DWithin), OSM Adapter
+      /────────── \
+     /   domain    \  ← Dużo: Reguły biznesowe PTTK w `tests/domain/`
+    /────────────────\
+       /   app/use     \ ← Orkiestracja przepływów w `tests/application/`
+      /__________________\
 ```
 
 ### Zautomatyzowany Potok CI/CD (GitHub Actions)
@@ -24,8 +26,8 @@ System wykorzystuje trzystopniowy proces weryfikacji (Gating Pipeline), w który
 
 | Etap Jobu CI | Cel i Środowisko | Mechanika i Wymogi |
 |--------------|------------------|--------------------|
-| **1. Static & Unit** | Szybka weryfikacja kodu (Lintery, Mypy, Import-Linter) oraz Testów Jednostkowych. | Uruchamiany na gołym hoście Ubuntu. Czysty Python z pakietami w grupie `dev`. **Wymagane pokrycie 80% (`fail-under`).** |
-| **2. Integration**   | Weryfikacja bazy danych, migracji (`release-database.sh`) i adapterów infrastrukturalnych. | Uruchamiany z użyciem `compose.test.yml`. Testy operują na rzeczywistej bazie PostGIS podniesionej przez kontener. |
+| **1. Static & Unit** | Szybka weryfikacja kodu (Lintery, Mypy, Import-Linter) oraz testów Domeny i Aplikacji (`tests/domain/`, `tests/application/`). | Uruchamiany na gołym hoście Ubuntu. Czysty Python z pakietami w grupie `dev`. **Wymagane pokrycie 80% (`fail-under`).** Odrzuca testy oznaczone `@pytest.mark.integration`. |
+| **2. Integration**   | Weryfikacja bazy danych, migracji (`release-database.sh`) i adapterów infrastrukturalnych (`tests/infrastructure/`, `tests/apps/`). | Uruchamiany z użyciem `compose.test.yml`. Testy operują na rzeczywistej bazie PostGIS podniesionej przez kontener. |
 | **3. E2E (Playwright)**| Symulacja użytkownika w przeglądarce, weryfikacja routingu, autoryzacji i renderingu HTMX. | Wykorzystuje wydzielony obraz `web-e2e` na porcie 8008. Posiada preinstalowane Chromium. **Wymóg:** Wyłączone zliczanie Coverage. |
 
 ---
@@ -69,7 +71,7 @@ Logika PostGIS oraz widoków Django wymaga podniesienia środowiska.
    ```
 2. **Wymogi Bazy Danych:** Testy integracyjne uruchamiają wbudowany mechanizm bazy testowej Django, jednak z uwagi na rozszerzenia GeoDjango, wymagają działającej instancji PostGIS. Przed ich uruchomieniem należy upewnić się, że kontenery deweloperskie działają (`docker compose -f docker-compose.dev.yml up -d`).
 3. **Filtrowanie w CI i Makefile:** 
-   - Komenda `make check` uruchamia wyłącznie testy jednostkowe (`pytest -m "not integration"`), by gwarantować czas wykonania `< 10s`.
+   - Komenda `make check` uruchamia wyłącznie testy Domeny i Aplikacji (`pytest -m "not integration"`), by gwarantować czas wykonania `< 15s`.
    - Pełen zbiór testów wraz z integracyjnymi odpalany jest komendą `make test-all` (lub w docelowym pełnym środowisku CI przed mergem).
 
 ---
