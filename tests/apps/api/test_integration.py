@@ -143,6 +143,7 @@ class TestAscentLogView:
         data = json.loads(response.content)
         assert data["status"] == 409
         assert "duplikatem" in data["detail"]
+        assert "request_id" in data
 
     def test_bitemporal_error_returns_422(self, factory, mock_user, use_cases) -> None:
         from application.exceptions import BitemporalTimeError
@@ -160,11 +161,8 @@ class TestAscentLogView:
         response = AscentLogView.as_view()(request)
 
         assert response.status_code == 422
-
-
-# ---------------------------------------------------------------------------
-# BadgeSubscribeView — POST /api/v1/badges/{badge_code}/subscribe/
-# ---------------------------------------------------------------------------
+        data = json.loads(response.content)
+        assert "request_id" in data
 
 
 class TestBadgeSubscribeView:
@@ -230,7 +228,9 @@ class TestBadgeProgressView:
         response = BadgeProgressView.as_view()(request, badge_code="KGP")
 
         assert response.status_code == 404
-        assert json.loads(response.content)["status"] == 404
+        data = json.loads(response.content)
+        assert data["status"] == 404
+        assert "request_id" in data
 
 
 # ---------------------------------------------------------------------------
@@ -272,6 +272,8 @@ class TestBadgeLogisticsView:
         response = BadgeLogisticsView.as_view()(request, progress_id=1)
 
         assert response.status_code == 409
+        data = json.loads(response.content)
+        assert "request_id" in data
 
 
 # ---------------------------------------------------------------------------
@@ -301,6 +303,8 @@ class TestMapObjectsView:
         response = MapObjectsView.as_view()(request)
 
         assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
 
 
 # ---------------------------------------------------------------------------
@@ -416,6 +420,8 @@ class TestBadgeUnsubscribeView:
         response = BadgeSubscribeView.as_view()(request, badge_code="KGP")
 
         assert response.status_code == 409
+        data = json.loads(response.content)
+        assert "request_id" in data
 
 
 # ---------------------------------------------------------------------------
@@ -434,6 +440,8 @@ class TestGpxAnalyzeView:
         response = GpxAnalyzeView.as_view()(request)
 
         assert response.status_code == 401
+        data = json.loads(response.content)
+        assert "request_id" in data
 
     def test_returns_422_when_no_file(self, factory, mock_user, use_cases) -> None:
         from apps.api.views import GpxAnalyzeView
@@ -444,6 +452,8 @@ class TestGpxAnalyzeView:
         response = GpxAnalyzeView.as_view()(request)
 
         assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
 
     def test_returns_422_when_file_too_large(self, factory, mock_user, use_cases) -> None:
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -459,6 +469,8 @@ class TestGpxAnalyzeView:
         response = GpxAnalyzeView.as_view()(request)
 
         assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
 
 
 # ---------------------------------------------------------------------------
@@ -477,6 +489,8 @@ class TestBulkAscentLogView:
         response = BulkAscentLogView.as_view()(request)
 
         assert response.status_code == 401
+        data = json.loads(response.content)
+        assert "request_id" in data
 
     def test_returns_422_for_invalid_json(self, factory, mock_user, use_cases) -> None:
         from apps.api.views import BulkAscentLogView
@@ -487,6 +501,8 @@ class TestBulkAscentLogView:
         response = BulkAscentLogView.as_view()(request)
 
         assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
 
     def test_returns_422_for_non_list_body(self, factory, mock_user, use_cases) -> None:
         from apps.api.views import BulkAscentLogView
@@ -499,6 +515,8 @@ class TestBulkAscentLogView:
         response = BulkAscentLogView.as_view()(request)
 
         assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
 
 
 # ---------------------------------------------------------------------------
@@ -517,6 +535,8 @@ class TestProfileUpgradeView:
         response = ProfileUpgradeView.as_view()(request, profile_id=1)
 
         assert response.status_code == 401
+        data = json.loads(response.content)
+        assert "request_id" in data
 
     def test_upgrades_profile_to_pro(self, factory, mock_user, use_cases) -> None:
         from apps.api.views import ProfileUpgradeView
@@ -548,6 +568,8 @@ class TestProfileUpgradeView:
             response = ProfileUpgradeView.as_view()(request, profile_id=1)
 
             assert response.status_code == 404
+            data = json.loads(response.content)
+            assert "request_id" in data
 
 
 # ---------------------------------------------------------------------------
@@ -568,6 +590,8 @@ class TestErrorHandling:
         response = VectorTileView.as_view()(request, layer="country", z=5, x=10, y=15)
 
         assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
 
     def test_map_objects_handles_invalid_bbox_format(self, factory, mock_user, use_cases) -> None:
         from apps.api.views import MapObjectsView
@@ -578,6 +602,8 @@ class TestErrorHandling:
         response = MapObjectsView.as_view()(request)
 
         assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
 
     def test_map_objects_passes_optional_params(self, factory, mock_user, use_cases) -> None:
         from apps.api.views import MapObjectsView
@@ -607,6 +633,8 @@ class TestErrorHandling:
         response = MapObjectsView.as_view()(request)
 
         assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
 
     def test_map_objects_requires_authentication(self, factory, use_cases) -> None:
         from apps.api.views import MapObjectsView
@@ -618,6 +646,8 @@ class TestErrorHandling:
         response = MapObjectsView.as_view()(request)
 
         assert response.status_code == 401
+        data = json.loads(response.content)
+        assert "request_id" in data
 
 
 # ---------------------------------------------------------------------------
@@ -679,27 +709,22 @@ class TestNearbyObjectsView:
 
 class TestProfileSettingsViewAdditional:
     def test_returns_404_when_profile_not_owned(self, factory, mock_user, use_cases) -> None:
-
+        from django.http import Http404
         from apps.api.views import ProfileSettingsView
-        from apps.tourists.models import TouristProfile
 
-        other_user = MagicMock()
-        other_user.id = 999
-
-        mock_profile = MagicMock(spec=TouristProfile)
-        mock_profile.user = other_user
-
-        with patch("apps.api.views.get_object_or_404", return_value=mock_profile):
+        with patch("apps.api.views.get_object_or_404", side_effect=Http404):
             request = factory.patch(
-                "/api/v1/profiles/1/",
-                data=json.dumps({"nickname": "test"}),
+                "/api/v1/profiles/999/",
+                data=json.dumps({"nickname": "hacker"}),
                 content_type="application/json",
             )
             request.user = mock_user
 
-            response = ProfileSettingsView.as_view()(request, profile_id=1)
+            response = ProfileSettingsView.as_view()(request, profile_id=999)
 
-            assert response.status_code == 200  # get_object_or_404 raises Http404 before IDOR check
+            assert response.status_code == 404
+            data = json.loads(response.content)
+            assert "request_id" in data
 
     def test_handles_validation_error(self, factory, mock_user, use_cases) -> None:
         from apps.api.views import ProfileSettingsView
@@ -719,6 +744,8 @@ class TestProfileSettingsViewAdditional:
             response = ProfileSettingsView.as_view()(request, profile_id=1)
 
             assert response.status_code == 422
+            data = json.loads(response.content)
+            assert "request_id" in data
 
 
 # ---------------------------------------------------------------------------
@@ -736,6 +763,8 @@ class TestBadgeProgressViewAdditional:
         response = BadgeProgressView.as_view()(request, badge_code="KGP")
 
         assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
 
     def test_requires_authentication(self, factory, use_cases) -> None:
         from apps.api.views import BadgeProgressView
@@ -747,6 +776,8 @@ class TestBadgeProgressViewAdditional:
         response = BadgeProgressView.as_view()(request, badge_code="KGP")
 
         assert response.status_code == 401
+        data = json.loads(response.content)
+        assert "request_id" in data
 
 
 # ---------------------------------------------------------------------------
@@ -769,6 +800,8 @@ class TestBadgeLogisticsViewAdditional:
         response = BadgeLogisticsView.as_view()(request, progress_id=1)
 
         assert response.status_code == 401
+        data = json.loads(response.content)
+        assert "request_id" in data
 
     def test_handles_invalid_json(self, factory, mock_user, use_cases) -> None:
         from apps.api.views import BadgeLogisticsView
@@ -783,6 +816,8 @@ class TestBadgeLogisticsViewAdditional:
         response = BadgeLogisticsView.as_view()(request, progress_id=1)
 
         assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
 
     def test_handles_dto_validation_error(self, factory, mock_user, use_cases) -> None:
         from apps.api.views import BadgeLogisticsView
@@ -797,6 +832,29 @@ class TestBadgeLogisticsViewAdditional:
         response = BadgeLogisticsView.as_view()(request, progress_id=1)
 
         assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
+
+    def test_returns_404_when_progress_not_owned(self, factory, mock_user, use_cases) -> None:
+        from application.exceptions import ResourceNotFoundError
+        from apps.api.views import BadgeLogisticsView
+
+        use_cases["advance_logistic_status"].execute.side_effect = ResourceNotFoundError(
+            "Progress nie należy do tego profilu."
+        )
+
+        request = factory.patch(
+            "/api/v1/progress/999/logistics/",
+            data=json.dumps({"logistic_status": "ALBUM", "status_date": str(date.today())}),
+            content_type="application/json",
+        )
+        request.user = mock_user
+
+        response = BadgeLogisticsView.as_view()(request, progress_id=999)
+
+        assert response.status_code == 404
+        data = json.loads(response.content)
+        assert "request_id" in data
 
 
 # ---------------------------------------------------------------------------
@@ -818,6 +876,8 @@ class TestAscentLogViewAdditional:
         response = AscentLogView.as_view()(request)
 
         assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
 
     def test_handles_missing_peak_id(self, factory, mock_user, use_cases) -> None:
         from apps.api.views import AscentLogView
@@ -832,6 +892,8 @@ class TestAscentLogViewAdditional:
         response = AscentLogView.as_view()(request)
 
         assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
 
 
 # ---------------------------------------------------------------------------
@@ -850,6 +912,8 @@ class TestBadgeSubscribeViewAdditional:
         response = BadgeSubscribeView.as_view()(request, badge_code="KGP")
 
         assert response.status_code == 401
+        data = json.loads(response.content)
+        assert "request_id" in data
 
     def test_handles_use_case_error(self, factory, mock_user, use_cases) -> None:
         from application.exceptions import UseCaseError
@@ -863,6 +927,8 @@ class TestBadgeSubscribeViewAdditional:
         response = BadgeSubscribeView.as_view()(request, badge_code="KGP")
 
         assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
 
 
 # ---------------------------------------------------------------------------
@@ -917,6 +983,8 @@ class TestBulkAscentLogViewAdditional:
         response = BulkAscentLogView.as_view()(request)
 
         assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
 
     def test_skips_cache_when_no_ascents_saved(self, factory, mock_user, use_cases) -> None:
         from apps.api.views import BulkAscentLogView

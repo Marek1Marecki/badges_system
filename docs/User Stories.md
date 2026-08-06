@@ -31,7 +31,7 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 **Powiązane invarianty:** —
 
 **Kryteria akceptacji:**
-- [x] Model `TouristProfile` jest powiązany z modelem autoryzacyjnym Django (`User`) za pomocą relacji `OneToOneField`.
+- [x] Model `TouristProfile` jest powiązany z modelem autoryzacyjnym Django (`User`) za pomocą relacji `ForeignKey` (1:N).
 - [x] Profil przechowuje bezpiecznie `birth_date`.
 - [x] Silnik Domenowy podczas ewaluacji otrzymuje prawdziwą datę z profilu zamiast dotychczasowego mocka w kodzie.
 
@@ -68,7 +68,7 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 
 ### US-C02b — Prawo do bycia zapomnianym (Usuwanie konta) 🟠 P1
 **Story:** Jako Turysta, chcę mieć możliwość trwałego i nieodwracalnego skasowania mojego konta wraz z całą historyczną bazą wejść, postępów i wgranych plików, aby zachować pełną kontrolę nad swoimi danymi osobowymi (zgodność z RODO).
-**Dotyczy encji:** `TouristProfile`, `AscentLog`, `UserBadgeProgress`, `VerificationRequest` (wszystkie encje powiązane z Userem).
+**Dotyczy encji:** `TouristProfile`, `AscentLog`, `UserBadgeProgress` (wszystkie encje powiązane z Userem).
 
 **Kryteria akceptacji:**
 - [ ] System wykonuje twarde usunięcie (Hard Delete) głównego konta użytkownika, co za pomocą więzów `CASCADE` w bazie zdejmuje całą jego historię z tabel.
@@ -123,7 +123,7 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 - [x] Przy kliknięciu "Rozpocznij", turysta jest przypinany do aktualnie obowiązującej `BadgeVersion`.
 - [x] Po dodaniu każdego logu, system ustala wiek najstarszego wejścia turysty. 
 - [x] Jeśli najstarsze wejście jest starsze niż obecna wersja odznaki, aplikacja umożliwia turyście ręczne przełączenie się (`switch`) na starsze `BadgeVersion`, do których nabył prawa.
-- [x] Przełączanie wersji jest możliwe i płynne tak długo, jak długo odznaka nie została dodana do Wniosku Weryfikacyjnego (`VerificationRequest`). Po utworzeniu wniosku, wersja w `UserBadgeProgress` zostaje zablokowana (Read-Only).
+- [x] Przełączanie wersji jest możliwe i płynne tak długo, jak długo odznaka nie została dodana do Wniosku Weryfikacyjnego. Po utworzeniu wniosku, wersja w `UserBadgeProgress` zostaje zablokowana (Read-Only).
 
 ### US-C06 — Silnik Postępu (Set Math w Domenie) 🔴 P0
 **Story:** Jako Turysta, chcę zobaczyć na jakim jestem etapie (np. 12/25 szczytów), aby wiedzieć, ile brakuje mi do danego Stopnia odznaki.
@@ -252,7 +252,7 @@ Jako [ROLA], chcę [DZIAŁANIE], aby [CEL / KORZYŚĆ].
 **Opis:** Zastosowanie wyrażenia warunkowego `['case', ['==', ['get', 'id'], 1], [1], [2,2]]` dla właściwości `line-dasharray` w MapLibre GL JS jest technicznie niewspierane przez silnik WebGL tej biblioteki. Skutkuje to "cichą awarią" – warstwa po prostu nie jest renderowana na mapie, bez żadnych błędów w konsoli.  
 **Rozwiązanie / workaround:** Zamiast jednej, dynamicznej warstwy, kod JS musi rozdzielić warstwy na osobne (np. `regions-line-active` oraz `regions-line-neighbors`), używając filtru `['==', ...]` na poziomie całej warstwy, i definiując atrybut `line-dasharray` sztywno (statycznie) dla każdej z nich osobno.
 
-### EC-037 — Błąd 500 przy relacji OneToOneField (Brakujący Profil)
+### EC-037 — Błąd 500 przy relacji ForeignKey (Brakujący Profil)
 **Obszar:** `apps/tourists/views.py`  
 **Odkryty:** Przy wejściu na podstronę `/profile/` kontem administratora.  
 **Status:** `resolved`  

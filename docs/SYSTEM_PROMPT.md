@@ -54,7 +54,7 @@ Każdy moduł ma rygorystyczny kierunek importów (tylko do wewnątrz, w stronę
 | `ObjectRegionCache` | Model odczytu CQRS dla geografii | `tourist_object_id`, `region_level`, `region_id` |
 | `BadgeVersion` | Wersja regulaminu (w czasie) | `rules` (JSONB), `pool_peaks` (M2M) |
 | `BadgeTier` | Stopień wewnątrz wersji odznaki | `required_peaks_count`, `order` |
-| `Ascent` | (Value Object) Wejście turysty | `peak_id`, `ascent_date`, `activity` |
+| `Ascent` | (Value Object) Wejście turysty | `peak_id`, `ascent_date`, `region_ids` |
 
 Pełny model w `DOMAIN_MODEL.md`.
 
@@ -145,9 +145,6 @@ Zabrania się usuwania istniejących komentarzy ludzkich podczas refaktoryzacji.
 
 | ID | Opis | Kiedy naprawić |
 |----|------|----------------|
-| TD-01 | Cykliczne relacje: `parent_object` nie jest walidowane przed grafami A->B->A. | Podczas optymalizacji formularzy Admina (Invariant C-01). |
-| TD-02 | Weryfikacja wiekowa (`MinAgeRule`) i daty klubu (`RequiresClubJoinDateRule`) używają zahardkodowanych zaślepek z `date(2015,1,1)`. | **W Fazie C**, przy implementacji `UserContext`. |
-| TD-03 | Błędna hydracja progu (`required_count=len(pool_peaks)` w adapterze). Psuje to weryfikację odznak wielostopniowych i typu "Wybierz X z Y". Próg powinien być pobierany z `BadgeTier`. | Przed oddaniem API weryfikacyjnego na front (Edge Case EC-031). |
 | *Brak* | *Wszystkie długi z Fazy A, B i C zostały spłacone.* | - |
 
 ---
