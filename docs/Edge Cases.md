@@ -44,9 +44,6 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 **Opis:** Serwery kafelków (Tile Servers) OpenStreetMap rygorystycznie egzekwują zasady użycia i blokują żądania z przeglądarek, które nie wysyłają nagłówka `Referer`. Domyślna polityka bezpieczeństwa Django (`same-origin`) ukrywa ten nagłówek przy odpytywaniu zewnętrznych domen, co skutkuje brakiem podkładu mapowego w panelu Administratora (wyświetla się grafika "Access blocked").  
 **Rozwiązanie / workaround:** Do globalnej konfiguracji projektu `config/settings.py` dodano wymuszenie luźniejszej polityki: `SECURE_REFERRER_POLICY = "origin-when-cross-origin"`. Zezwala to przeglądarce na wysłanie pochodzenia do serwerów kafelkowych, odblokowując mapę bez łamania globalnego bezpieczeństwa aplikacji.
 
-2. Popraw fragment pobierający stopnie:
-Znajdź sekcję ZŁOŻENIE DANYCH WIZUALNYCH I PRAW AUTORSKICH (D-03) (w okolicach linii 230) i podmień środek bloku if target_version: na ten bezpieczny kod:
-
 ---
 
 ## 2. Geometria i Przetwarzanie Przestrzenne (PostGIS)
@@ -269,13 +266,13 @@ Wdrożono twarde reguły nadpisywania:
 **Opis:** Reguła wymagająca posiadania innej ukończonej odznaki wymuszała pobranie przez Use Case wszystkich postępów turysty do pamięci RAM, a następnie filtrowanie ich w Pythonie. Skutkowało to ogromnym obciążeniem pamięci i problemem N+1 przy rosnącej historii użytkownika.
 **Rozwiązanie / workaround:** Przeniesienie ciężaru na relacyjną bazę danych poprzez dodanie zoptymalizowanej metody `get_completed_badge_codes()` w Porcie, która wykonuje jedno, płaskie zapytanie SQL (`SELECT ... WHERE domain_status='COMPLETED'`).
 
-### EC-044 — Błędy routingu przez brakujący ukośnik (Trailing Slash)
+### EC-085 — Błędy routingu przez brakujący ukośnik (Trailing Slash)
 **Obszar:** `apps/api/urls.py`, `apps/static/js/map.js`  
 **Status:** `resolved`  
 **Opis:** Django domyślnie wymaga ukośnika na końcu adresu URL (działa `APPEND_SLASH`). Wywołanie w `fetch()` lub Postmanie adresu `/api/v1/map/objects` (bez ukośnika) powoduje zwrócenie przez serwer statusu `301 Redirect` do adresu z ukośnikiem. Jeśli żądanie było typu POST, przekierowanie gubi payload (zmienia się w GET), co prowadzi do niezrozumiałych błędów w API.
 **Rozwiązanie / workaround:** Twarda reguła w kodzie – wszystkie ścieżki w `urls.py` muszą kończyć się na `/`, a każdy skrypt JS musi odpytywać adres z ukośnikiem na końcu.
 
-### EC-045 — Błąd składni Pythona 2 przy łapaniu wielu wyjątków
+### EC-086 — Błąd składni Pythona 2 przy łapaniu wielu wyjątków
 **Obszar:** `apps/api/views.py`  
 **Status:** `resolved`  
 **Opis:** Podczas refaktoryzacji, agenci LLM potrafią wygenerować przestarzały kod: `except json.JSONDecodeError, ValueError:`. W Pythonie 3 powoduje to natychmiastowy `SyntaxError` przy starcie serwera (Gunicorn/Uvicorn w ogóle nie wstanie).
@@ -359,59 +356,11 @@ Wdrożono twarde reguły nadpisywania:
 **Opis:** Modyfikacje logiki backendowej (np. zmiana surowego SQL dodająca nową kolumnę `db_id_str` do zapytania `ST_AsMVTGeom`) są często niewidoczne w aplikacji klienckiej, nawet po twardym odświeżeniu (`Ctrl+F5`) lub usunięciu kluczy z Redis. Przeglądarki internetowe niezwykle agresywnie buforują pliki z rozszerzeniem `.pbf` na dysku lokalnym, ignorując polecenia odświeżenia.  
 **Rozwiązanie / workaround:** Zastosowano wzorzec *Cache Busting* na poziomie kodu źródłowego frontendu. W momencie zmiany logiki kafelków MVT na serwerze, programista musi jawnie zmodyfikować adres URL źródła (Source) w MapLibre, dodając unikalny parametr wersji (np. `/api/v1/tiles/...pbf?v=4`). Zmusza to każdą przeglądarkę na świecie do fizycznego porzucenia swoich lokalnych kopii pliku i pobrania nowej struktury z serwera.
 
----
-
-## 5. Repozytorium i CI/CD (Operacje)
-
-### EC-040 — Pułapka domyślnych szablonów `.gitignore` (Utrata plików kontraktowych)
-**Obszar:** `.gitignore`, CI/CD Pipeline  
-**Odkryty:** Podczas pierwszego commitu inicjalizującego repozytorium.  
-**Status:** `resolved`  
-**Opis:** Popularne w internecie szablony pliku `.gitignore` dla Pythona często domyślnie wykluczają pliki takie jak `.python-version`, `.dockerignore`, a generatory mogą zignorować pliki blokujące (lockfiles) takie jak `uv.lock`. Dodanie takiego szablonu do projektu powoduje niewypchnięcie tych plików na serwer, co natychmiast łamie pipeline CI/CD (brak spójności wersji Pythona, brak zamrożonych zależności) lub powoduje wgranie 2-gigabajtowego folderu `.venv` do obrazu Dockera produkcyjnego.  
-**Rozwiązanie / workaround:** Zdefiniowano twardy nakaz commitowania plików kontrolnych. Pliki `.dockerignore`, `.python-version`, `uv.lock` oraz katalog `.github/` **zawsze** muszą być śledzone przez system Git. Ewentualne próby ich zignorowania zostaną wyłapane przez awarię kontraktu CI.
-
-### EC-041 — "Leniwe" omijanie linterów przez agentów LLM (C408, E501)
-**Obszar:** Agenci LLM, Linter `ruff` (Pipeline CI)  
-**Odkryty:** Podczas implementacji reguł `GroupedAlternativesRule` z użyciem pustych list.  
-**Status:** `resolved`  
-**Opis:** Modele generujące kod (LLM) mogą czasami napotkać trudności z wygenerowaniem optymalnej składni Pythona (np. dławienie się na znakach `[]` i zastępowanie ich przez wywołania `list()`). Gdy linter `ruff` (C408) słusznie zgłosi błąd nieoptymalnego kodu, agenci mają silną tendencję do "uciszania" ostrzeżenia poprzez wstawianie komentarzy typu `# noqa: C408` zamiast naprawy samej logiki. Zjawisko to maskuje dług techniczny w projekcie.  
-**Rozwiązanie / workaround:** Ustanowiono twardą zasadę w Protokołach Agenta (`.cursorrules` i `AGENT_SPEC.md`): Agenci mają bezwzględny zakaz uciszania linterów strukturalnych (jak `C`, `E`, `F`) za pomocą komentarzy `noqa` (z wyjątkiem jawnie uwarunkowanych wyjątków z grupy `S` - Security, jak w przypadku celowego użycia `mark_safe`). Jakikolwiek kod ignorujący linter z powodu wygody modelu musi zostać odrzucony podczas Code Review.
-
----
-
-### EC-038 — XML Bomb (XXE) w plikach GPX
-**Obszar:** `infrastructure/adapters/gpx_parser.py`  
-**Status:** `resolved`  
-**Opis:** Standardowa biblioteka `xml.etree` jest podatna na ataki Denial of Service (np. Billion Laughs) przy parsowaniu złośliwych plików wysłanych przez użytkowników. Linter bezpieczeństwa (Bandit S314) zablokował wdrożenie parsera opartego na stdlib.  
-**Rozwiązanie / workaround:** Zastosowano bibliotekę `defusedxml`, która bezpiecznie analizuje drzewo XML odrzucając ataki rekursywne.
-
-### EC-039 — Błędy rysowania w OSM (Mikroszczeliny między poligonami)
-**Obszar:** `calculate_neighbors.py` (Zależności poziome regionów)  
-**Status:** `resolved`  
-**Opis:** Wykorzystanie w PostGIS funkcji `ST_Touches` do wyznaczania sąsiadów (np. graniczących ze sobą mezoregionów) pomijało wiele powiązań z powodu błędów kartografów w OSM (mikroszczeliny lub nachodzące na siebie poligony).  
-**Rozwiązanie / workaround:** Zrezygnowano z `ST_Touches` na rzecz `shape__distance_lte=(..., D(m=50))`. Dodany bufor 50 metrów "połknął" wszystkie błędy kartograficzne, a ciężar obliczeń przeniesiono do jednorazowego skryptu ładującego wyniki do tabeli M2M.
-
-### EC-040 — MVT z PostGIS gubi duże identyfikatory (BigInt)
-**Obszar:** `django_mvt_repo.py` i `map.js`  
-**Status:** `resolved`  
-**Opis:** Protobuf (PBF) w kafelkach MVT generowanych przez PostGIS potrafi błędnie rzutować duże ID (`BigAutoField`) dla właściwości, co skutkowało brakiem możliwości kliknięcia regionu na mapie (błąd `undefined`).  
-**Rozwiązanie / workaround:** W zapytaniu SQL twardo zrzutowano ID na ciąg znaków (`t.id::text AS db_id_str`). Front-end MapLibre został zaktualizowany, by przy rysowaniu poligonów i obsłudze kliknięć ufać wyłącznie tekstowej zmiennej `db_id_str`.
-
----
-
 ### EC-063 — Niewidoczny globalny stan (Window) po optymalizacji renderowania HTML
 **Obszar:** `apps/templates/base.html`, `map.js`  
 **Status:** `resolved`  
 **Opis:** W ramach optymalizacji czasu ładowania strony, tagi `<script>` ładujące główne pliki logiki (np. `map.js`) zostały przeniesione na sam koniec dokumentu HTML (przed zamykający tag `</body>`). Zmiana ta spowodowała, że skrypty mapy próbowały użyć zmiennych wstrzykiwanych z Context Processora (np. limitów Freemium czy aktywnych profili), co kończyło się błędem `ReferenceError` lub wczytywaniem mapy w "Trybie Pustym", gdyż blok ze wstrzykiwaniem stanu wyrenderował się za późno względem inicjalizacji modułów.
 **Rozwiązanie / workaround:** Twarda reguła szablonów: podczas gdy ciężkie biblioteki i pliki statyczne `.js` mogą i powinny rezydować na końcu dokumentu, **wstrzykiwanie bezpiecznego kontekstu biznesowego z serwera** (`<script> window.XYZ = {{ ... }}; </script>`) musi bezwzględnie znajdować się w sekcji `<head>`, aby zagwarantować gotowość globalnego stanu przed parsowaniem drzewa DOM i wyzwalaniem modułów klienckich.
-
----
-
-### EC-067 — Omyłkowe wywoływanie `request.profile` zamiast z sesji (Model Rodzinny)
-**Obszar:** `apps/api/views.py` (i inne widoki żądań)  
-**Status:** `resolved`  
-**Opis:** Po wdrożeniu Modelu Rodzinnego (gdzie jeden `request.user` z Django posiada wiele `TouristProfile`), próby ułatwienia sobie pobierania profilu w kodzie poprzez odwoływanie się do nieistniejącego atrybutu (np. `profile_id = request.profile.id`) kończą się błędem `AttributeError: 'WSGIRequest' object has no attribute 'profile'`.  
-**Rozwiązanie / workaround:** Twardy nakaz korzystania z wyciągania identyfikatora z sesji HTTP. Każdy widok musi bezwzględnie weryfikować aktywny kontekst uciekając się do: `profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id`.
 
 ---
 
@@ -439,17 +388,17 @@ Wdrożono twarde reguły nadpisywania:
 
 ## 7. Architektura Rodzinna i Błędy Stanu (Family Model & State)
 
-### EC-067 — Omyłkowe wywoływanie `request.profile` zamiast odczytu sesji
-**Obszar:** `apps/api/views.py` (i inne widoki HTTP)  
-**Status:** `resolved`  
-**Opis:** Po wdrożeniu Modelu Rodzinnego (gdzie jeden `request.user` posiada wiele `TouristProfile`), próby ułatwienia sobie pobierania profilu w kodzie poprzez skrót `profile_id = request.profile.id` kończą się krytycznym błędem `AttributeError: 'WSGIRequest' object has no attribute 'profile'`.  
-**Rozwiązanie / workaround:** Twardy nakaz korzystania z wyciągania identyfikatora z sesji HTTP. Każdy widok API musi bezwzględnie weryfikować aktywny kontekst używając: `profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id`.
-
-### EC-068 — Zjawisko "Zaginionego Profilu" na starych kontach (Lazy Initialization Bypass)
+### EC-087 — Zjawisko "Zaginionego Profilu" na starych kontach (Lazy Initialization Bypass)
 **Obszar:** `apps/tourists/views.py`  
 **Status:** `resolved`  
 **Opis:** Konta utworzone na początku fazy deweloperskiej (np. za pomocą komendy `createsuperuser` w terminalu) nie posiadają podpiętego rekordu w tabeli `TouristProfile`, ponieważ zostały utworzone przed wpięciem sygnału `post_save`. Wejście takiego użytkownika na główną stronę powodowało błąd 500 w helperze odczytującym ID z bazy.  
 **Rozwiązanie / workaround:** Odbudowano mechanizm "Leniwego Ładowania" w helperze `_get_active_profile_id`. Jeśli system nie znajdzie profilu, w ułamku sekundy automatycznie i "po cichu" zakłada domyślny, darmowy profil (`is_main_profile=True`, pakiet `FREE`) powiązany z zalogowanym użytkownikiem.
+
+### EC-067 — Omyłkowe wywoływanie `request.profile` zamiast z sesji (Model Rodzinny)
+**Obszar:** `apps/api/views.py` (i inne widoki żądań)  
+**Status:** `resolved`  
+**Opis:** Po wdrożeniu Modelu Rodzinnego (gdzie jeden `request.user` z Django posiada wiele `TouristProfile`), próby ułatwienia sobie pobierania profilu w kodzie poprzez odwoływanie się do nieistniejącego atrybutu (np. `profile_id = request.profile.id`) kończą się błędem `AttributeError: 'WSGIRequest' object has no attribute 'profile'`.  
+**Rozwiązanie / workaround:** Twardy nakaz korzystania z wyciągania identyfikatora z sesji HTTP. Każdy widok API musi bezwzględnie weryfikować aktywny kontekst używając: `profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id`.
 
 ---
 

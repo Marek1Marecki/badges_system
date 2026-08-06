@@ -59,6 +59,23 @@ Przestarzały System Prompt to gwarancja "halucynacji" AI w kolejnych sprintach.
 
 ---
 
+### [AUDYT-007] Uporządkowanie chaosu w `Edge Cases.md` i `User Stories.md`
+**Obszar:** `Dokumentacja`  
+**Priorytet:** `🟠 WYSOKI`  
+
+**Diagnoza Audytora:** 
+Przypadki brzegowe EC-035, EC-036, EC-037 zostały omyłkowo wklejone przez człowieka do pliku `User Stories.md` zamiast do `Edge Cases.md`. Ponadto w `Edge Cases.md` występuje wyciek moich (AI) instrukcji redakcyjnych ("Popraw fragment pobierający stopnie...") oraz zduplikowana i przerwana numeracja (np. podwójne EC-040, luki).
+
+**Action Items (Do wdrożenia):**
+- [X] Przenieść EC-035, EC-036, EC-037 z pliku `User Stories.md` do `Edge Cases.md`.
+- [X] Usunąć wyciek tekstu instrukcji w okolicach EC-003 / EC-010.
+- [X] Zreindeksować (przenumerować) przypadki brzegowe, aby wyeliminować duplikaty (EC-040, EC-044) i usunąć pustą zawartość tabel/komórek.
+
+**Komentarz Architekta:**
+Czysto redakcyjny bałagan powstały przy masowym przeklejaniu Markdowna z czatu do plików. Zmniejsza to zaufanie inżynierów do dokumentacji.
+
+---
+
 ### [AUDYT-010] SANITY CHECK: Weryfikacja pominiętego kodu
 **Obszar:** `Kod Źródłowy / IDE`  
 **Priorytet:** `🔴 KRYTYCZNY` (Dla Programisty)
