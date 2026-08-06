@@ -32,7 +32,7 @@ on:
 jobs:
   static-analysis-and-unit-tests:
     name: Code Quality & Unit Tests
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 10
     steps:
       - name: Pobieranie repozytorium
@@ -97,7 +97,7 @@ jobs:
   integration-tests:
     name: Infrastructure & Integration Tests
     needs: static-analysis-and-unit-tests
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 30
     steps:
       - name: Pobieranie repozytorium
@@ -169,7 +169,7 @@ jobs:
   e2e-tests:
     name: E2E / Playwright Tests
     needs: integration-tests
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 15
     steps:
       - name: Pobieranie repozytorium
