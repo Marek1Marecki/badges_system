@@ -224,7 +224,6 @@ digraph G {
   "apps.badges.admin" -> "apps.badges.tasks";
   "apps.badges.forms" -> "apps.badges.models";
   "apps.badges.management.commands.calculate_neighbors" -> "apps.badges.models";
-  "apps.badges.management.commands.create_test_session" -> "apps.tourists.models";
   "apps.badges.management.commands.restore_reference_data" -> "apps.badges.models";
   "apps.badges.models" -> "infrastructure.schemas.badge_rules_schema";
   "apps.badges.tasks" -> "application.exceptions";

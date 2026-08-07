@@ -34,7 +34,7 @@ def test_freemium_limit_blocks_excessive_subscriptions(auth_page: Page):
     """Weryfikuje, czy ochrona pakietu FREE odrzuca 4-tą subskrypcję (US-C01c)."""
     auth_page.goto("/catalog/")
 
-    badges_to_click = ["GOT", "KSP", "KSD"]
+    badges_to_click = ["KGP", "ZKSP", "KS"]
 
     for code in badges_to_click:
         btn = auth_page.locator(f"[data-testid='btn-subscribe-{code}']")
@@ -42,7 +42,7 @@ def test_freemium_limit_blocks_excessive_subscriptions(auth_page: Page):
             btn.click()
             auth_page.wait_for_timeout(500)
 
-    btn_limit = auth_page.locator("[data-testid='btn-subscribe-KOP']")
+    btn_limit = auth_page.locator("[data-testid='btn-subscribe-KPB']")
     if btn_limit.is_visible():
         btn_limit.click()
 
