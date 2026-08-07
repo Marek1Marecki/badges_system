@@ -77,7 +77,7 @@ if [ "$WITH_PG_RESTORE" = true ]; then
     POSTGRES_USER="${POSTGRES_USER:-test_user}"
     POSTGRES_DB="${POSTGRES_DB:-badges_system_db}"
     
-    "${COMPOSE[@]}" cp data/reference/postgis_dump.custom "${PROJECT}-db-1:/dumps/postgis_dump.custom"
+    "${COMPOSE[@]}" cp data/reference/postgis_dump.custom db:/dumps/postgis_dump.custom
     "${COMPOSE[@]}" exec -T db pg_restore -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" --no-owner -c --if-exists -1 /dumps/postgis_dump.custom
 else
     "${COMPOSE[@]}" exec -T web-e2e python manage.py validate_reference_manifest
