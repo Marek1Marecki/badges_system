@@ -155,11 +155,18 @@ jobs:
             ${{ runner.os }}-buildx-
 
       - name: Próba Generalna Środowiska (test-run.sh --full)
-        run: ./scripts/test-run.sh --full -m "not e2e"
+        run: ./scripts/test-run.sh --full --export-pg-dump -m "not e2e"
 
       - name: Zapisanie logów Dockera (zawsze)
         if: always()
         run: docker compose -f compose.yml -f compose.test.yml logs > integration-test-docker-logs.txt || true
+
+      - name: Upload dump'a PostgreSQL jako artefakt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgis-dump
+          path: /tmp/postgis_dump.custom
 
       - name: Upload logów Dockera jako artefakt
         if: always()
@@ -179,14 +186,21 @@ jobs:
       - name: Pobieranie repozytorium
         uses: actions/checkout@v4
 
-      - name: Instalacja zależności systemowych (GDAL, GEOS, PROJ)
+      - name: Pobieranie dump'a PostgreSQL z jobu integration-tests
+        uses: actions/download-artifact@v4
+        with:
+          name: postgis-dump
+          path: /tmp/postgis-dump
+
+      - name: Instalacja zależności systemowych (GDAL, GEOS, PROJ, PostgreSQL client)
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             gdal-bin \
             libgdal-dev \
             libgeos-dev \
-            libproj-dev
+            libproj-dev \
+            postgresql-client
 
       - name: Konfiguracja narzędzia UV
         uses: astral-sh/setup-uv@v5
@@ -221,8 +235,8 @@ jobs:
           docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml up -d db redis web-e2e
           docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T web-e2e python manage.py migrate
           docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T web-e2e python manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); user, _ = User.objects.get_or_create(username='admin', defaults={'email': 'admin@example.com', 'is_staff': True, 'is_superuser': True}); user.set_password('admin'); user.save(); print('Admin user ready')"
-          docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T web-e2e python manage.py validate_reference_manifest
-          docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T web-e2e python manage.py restore_reference_data
+          docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml cp /tmp/postgis-dump/postgis_dump.custom badges_system_e2e-db-1:/dumps/postgis_dump.custom
+          docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T db pg_restore -U test_user -d badges_system_db --no-owner -c --if-exists -1 /dumps/postgis_dump.custom
           timeout 300 bash -c 'until curl -s http://localhost:8009/ > /dev/null; do sleep 2; done'
 
       - name: Uruchomienie testów e2e

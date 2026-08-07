@@ -29,11 +29,14 @@ set -euo pipefail
 # ==============================================================================
 
 FULL=false
+EXPORT_PG_DUMP=false
 PYTEST_ARGS=()
 
 for arg in "$@"; do
     if [ "$arg" = "--full" ]; then
         FULL=true
+    elif [ "$arg" = "--export-pg-dump" ]; then
+        EXPORT_PG_DUMP=true
     else
         PYTEST_ARGS+=("$arg")
     fi
@@ -94,6 +97,15 @@ else
     else
         "${COMPOSE[@]}" run --rm web uv run pytest "${PYTEST_ARGS[@]}"
     fi
+fi
+
+if [ "$EXPORT_PG_DUMP" = true ]; then
+    echo ""
+    echo "=== EKSPORT DUMPA POSTGRESQL ==="
+    mkdir -p /tmp/ci-artifacts
+    "${COMPOSE[@]}" exec -T db pg_dump -U postgres -d badges_system_db -Fc -f /tmp/ci-artifacts/postgis_dump.custom
+    cp /tmp/ci-artifacts/postgis_dump.custom /tmp/postgis_dump.custom
+    echo "✅ Dump zapisany: /tmp/postgis_dump.custom"
 fi
 
 echo ""

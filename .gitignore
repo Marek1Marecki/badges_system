@@ -271,3 +271,4 @@ leaflet_data/
 # Zawiera wszystkie wzorce potrzebne dla Django, PostgreSQL, Redis, Celery,
 # uv, Docker oraz narzedzi deweloperskich uzywanych w projekcie.
 # =============================================================================
+data/reference/postgis_dump.custom

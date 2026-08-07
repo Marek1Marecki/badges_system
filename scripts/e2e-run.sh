@@ -14,15 +14,21 @@ set -euo pipefail
 # zawiedzie (trap na EXIT).
 #
 # Użycie:
-#   ./scripts/e2e-run.sh                     # wszystkie testy e2e
-#   ./scripts/e2e-run.sh -v                  # verbose
-#   ./scripts/e2e-run.sh -k test_homepage    # konkretny test
+#   ./scripts/e2e-run.sh                           # wszystkie testy e2e (loaddata z JSON)
+#   ./scripts/e2e-run.sh --with-pg-restore         # szybkie uruchomienie z pg_restore
+#   ./scripts/e2e-run.sh -v                        # verbose
+#   ./scripts/e2e-run.sh -k test_homepage          # konkretny test
 # ==============================================================================
 
 PYTEST_ARGS=()
+WITH_PG_RESTORE=false
 
 for arg in "$@"; do
-    PYTEST_ARGS+=("$arg")
+    if [ "$arg" = "--with-pg-restore" ]; then
+        WITH_PG_RESTORE=true
+    else
+        PYTEST_ARGS+=("$arg")
+    fi
 done
 
 PROJECT="ci-$(date +%s)-$$"
@@ -61,10 +67,24 @@ done
 
 echo ""
 echo "[2/3] Wgrywanie Danych Referencyjnych (Golden Set)..."
-"${COMPOSE[@]}" exec -T web-e2e python manage.py validate_reference_manifest
-for fixture in 01_regions.json.gz 02_tourist_objects.json.gz 03_badges.json.gz 04_osm_mappings.json.gz 05_badge_news.json.gz; do
-    "${COMPOSE[@]}" exec -T web-e2e python manage.py loaddata "data/reference/${fixture}"
-done
+if [ "$WITH_PG_RESTORE" = true ]; then
+    if [ ! -f "data/reference/postgis_dump.custom" ]; then
+        echo "BŁĄD: Brak pliku data/reference/postgis_dump.custom. Uruchom export_reference_data --with-pg-dump na DEV."
+        exit 1
+    fi
+    
+    # Odczytaj dane dostępowe z .env (fallback na wartości domyślne)
+    POSTGRES_USER="${POSTGRES_USER:-test_user}"
+    POSTGRES_DB="${POSTGRES_DB:-badges_system_db}"
+    
+    "${COMPOSE[@]}" cp data/reference/postgis_dump.custom "${PROJECT}-db-1:/dumps/postgis_dump.custom"
+    "${COMPOSE[@]}" exec -T db pg_restore -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" --no-owner -c --if-exists -1 /dumps/postgis_dump.custom
+else
+    "${COMPOSE[@]}" exec -T web-e2e python manage.py validate_reference_manifest
+    for fixture in 01_regions.json.gz 02_tourist_objects.json.gz 03_badges.json.gz 04_osm_mappings.json.gz 05_badge_news.json.gz; do
+        "${COMPOSE[@]}" exec -T web-e2e python manage.py loaddata "data/reference/${fixture}"
+    done
+fi
 
 echo ""
 echo "[3/3] Tworzenie konta admin i profilu turystycznego..."

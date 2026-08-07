@@ -73,12 +73,19 @@ class Command(BaseCommand):
         with transaction.atomic():
             for filename in files_to_load:
                 file_path = data_dir / filename
-                if file_path.exists():
+                if not file_path.exists():
+                    self.stdout.write(self.style.ERROR(f"KRYTYCZNY BŁĄD: Brakuje pliku z manifestu: {filename}"))
+                    raise FileNotFoundError(f"Przerwano transakcję. Brak pliku: {filename}")
+
+                if filename.endswith(".json.gz") or filename.endswith(".json"):
                     self.stdout.write(f"Wczytywanie {filename}...")
                     call_command("loaddata", str(file_path))
                 else:
-                    self.stdout.write(self.style.ERROR(f"KRYTYCZNY BŁĄD: Brakuje pliku z manifestu: {filename}"))
-                    raise FileNotFoundError(f"Przerwano transakcję. Brak pliku: {filename}")
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"Pominięto {filename} (nie jest fixture'em Django — ładuj przez pg_restore)."
+                        )
+                    )
 
         self.stdout.write(self.style.SUCCESS("\n✅ Wgrano dane słownikowe PTTK."))
 

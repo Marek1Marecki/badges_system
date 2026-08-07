@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import shutil
+import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -23,6 +24,11 @@ class Command(BaseCommand):
             "--dry-run",
             action="store_true",
             help="Symuluje eksport wyświetlając statystyki, bez faktycznego tworzenia plików.",
+        )
+        parser.add_argument(
+            "--with-pg-dump",
+            action="store_true",
+            help="Dodatkowo tworzy binarny dump PostgreSQL (pg_dump -Fc) do szybkiego restore w E2E.",
         )
 
     def _compress_file(self, file_path: Path) -> Path:
@@ -155,3 +161,32 @@ class Command(BaseCommand):
             json.dump(manifest_data, f, indent=4)
 
         self.stdout.write(self.style.SUCCESS(f"\n🎉 Snapshot zakończony. Utworzono {manifest_path.name}!"))
+
+        if options.get("with_pg_dump"):
+            self._create_pg_dump(output_dir)
+
+    def _create_pg_dump(self, output_dir: Path) -> None:
+        db = settings.DATABASES["default"]
+        dump_path = output_dir / "postgis_dump.custom"
+        env = os.environ.copy()
+        env["PGPASSWORD"] = db.get("PASSWORD", "")
+        cmd = [
+            "pg_dump",
+            "-Fc",
+            "-U",
+            db.get("USER", "postgres"),
+            "-h",
+            db.get("HOST", "localhost"),
+            "-p",
+            str(db.get("PORT", 5432)),
+            "-d",
+            db.get("NAME", "postgres"),
+            "-f",
+            str(dump_path),
+        ]
+        self.stdout.write(self.style.WARNING(f"\nTworzę pg_dump: {' '.join(cmd)}"))
+        result = subprocess.run(cmd, capture_output=True, text=True, env=env)  # noqa: S603
+        if result.returncode != 0:
+            self.stderr.write(self.style.ERROR(f"pg_dump failed: {result.stderr}"))
+            return
+        self.stdout.write(self.style.SUCCESS(f"✅ PostgreSQL dump -> {dump_path.name}"))

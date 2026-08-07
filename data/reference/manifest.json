@@ -1,5 +1,5 @@
 {
-    "snapshot_version": "2026-07-11T22:03:30.929364+00:00",
+    "snapshot_version": "2026-08-07T20:44:00+02:00",
     "description": "Pe\u0142ny, sp\u00f3jny Snapshot Systemu Referencyjnego PTTK",
     "compatible_schema": "1.0",
     "files": [
@@ -23,5 +23,9 @@
         "badge_versions": 115,
         "osm_mappings": 49,
         "badge_news": 64
+    },
+    "pg_dump": {
+        "filename": "postgis_dump.custom",
+        "description": "Binarny dump PostgreSQL (pg_dump -Fc) do szybkiego restore w E2E/CI. Nie jest wersjonowany w Gicie — tworzony w pipeline CI."
     }
 }
