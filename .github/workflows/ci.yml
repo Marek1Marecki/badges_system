@@ -59,7 +59,7 @@ jobs:
           python-version: "3.14"
 
       - name: Instalacja zależności (z grupy DEV)
-        run: uv sync --frozen --group dev --python 3.14 --retries 3
+        run: uv sync --frozen --group dev --python 3.14
       - name: Weryfikacja formatowania kodu (Ruff Format)
         run: uv run ruff format --check domain application infrastructure apps bootstrap scripts
 
@@ -124,7 +124,7 @@ jobs:
           python-version: "3.14"
 
       - name: Instalacja zależności (z grupy DEV)
-        run: uv sync --frozen --group dev --python 3.14 --retries 3
+        run: uv sync --frozen --group dev --python 3.14
 
       - name: Generowanie testowych środowisk i kluczy asymetrycznych
         # Generowanie super-bezpiecznego, kryptograficznego klucza bez naruszania logów w Gicie
@@ -171,6 +171,8 @@ jobs:
     needs: integration-tests
     runs-on: self-hosted
     timeout-minutes: 15
+    env:
+      COMPOSE_PROJECT_NAME: badges_system_e2e
     steps:
       - name: Pobieranie repozytorium
         uses: actions/checkout@v4
@@ -196,7 +198,7 @@ jobs:
           python-version: "3.14"
 
       - name: Instalacja zależności (z grupy DEV)
-        run: uv sync --frozen --group dev --python 3.14 --retries 3
+        run: uv sync --frozen --group dev --python 3.14
 
       - name: Generowanie testowych środowisk i kluczy asymetrycznych
         run: |
