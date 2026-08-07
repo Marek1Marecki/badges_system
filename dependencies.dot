@@ -119,6 +119,7 @@ digraph G {
     "apps.badges.forms" [fillcolor="pink"];
     "apps.badges.management.commands.calculate_neighbors" [fillcolor="pink"];
     "apps.badges.management.commands.create_test_session" [fillcolor="pink"];
+    "apps.badges.management.commands.export_postgis_dump" [fillcolor="pink"];
     "apps.badges.management.commands.export_reference_data" [fillcolor="pink"];
     "apps.badges.management.commands.lint_migrations" [fillcolor="pink"];
     "apps.badges.management.commands.restore_reference_data" [fillcolor="pink"];
