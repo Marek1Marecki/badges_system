@@ -192,6 +192,17 @@ jobs:
           name: postgis-dump
           path: /tmp/postgis-dump
 
+      - name: Sprawdzenie dump'a PostgreSQL
+        run: |
+          echo "=== Sprawdzenie dump'a PostgreSQL ==="
+          ls -la /tmp/postgis-dump/
+          du -sh /tmp/postgis-dump/postgis_dump.custom 2>/dev/null || echo "Dump nie istnieje!"
+          if [ ! -f /tmp/postgis-dump/postgis_dump.custom ]; then
+            echo "BŁĄD: Brak pliku postgis_dump.custom!"
+            exit 1
+          fi
+          echo "✅ Dump istnieje: $(ls -lh /tmp/postgis-dump/postgis_dump.custom)"
+
       - name: Instalacja zależności systemowych (GDAL, GEOS, PROJ, PostgreSQL client)
         run: |
           sudo apt-get update
