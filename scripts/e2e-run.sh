@@ -77,6 +77,7 @@ if [ "$WITH_PG_RESTORE" = true ]; then
     POSTGRES_USER="${POSTGRES_USER:-test_user}"
     POSTGRES_DB="${POSTGRES_DB:-badges_system_db}"
     
+    "${COMPOSE[@]}" exec -T db mkdir -p /dumps
     "${COMPOSE[@]}" cp data/reference/postgis_dump.custom db:/dumps/postgis_dump.custom
     "${COMPOSE[@]}" exec -T db pg_restore -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" --no-owner -c --if-exists -1 /dumps/postgis_dump.custom
 else
