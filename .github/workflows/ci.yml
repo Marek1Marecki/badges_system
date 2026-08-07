@@ -251,9 +251,9 @@ jobs:
           echo "=== Sprawdzenie dump'a w kontenerze ==="
           docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T db ls -lh /dumps/
           echo "=== Wykonywanie pg_restore ==="
-          docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T db pg_restore -U postgres -d badges_system_db --no-owner -c --if-exists -1 /dumps/postgis_dump.custom
+          docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T db pg_restore -U postgres -d badges_system_db --no-owner -c --if-exists -1 /dumps/postgis_dump.custom || { echo "pg_restore FAILED"; exit 1; }
           echo "=== Sprawdzenie danych po restore ==="
-          docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T db psql -U postgres -d badges_system_db -c "SELECT count(*) FROM odznaki_badge; SELECT count(*) FROM odznaki_tourist_object; SELECT count(*) FROM auth_user;"
+          docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T db psql -U postgres -d badges_system_db -c "SELECT count(*) FROM odznaki_badge; SELECT count(*) FROM odznaki_tourist_object; SELECT count(*) FROM auth_user;" || { echo "Database check FAILED"; exit 1; }
           timeout 300 bash -c 'until curl -s http://localhost:8009/ > /dev/null; do sleep 2; done'
 
       - name: Uruchomienie testów e2e
