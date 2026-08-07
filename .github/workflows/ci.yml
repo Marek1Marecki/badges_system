@@ -99,6 +99,8 @@ jobs:
     needs: static-analysis-and-unit-tests
     runs-on: self-hosted
     timeout-minutes: 30
+    env:
+      COMPOSE_PROJECT_NAME: badges_system_test
     steps:
       - name: Pobieranie repozytorium
         uses: actions/checkout@v4
