@@ -74,7 +74,7 @@ if [ "$WITH_PG_RESTORE" = true ]; then
     fi
     
     # Odczytaj dane dostępowe z .env (fallback na wartości domyślne)
-    POSTGRES_USER="${POSTGRES_USER:-test_user}"
+    POSTGRES_USER="${POSTGRES_USER:-postgres}"
     POSTGRES_DB="${POSTGRES_DB:-badges_system_db}"
     
     "${COMPOSE[@]}" exec -T db mkdir -p /dumps
