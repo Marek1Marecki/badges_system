@@ -102,18 +102,6 @@ db-backup:
 
 `db-shell` używa `exec` (nie `run --rm`) — shell bazodanowy ma sens tylko gdy kontenery działają, to interaktywna sesja diagnostyczna a nie operacja administracyjna.
 
-### Targety Sphinx
-
-```makefile
-docs-html:  ## Buduje dokumentację HTML (Sphinx)
-	PYTHONPATH=$(PYTHONPATH) uv run sphinx-build -W --keep-going -b html docs_sphinx/source docs_sphinx/build/html
-
-docs-clean:  ## Usuwa zbudowaną dokumentację
-	rm -rf docs_sphinx/build/
-```
-
-`docs-html` musi kończyć się bez błędów. `--strict` włączamy po pełnym pokryciu docstringów w `domain/` i `application/`. `docs-html` nie jest częścią `make check` — jest opcjonalnym krokiem jakości.
-
 ---
 
 ## RUNTIME — tylko dla projektów usługowych

@@ -228,7 +228,7 @@ Projekty GIS wymagają systemowych bibliotek GDAL/GEOS/PROJ w kontenerze. Nie in
 Konsekwencja: `mypy` z pluginem `django-stubs` nie może działać lokalnie bez GDAL.
 
 Rozwiązanie zgodne z kontraktem:
-- Wykluczyć warstwy Django z mypy (`exclude = ["^apps/", "^clean_badges/"]`)
+- Wykluczyć warstwy Django z mypy (`exclude = ["^apps/"]`)
 - Usunąć `mypy_django_plugin` z konfiguracji mypy
 - Udokumentować wyjątek w `pyproject.toml`
 
@@ -314,7 +314,6 @@ Migracja uruchamiana po zbudowaniu nowego obrazu, przed przepięciem ruchu — g
 # Narzędzia developerskie — nie należą do runtime
 tests/
 Makefile
-docs_sphinx/
 .pre-commit-config.yaml
 
 # Cache i artefakty — nie wpływają na działanie aplikacji

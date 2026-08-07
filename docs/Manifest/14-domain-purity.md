@@ -190,7 +190,7 @@ uv add --group dev-slim import-linter
 
 ### Wariant A — Klasyczna struktura heksagonalna
 
-Stosowany gdy `domain/`, `application/`, `infrastructure/` są osobnymi pakietami (np. clean_badges):
+Stosowany gdy `domain/`, `application/`, `infrastructure/` są osobnymi pakietami:
 
 ```ini
 # .importlinter
@@ -226,7 +226,7 @@ layers =
 
 ### Wariant B — Django monolit (per-app)
 
-Stosowany gdy domena i infrastruktura mieszkają w tej samej hierarchii `apps.*` (np. GTD_Planner). Kontrakt `layers` nie jest możliwy — definiujemy `forbidden` per-aplikacja.
+Stosowany gdy domena i infrastruktura mieszkają w tej samej hierarchii `apps.*`. Kontrakt `layers` nie jest możliwy — definiujemy `forbidden` per-aplikacja.
 
 `include_external_packages = True` jest konieczne żeby import-linter widział `django` jako zakazany moduł zewnętrzny.
 

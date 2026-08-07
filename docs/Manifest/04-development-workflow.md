@@ -120,7 +120,7 @@ make docker-up    # uruchomienie aplikacji
 Dokumentacja aktualizowana równolegle z kodem:
 
 - `README.md` — instrukcje startowe i Quick Start
-- `docs/contracts/` — aktualne kontrakty
+- `docs/Manifest/` — aktualne kontrakty
 - `CHANGELOG.md` — historia zmian przy każdym release
 
 ---

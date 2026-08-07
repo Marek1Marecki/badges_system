@@ -68,13 +68,10 @@ Dokumenty są podzielone na trzy kategorie:
 
 ## Rejestr portów
 
-| Projekt | App | DB | Admin |
-|---------|-----|----|-------|
-| blood_pressure_dashboard | 8050 | — | — |
-| OdznakiGorskie_backup | 8001 | 5434 | 5050 |
-| GTD_Planner | 8003 | 5436 | — |
-| clean_badges | 8004 | 5437 | 5052 |
-| Speech-to-Text | 8501 | — | — |
+| Środowisko | App | DB | Admin |
+|------------|-----|----|-------|
+| PTTK Badges (dev) | 8000 | 5432 | 8000 |
+| PTTK Badges (test) | — | 5433 | — |
 
 ---
 
