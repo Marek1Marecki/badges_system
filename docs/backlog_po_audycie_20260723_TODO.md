@@ -75,22 +75,6 @@ Decyzja o HTMX była jedną z najważniejszych w projekcie. Zdecydowanie zasług
 
 ---
 
-### [AUDYT-009] Usunięcie "śmieci" z Manifestów szablonowych
-**Obszar:** `Manifesty / Narzędzia`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-Plik `00-index.md` (lub podobny rejestr portów) oraz `06-documentation-contract.md` zawierają odniesienia do projektów `blood_pressure_dashboard`, `GTD_Planner` i folderów `docs_sphinx/`. 
-
-**Action Items (Do wdrożenia):**
-- [ ] Przejrzeć katalog `docs/Manifest/` i usunąć wszelkie odniesienia do zewnętrznych, starych projektów.
-- [ ] Dopasować nazwy weryfikowanych plików (np. `Data Flow Diagram.md` zamiast `DATAFLOW.md`), aby linter dokumentacji nie zgłaszał fałszywych błędów o brakujących plikach.
-
-**Komentarz Architekta:**
-To po prostu pozostałości po szablonach korporacyjnych (Boilerplates), które użyliśmy do postawienia struktury. Nie wpływa to na kod, ale psuje czytelność.
-
----
-
 ### [AUDYT-012] Sanity Check: Prawa Nabyte i Cinderella Bug
 **Obszar:** `Infrastructure / Badge Repo`  
 **Priorytet:** `🟠 WYSOKI`  
