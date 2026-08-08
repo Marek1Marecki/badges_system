@@ -246,6 +246,7 @@ jobs:
         run: |
           docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml down -v --remove-orphans || true
           docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml up -d db redis web-e2e
+          docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T db pg_isready -U postgres -t 60
           docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T web-e2e python manage.py migrate
           docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T web-e2e python manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); user, _ = User.objects.get_or_create(username='admin', defaults={'email': 'admin@example.com', 'is_staff': True, 'is_superuser': True}); user.set_password('admin'); user.save(); print('Admin user ready')"
           docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T db mkdir -p /dumps
