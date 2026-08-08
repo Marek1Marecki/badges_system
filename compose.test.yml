@@ -46,7 +46,7 @@ services:
     # jako ścieżkę do pytest zamiast wykonać go jako polecenie. Jawna,
     # zawsze-inna nazwa poniżej eliminuje to ryzyko strukturalnie — nawet
     # przy zapomnianym `-p`, obrazy nigdy nie dzielą tagu.
-    image: badges_system-web-testing
+    image: badges-system:${IMAGE_TAG:-latest}
     # `pull_policy: build` — bez tego Compose najpierw PRÓBUJE pociągnąć ten
     # tag z rejestru (którego nie ma — stąd myląca linia "pull access denied"
     # w logu), dopiero potem buduje lokalnie. Funkcjonalnie nieszkodliwe

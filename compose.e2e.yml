@@ -3,7 +3,7 @@ services:
     build:
       context: .
       target: testing
-    image: badges_system-web-testing-e2e
+    image: badges-system:${IMAGE_TAG:-latest}
     pull_policy: never
     environment:
       - ENV_FILE=.env.test

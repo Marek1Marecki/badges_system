@@ -137,24 +137,18 @@ jobs:
           echo "POSTGRES_USER=postgres" >> .env
           echo "POSTGRES_PASSWORD=password" >> .env
           echo "POSTGRES_HOST=db" >> .env
+          echo "IMAGE_NAME=badges-system" >> .env
+          echo "IMAGE_TAG=${{ github.sha }}" >> .env
           echo "DJANGO_SECRET_KEY=tajny_klucz_do_testow_ci" > .env.test
           echo "DJANGO_DEBUG=False" >> .env.test
           echo "POSTGRES_HOST=db" >> .env.test
           echo "LOG_LEVEL=DEBUG" >> .env.test
 
-      - name: Budowanie obrazów Dockera
-        run: docker compose -f compose.yml -f compose.test.yml build --no-cache --pull=false web
+      - name: Budowanie obrazu aplikacji (Build Once)
+        run: docker build --target testing -t badges-system:${{ github.sha }} .
 
       - name: Sprawdź skrypty w obrazie testowym
         run: docker compose --env-file .env -f compose.yml -f compose.test.yml run --rm web ls -la /app/scripts/
-
-      - name: Cache dla obrazów Dockera (Optymalizacja czasu budowy)
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
 
       - name: Próba Generalna Środowiska (test-run.sh --full)
         run: ./scripts/test-run.sh --full --export-pg-dump -m "not e2e"
@@ -176,6 +170,10 @@ jobs:
         with:
           name: integration-test-docker-logs
           path: integration-test-docker-logs.txt
+
+      - name: Cleanup środowiska Docker (zawsze)
+        if: always()
+        run: docker compose --env-file .env -f compose.yml -f compose.test.yml down -v --remove-orphans || true
 
   e2e-tests:
     name: E2E / Playwright Tests
@@ -237,14 +235,13 @@ jobs:
           echo "POSTGRES_USER=postgres" >> .env
           echo "POSTGRES_PASSWORD=password" >> .env
           echo "POSTGRES_HOST=db" >> .env
+          echo "IMAGE_NAME=badges-system" >> .env
+          echo "IMAGE_TAG=${{ github.sha }}" >> .env
           cp .env.example .env.test
           echo "DJANGO_SECRET_KEY=$(openssl rand -hex 32)" >> .env.test
           echo "DJANGO_DEBUG=False" >> .env.test
           echo "POSTGRES_HOST=db" >> .env.test
           echo "LOG_LEVEL=DEBUG" >> .env.test
-
-      - name: Budowanie obrazów Dockera
-        run: docker compose -f compose.yml -f compose.test.yml -f compose.e2e.yml build web-e2e
 
       - name: Uruchomienie infrastruktury i serwera Django
         run: |
@@ -284,3 +281,7 @@ jobs:
         with:
           name: e2e-docker-logs
           path: e2e-docker-logs.txt
+
+      - name: Cleanup środowiska Docker (zawsze)
+        if: always()
+        run: docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml down -v --remove-orphans || true
