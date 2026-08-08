@@ -108,8 +108,8 @@ if [ "$EXPORT_PG_DUMP" = true ]; then
     mkdir -p /tmp/ci-artifacts
     "${COMPOSE[@]}" exec -T db sh -c "mkdir -p /tmp/ci-artifacts"
     "${COMPOSE[@]}" exec -T db pg_dump -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-badges_system_db}" -Fc -f /tmp/ci-artifacts/postgis_dump.custom
-    "${COMPOSE[@]}" cp db:/tmp/ci-artifacts/postgis_dump.custom /tmp/postgis_dump.custom
-    echo "✅ Dump zapisany: /tmp/postgis_dump.custom"
+    "${COMPOSE[@]}" cp db:/tmp/ci-artifacts/postgis_dump.custom "$PWD/postgis_dump.custom"
+    echo "✅ Dump zapisany: $PWD/postgis_dump.custom"
 fi
 
 echo ""
