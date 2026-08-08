@@ -139,6 +139,7 @@ jobs:
           echo "POSTGRES_HOST=db" >> .env
           echo "DJANGO_SECRET_KEY=tajny_klucz_do_testow_ci" > .env.test
           echo "DJANGO_DEBUG=False" >> .env.test
+          echo "POSTGRES_HOST=db" >> .env.test
           echo "LOG_LEVEL=DEBUG" >> .env.test
 
       - name: Budowanie obrazów Dockera
@@ -239,6 +240,7 @@ jobs:
           cp .env.example .env.test
           echo "DJANGO_SECRET_KEY=$(openssl rand -hex 32)" >> .env.test
           echo "DJANGO_DEBUG=False" >> .env.test
+          echo "POSTGRES_HOST=db" >> .env.test
           echo "LOG_LEVEL=DEBUG" >> .env.test
 
       - name: Budowanie obrazów Dockera
