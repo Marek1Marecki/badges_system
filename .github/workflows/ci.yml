@@ -134,8 +134,8 @@ jobs:
           cp .env.example .env
           echo "DEV_UID=1000" >> .env
           echo "DEV_GID=1000" >> .env
-          echo "POSTGRES_USER=test_user" >> .env
-          echo "POSTGRES_PASSWORD=test_password" >> .env
+          echo "POSTGRES_USER=postgres" >> .env
+          echo "POSTGRES_PASSWORD=password" >> .env
           echo "DJANGO_SECRET_KEY=tajny_klucz_do_testow_ci" > .env.test
           echo "DJANGO_DEBUG=False" >> .env.test
           echo "LOG_LEVEL=DEBUG" >> .env.test
@@ -232,8 +232,8 @@ jobs:
           cp .env.example .env
           echo "DEV_UID=1000" >> .env
           echo "DEV_GID=1000" >> .env
-          echo "POSTGRES_USER=test_user" >> .env
-          echo "POSTGRES_PASSWORD=test_password" >> .env
+          echo "POSTGRES_USER=postgres" >> .env
+          echo "POSTGRES_PASSWORD=password" >> .env
           cp .env.example .env.test
           echo "DJANGO_SECRET_KEY=$(openssl rand -hex 32)" >> .env.test
           echo "DJANGO_DEBUG=False" >> .env.test
