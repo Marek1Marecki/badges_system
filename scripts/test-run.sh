@@ -45,7 +45,7 @@ done
 # Nazwa projektu unikalna per uruchomienie — ta sama izolacja co w README
 # (zapobiega też kolizji tagów obrazów opisanej w historii zmian, Runda 6).
 PROJECT="ci-$(date +%s)-$$"
-COMPOSE=(docker compose -p "${PROJECT}" -f compose.yml -f compose.test.yml)
+COMPOSE=(docker compose --env-file .env -p "${PROJECT}" -f compose.yml -f compose.test.yml)
 
 cleanup() {
     local exit_code=$?
