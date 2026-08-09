@@ -124,6 +124,12 @@ def test_catalog_shows_badges_and_subscribe_button(auth_page: Page):
 @pytest.mark.e2e
 def test_ranking_page_shows_object_links(auth_page: Page):
     """Ranking celów zawiera linki do szczegółów obiektów."""
+    auth_page.goto("/catalog/")
+    subscribe_btn = auth_page.locator("[data-testid='btn-subscribe-KGP']")
+    if subscribe_btn.is_visible():
+        subscribe_btn.click()
+        auth_page.wait_for_timeout(1000)
+
     auth_page.goto("/ranking/")
     expect(auth_page).to_have_url(re.compile(r".*/ranking/"))
 
