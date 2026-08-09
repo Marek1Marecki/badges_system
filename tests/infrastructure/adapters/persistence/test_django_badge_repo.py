@@ -55,9 +55,7 @@ class TestDjangoBadgeRepositoryHydration:
         from apps.badges.models import BadgeModel, BadgeTierModel, BadgeVersionModel, TouristObject
 
         user = User.objects.create_user(username="validator", email="v@example.com")
-        badge = BadgeModel.objects.create(
-            code="KGP", name="Korona Gór Polski", organizer=_create_organizer()
-        )
+        badge = BadgeModel.objects.create(code="KGP", name="Korona Gór Polski", organizer=_create_organizer())
         version = BadgeVersionModel.objects.create(
             badge=badge,
             version_code="v2024",
@@ -67,13 +65,9 @@ class TestDjangoBadgeRepositoryHydration:
                 {"type": "MinAgeRule", "min_age": 18},
             ],
         )
-        peak = TouristObject.objects.create(
-            name="P1", type="Szczyt", is_active=True, status="READY"
-        )
+        peak = TouristObject.objects.create(name="P1", type="Szczyt", is_active=True, status="READY")
         version.pool_peaks.add(peak)
-        BadgeTierModel.objects.create(
-            version=version, name="Jednostopniowa", order=1, required_peaks_count=1
-        )
+        BadgeTierModel.objects.create(version=version, name="Jednostopniowa", order=1, required_peaks_count=1)
 
         result = self.repo.get_badge_version("KGP", "v2024")
 
@@ -87,9 +81,7 @@ class TestDjangoBadgeRepositoryHydration:
         """Rzuca ValueError gdy reguła w JSONB nie ma pola 'type'."""
         from apps.badges.models import BadgeModel, BadgeVersionModel
 
-        badge = BadgeModel.objects.create(
-            code="BADGE", name="Badge", organizer=_create_organizer()
-        )
+        badge = BadgeModel.objects.create(code="BADGE", name="Badge", organizer=_create_organizer())
         BadgeVersionModel.objects.create(
             badge=badge,
             version_code="v1",
@@ -104,9 +96,7 @@ class TestDjangoBadgeRepositoryHydration:
         """Rzuca ValueError gdy reguła ma nieznany typ."""
         from apps.badges.models import BadgeModel, BadgeVersionModel
 
-        badge = BadgeModel.objects.create(
-            code="BADGE", name="Badge", organizer=_create_organizer()
-        )
+        badge = BadgeModel.objects.create(code="BADGE", name="Badge", organizer=_create_organizer())
         BadgeVersionModel.objects.create(
             badge=badge,
             version_code="v1",
@@ -121,9 +111,7 @@ class TestDjangoBadgeRepositoryHydration:
         """Rzuca ValueError gdy reguła ma typ, ale brakuje wymaganego parametru."""
         from apps.badges.models import BadgeModel, BadgeVersionModel
 
-        badge = BadgeModel.objects.create(
-            code="BADGE", name="Badge", organizer=_create_organizer()
-        )
+        badge = BadgeModel.objects.create(code="BADGE", name="Badge", organizer=_create_organizer())
         BadgeVersionModel.objects.create(
             badge=badge,
             version_code="v1",
@@ -138,9 +126,7 @@ class TestDjangoBadgeRepositoryHydration:
         """Rzuca ValueError gdy parametr daty ma zły format."""
         from apps.badges.models import BadgeModel, BadgeVersionModel
 
-        badge = BadgeModel.objects.create(
-            code="BADGE", name="Badge", organizer=_create_organizer()
-        )
+        badge = BadgeModel.objects.create(code="BADGE", name="Badge", organizer=_create_organizer())
         BadgeVersionModel.objects.create(
             badge=badge,
             version_code="v1",
@@ -155,9 +141,7 @@ class TestDjangoBadgeRepositoryHydration:
         """Rzuca błąd gdy pole rules nie jest listą (uszkodzony JSONB)."""
         from apps.badges.models import BadgeModel, BadgeVersionModel
 
-        badge = BadgeModel.objects.create(
-            code="BADGE", name="Badge", organizer=_create_organizer()
-        )
+        badge = BadgeModel.objects.create(code="BADGE", name="Badge", organizer=_create_organizer())
         version = BadgeVersionModel.objects.create(
             badge=badge,
             version_code="v1",
@@ -172,9 +156,7 @@ class TestDjangoBadgeRepositoryHydration:
         """Rzuca błąd gdy pole rules to None (uszkodzony JSONB)."""
         from apps.badges.models import BadgeModel, BadgeVersionModel
 
-        badge = BadgeModel.objects.create(
-            code="BADGE", name="Badge", organizer=_create_organizer()
-        )
+        badge = BadgeModel.objects.create(code="BADGE", name="Badge", organizer=_create_organizer())
         version = BadgeVersionModel.objects.create(
             badge=badge,
             version_code="v1",
@@ -198,9 +180,7 @@ class TestDjangoBadgeRepositoryByHydrationFailFast:
         """Uszkodzony JSONB w regule nie przekracza granicy adapteru -> domena."""
         from apps.badges.models import BadgeModel, BadgeVersionModel
 
-        badge = BadgeModel.objects.create(
-            code="BADGE", name="Badge", organizer=_create_organizer()
-        )
+        badge = BadgeModel.objects.create(code="BADGE", name="Badge", organizer=_create_organizer())
         BadgeVersionModel.objects.create(
             badge=badge,
             version_code="v1",
@@ -215,9 +195,7 @@ class TestDjangoBadgeRepositoryByHydrationFailFast:
         """Nieznany typ reguły jest odrzucany przed utworzeniem obiektu domenowego."""
         from apps.badges.models import BadgeModel, BadgeVersionModel
 
-        badge = BadgeModel.objects.create(
-            code="BADGE", name="Badge", organizer=_create_organizer()
-        )
+        badge = BadgeModel.objects.create(code="BADGE", name="Badge", organizer=_create_organizer())
         BadgeVersionModel.objects.create(
             badge=badge,
             version_code="v1",

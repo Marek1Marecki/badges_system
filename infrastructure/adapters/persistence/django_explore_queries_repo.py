@@ -22,7 +22,7 @@ class DjangoExploreQueriesRepository(ExploreQueriesRepositoryPort):
         return (
             TouristObject.objects.filter(status="READY", is_active=True)
             .select_related("parent_object")
-            .prefetch_related("badges")
+            .prefetch_related("badgeversionmodel_set__badge")
         )
 
     def get_regions_by_level(self, level: str) -> Any:

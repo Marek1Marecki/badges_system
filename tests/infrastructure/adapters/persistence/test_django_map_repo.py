@@ -56,10 +56,10 @@ class TestDjangoMapRepository:
         """Filtruje obiekty według kodu odznaki."""
         from apps.badges.models import BadgeModel, BadgeVersionModel, TouristObject
 
-        badge = BadgeModel.objects.create(code="KGP", name="Korona Gór Polski", organizer=OrganizerModel.objects.create(name="PTTK"))
-        version = BadgeVersionModel.objects.create(
-            badge=badge, version_code="v2024", valid_from=date(2024, 1, 1)
+        badge = BadgeModel.objects.create(
+            code="KGP", name="Korona Gór Polski", organizer=OrganizerModel.objects.create(name="PTTK")
         )
+        version = BadgeVersionModel.objects.create(badge=badge, version_code="v2024", valid_from=date(2024, 1, 1))
         obj = TouristObject.objects.create(
             name="KGP Peak",
             type="Szczyt",

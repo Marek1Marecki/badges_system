@@ -202,13 +202,9 @@ class TestVerificationResultHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_result_is_frozen(
-        self, verified: bool, status: str, valid_ascents_count: int
-    ) -> None:
+    def test_result_is_frozen(self, verified: bool, status: str, valid_ascents_count: int) -> None:
         """VerificationResult jest immutable."""
-        result = VerificationResult(
-            verified=verified, status=status, valid_ascents_count=valid_ascents_count
-        )
+        result = VerificationResult(verified=verified, status=status, valid_ascents_count=valid_ascents_count)
         with pytest.raises((AttributeError, TypeError)):
             result.verified = not verified
 
@@ -221,9 +217,7 @@ class TestVerificationResultHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_tier_result_is_frozen(
-        self, tier_id: int, name: str, status: str, required_count: int
-    ) -> None:
+    def test_tier_result_is_frozen(self, tier_id: int, name: str, status: str, required_count: int) -> None:
         """TierResult jest immutable."""
         tier = TierResult(tier_id=tier_id, name=name, status=status, required_count=required_count)
         with pytest.raises((AttributeError, TypeError)):
@@ -301,10 +295,7 @@ class TestBadgeVersionDomainEvaluateHypothesis:
         target_peak = peaks_in_ascents[0]
         date1 = date(2020, 1, 1)
         date2 = date(2021, 1, 1)
-        modified = [
-            Ascent(peak_id=a.peak_id, ascent_date=a.ascent_date, region_ids=a.region_ids)
-            for a in ascents
-        ]
+        modified = [Ascent(peak_id=a.peak_id, ascent_date=a.ascent_date, region_ids=a.region_ids) for a in ascents]
         modified.append(Ascent(peak_id=target_peak, ascent_date=date1))
         modified.append(Ascent(peak_id=target_peak, ascent_date=date2))
 
@@ -421,16 +412,12 @@ class TestBadgeVersionDomainEvaluateHypothesis:
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
         deadline=None,
     )
-    def test_empty_tiers_fallback_requires_full_pool(
-        self, tier_specs: list[tuple[int, int, int]]
-    ) -> None:
+    def test_empty_tiers_fallback_requires_full_pool(self, tier_specs: list[tuple[int, int, int]]) -> None:
         """Brak stopni → fallback wymaga 100% puli."""
         assume(not tier_specs)
         pool = frozenset([1, 2, 3, 4, 5])
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=pool, tiers=[]
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=pool, tiers=[])
 
         all_ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in pool]
         result_full = domain.evaluate(all_ascents, make_ctx())
@@ -483,13 +470,11 @@ class TestBadgeVersionDomainEvaluateHypothesis:
         """Szczyty spoza puli są ignorowane."""
         assume(outside_peak_id not in pool_peak_ids)
         inside = list(pool_peak_ids)[:1]
-        ascents = [
-            Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in inside
-        ] + [Ascent(peak_id=outside_peak_id, ascent_date=date(2023, 1, 1))]
+        ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in inside] + [
+            Ascent(peak_id=outside_peak_id, ascent_date=date(2023, 1, 1))
+        ]
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=[]
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=[])
         result = domain.evaluate(ascents, make_ctx())
         assert result.valid_ascents_count == len(inside)
 
@@ -513,9 +498,7 @@ class TestBadgeVersionDomainEvaluateHypothesis:
             Ascent(peak_id=same_peak_id, ascent_date=date(2022, 12, 31)),
         ]
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=[]
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=[])
         result = domain.evaluate(ascents, make_ctx())
         assert result.valid_ascents_count == 1
 
@@ -633,9 +616,7 @@ class TestBadgeRuleFormatRejectionHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_format_rejection_contains_peak_id_and_date(
-        self, peak_id: int, ascent_date: date, reason: str
-    ) -> None:
+    def test_format_rejection_contains_peak_id_and_date(self, peak_id: int, ascent_date: date, reason: str) -> None:
         """Komunikat odrzucenia zawiera ID szczytu i datę."""
         ascent = Ascent(peak_id=peak_id, ascent_date=ascent_date)
         msg = BadgeRule._format_rejection(ascent, reason)
@@ -737,9 +718,7 @@ class TestCrossLayerInvariantsHypothesis:
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
         deadline=None,
     )
-    def test_tier_results_count_matches_tiers(
-        self, tier_specs: list[tuple[int, int, int]]
-    ) -> None:
+    def test_tier_results_count_matches_tiers(self, tier_specs: list[tuple[int, int, int]]) -> None:
         """Liczba TierResult w wyniku równa się liczbie zdefiniowanych stopni."""
         assume(tier_specs)
         pool = frozenset([1, 2, 3])
@@ -761,9 +740,7 @@ class TestCrossLayerInvariantsHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_verified_true_implies_completed_status(
-        self, pool_peak_ids: frozenset[int], required_count: int
-    ) -> None:
+    def test_verified_true_implies_completed_status(self, pool_peak_ids: frozenset[int], required_count: int) -> None:
         """verified=True implikuje status=COMPLETED."""
         assume(len(pool_peak_ids) >= required_count)
         peak_list = list(pool_peak_ids)[:required_count]
@@ -786,9 +763,7 @@ class TestCrossLayerInvariantsHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_verified_false_excludes_completed_status(
-        self, pool_peak_ids: frozenset[int], required_count: int
-    ) -> None:
+    def test_verified_false_excludes_completed_status(self, pool_peak_ids: frozenset[int], required_count: int) -> None:
         """verified=False nie pozwala na status=COMPLETED."""
         assume(len(pool_peak_ids) >= required_count)
         fewer = max(0, required_count - 1)
@@ -834,9 +809,7 @@ class TestBadgeVersionDomainResilienceHypothesis:
 
         ascents = [Ascent(peak_id=same_peak, ascent_date=d) for d in dates]
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=[]
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=[])
         result = domain.evaluate(ascents, make_ctx())
         assert result.valid_ascents_count == 1
 
@@ -859,19 +832,14 @@ class TestBadgeVersionDomainResilienceHypothesis:
         assume(tier2_count > tier1_count)
 
         peak_list = list(pool_peak_ids)
-        ascents = [
-            Ascent(peak_id=pid, ascent_date=date(2023, 1, 1))
-            for pid in peak_list[:tier1_count]
-        ]
+        ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in peak_list[:tier1_count]]
 
         tiers = [
             BadgeTierDomain(tier_id=1, name="T1", required_count=tier1_count, order=1),
             BadgeTierDomain(tier_id=2, name="T2", required_count=tier2_count, order=2),
         ]
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=tiers
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=tiers)
         result = domain.evaluate(ascents, make_ctx())
 
         assert result.verified is False
@@ -896,9 +864,7 @@ class TestBadgeVersionDomainResilienceHypothesis:
             BadgeTierDomain(tier_id=2, name="Normal", required_count=1, order=2),
         ]
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=tiers
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=tiers)
         result = domain.evaluate([], make_ctx())
 
         assert result.tiers[0].status == "COMPLETED"
@@ -930,14 +896,9 @@ class TestBadgeVersionDomainResilienceHypothesis:
         peak_list = list(pool_peak_ids)[:1]
         ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in peak_list]
 
-        tiers = [
-            BadgeTierDomain(tier_id=tid, name=f"T{tid}", required_count=rc, order=10)
-            for tid, rc, _ in tier_specs
-        ]
+        tiers = [BadgeTierDomain(tier_id=tid, name=f"T{tid}", required_count=rc, order=10) for tid, rc, _ in tier_specs]
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=tiers
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=tiers)
         result = domain.evaluate(ascents, make_ctx())
 
         assert len(result.tiers) == len(tier_specs)
@@ -961,9 +922,7 @@ class TestBadgeVersionDomainResilienceHypothesis:
             pid = peak_list[i % len(peak_list)] if peak_list else i
             ascents.append(Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)))
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=[]
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=[])
         result = domain.evaluate(ascents, make_ctx())
         assert isinstance(result, VerificationResult)
 
@@ -1142,9 +1101,7 @@ class TestDomainDeepInvariantsHypothesis:
         self, verified: bool, status: str, valid_ascents_count: int
     ) -> None:
         """Domyślna lista błędów w VerificationResult jest pusta."""
-        result = VerificationResult(
-            verified=verified, status=status, valid_ascents_count=valid_ascents_count
-        )
+        result = VerificationResult(verified=verified, status=status, valid_ascents_count=valid_ascents_count)
         assert result.errors == []
 
     @given(
@@ -1156,9 +1113,7 @@ class TestDomainDeepInvariantsHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_tier_result_equality(
-        self, tier_id: int, name: str, status: str, required_count: int
-    ) -> None:
+    def test_tier_result_equality(self, tier_id: int, name: str, status: str, required_count: int) -> None:
         """Równe TierResult mają identyczne pola."""
         t1 = TierResult(tier_id=tier_id, name=name, status=status, required_count=required_count)
         t2 = TierResult(tier_id=tier_id, name=name, status=status, required_count=required_count)
@@ -1191,14 +1146,9 @@ class TestDomainDeepInvariantsHypothesis:
         peak_list = list(pool_peak_ids)[:1]
         ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in peak_list]
 
-        tiers = [
-            BadgeTierDomain(tier_id=tid, name=f"T{tid}", required_count=rc, order=o)
-            for tid, rc, o in tier_specs
-        ]
+        tiers = [BadgeTierDomain(tier_id=tid, name=f"T{tid}", required_count=rc, order=o) for tid, rc, o in tier_specs]
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=tiers
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=tiers)
         result = domain.evaluate(ascents, make_ctx())
 
         result_orders = [t.tier_id for t in result.tiers]
@@ -1231,9 +1181,7 @@ class TestDomainDeepInvariantsHypothesis:
         peak_list = list(pool_peak_ids)[:1]
         ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in peak_list]
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=rules, pool_peak_ids=pool_peak_ids, tiers=[]
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=rules, pool_peak_ids=pool_peak_ids, tiers=[])
         domain.evaluate(ascents, make_ctx())
 
         assert called == list(range(num_rules))
@@ -1250,14 +1198,9 @@ class TestDomainDeepInvariantsHypothesis:
     ) -> None:
         """evaluate() nie mutuje listy wejść."""
         original = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in list(pool_peak_ids)[:3]]
-        snapshot = [
-            Ascent(peak_id=a.peak_id, ascent_date=a.ascent_date, region_ids=a.region_ids)
-            for a in original
-        ]
+        snapshot = [Ascent(peak_id=a.peak_id, ascent_date=a.ascent_date, region_ids=a.region_ids) for a in original]
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=[]
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=[])
         domain.evaluate(original, make_ctx())
 
         assert original == snapshot
@@ -1276,21 +1219,14 @@ class TestDomainDeepInvariantsHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_tier_result_status_values_are_valid(
-        self, tier_specs: list[tuple[int, int, int]]
-    ) -> None:
+    def test_tier_result_status_values_are_valid(self, tier_specs: list[tuple[int, int, int]]) -> None:
         """TierResult.status zawsze jest jedną z wartości stanu."""
         pool = frozenset([1, 2, 3])
         ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in pool]
 
-        tiers = [
-            BadgeTierDomain(tier_id=tid, name=f"T{tid}", required_count=rc, order=o)
-            for tid, rc, o in tier_specs
-        ]
+        tiers = [BadgeTierDomain(tier_id=tid, name=f"T{tid}", required_count=rc, order=o) for tid, rc, o in tier_specs]
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=pool, tiers=tiers
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=pool, tiers=tiers)
         result = domain.evaluate(ascents, make_ctx())
 
         valid_statuses = {"COMPLETED", "IN_PROGRESS", "NOT_STARTED"}
@@ -1338,9 +1274,7 @@ class TestDomainDeepInvariantsHypothesis:
         assume(-1 not in pool_peak_ids)
         ascents = [Ascent(peak_id=-1, ascent_date=date(2023, 1, 1))]
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=[]
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=[])
         result = domain.evaluate(ascents, make_ctx())
         assert result.valid_ascents_count == 0
 
@@ -1355,9 +1289,7 @@ class TestDomainDeepInvariantsHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_verification_context_with_empty_string_club_key(
-        self, club_join_dates: dict[str, date]
-    ) -> None:
+    def test_verification_context_with_empty_string_club_key(self, club_join_dates: dict[str, date]) -> None:
         """Pusty ciąg jako klucz w club_join_dates jest dozwolony."""
         ctx = VerificationContext(
             evaluation_time=datetime(2026, 1, 1, tzinfo=UTC),
@@ -1391,9 +1323,7 @@ class TestRuleOrderIndependenceHypothesis:
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
         deadline=None,
     )
-    def test_status_verified_independent_of_rule_order(
-        self, ascents: list[Ascent], num_rules: int
-    ) -> None:
+    def test_status_verified_independent_of_rule_order(self, ascents: list[Ascent], num_rules: int) -> None:
         """Status i verified są takie same niezależnie od kolejności reguł."""
         assume(ascents)
 
@@ -1449,14 +1379,9 @@ class TestTierOrderStabilityHypothesis:
         self, tier_specs: list[tuple[int, int, int]], ascents: list[Ascent]
     ) -> None:
         """Przy tym samym order, kolejność tierów w wyniku jest stabilna."""
-        tiers = [
-            BadgeTierDomain(tier_id=tid, name=f"T{tid}", required_count=rc, order=1)
-            for tid, rc, _ in tier_specs
-        ]
+        tiers = [BadgeTierDomain(tier_id=tid, name=f"T{tid}", required_count=rc, order=1) for tid, rc, _ in tier_specs]
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=frozenset([1]), tiers=tiers
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1]), tiers=tiers)
         result = domain.evaluate(ascents, make_ctx())
 
         expected_ids = [t.tier_id for t in tiers]
@@ -1479,9 +1404,7 @@ class TestEmptyPoolAndTiersHypothesis:
     )
     def test_empty_pool_and_empty_tiers_no_crash(self, ascents: list[Ascent]) -> None:
         """Pusta pula i puste stopnie nie rzucają wyjątku."""
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=frozenset(), tiers=[]
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset(), tiers=[])
         result = domain.evaluate(ascents, make_ctx())
         assert isinstance(result, VerificationResult)
         assert result.valid_ascents_count <= len(ascents)
@@ -1493,9 +1416,7 @@ class TestEmptyPoolAndTiersHypothesis:
     )
     def test_empty_pool_fallback_without_tiers(self, ascents: list[Ascent]) -> None:
         """Brak puli i brak stopni — wynik zależy od liczby wejść."""
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=frozenset(), tiers=[]
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset(), tiers=[])
         result = domain.evaluate(ascents, make_ctx())
         if ascents:
             assert result.status in {"IN_PROGRESS", "COMPLETED"}
@@ -1519,9 +1440,7 @@ class TestErrorMessagesHypothesis:
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
         deadline=None,
     )
-    def test_rule_errors_are_unique(
-        self, ascents: list[Ascent], num_rules: int
-    ) -> None:
+    def test_rule_errors_are_unique(self, ascents: list[Ascent], num_rules: int) -> None:
         """Błędy z różnych reguł są unikalne."""
         assume(ascents)
         rules = [TimeLimitRule(limit_in_years=i + 1) for i in range(num_rules)]
@@ -1573,9 +1492,7 @@ class TestVerificationContextEdgeCasesHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_birth_date_equal_evaluation_time(
-        self, birth_date: date, evaluation_date: date
-    ) -> None:
+    def test_birth_date_equal_evaluation_time(self, birth_date: date, evaluation_date: date) -> None:
         """Data urodzenia równa evaluation_time — wiek = 0."""
         assume(birth_date == evaluation_date)
         ctx = VerificationContext(
@@ -1630,13 +1547,13 @@ class TestComposedRulesHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_min_and_max_age_together(
-        self, ascent_date: date, birth_date: date, start_date: date
-    ) -> None:
+    def test_min_and_max_age_together(self, ascent_date: date, birth_date: date, start_date: date) -> None:
         """MinAgeRule i MaxAgeRule stosowane razem kumulują błędy."""
         assume(birth_date < ascent_date)
-        age = ascent_date.year - birth_date.year - (
-            (ascent_date.month, ascent_date.day) < (birth_date.month, birth_date.day)
+        age = (
+            ascent_date.year
+            - birth_date.year
+            - ((ascent_date.month, ascent_date.day) < (birth_date.month, birth_date.day))
         )
         assume(age >= 0)
 
@@ -1679,9 +1596,7 @@ class TestTimeLimitRuleLeapYearHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_leap_year_to_non_leap_year_deadline(
-        self, start_year: int, limit_in_years: int
-    ) -> None:
+    def test_leap_year_to_non_leap_year_deadline(self, start_year: int, limit_in_years: int) -> None:
         """29 lutego w roku przestępnym → deadline 28 lutego w roku nieprzestępnym."""
         start_date = date(start_year, 2, 29)
 
@@ -1700,9 +1615,7 @@ class TestTimeLimitRuleLeapYearHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_leap_year_to_leap_year_deadline_stays_feb_29(
-        self, start_year: int, limit_in_years: int
-    ) -> None:
+    def test_leap_year_to_leap_year_deadline_stays_feb_29(self, start_year: int, limit_in_years: int) -> None:
         """29 lutego → 29 lutego jeśli celowy rok też jest przestępny."""
         start_date = date(start_year, 2, 29)
         target_year = start_date.year + limit_in_years
@@ -1736,9 +1649,7 @@ class TestAscentRegionIdsHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_region_ids_deduplicated(
-        self, peak_id: int, ascent_date: date, region_list: list[int]
-    ) -> None:
+    def test_region_ids_deduplicated(self, peak_id: int, ascent_date: date, region_list: list[int]) -> None:
         """Frozenset usuwa duplikaty z region_ids."""
         region_ids = frozenset(region_list)
         ascent = Ascent(peak_id=peak_id, ascent_date=ascent_date, region_ids=region_ids)
@@ -1761,9 +1672,7 @@ class TestVersionIdTypesHypothesis:
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
         deadline=None,
     )
-    def test_string_version_id_works(
-        self, pool_peak_ids: frozenset[int], ascents: list[Ascent]
-    ) -> None:
+    def test_string_version_id_works(self, pool_peak_ids: frozenset[int], ascents: list[Ascent]) -> None:
         """version_id typu str działa poprawnie."""
         domain = BadgeVersionDomain(
             version_id="v-alpha",
@@ -1782,9 +1691,7 @@ class TestVersionIdTypesHypothesis:
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
         deadline=None,
     )
-    def test_int_version_id_works(
-        self, pool_peak_ids: frozenset[int], ascents: list[Ascent]
-    ) -> None:
+    def test_int_version_id_works(self, pool_peak_ids: frozenset[int], ascents: list[Ascent]) -> None:
         """version_id typu int działa poprawnie."""
         domain = BadgeVersionDomain(
             version_id=42,
@@ -1906,23 +1813,16 @@ class TestDomainFinalResilienceHypothesis:
     ) -> None:
         """Wszystkie stopnie COMPLETED tylko gdy wszystkie szczytów zdobyte."""
         required = len(pool_peak_ids)
-        tiers = [
-            BadgeTierDomain(tier_id=i, name=f"T{i}", required_count=required, order=i)
-            for i in range(num_tiers)
-        ]
+        tiers = [BadgeTierDomain(tier_id=i, name=f"T{i}", required_count=required, order=i) for i in range(num_tiers)]
 
         all_ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in pool_peak_ids]
-        domain_all = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=tiers
-        )
+        domain_all = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=tiers)
         result_all = domain_all.evaluate(all_ascents, make_ctx())
         assert result_all.verified is True
         assert result_all.status == "COMPLETED"
 
         partial = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in list(pool_peak_ids)[:1]]
-        domain_partial = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=tiers
-        )
+        domain_partial = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=tiers)
         result_partial = domain_partial.evaluate(partial, make_ctx())
         assert result_partial.verified is False
 
@@ -1942,15 +1842,11 @@ class TestDomainFinalResilienceHypothesis:
     ) -> None:
         """Wszystkie wejścia w tę samą datę — deduplikacja po peak_id."""
         assume(date1 != date2)
-        ascents = [
-            Ascent(peak_id=pid, ascent_date=date1) for pid in peak_ids
-        ] + [
+        ascents = [Ascent(peak_id=pid, ascent_date=date1) for pid in peak_ids] + [
             Ascent(peak_id=pid, ascent_date=date2) for pid in peak_ids
         ]
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=frozenset(peak_ids), tiers=[]
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset(peak_ids), tiers=[])
         result = domain.evaluate(ascents, make_ctx())
         assert result.valid_ascents_count == len(set(peak_ids))
 
@@ -2030,14 +1926,9 @@ class TestDomainFinalResilienceHypothesis:
         peak_list = list(pool_peak_ids)[:1]
         ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in peak_list]
 
-        tiers = [
-            BadgeTierDomain(tier_id=tid, name=f"T{tid}", required_count=rc, order=o)
-            for tid, rc, o in tier_specs
-        ]
+        tiers = [BadgeTierDomain(tier_id=tid, name=f"T{tid}", required_count=rc, order=o) for tid, rc, o in tier_specs]
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=tiers
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=tiers)
         result = domain.evaluate(ascents, make_ctx())
         assert len(result.tiers) == len(tier_specs)
 
@@ -2056,16 +1947,11 @@ class TestDomainFinalResilienceHypothesis:
         """Szczyty spoza puli nie wpływają na liczbę valid_ascents_count."""
         inside = list(pool_peak_ids)[:1]
         outside_count = num_ascents
-        ascents = [
-            Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in inside
-        ] + [
-            Ascent(peak_id=999999 + i, ascent_date=date(2023, 1, 1))
-            for i in range(outside_count)
+        ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in inside] + [
+            Ascent(peak_id=999999 + i, ascent_date=date(2023, 1, 1)) for i in range(outside_count)
         ]
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=[]
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=pool_peak_ids, tiers=[])
         result = domain.evaluate(ascents, make_ctx())
         assert result.valid_ascents_count == len(inside)
 
@@ -2087,14 +1973,9 @@ class TestDomainFinalResilienceHypothesis:
         self, tier_specs: list[tuple[int, int, int]]
     ) -> None:
         """Stopień z required_count=0 jest COMPLETED nawet przy pustych wejściach."""
-        tiers = [
-            BadgeTierDomain(tier_id=tid, name=f"T{tid}", required_count=rc, order=o)
-            for tid, rc, o in tier_specs
-        ]
+        tiers = [BadgeTierDomain(tier_id=tid, name=f"T{tid}", required_count=rc, order=o) for tid, rc, o in tier_specs]
 
-        domain = BadgeVersionDomain(
-            version_id="v1", rules=[], pool_peak_ids=frozenset([1]), tiers=tiers
-        )
+        domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1]), tiers=tiers)
         result = domain.evaluate([], make_ctx())
 
         for tier in result.tiers:

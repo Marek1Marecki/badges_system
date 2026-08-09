@@ -64,7 +64,9 @@ class ExploreQueriesService:
 
             items = []
             for c in sorted(children, key=lambda x: not x["is_parent"]):
-                badges_list = [{"code": b.code, "name": b.name} for b in c["obj"].badges.all()]
+                badges_list = [
+                    {"code": b.badge.code, "name": b.badge.name} for b in c["obj"].badgeversionmodel_set.all()
+                ]
                 items.append(
                     {
                         "id": c["obj"].id,

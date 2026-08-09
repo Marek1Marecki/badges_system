@@ -420,9 +420,7 @@ class TestMinAgeRuleHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_age_boundary(
-        self, ctx: VerificationContext, min_age: int, birth_year: int, ascent_year: int
-    ) -> None:
+    def test_age_boundary(self, ctx: VerificationContext, min_age: int, birth_year: int, ascent_year: int) -> None:
         """Wiek dokładnie równy progowi min_age przechodzi."""
         assume(ascent_year >= birth_year)
         age = ascent_year - birth_year
@@ -497,9 +495,7 @@ class TestMaxAgeRuleHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_age_boundary(
-        self, ctx: VerificationContext, max_age: int, birth_year: int, ascent_year: int
-    ) -> None:
+    def test_age_boundary(self, ctx: VerificationContext, max_age: int, birth_year: int, ascent_year: int) -> None:
         """Wiek dokładnie równy progowi max_age przechodzi."""
         assume(ascent_year >= birth_year)
         age = ascent_year - birth_year
@@ -575,9 +571,7 @@ class TestGroupedAlternativesRuleHypothesis:
         """Reguła akceptuje tuple wiaderek i nie mutuje go."""
         assume(min_groups_required <= len(groups))
 
-        rule = GroupedAlternativesRule(
-            groups=tuple(groups), min_groups_required=min_groups_required
-        )
+        rule = GroupedAlternativesRule(groups=tuple(groups), min_groups_required=min_groups_required)
         assert rule.groups == tuple(groups)
 
     @given(
@@ -604,12 +598,8 @@ class TestGroupedAlternativesRuleHypothesis:
         completed = sum(1 for group in groups if group.intersection(climbed_peak_ids))
         assume(completed >= min_groups_required)
 
-        rule = GroupedAlternativesRule(
-            groups=tuple(groups), min_groups_required=min_groups_required
-        )
-        ascents = [
-            Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed_peak_ids
-        ]
+        rule = GroupedAlternativesRule(groups=tuple(groups), min_groups_required=min_groups_required)
+        ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed_peak_ids]
         assert rule.validate(ascents, ctx) == []
 
     @given(
@@ -634,12 +624,8 @@ class TestGroupedAlternativesRuleHypothesis:
         min_groups_required = completed + 1
         assume(min_groups_required <= len(groups))
 
-        rule = GroupedAlternativesRule(
-            groups=tuple(groups), min_groups_required=min_groups_required
-        )
-        ascents = [
-            Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed_peak_ids
-        ]
+        rule = GroupedAlternativesRule(groups=tuple(groups), min_groups_required=min_groups_required)
+        ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed_peak_ids]
         errors = rule.validate(ascents, ctx)
         assert len(errors) >= 1
 
@@ -656,9 +642,7 @@ class TestPrerequisiteBadgeRuleHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_missing_prerequisite_produces_error(
-        self, ctx: VerificationContext, required_badge_code: str
-    ) -> None:
+    def test_missing_prerequisite_produces_error(self, ctx: VerificationContext, required_badge_code: str) -> None:
         """Brak wymaganej odznaki w completed_badge_codes generuje błąd."""
         assume(required_badge_code not in ctx.completed_badge_codes)
 
@@ -731,9 +715,7 @@ class TestMultiPoolRequirementRuleHypothesis:
 
         climbed_peak_ids = frozenset(all_peak_ids)
         rule = MultiPoolRequirementRule(pools=tuple(pools))
-        ascents = [
-            Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed_peak_ids
-        ]
+        ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed_peak_ids]
         assert rule.validate(ascents, ctx) == []
 
     @given(
@@ -759,15 +741,11 @@ class TestMultiPoolRequirementRuleHypothesis:
         climbed_peak_ids: frozenset[int],
     ) -> None:
         """Gdy któryś podzbiór ma za mało wejść, generuje błąd."""
-        unsatisfied = [
-            p for p in pools if len(p.peak_ids & climbed_peak_ids) < p.required_count
-        ]
+        unsatisfied = [p for p in pools if len(p.peak_ids & climbed_peak_ids) < p.required_count]
         assume(unsatisfied)
 
         rule = MultiPoolRequirementRule(pools=tuple(pools))
-        ascents = [
-            Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed_peak_ids
-        ]
+        ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed_peak_ids]
         errors = rule.validate(ascents, ctx)
         assert len(errors) >= len(unsatisfied)
 
@@ -959,8 +937,10 @@ class TestAgeRulesMonthDayHypothesis:
         except ValueError:
             birthday_in_ascent_year = birth_date.replace(year=ascent_year, month=2, day=28)
 
-        age = ascent_year - birth_year - (
-            (ascent_month, ascent_day) < (birthday_in_ascent_year.month, birthday_in_ascent_year.day)
+        age = (
+            ascent_year
+            - birth_year
+            - ((ascent_month, ascent_day) < (birthday_in_ascent_year.month, birthday_in_ascent_year.day))
         )
 
         ctx_override = VerificationContext(
@@ -1136,9 +1116,7 @@ class TestDateWindowRuleEdgeCasesHypothesis:
     @settings(
         suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
     )
-    def test_single_day_window_passes_for_exact_date(
-        self, ctx: VerificationContext, ascent_date: date
-    ) -> None:
+    def test_single_day_window_passes_for_exact_date(self, ctx: VerificationContext, ascent_date: date) -> None:
         """Okno jedno-dniowe akceptuje wejście w dokładnie tej dacie."""
         rule = DateWindowRule(start_date=ascent_date, end_date=ascent_date)
         assert rule.validate([Ascent(peak_id=1, ascent_date=ascent_date)], ctx) == []
@@ -1244,9 +1222,7 @@ class TestMultiPoolRequirementRuleEdgeCasesHypothesis:
         assume(len(peak_ids) >= required_count)
         pool = SubPoolRequirement(required_count=required_count, peak_ids=peak_ids, name="test")
         rule = MultiPoolRequirementRule(pools=(pool,))
-        ascents = [
-            Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in peak_ids
-        ]
+        ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in peak_ids]
         assert rule.validate(ascents, ctx) == []
 
 

@@ -28,27 +28,31 @@ def test_logged_in_user_can_navigate_to_catalog_and_subscribe(auth_page: Page):
         # Upewniamy się, że przeglądarka przechwyciła zapytanie AJAX (HTMX DELETE)
         with auth_page.expect_response(re.compile(r".*/subscribe/")):
             unsubscribe_btn.click()
-            
+
         # Pamiętaj, że nasze api używa location.reload(), więc strona Katalogu mrugnie
         auth_page.wait_for_load_state("domcontentloaded")
-    
+
     # Karta musi być widoczna (ponownie znajdujemy elementy na wypadek przeładowania DOM przez HTMX)
     kgp_card = auth_page.locator("[data-testid='badge-card-KGP']")
     subscribe_btn = kgp_card.locator("[data-testid='btn-subscribe-KGP']")
-    
+
     # Teraz bezpiecznie subskrybujemy z asercją na API POST
     expect(subscribe_btn).to_be_visible()
-    
+
     with auth_page.expect_response(re.compile(r".*/subscribe/")):
         subscribe_btn.click()
-        
+
     auth_page.wait_for_load_state("domcontentloaded")
 
-    # Czekamy na powiadomienie Toast (Opcjonalne w zależności od trybu reload)
-    toast = auth_page.locator("[data-testid='toast-container']")
-    # Skoro HTMX zrobił reload na Katalog, możemy po prostu sprawdzić, czy zniknął przycisk!
-    expect(subscribe_btn).to_be_hidden()
-    expect(auth_page.locator("[data-testid='btn-unsubscribe-KGP']")).to_be_visible()
+    # APLIKACJA WYSYŁA NAS NA DASHBOARD PO SUKCESIE SUBSKRYPCJI!
+    # Upewnijmy się, że url zmienił się na główny /
+    expect(auth_page).to_have_url(re.compile(r".*/$"))
+
+    # Upewnijmy się, że na Dashboardzie pojawiła się Karta Subskrybowanej Odznaki
+    expect(auth_page.locator("text=Twoje Odznaki")).to_be_visible()
+    expect(auth_page.locator("text=Korona Gór Polskich")).to_be_visible()
+    # Dowód na sukces: Widzimy informację o jej stanie w lewym pasku
+    expect(auth_page.locator("text=Subskrybowana")).to_be_visible()
 
 
 @pytest.mark.e2e

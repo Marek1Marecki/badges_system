@@ -110,9 +110,7 @@ class TestDjangoTouristRepository:
         from apps.badges.models import BadgeModel, BadgeVersionModel, TouristObject
 
         badge = BadgeModel.objects.create(code="KGP", name="Korona Gór Polski", organizer=_create_organizer())
-        version = BadgeVersionModel.objects.create(
-            badge=badge, version_code="v2024", valid_from=date(2024, 1, 1)
-        )
+        version = BadgeVersionModel.objects.create(badge=badge, version_code="v2024", valid_from=date(2024, 1, 1))
         obj = TouristObject.objects.create(name="P1", type="Szczyt", is_active=True, status="READY")
         version.pool_peaks.add(obj)
 
@@ -151,9 +149,7 @@ class TestDjangoTouristRepository:
         from apps.badges.models import BadgeModel, BadgeVersionModel
 
         badge = BadgeModel.objects.create(code="KGP", name="Korona Gór Polski", organizer=_create_organizer())
-        version = BadgeVersionModel.objects.create(
-            badge=badge, version_code="v2024", valid_from=date(2024, 1, 1)
-        )
+        version = BadgeVersionModel.objects.create(badge=badge, version_code="v2024", valid_from=date(2024, 1, 1))
 
         progress_id = self.repo.start_progress(profile.id, "KGP", version.id)
 
@@ -170,9 +166,7 @@ class TestDjangoTouristRepository:
         from apps.badges.models import BadgeModel, BadgeVersionModel
 
         badge = BadgeModel.objects.create(code="KGP2", name="Test", organizer=_create_organizer())
-        version = BadgeVersionModel.objects.create(
-            badge=badge, version_code="v2024", valid_from=date(2024, 1, 1)
-        )
+        version = BadgeVersionModel.objects.create(badge=badge, version_code="v2024", valid_from=date(2024, 1, 1))
         progress_id = self.repo.start_progress(profile.id, "KGP2", version.id)
 
         self.repo.update_domain_status(progress_id, "IN_PROGRESS")
@@ -187,9 +181,7 @@ class TestDjangoTouristRepository:
         from apps.badges.models import BadgeModel, BadgeVersionModel
 
         badge = BadgeModel.objects.create(code="KGP3", name="Test3", organizer=_create_organizer())
-        version = BadgeVersionModel.objects.create(
-            badge=badge, version_code="v2024", valid_from=date(2024, 1, 1)
-        )
+        version = BadgeVersionModel.objects.create(badge=badge, version_code="v2024", valid_from=date(2024, 1, 1))
         progress_id = self.repo.start_progress(profile.id, "KGP3", version.id)
 
         self.repo.update_logistic_status(progress_id, "WAITING_FOR_SEND", date(2024, 6, 1))
@@ -205,9 +197,7 @@ class TestDjangoTouristRepository:
         from apps.badges.models import BadgeModel, BadgeVersionModel
 
         badge = BadgeModel.objects.create(code="KGP4", name="Test4", organizer=_create_organizer())
-        version = BadgeVersionModel.objects.create(
-            badge=badge, version_code="v2024", valid_from=date(2024, 1, 1)
-        )
+        version = BadgeVersionModel.objects.create(badge=badge, version_code="v2024", valid_from=date(2024, 1, 1))
         self.repo.start_progress(profile.id, "KGP4", version.id)
         self.repo.update_domain_status(self.repo.get_progress(profile.id, "KGP4", 1).progress_id, "COMPLETED")
 
@@ -222,9 +212,7 @@ class TestDjangoTouristRepository:
         from apps.badges.models import BadgeModel, BadgeVersionModel
 
         badge = BadgeModel.objects.create(code="KGP5", name="Test5", organizer=_create_organizer())
-        version = BadgeVersionModel.objects.create(
-            badge=badge, version_code="v2024", valid_from=date(2024, 1, 1)
-        )
+        version = BadgeVersionModel.objects.create(badge=badge, version_code="v2024", valid_from=date(2024, 1, 1))
         progress_id = self.repo.start_progress(profile.id, "KGP5", version.id)
 
         progress = self.repo.get_progress_by_id(profile.id, progress_id)
@@ -241,9 +229,7 @@ class TestDjangoTouristRepository:
         from apps.badges.models import BadgeModel, BadgeVersionModel
 
         badge = BadgeModel.objects.create(code="KGP6", name="Test6", organizer=_create_organizer())
-        version = BadgeVersionModel.objects.create(
-            badge=badge, version_code="v2024", valid_from=date(2024, 1, 1)
-        )
+        version = BadgeVersionModel.objects.create(badge=badge, version_code="v2024", valid_from=date(2024, 1, 1))
         progress_id = self.repo.start_progress(profile1.id, "KGP6", version.id)
 
         result = self.repo.get_progress_by_id(profile2.id, progress_id)
@@ -257,9 +243,7 @@ class TestDjangoTouristRepository:
         from apps.badges.models import BadgeModel, BadgeVersionModel
 
         badge = BadgeModel.objects.create(code="KGP7", name="Test7", organizer=_create_organizer())
-        version = BadgeVersionModel.objects.create(
-            badge=badge, version_code="v2024", valid_from=date(2024, 1, 1)
-        )
+        version = BadgeVersionModel.objects.create(badge=badge, version_code="v2024", valid_from=date(2024, 1, 1))
         self.repo.start_progress(profile.id, "KGP7", version.id)
 
         progresses = self.repo.get_active_progresses(profile.id)
