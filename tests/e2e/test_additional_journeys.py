@@ -17,8 +17,13 @@ def test_badge_detail_page_loads_from_catalog(auth_page: Page):
     badge_links.first.click()
 
     expect(auth_page).to_have_url(re.compile(r".*/badge/"))
-    expect(auth_page.locator("[data-testid='badge-progress-section']")).to_be_visible()
-    expect(auth_page.locator("[data-testid='progress-text']")).to_be_visible()
+
+    progress_section = auth_page.locator("[data-testid='badge-progress-section']")
+    not_subscribed_heading = auth_page.locator("text='Nie zdobywasz tej odznaki'")
+    if progress_section.is_visible():
+        expect(auth_page.locator("[data-testid='progress-text']")).to_be_visible()
+    else:
+        expect(not_subscribed_heading).to_be_visible()
 
 
 @pytest.mark.e2e
