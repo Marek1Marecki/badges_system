@@ -250,6 +250,18 @@ jobs:
           sleep 5
           docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T db mkdir -p /dumps
           docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml cp /tmp/postgis-dump/postgis_dump.custom db:/dumps/postgis_dump.custom
+          echo "=== Sprawdzenie dump'a w kontenerze ==="
+          docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T db ls -lh /dumps/
+          echo "=== Przygotowanie czystej bazy danych ==="
+          docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T db psql -U postgres -c "DROP DATABASE IF EXISTS badges_system_db;"
+          docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T db psql -U postgres -c "CREATE DATABASE badges_system_db OWNER postgres;"
+          echo "=== Wykonywanie pg_restore na czystej bazie ==="
+          docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T db pg_restore -U postgres -d badges_system_db --no-owner --verbose -1 /dumps/postgis_dump.custom 2>&1 | tail -5
+          echo "=== Sprawdzenie danych po restore ==="
+          docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T db psql -U postgres -d badges_system_db -c "SELECT count(*) FROM odznaki_badge; SELECT count(*) FROM odznaki_tourist_object; SELECT count(*) FROM auth_user;"
+          echo "=== Zastosowanie migracji na załadowanych danych ==="
+          docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T web-e2e python manage.py migrate
+          docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T web-e2e python manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); user, _ = User.objects.get_or_create(username='admin', defaults={'email': 'admin@example.com', 'is_staff': True, 'is_superuser': True}); user.set_password('admin'); user.save(); print('Admin user ready')"
 
       - name: Uruchomienie testów e2e
         run: docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T web-e2e uv run pytest tests/e2e -m e2e --no-header -q --override-ini="addopts="
