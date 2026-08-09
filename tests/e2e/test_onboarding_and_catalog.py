@@ -23,18 +23,32 @@ def test_logged_in_user_can_navigate_to_catalog_and_subscribe(auth_page: Page):
     subscribe_btn = kgp_card.locator("[data-testid='btn-subscribe-KGP']")
     unsubscribe_btn = kgp_card.locator("[data-testid='btn-unsubscribe-KGP']")
 
-    # Jeśli już ją subskrybujemy, najpierw ją zdejmijmy!
+    # Jeśli już ją subskrybujemy, najpierw ją zdejmijmy, ALE z pełnym oczekiwaniem na sieć!
     if unsubscribe_btn.is_visible():
-        unsubscribe_btn.click()
-        auth_page.wait_for_timeout(1000)
+        # Upewniamy się, że przeglądarka przechwyciła zapytanie AJAX (HTMX DELETE)
+        with auth_page.expect_response(re.compile(r".*/subscribe/")):
+            unsubscribe_btn.click()
+            
+        # Pamiętaj, że nasze api używa location.reload(), więc strona Katalogu mrugnie
+        auth_page.wait_for_load_state("domcontentloaded")
     
-    # Teraz bezpiecznie subskrybujemy
+    # Karta musi być widoczna (ponownie znajdujemy elementy na wypadek przeładowania DOM przez HTMX)
+    kgp_card = auth_page.locator("[data-testid='badge-card-KGP']")
+    subscribe_btn = kgp_card.locator("[data-testid='btn-subscribe-KGP']")
+    
+    # Teraz bezpiecznie subskrybujemy z asercją na API POST
     expect(subscribe_btn).to_be_visible()
-    subscribe_btn.click()
     
-    # Czekamy na powiadomienie Toast
+    with auth_page.expect_response(re.compile(r".*/subscribe/")):
+        subscribe_btn.click()
+        
+    auth_page.wait_for_load_state("domcontentloaded")
+
+    # Czekamy na powiadomienie Toast (Opcjonalne w zależności od trybu reload)
     toast = auth_page.locator("[data-testid='toast-container']")
-    expect(toast).to_contain_text(re.compile(r"(sukces|rozpoczęto|dodano)", re.IGNORECASE))
+    # Skoro HTMX zrobił reload na Katalog, możemy po prostu sprawdzić, czy zniknął przycisk!
+    expect(subscribe_btn).to_be_hidden()
+    expect(auth_page.locator("[data-testid='btn-unsubscribe-KGP']")).to_be_visible()
 
 
 @pytest.mark.e2e
