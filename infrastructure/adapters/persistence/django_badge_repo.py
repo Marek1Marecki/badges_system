@@ -187,16 +187,10 @@ class DjangoBadgeRepository(BadgeRepositoryPort):
         return self._hydrate_version(version_model, version_model.badge.code)
 
     def get_version_id_for_date(self, badge_code: str, target_date: date) -> int | None:
-        from django.db.models import Q
-
-        from apps.badges.models import BadgeVersionModel
-
-        # Ochrona przed starociami: Szukamy wersji, która się zaczęła, a jej valid_to to NULL lub jest w przyszłości
         version = (
             BadgeVersionModel.objects.filter(
-                Q(badge__code=badge_code),
-                Q(valid_from__lte=target_date),
-                Q(valid_to__isnull=True) | Q(valid_to__gte=target_date),
+                badge__code=badge_code,
+                valid_from__lte=target_date,
             )
             .order_by("-valid_from")
             .first()

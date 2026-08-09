@@ -251,12 +251,11 @@ def badge_detail_view(request, badge_code: str):
         except Exception:
             evaluation = None
     else:
-        from django.db.models import Q
-
         today = timezone.now().date()
         target_version = (
             BadgeVersionModel.objects.filter(
-                Q(badge=badge), Q(valid_from__lte=today), Q(valid_to__isnull=True) | Q(valid_to__gte=today)
+                badge=badge,
+                valid_from__lte=today,
             )
             .order_by("-valid_from")
             .first()
