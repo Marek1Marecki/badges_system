@@ -21,12 +21,20 @@ def test_logged_in_user_can_navigate_to_catalog_and_subscribe(auth_page: Page):
     expect(kgp_card).to_be_visible()
 
     subscribe_btn = kgp_card.locator("[data-testid='btn-subscribe-KGP']")
-    if subscribe_btn.is_visible():
-        subscribe_btn.click()
-        auth_page.wait_for_timeout(500)
+    unsubscribe_btn = kgp_card.locator("[data-testid='btn-unsubscribe-KGP']")
 
-        toast = auth_page.locator("[data-testid='toast-container']")
-        expect(toast).to_be_visible()
+    # Jeśli już ją subskrybujemy, najpierw ją zdejmijmy!
+    if unsubscribe_btn.is_visible():
+        unsubscribe_btn.click()
+        auth_page.wait_for_timeout(1000)
+    
+    # Teraz bezpiecznie subskrybujemy
+    expect(subscribe_btn).to_be_visible()
+    subscribe_btn.click()
+    
+    # Czekamy na powiadomienie Toast
+    toast = auth_page.locator("[data-testid='toast-container']")
+    expect(toast).to_contain_text(re.compile(r"(sukces|rozpoczęto|dodano)", re.IGNORECASE))
 
 
 @pytest.mark.e2e
