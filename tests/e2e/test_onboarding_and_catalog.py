@@ -25,7 +25,7 @@ def test_logged_in_user_can_navigate_to_catalog_and_subscribe(auth_page: Page):
 
     # Jeśli już ją subskrybujemy, najpierw ją zdejmijmy, ALE z pełnym oczekiwaniem na sieć!
     if unsubscribe_btn.is_visible():
-        # Upewniamy się, że przeglądarka przechwyciła zapytanie AJAX (HTMX DELETE)
+        auth_page.on("dialog", lambda dialog: dialog.accept())
         with auth_page.expect_response(re.compile(r".*/subscribe/")):
             unsubscribe_btn.click()
 

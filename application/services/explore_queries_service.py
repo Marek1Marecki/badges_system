@@ -122,7 +122,7 @@ class ExploreQueriesService:
 
         ranking_data = []
         for r_id, r_data in region_dict.items():
-            ranking_data.append(RegionRankingItemDTO(id=r_id, name=r_data["name"], score=r_data["score"]))
+            ranking_data.append(RegionRankingItemDTO(id=r_id, name=r_data["name"], score=r_data["score"], level=level))
 
         ranking_data.sort(key=lambda x: x.score, reverse=True)
 

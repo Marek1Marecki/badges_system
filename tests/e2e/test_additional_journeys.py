@@ -164,7 +164,7 @@ def test_region_ranking_page_loads(auth_page: Page):
     auth_page.goto("/ranking/regions/")
     expect(auth_page).to_have_url(re.compile(r".*/ranking/regions/"))
 
-    expect(auth_page.locator("text=Ranking Regionów")).to_be_visible()
+    expect(auth_page.locator("text=Gdzie na weekend?")).to_be_visible()
 
 
 @pytest.mark.e2e

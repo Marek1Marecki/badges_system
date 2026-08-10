@@ -30,6 +30,7 @@ class RegionRankingItemDTO(BaseModel):
     id: int
     name: str
     score: int
+    level: str
 
 
 class PoiRankingResponseDTO(BaseModel):
