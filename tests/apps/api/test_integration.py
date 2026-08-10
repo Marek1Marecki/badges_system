@@ -710,6 +710,7 @@ class TestNearbyObjectsView:
 class TestProfileSettingsViewAdditional:
     def test_returns_404_when_profile_not_owned(self, factory, mock_user, use_cases) -> None:
         from django.http import Http404
+
         from apps.api.views import ProfileSettingsView
 
         with patch("apps.api.views.get_object_or_404", side_effect=Http404):

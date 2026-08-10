@@ -36,7 +36,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Pobieranie repozytorium
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Instalacja zależności systemowych (GDAL, GEOS, PROJ)
         run: |
@@ -48,13 +48,13 @@ jobs:
             libproj-dev
 
       - name: Konfiguracja narzędzia UV
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@887a942a15af3a7626099df99e897a18d9e5ab3a
         with:
           version: "0.5.11"
           enable-cache: true
 
       - name: Konfiguracja Pythona 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
         with:
           python-version: "3.14"
 
@@ -72,6 +72,9 @@ jobs:
       - name: Weryfikacja Kontraktów Czystej Architektury (Import Linter)
         run: uv run lint-imports
 
+      - name: Skanowanie Bezpieczeństwa Kodu (SAST / Semgrep)
+        run: make security-audit
+
       - name: Audyt SRE (Ochrona przed wyciekami i zakazanym API)
         run: uv run python scripts/audit_contracts.py
 
@@ -88,7 +91,7 @@ jobs:
 
       - name: Zapisz raporty z testów do archiwum Github Actions
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: unit-test-results
           path: unit-test-results.xml
@@ -103,7 +106,7 @@ jobs:
       COMPOSE_PROJECT_NAME: badges_system_test
     steps:
       - name: Pobieranie repozytorium
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Instalacja zależności systemowych (GDAL, GEOS, PROJ)
         run: |
@@ -115,13 +118,13 @@ jobs:
             libproj-dev
 
       - name: Konfiguracja narzędzia UV (dla celów zapytań CI)
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@887a942a15af3a7626099df99e897a18d9e5ab3a
         with:
           version: "0.5.11"
           enable-cache: true
 
       - name: Konfiguracja Pythona 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
         with:
           python-version: "3.14"
 
@@ -159,14 +162,14 @@ jobs:
 
       - name: Upload dump'a PostgreSQL jako artefakt
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: postgis-dump
           path: /tmp/postgis_dump.custom
 
       - name: Upload logów Dockera jako artefakt
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: integration-test-docker-logs
           path: integration-test-docker-logs.txt
@@ -184,10 +187,10 @@ jobs:
       COMPOSE_PROJECT_NAME: badges_system_e2e
     steps:
       - name: Pobieranie repozytorium
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Pobieranie dump'a PostgreSQL z jobu integration-tests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: postgis-dump
           path: /tmp/postgis-dump
@@ -214,13 +217,13 @@ jobs:
             postgresql-client
 
       - name: Konfiguracja narzędzia UV
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@887a942a15af3a7626099df99e897a18d9e5ab3a
         with:
           version: "0.5.11"
           enable-cache: true
 
       - name: Konfiguracja Pythona 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
         with:
           python-version: "3.14"
 
@@ -272,7 +275,7 @@ jobs:
 
       - name: Upload logów Dockera jako artefakt
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: e2e-docker-logs
           path: e2e-docker-logs.txt

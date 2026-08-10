@@ -8,6 +8,7 @@ from django.core.cache import cache
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from apps.badges.models import (
     BadgeModel,
@@ -78,8 +79,6 @@ def dashboard_view(request):
 @login_required
 def badge_catalog_view(request):
     """Katalog wszystkich dostępnych odznak z opcją subskrypcji i podglądem szczytów."""
-    from django.utils import timezone
-
     profile_id = _get_active_profile_id(request)
 
     # 1. Pobieramy wszystkie odznaki
@@ -127,7 +126,17 @@ def switch_profile_view(request, profile_id: int):
 
     request.session["active_profile_id"] = profile.id
     messages.success(request, f"Przełączono na profil: {profile.nickname}")
-    return redirect(request.META.get("HTTP_REFERER", "home"))
+    # === ZABEZPIECZENIE (CWE-601: Open Redirect) ===
+    next_url = request.META.get("HTTP_REFERER", "/")
+
+    is_safe = url_has_allowed_host_and_scheme(
+        url=next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    )
+
+    if not is_safe:
+        next_url = "home"
+
+    return redirect(next_url)
 
 
 @login_required

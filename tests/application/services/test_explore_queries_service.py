@@ -6,7 +6,6 @@ import pytest
 
 from application.dto.explore_queries_dto import (
     PoiRankingResponseDTO,
-    RankingItemDTO,
     RegionRankingResponseDTO,
 )
 from application.services.explore_queries_service import ExploreQueriesService

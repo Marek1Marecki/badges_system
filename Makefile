@@ -8,7 +8,7 @@ MIN_COVERAGE ?= 80
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit
 
 help:
 	@echo "CORE targets:"
@@ -56,6 +56,16 @@ graph:
 	uv run python scripts/audit_contracts.py
 	@if command -v dot >/dev/null 2>&1; then dot -Tpng dependencies.dot -o dependencies.png; echo "Rendered dependencies.png"; else echo "Graphviz dot not installed - kept dependencies.dot"; fi
 
+security-audit:
+	@echo "=== ROZPOCZYNANIE SKANOWANIA SEMGREP ==="
+	uv run semgrep scan \
+	  --config "p/python" \
+	  --config "p/django" \
+	  --config "p/owasp-top-ten" \
+	  --config "p/secrets" \
+	  --error --skip-unknown-extensions \
+	  --exclude="tests/*" --exclude=".venv/*" --exclude="node_modules/*" --exclude="staticfiles/*"
+
 check:
 	uv run ruff format --check $(PY_DIRS)
 	uv run ruff check $(PY_DIRS)
@@ -63,6 +73,7 @@ check:
 	uv run lint-imports
 	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) -m "not integration and not e2e"
 	uv run python scripts/audit_contracts.py
+	make security-audit
 
 clean:
 	find . -type f -name "*.pyc" -delete

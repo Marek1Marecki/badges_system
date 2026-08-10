@@ -1,0 +1,8 @@
+# ==============================================================================
+# .semgrep.yml - Twarda Konfiguracja Bezpieczeństwa (DevSecOps)
+# Weryfikuje kod Pythona i Django pod kątem luk z listy OWASP Top 10.
+#
+# Uwaga: Z powodu ograniczeń schematu YAML w Semgrep 1.172.0, reguły są
+# ładowane bezpośrednio przez flagi --config w Makefile (security-audit).
+# Ten plik służy jako dokumentacja konfiguracji bezpieczeństwa.
+# ==============================================================================

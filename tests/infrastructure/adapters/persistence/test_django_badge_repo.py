@@ -19,6 +19,7 @@ from domain.rules.badge_rules import (
     TimeLimitRule,
 )
 from infrastructure.adapters.persistence.django_badge_repo import (
+    DjangoBadgeRepository,
     _build_club_join_rule,
     _build_date_window_rule,
     _build_grouped_alternatives_rule,
@@ -30,7 +31,6 @@ from infrastructure.adapters.persistence.django_badge_repo import (
     _build_region_count_rule,
     _build_start_date_rule,
     _build_time_limit_rule,
-    DjangoBadgeRepository,
 )
 
 User = get_user_model()
