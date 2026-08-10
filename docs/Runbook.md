@@ -13,7 +13,7 @@
 | Narzędzie | Minimalna wersja | Instalacja / Uwagi |
 |-----------|-----------------|------------|
 | **Python** | 3.12+ | Instalowany i zarządzany przez narzędzie `uv`. |
-| **uv** | 0.2+ | `curl -LsSf https://astral.sh/uv/install.sh | sh` |
+| **uv** | 0.2+ | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | **Docker** | 24.x | Niezbędny do uruchomienia infrastruktury (PostGIS i Redis). |
 | **System** | Ubuntu 22.04+ (WSL2) | **Środowisko natywne Windows nie jest obsługiwane.** Środowisko macOS: Nieprzetestowane, instalacja GDAL przez Homebrew może wymagać dodatkowej konfiguracji ścieżek zmiennych systemowych. |
 | **Pakiety OS**| - | Wymagane natywne biblioteki przestrzenne dla GeoDjango: `sudo apt-get update && sudo apt-get install -y binutils libproj-dev gdal-bin` |
@@ -75,7 +75,7 @@ uv run celery -A config beat -l info
 
 ---
 
-## 4. Zarządzanie Danymi Referencyjnymi (Data Seeding & Snapshots)
+## 3. Zarządzanie Danymi Referencyjnymi (Data Seeding & Snapshots)
 
 Nasz system ściśle oddziela **Dane Użytkowników** (logi, profile) od **Danych Referencyjnych** (odznaki, regiony, szczyty). 
 Lokalna baza danych (DEV) traktowana jest jako "Środowisko Robocze" (Sandbox). Prawdziwym, jedynym źródłem prawdy (Single Source of Truth) o regulaminach PTTK i geografii są skompresowane pliki `json.gz` wraz z `manifest.json`, trzymane w katalogu `data/reference/` w repozytorium Git.
@@ -86,6 +86,16 @@ Lokalna baza danych (DEV) traktowana jest jako "Środowisko Robocze" (Sandbox). 
 **Komenda:**
 ```bash
 uv run python manage.py export_reference_data
+```
+
+### Import danych (Odtwarzanie Środowiska)
+**Kiedy używać:** Przy pierwszym uruchomieniu środowiska testowego, CI/CD lub po zrzuceniu bazy danych.
+
+Skrypt `validate_reference_manifest` (pełniący funkcję Gatingu) sprawdza, czy `manifest.json` deklaruje wersję schematu (`compatible_schema="1.0"`) obsługiwaną przez kod, liczy autentyczną sumę kontrolną (SHA-256) wyeksportowanych plików `.json.gz` chroniąc przed ich podmienieniem, a po walidacji `restore_reference_data` ładuje je w sposób idempotentny do bazy danych.
+
+**Komenda:**
+```bash
+uv run python manage.py restore_reference_data
 ```
 
 ### Problem 5: Szare pinezki na mapie / Brak widocznej aktualizacji po zalogowaniu wejścia
@@ -110,7 +120,7 @@ for u_id in get_user_model().objects.values_list("id", flat=True):
 
 ---
 
-## 6. Testowanie REST API (Tips & Tricks)
+## 4. Testowanie REST API (Tips & Tricks)
 
 API wymaga uwierzytelnienia. Aby ominąć konieczność budowania pełnego flow autoryzacji Google OAuth w narzędziach takich jak Postman czy cURL w środowisku lokalnym, stosuj metodę "Kradzieży Sesji" (Session Hijacking):
 
@@ -125,22 +135,80 @@ API wymaga uwierzytelnienia. Aby ominąć konieczność budowania pełnego flow 
 
 ---
 
-## Wdrożenie produkcyjne i Rollback
+## 5. Logowanie do DEV bez OAuth (Session Hijacking dla developera)
 
-### Wdrożenie
-[Planowane i konfigurowane w **Fazie C** — Przed pierwszym publicznym wdrożeniem sekcja ta zostanie uzupełniona o:
-- Procedurę migracji zerowej (Zero-Downtime deployment).
-- Konfigurację i *orchestration* kontenerów Celery Worker / Beat jako osobnych procesów z limitami zasobów (Cgroups).
-- Instrukcje osadzania biblioteki GDAL w końcowym obrazie `Dockerfile` (Stage 2).]
+To jest klasyczny problem podczas testowania w fazie developmentu! Mamy środowisko oparte na Google OAuth (Social Login), które wymaga integracji z chmurą, co często bywa niewygodne lub wręcz niemożliwe podczas szybkiego kodowania (np. bez połączenia z internetem lub gdy nie chcemy zużywać zapytań do API).
 
-### Rollback (Wycofywanie zmian)
-⚠️ **UWAGA KRYTYCZNA: Cofanie migracji (Rollback) przy operacjach PostGIS (typy geometryczne, indeksy przestrzenne) niesie ogromne ryzyko utraty integralności danych i kształtów wielokątów.**
-- Nie wolno wykonywać rollbacku na produkcji bez wykonania pełnego, manualnego zrzutu bazy: `docker compose exec db pg_dump -U postgres badges_db > emergency_dump.sql`.
-- Rollback migracji zawierających modyfikacje rozszerzeń PostGIS zawsze wymaga asysty i autoryzacji Lead Developera / DBA.
+Pamiętasz nasz rewelacyjny "bypass", który zbudowaliśmy dla robota Playwright? Narzędzie `create_test_session`!
+
+Zamiast bawić się w modyfikowanie kodu Django, żeby włączyć standardowe formularze hasła, użyjemy naszego zautomatyzowanego wytrycha. Możesz to zrobić w 10 sekund i zalogować się do aplikacji w przeglądarce jako DOWOLNY użytkownik (np. jako testowy turysta).
+
+### Krok 1: Wygenerowanie Użytkownika Testowego
+
+Najpierw załóżmy w bazie konto "szarego" turysty (jeśli go jeszcze nie masz).
+
+1. Odpal konsolę wewnątrz Twojego kontenera DEV:
+   ```bash
+   docker compose exec web bash
+   ```
+2. Będąc w środku, otwórz powłokę (shell) Django:
+   ```bash
+   uv run python manage.py shell
+   ```
+3. Wklej ten krótki kod Pythona, żeby na sztywno utworzyć użytkownika o loginie `turysta`:
+   ```python
+   from django.contrib.auth import get_user_model
+   User = get_user_model()
+   # Zmieniając 'turysta' na cokolwiek innego, możesz tworzyć kolejne konta
+   user, created = User.objects.get_or_create(username='turysta', defaults={'email': 'turysta@test.com'})
+   user.set_password('haslo123')
+   user.save()
+   print("Gotowe!")
+   exit()
+   ```
+
+### Krok 2: Użycie naszego Wytrycha (Kradzież Sesji)
+
+Teraz wykorzystamy skrypt, który napisaliśmy dla Playwrighta, aby wygenerować sobie ważne ciasteczko logowania (Session Cookie) dla tego konta!
+
+Będąc nadal w terminalu (lub wywołując to prosto z hosta), uruchom:
+```bash
+docker compose exec web python manage.py create_test_session turysta
+```
+
+Terminal wypluje Ci na ekran ciąg znaków, np.:
+```
+2q3h4g5j6k7l8m9n0p1q2r3s4t5u6v7w
+```
+
+Zanotuj ten ciąg! To Twój bilet VIP.
+
+### Krok 3: Wstrzyknięcie Sesji do Przeglądarki
+
+Teraz zabawimy się w hakera w Twojej własnej przeglądarce.
+
+1. Otwórz swoją stronę główną DEV w przeglądarce (np. Chrome/Firefox): `http://localhost:8005/`. (Strona załaduje się jako niezalogowany użytkownik).
+2. Otwórz Narzędzia Deweloperskie (wciśnij F12 lub Ctrl+Shift+I).
+3. Przejdź do zakładki **Application** (w Chrome/Edge) lub **Storage** (w Firefox).
+4. Rozwiń w menu po lewej stronie pozycję **Cookies** i kliknij w `http://localhost:8005`.
+5. Zobaczysz tabelkę z ciasteczkami. Znajdź wiersz, gdzie w kolumnie **Name** jest `sessionid`.
+   (Jeśli go nie ma, po prostu kliknij dwukrotnie w puste miejsce w kolumnie Name, by dodać nowe ciastko i nazwij je `sessionid`).
+6. Kliknij dwukrotnie w kolumnę **Value** (Wartość) obok `sessionid` i wklej tam ciąg znaków, który przed chwilą wypluła konsola Dockera!
+7. Kliknij w dowolne miejsce, żeby zapisać wartość.
+
+### Krok 4: Magia!
+
+Odśwież stronę (F5).
+
+Boom! Jesteś w systemie jako turysta. Ominąłeś w 100% autoryzację Google, hasła i zabezpieczenia, lądując na Pulpicie jako zupełnie czysty użytkownik.
+
+Nasz mechanizm **Leniwej Inicjalizacji (Lazy Init)** w ułamku sekundy wykryje, że "turysta" nie miał jeszcze profilu w bazie, i po cichu utworzy mu darmowy `TouristProfile` z pakietem `FREE`.
+
+Masz teraz przed sobą całkowicie czystą mapę (wszystkie szczyty szare) i możesz testować zdobywanie odznak od zera!
 
 ---
 
-## 5. Uruchamianie Wdrożeń Produkcyjnych (PRE-PROD / Staging)
+## 6. Uruchamianie Wdrożeń Produkcyjnych (PRE-PROD / Staging)
 
 Środowisko `PRE-PROD` jest architektonicznym klonem (Twin) serwera `PROD` – posiada ten sam system plików (Read-Only), serwowanie przez Gunicorna, i obostrzenia bezpieczeństwa, z wyłączeniem warstwy Ingress (Caddy). Służy ono lokalnemu testowaniu stabilności nowych wersji przed wgraniem ich do chmury oraz odpalaniu testów wideo (Playwright).
 
@@ -173,18 +241,60 @@ API wymaga uwierzytelnienia. Aby ominąć konieczność budowania pełnego flow 
    ```
    Jeśli weryfikacja rekordów bazy w konsoli wskazuje na pomyślny wczyt szczytów i odznak, serwer `PRE-PROD` nasłuchuje lokalnie pod adresem: `http://localhost:8008/` (dla wdrożenia Gunicorna) i jest gotowy na przyjęcie testów Playwright.
 
+### Wdrożenie
+[Planowane i konfigurowane w **Fazie C** — Przed pierwszym publicznym wdrożeniem sekcja ta zostanie uzupełniona o:
+- Procedurę migracji zerowej (Zero-Downtime deployment).
+- Konfigurację i *orchestration* kontenerów Celery Worker / Beat jako osobnych procesów z limitami zasobów (Cgroups).
+- Instrukcje osadzania biblioteki GDAL w końcowym obrazie `Dockerfile` (Stage 2).]
+
 ### Rollback (Wycofywanie zmian)
-Zgodnie ze strategią określoną w `ADR-024` (Expand and Contract), procedura wycofywania wersji zepsutego kodu ogranicza się wyłącznie do "revertowania" wskaźnika obrazu w pliku środowiskowym i powtórnego przepięcia ruchu na starszą aplikację:
-1. Zmień `IMAGE_TAG` w pliku `.env.preprod.secrets` na wcześniejszą, działającą wersję.
-2. Zastosuj komendę wdrożeniową: `make preprod-deploy`. 
-Aplikacja, dzięki kompatybilności wstecznej bazy, ożyje w poprzedniej wersji.
+⚠️ **UWAGA KRYTYCZNA: Cofanie migracji (Rollback) przy operacjach PostGIS (typy geometryczne, indeksy przestrzenne) niesie ogromne ryzyko utraty integralności danych i kształtów wielokątów.**
+- Nie wolno wykonywać rollbacku na produkcji bez wykonania pełnego, manualnego zrzutu bazy: `docker compose exec db pg_dump -U postgres badges_db > emergency_dump.sql`.
+- Rollback migracji zawierających modyfikacje rozszerzeń PostGIS zawsze wymaga asysty i autoryzacji Lead Developera / DBA.
+
+---
+
+## 7. Uruchamianie Testów
+
+### Testy End-to-End (E2E / Playwright)
+
+Testy te powołują własne, izolowane, efemeryczne środowisko na bazie `compose.e2e.yml` (port 8009). Robot instaluje najnowszą, czystą przeglądarkę i weryfikuje interfejs turysty omijając autoryzację Google za pomocą "kradzieży sesji" prosto z kontenera Django. Wymagają pełnego zrzutu danych referencyjnych z manifestów.
+
+**Komenda (uruchamia bazę, migruje, ładuje dane, odpala robota i sprząta po sobie):**
+```bash
+make e2e
 ```
 
----
+Gwarantowany czas wykonania: ok. 1-2 minuty w zależności od czasu przetwarzania `restore_reference_data`.
+
+W przypadku awarii lub zablokowania portów, skrypt posiada zaszyte wywołanie `docker compose down -v --remove-orphans`, które bezpiecznie "posprząta" osierocone kontenery. W przypadku potrzeby śledzenia działań robota z interfejsem graficznym, należy zmodyfikować flagi wewnątrz skryptu `scripts/e2e-run.sh` na `uv run pytest tests/e2e/ --headed`.
 
 ---
 
-## Logi i monitoring
+## 8. Plan Awaryjny: Uruchamianie Self-Hosted Runnera CI/CD
+
+W przypadku długotrwałej awarii darmowych zasobów GitHub Actions lub przejścia na wdrożenia wymagające połączeń z bezpieczną siecią firmową (VPN/VPC), zaleca się zestawienie własnej maszyny wirtualnej (np. na Hetzner lub AWS EC2) jako *Self-Hosted Runnera*.
+
+**Kroki do zestawienia własnej maszyny:**
+1. Utwórz serwer z systemem Ubuntu 24.04.
+2. Zainstaluj Docker Engine (zgodnie z `ADR-020` maszyna musi potrafić budować i uruchamiać kontenery).
+3. W GitHubie przejdź do: **Settings -> Actions -> Runners** i wybierz **New self-hosted runner**.
+4. Przeklej wygenerowane na ekranie komendy terminalowe (pobierające pakiet `actions-runner` i konfigurujące usługę jako demon systemd) na Twój nowy serwer.
+5. **Kluczowa modyfikacja pliku CI/CD:**
+   Zmień etykietę (Tag) wykonywania w pliku `.github/workflows/ci.yml`.
+   *Zmień to:*
+   ```yaml
+   runs-on: ubuntu-24.04
+   ```
+   *Na to:*
+   ```yaml
+   runs-on: self-hosted
+   ```
+   Po tej zmianie, GitHub przestanie przydzielać zasoby chmurowe, a po wypchnięciu kodu jedynie wyśle sygnał szyfrowany (Webhook) do Twojego serwera, każąc mu uruchomić nasz żelazny skrypt `make verify`.
+
+---
+
+## 9. Logi i monitoring
 
 | Komponent | Gdzie szukać lokalnie | Środowisko docelowe (Produkcja) |
 |-----------|-----------------------|---------------------------------|
@@ -194,7 +304,7 @@ Aplikacja, dzięki kompatybilności wstecznej bazy, ożyje w poprzedniej wersji.
 
 ---
 
-## Typowe problemy i rozwiązania
+## 10. Typowe problemy i rozwiązania
 
 ### Problem 1: `Temporary failure in name resolution` w WSL2
 **Objaw:** Celery lub skrypty rzucają timeoutem HTTP, nie mogąc połączyć się z zewnętrznym API (Overpass), podczas gdy przeglądarka w Windowsie ma internet.  

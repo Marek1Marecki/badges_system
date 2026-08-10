@@ -979,23 +979,6 @@ Prosta integracja, która stanowi standardowy wymóg w korporacyjnych potokach w
 
 ---
 
-### [AUDYT-076] Brak automatycznych potoków CI/CD (Brak `GitHub Actions`)
-**Obszar:** `DevOps / CI/CD`  
-**Priorytet:** `🔴 KRYTYCZNY`  
-
-**Diagnoza Audytora:** 
-Mimo posiadania wysoce dojrzałej architektury konteneryzacji (Multi-stage `Dockerfile`, `compose.test.yml`, dedykowane skrypty wdrażające w `scripts/`), w repozytorium fizycznie nie istnieje żaden plik orkiestratora CI (np. w katalogu `.github/workflows/`). Oznacza to, że pomimo posiadania "części zamiennych", projekt pozbawiony jest w pełni zautomatyzowanego potoku, który samoczynnie weryfikowałby każdy Pull Request i zarządzał wdrożeniami (Continuous Integration / Continuous Deployment).
-
-**Action Items (Do wdrożenia PRZED Playwrightem / Prodem):**
-- [X] Utworzyć plik definiujący potok CI (np. `.github/workflows/ci.yml`).
-- [X] Skonfigurować w nim tzw. *Quality Gate*, który automatycznie, na środowisku efemerycznym GitHuba, uruchomi przygotowane uprzednio skrypty: weryfikację linterów (`make check`) oraz testy integracyjne infrastruktury (`./scripts/test-run.sh --full`).
-- [X] Dodać zabezpieczenie blokujące połączenie gałęzi (Merge) w przypadku, gdy którykolwiek krok w potoku zakończy się statusem błędu.
-
-**Komentarz Architekta:**
-Mamy gotowe, perfekcyjnie przetestowane skrypty (Bash/Make). Wpięcie ich w 40-linijkowy plik YAML dla GitHub Actions to teraz czysta formalność, która ostatecznie zamknie temat "Brakującego CI". Należy to zrobić w następnym kroku.
-
----
-
 ### [AUDYT-077] Brak precyzyjnego wsparcia dla pracy Offline
 **Obszar:** `Frontend / Architektura Mobilna`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -2117,5 +2100,100 @@ W ferworze refaktoryzacji istnieje ryzyko zepsucia dobrze zaprojektowanych kompo
 
 **Komentarz Architekta:**
 Ważna wskazówka do zarządzania zespołem (i agentami AI). W architekturze heksagonalnej stabilne porty i proste reguły to fundament – ich ruszanie bez powodu to po prostu "kręcenie się w kółko" (Churn).
+
+---
+
+### [AUDYT-146] Sformalizowanie Instrukcji Wdrażania Local Runnera (Self-Hosted)
+**Obszar:** `DevOps / Dokumentacja`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Architekta:** 
+W odpowiedzi na awarię chmury GitHub skonfigurowano lokalnego runnera CI/CD na środowisku developerskim. Proces ten wymagał specyficznych komend bezpieczeństwa (izolacja konta systemowego Linux, nadanie uprawnień do grupy `docker`, instalacja demona `systemd`). Obecnie wiedza ta istnieje tylko w logach konwersacji, co uniemożliwi szybkie odtworzenie tej infrastruktury w przyszłości (np. przy zakupie dedykowanego serwera on-premise).
+
+**Action Items (Do wdrożenia w wolnej chwili):**
+- [ ] Zaktualizować plik `docs/RUNBOOK.md` (Sekcja 9: Plan Awaryjny). Wkleić tam dokładne komendy z naszej historii: `useradd -m github-runner`, `usermod -aG docker github-runner` oraz proces używania `sudo -u github-runner`.
+
+**Komentarz Architekta:**
+Wiedza operacyjna (Tribal Knowledge) musi zostać zmaterializowana w kodzie Markdown. To ochroni nas przed przestojami.
+
+---
+
+### [AUDYT-147] Wdrożenie mechanizmu "Garbage Collection" dla Self-Hosted Runnera
+**Obszar:** `DevOps / CI/CD`  
+**Priorytet:** `🟠 WYSOKI (Zapobieganie awariom dysku)`  
+
+**Diagnoza Architekta:** 
+W chmurze GitHub Actions każda maszyna po wykonaniu testu ulega całkowitej destrukcji (Ephemeral VM). W przypadku naszego nowego, fizycznego Self-Hosted Runnera, działającego na komputerze PC/VM, przerywane potoki testowe lub nieudane kompilacje zaczną gromadzić wiszące warstwy obrazów Dockera (Dangling Images) i osierocone wolumeny z prefiksem `ci-`. Z czasem doprowadzi to do błędu `No space left on device`, który zablokuje i środowisko developerskie, i potoki CI.
+
+**Action Items (Do wdrożenia przed intensywnymi testami):**
+- [ ] Dodać do pliku `.github/workflows/ci.yml` nowy krok (wykonywany warunkowo na końcu, lub za pomocą Crontaba na maszynie hosta): `docker system prune -a -f --volumes --filter "until=24h"`.
+- [ ] Upewnić się, że mechanizm ten nie skasuje przypadkiem lokalnych obrazów deweloperskich (użycie bezpiecznych filtrów).
+
+**Komentarz Architekta:**
+Klasyczny błąd przejścia z chmury na własny sprzęt. Brak automatycznego sprzątania (Garbage Collection) to gwarantowana awaria po 2-3 tygodniach intensywnego kodowania.
+
+---
+
+### [AUDYT-148] Optymalizacja zliczania Coverage dla testów Hypothesis
+**Obszar:** Testy / CI  
+**Priorytet:** `🟡 ŚREDNI`
+
+**Diagnoza Architekta:**
+Wdrożenie narzędzia Hypothesis (Property-Based Testing) zaowocowało dopisaniem blisko setki potężnych testów granicznych dla Czystej Domeny (test_domain_hypothesis.py). Jednakże natura testów generatywnych powoduje, że czasem uderzają one wielokrotnie w te same ścieżki kodu, sztucznie zaniżając procentowy wynik Coverage (pokrycia) w porównaniu do testów "example-based". Wyłączenie liczenia coverage flagą `--no-cov` dla tych testów to dobry pierwszy krok, ale docelowo utrudnia śledzenie ogólnej kondycji Domeny.
+
+**Action Items (Do wdrożenia w Fazy Utrzymaniowej):**
+- [ ] Zintegrować raporty coverage z Hypothesis do głównego raportu `pytest-cov`, oznaczając odpowiednio markery w pliku `pyproject.toml`.
+- [ ] Zweryfikować, czy granica `fail-under=80` wymaga korekty przy nowej strukturze testów fuzingowych.
+
+**Komentarz Architekta:**
+Wspaniała inżynieria testów. Domena jest teraz odporna na błędy matematyczne, musimy tylko upewnić się, że statystyki CI poprawnie to odzwierciedlają.
+
+---
+
+### [AUDYT-149] Brak testu uwierzytelniania w Playwright (Logowanie UI)
+**Obszar:** Testy E2E / Playwright  
+**Priorytet:** `🟠 WYSOKI`
+
+**Diagnoza Architekta:**
+Posiadamy ponad 20 działających scenariuszy E2E (nawigacja, profile, katalog, rankingi). Znakomicie omijamy logowanie za pomocą mechanizmu `create_test_session` (Bypass Auth w `conftest.py`). Brakuje jednak choćby jednego "prawdziwego" testu, który fizycznie wchodzi na `/accounts/login/` i weryfikuje UI procesu logowania Google OAuth (np. czy przycisk jest widoczny, czy przekierowuje do poprawnego dostawcy).
+
+**Action Items (Do wdrożenia w obecnym Sprincie QA):**
+- [ ] Napisać test E2E używający "czystego" kontekstu przeglądarki (bez wstrzykiwania ciasteczka).
+- [ ] Zweryfikować, że strona logowania nie zawiera "nagiego HTML-a" i odpowiednio kieruje niezalogowanych turystów.
+
+**Komentarz Architekta:**
+Bypass jest świetny do testowania funkcji biznesowych, ale sam proces logowania (Drzwi Wejściowe) musi mieć swojego zrobotyzowanego strażnika.
+
+---
+
+### [AUDYT-150] Potencjalny wyciek danych w logach `scripts/e2e-run.sh`
+**Obszar:** Skrypty Wdrożeniowe / Bezpieczeństwo  
+**Priorytet:** `🟢 NISKI`
+
+**Diagnoza Architekta:**
+Nasz nowy, genialny wrapper `e2e-run.sh` buduje środowisko, tworzy admina i ładuje dane referencyjne. Często w tego typu skryptach uciekamy się do logowania parametrów (np. hasła tworzonego konta testowego lub tokenów do API).
+
+**Action Items (Do weryfikacji):**
+- [ ] Upewnić się, że w logach konsolowych (`stdout/stderr`) skryptu `e2e-run.sh` oraz w logach GitHub Actions dla tego zadania nigdy nie są wypisywane gołym tekstem wartości zmiennych środowiskowych z `.env` (szczególnie `DJANGO_SECRET_KEY` i tokeny wstrzykiwane do Playwrighta).
+
+**Komentarz Architekta:**
+Narzędzia CI/CD (takie jak GitHub Actions) potrafią automatycznie maskować sekrety (wstawiając `***`), ale przy lokalnym uruchamianiu `make e2e` na komputerze programisty ekran logów powinien pozostać sterylny.
+
+---
+
+### [AUDYT-151] Monitorowanie Dysku (Disk Space) na Self-Hosted Runnerze
+**Obszar:** `DevOps / CI/CD`  
+**Priorytet:** `🟠 WYSOKI (Zapobieganie awariom dysku)`  
+
+**Diagnoza Architekta:** 
+Twój komputer to teraz serwer CI/CD. Chociaż skrypty sprzątają po sobie (`down -v`), nieudane testy (np. ubite w połowie przez błąd kodu) zostawią osierocone wolumeny i obrazy Dockera. Za miesiąc skończy Ci się miejsce na dysku.
+
+**Action Items (Do wdrożenia przed intensywnymi testami):**
+- [ ] Dodać do systemu monitoringu alert na maszynie Self-Hosted Runnera, który wyzwala się przy zajętości dysku > 80%.
+- [ ] Przygotować jednorazowy skrypt czyszczący (`docker system prune -a -f --volumes --filter "until=24h"`), który można uruchomić ręcznie, jeśli alert się触发.
+- [ ] Rozważyć dodanie automatycznego crontaba na maszynie hosta, który wykonuje `docker system prune` co 24h, ale tylko jeśli nie ma aktualnie uruchomionych żadnych kontenerów developerskich.
+
+**Komentarz Architekta:**
+W chmurze AWS/GitHub maszyny są efemeryczne i znikają po zakończeniu testu. Na fizycznym sprzęcie musisz sam zarządzać cyklem życia artefaktów. Brak monitorowania dysku to gwarantowana awaria, która zatrzyma cały zespół.
 
 ---

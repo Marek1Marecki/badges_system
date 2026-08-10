@@ -210,6 +210,23 @@ Audytor wyłapał, że projekt polega wyłącznie na manualnym uruchamianiu kome
 
 ---
 
+### [AUDYT-076] Brak automatycznych potoków CI/CD (Brak `GitHub Actions`)
+**Obszar:** `DevOps / CI/CD`  
+**Priorytet:** `🔴 KRYTYCZNY`  
+
+**Diagnoza Audytora:** 
+Mimo posiadania wysoce dojrzałej architektury konteneryzacji (Multi-stage `Dockerfile`, `compose.test.yml`, dedykowane skrypty wdrażające w `scripts/`), w repozytorium fizycznie nie istnieje żaden plik orkiestratora CI (np. w katalogu `.github/workflows/`). Oznacza to, że pomimo posiadania "części zamiennych", projekt pozbawiony jest w pełni zautomatyzowanego potoku, który samoczynnie weryfikowałby każdy Pull Request i zarządzał wdrożeniami (Continuous Integration / Continuous Deployment).
+
+**Action Items (Do wdrożenia PRZED Playwrightem / Prodem):**
+- [X] Utworzyć plik definiujący potok CI (np. `.github/workflows/ci.yml`).
+- [X] Skonfigurować w nim tzw. *Quality Gate*, który automatycznie, na środowisku efemerycznym GitHuba, uruchomi przygotowane uprzednio skrypty: weryfikację linterów (`make check`) oraz testy integracyjne infrastruktury (`./scripts/test-run.sh --full`).
+- [X] Dodać zabezpieczenie blokujące połączenie gałęzi (Merge) w przypadku, gdy którykolwiek krok w potoku zakończy się statusem błędu.
+
+**Komentarz Architekta:**
+Mamy gotowe, perfekcyjnie przetestowane skrypty (Bash/Make). Wpięcie ich w 40-linijkowy plik YAML dla GitHub Actions to teraz czysta formalność, która ostatecznie zamknie temat "Brakującego CI". Należy to zrobić w następnym kroku.
+
+---
+
 ### [AUDYT-109] Złamane zaufanie do struktury katalogów testów (QA Matrix vs Rzeczywistość)
 **Obszar:** `Dokumentacja / Testy`  
 **Priorytet:** `🔴 KRYTYCZNY (Zaufanie)`  

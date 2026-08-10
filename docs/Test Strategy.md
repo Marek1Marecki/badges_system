@@ -8,27 +8,42 @@
 
 ## Piramida testów systemu PTTK Badges
 
-```text
-          /\
-         /e2e\        ← Faza C: Przepływy logistyki książeczek [Playwright — planowane]
-        /──────\
-       /integr. \     ← Średnio: Adaptery infrastrukturalne, Django Admin, PostGIS (ST_DWithin), OSM Adapter
-      /────────── \
-     /   domain    \  ← Dużo: Reguły biznesowe PTTK w `tests/domain/`
-    /────────────────\
-       /   app/use     \ ← Orkiestracja przepływów w `tests/application/`
-      /__________________\
-```
+| Poziom | Cel | Narzędzie | Czas | Uruchamiane |
+|--------|-----|-----------|------|-------------|
+| **Property/Fuzz** | Testowanie krawędzi matematyki domenowej milionami wygenerowanych wariacji danych. | `pytest` + `Hypothesis` | < 10s | Każdy commit (`make check`) |
+| **Unit** | Czysta logika biznesowa, Wzorzec Strategii (Reguły), Invarianty | `pytest` + `Fake` repozytoria | < 5s | Każdy commit (`make check`) |
+| **Integration** | Adaptery bazodanowe (GeoDjango), weryfikacja zapytań HTTP do OSM | `pytest` + `@pytest.mark.django_db` | < 30s | W CI Pipeline (`test-run.sh --full`) |
+| **SecOps (SAST)** | Skanowanie kodu Pythona i konfiguracji w poszukiwaniu znanych wzorców podatności (OWASP, wycieki haseł). | `Semgrep` | < 10s | Każdy commit (`make security-audit`) |
+| **E2E** | Złożone przepływy GUI turysty | `Playwright` | > 1m | Przed wydaniem na PRE-PROD |
 
 ### Zautomatyzowany Potok CI/CD (GitHub Actions)
 
-System wykorzystuje trzystopniowy proces weryfikacji (Gating Pipeline), w którym każdy kolejny etap zależy od pomyślnego przejścia poprzedniego:
+System wykorzystuje dwie równoległe ścieżki weryfikacji (Quality Pipeline i Security Pipeline), aby szybko wychwytywać błędy bez blokowania się na długich testach:
 
-| Etap Jobu CI | Cel i Środowisko | Mechanika i Wymogi |
-|--------------|------------------|--------------------|
-| **1. Static & Unit** | Szybka weryfikacja kodu (Lintery, Mypy, Import-Linter) oraz testów Domeny i Aplikacji (`tests/domain/`, `tests/application/`). | Uruchamiany na gołym hoście Ubuntu. Czysty Python z pakietami w grupie `dev`. **Wymagane pokrycie 80% (`fail-under`).** Odrzuca testy oznaczone `@pytest.mark.integration`. |
-| **2. Integration**   | Weryfikacja bazy danych, migracji (`release-database.sh`) i adapterów infrastrukturalnych (`tests/infrastructure/`, `tests/apps/`). | Uruchamiany z użyciem `compose.test.yml`. Testy operują na rzeczywistej bazie PostGIS podniesionej przez kontener. |
-| **3. E2E (Playwright)**| Symulacja użytkownika w przeglądarce, weryfikacja routingu, autoryzacji i renderingu HTMX. | Wykorzystuje wydzielony obraz `web-e2e` na porcie 8008. Posiada preinstalowane Chromium. **Wymóg:** Wyłączone zliczanie Coverage. |
+```text
+                         PUSH / PR
+                             │
+             ┌───────────────┴────────────────┐
+             │                                │
+             ▼                                ▼
+       QUALITY PIPELINE                 SECURITY PIPELINE
+             │                                │
+             ▼                                │
+    Static Analysis / Ruff / Mypy            │
+             │                                │
+        Unit Tests                           │
+             │                                │
+   Integration Tests                         │
+             │                                │
+             ▼                                ▼
+        E2E / Playwright                 CodeQL (security-extended)
+                                           + schedule (weekly)
+```
+
+| Ścieżka | Cel i Środowisko | Mechanika i Wymogi |
+|---------|------------------|--------------------|
+| **Quality Pipeline** | Szybka weryfikacja kodu (Lintery, Mypy, Import-Linter) oraz testów Jednostkowych, Integracyjnych i E2E. | Uruchamiana na self-hosted runnerze. Czysty Python z pakietami w grupie `dev`. **Wymagane pokrycie 80% (`fail-under`).** Testy E2E wyłączają coverage przez `--override-ini="addopts="`. |
+| **Security Pipeline** | Skanowanie statyczne przepłyfu danych (Semgrep) oraz semantyczna analiza kodu (CodeQL). | Uruchamiana równolegle na self-hosted runnerze. CodeQL używa zestawu zapytań `security-extended`. Dodatkowo skan cykliczny uruchamiany jest co poniedziałek o 02:30 (`schedule`). Wyniki trafiają do **Code scanning alerts** w GitHub Security Dashboard. |
 
 ---
 
@@ -52,6 +67,7 @@ Minimalny próg globalny dla tego projektu wynosi **80%** (skonfigurowany w `pyp
 - **Logikę domenową bez bazy danych:** `VerifyBadgeUseCase` testowany z użyciem szybkich narzędzi `FakeBadgeRepository`.
 - **Ekstraktory:** Działanie `OsmDataExtractor` (wyciąganie nazw, wysokości, języków granicznych) na suchych słownikach JSON z OSM.
 - **Idempotentność Danych Referencyjnych (DataOps):** Wymagane jest pokrycie procesu `restore_reference_data` testem integracyjnym weryfikującym jego idempotentność. Test musi wykonać operację dwukrotnie na tym samym snapshocie referencyjnym, na końcu wykonując asercję potwierdzającą brak zmian w bazie i brak duplikacji obiektów/relacji podczas drugiego przebiegu. Jest to jedyny dopuszczalny dowód na bezpieczeństwo uruchamiania tej komendy na środowisku produkcyjnym.
+- **Ograniczenia Reguł Biznesowych (Property-Based Testing):** Silnik domenowy, w szczególności twarda matematyka i kalendarz (`TimeLimitRule`, `MandatoryObjectsRule`, Algebra Zbiorów), testowany jest za pomocą biblioteki `Hypothesis`. Testy te uderzają w silnik losowo modyfikowanymi tablicami wejść i listami wymogów, aby udowodnić brak awarii typu `KeyError`, `IndexError` czy załamań logiki przy braku danych (Empty Sets).
 
 ### ❌ Nie testujemy (i dlaczego)
 - **Live Overpass API w testach Unit:** Testy adaptera OSM (`test_osm_adapter.py`) używają mocków HTTP (`@patch`). Nie obciążamy publicznych, zewnętrznych serwerów w pipeline CI, zapobiegając fałszywym awariom (Flaky Tests) wynikającym z błędów 504.
@@ -147,20 +163,60 @@ Zanim uznasz, że napisałeś poprawny test dla Invariantu (np. `TimeLimitRule`)
 
 ---
 
-### Co jest testowane — zakres", ❌ Nie testujemy (i dlaczego)
+## Szybka Referencja: Uruchamianie Testów i Weryfikacji (Cheat Sheet)
 
-- **Banałów ORM-a w testach jednostkowych (ORM Wrappers):** Nie piszemy testów jednostkowych, których jedynym celem jest mockowanie bazy po to, by sprawdzić, czy metoda `get_or_create` w adapterze repozytorium faktycznie wykonuje `get_or_create`. Jest to testowanie kodu twórców frameworka Django, a nie naszego. Niski poziom pokrycia (Coverage) rzędu 20-30% w katalogu `infrastructure/adapters/persistence/` jest zjawiskiem **w pełni akceptowalnym i pożądanym**. Weryfikację tych metod delegujemy do wyższych warstw testowych (Integration / E2E Playwright).
+Poniższe komendy (`make` i pod spodem odpowiadające im skrypty/wywołania `uv`) stanowią ujednolicony standard weryfikacji kodu na środowisku developerskim.
 
----
+### 1. Szybkie testy jednostkowe (Lokalnie, bez Dockera)
+Najszybsza pętla sprzężenia zwrotnego. Czysty kod Pythona.
+```bash
+make test
+# Pod spodem wykonuje: ENV_FILE=.env.test uv run pytest -m "not integration and not e2e"
+```
 
-## Środowiska Testowe i Zarządzanie Danymi (Data Stewardship)
+### 2. Wszystkie testy (Lokalnie, z bazą PostGIS, z wymogiem Coverage > 80%)
+Wymaga włączonych kontenerów db i redis w tle.
+```bash
+make test-all
+# Pod spodem wykonuje: ENV_FILE=.env.test uv run pytest tests --create-db --nomigrations --cov-fail-under=80
+```
 
-Zgodnie z koncepcją "Bazy jako Odtwarzacza", kategorycznie rozdzielamy dane użytkowników (Runtime) od danych systemowych PTTK (Reference Data).
+### 3. Weryfikacja jakości przed commitem (Lintery + Typy + Kontrakty)
+Komenda, którą należy uruchomić przed każdym `git push`.
+```bash
+make check
+# Uruchamia: ruff (format + lint), mypy (strict), import-linter, audit_contracts.py, a na końcu `make test`.
+```
 
-**Wymogi dla środowisk integracyjnych i E2E (Pre-Prod / Playwright):**
-1. **Pojedyncze Źródło Prawdy:** Środowisko testowe NIE MOŻE być repliką bazy deweloperskiej ani polegać na ręcznie stworzonych szczytach w panelu Admina.
-2. **Kolejność Odtwarzania:** Przed każdym przebiegiem testów E2E należy wykonać w 100% zautomatyzowany reset bazy, a następnie wywołać skrypt `uv run python manage.py restore_reference_data`. Gwarantuje to, że skrypty testujące (np. klikające w Babią Górę) pracują na identycznym, zmanifestowanym zestawie węzłów topograficznych i regulaminów odznak, jaki znajduje się aktualnie w repozytorium Git.
-3. **Integralność Snapshotu:** Pakiet danych z `data/reference/*.json.gz` to spójny graf (Aggregate). Zawsze musi być wgrywany w całości. Próba wgrania tylko np. regionów z pominięciem odznak skończy się błędami referencyjnymi.
+### 4. Efemeryczne Środowisko TEST (Bezpieczna, odizolowana piaskownica)
+Stawia własną, pustą bazę, odpala testy w kontenerze `testing` i usuwa ślady (`down -v`).
+```bash
+# Szybkie testy jednostkowe w izolacji:
+make test-run
+
+# Pełny suite z weryfikacją skryptów wdrożeniowych (release scripts)
+# i prawdziwą bazą integracyjną:
+make test-run ARGS="--full"
+
+# Uruchomienie wybranego testu z dodatkowymi flagami (omija wymóg coverage):
+make test-run ARGS="-k test_poi_scoring --no-cov"
+```
+
+### 5. Efemeryczne Środowisko E2E (Testy Przeglądarkowe Playwright)
+Powołuje środowisko na porcie 8009, ładuje snapshot PTTK i uruchamia zrobotyzowaną przeglądarkę. Zawsze sprząta po sobie zasoby.
+```bash
+# Uruchomienie całego pakietu E2E:
+make e2e
+
+# Uruchomienie w trybie gadatliwym / debug:
+make e2e ARGS="-v -k test_homepage"
+```
+
+### 6. Weryfikacja Krawędziowa Czystej Domeny (Hypothesis / Property-Based)
+Jeśli testujesz skrajne matematyczne warianty reguł (np. logikę Praw Nabytych).
+```bash
+ENV_FILE=.env.test DEBUG=False uv run pytest tests/domain/rules/test_badge_rules_hypothesis.py -v --no-cov
+```
 
 ---
 
@@ -169,8 +225,13 @@ Zgodnie z koncepcją "Bazy jako Odtwarzacza", kategorycznie rozdzielamy dane uż
 Testy te pełnią rolę ostatecznego weryfikatora dla ścieżek krytycznych systemu (Happy Paths), testując w 100% zmontowane środowisko (`PRE-PROD`). Z racji wysokiego kosztu utrzymania i czasu wykonywania, w testach E2E nie sprawdzamy skomplikowanych krawędzi matematyki domenowej (od tego są testy jednostkowe z atrapą czasu).
 
 **Wzorzec Bypass Authentication (Omijanie OAuth):**
-W środowiskach zintegrowanych logowanie Google OAuth wymagałoby rozwiązywania Captcha lub odbierania SMS-ów przez robota, co czyni testy kruchymi (Flaky). 
+W środowiskach zintegrowanych logowanie Google OAuth wymagałoby rozwiązywania Captcha lub odbierania SMS-ów przez robota, co czyni testy kruchymi (Flaky).
 - **Zabrania się:** Modyfikowania kodu produkcyjnego (wyłączania warunków logowania dla testów).
 - **Zasada działania:** W pliku `tests/e2e/conftest.py` wykorzystywana jest fiktura (np. `logged_in_context`), która za pomocą komendy administracyjnej Django (`create_test_session.py`) generuje i zatwierdza w bazie danych ważne ciastko sesji (Session Cookie). Ciasteczko to jest bezpośrednio wstrzykiwane do silnika Chromium w Playwright. Dzięki temu robot porusza się po systemie jako pełnoprawny, uwierzytelniony "Testowy Turysta" omijając zewnętrzny ekran logowania.
 
----
+## Wzorce Testowania End-to-End (Playwright)
+
+W środowisku PRE-PROD uruchamiany jest zrobotyzowany test weryfikujący ostateczny rendering HTML, silnik HTMX i mapy (MapLibre). Zgodnie z dobrymi praktykami QA:
+- **Zasada Stabilności Selektorów:** Testy w Playwright nie mogą polegać na klasach CSS (np. `.btn-primary`) czy strukturze DOM (np. `div > ul > li`). Programista musi bezwzględnie wstrzykiwać dedykowane atrybuty **`data-testid`** w kodzie HTML i opierać asercje wyłącznie na nich (np. `page.locator("[data-testid='btn-subscribe-KGP']")`).
+- **Oczekiwanie Asynchroniczne (Smart Waiting):** Zamiast używania sztywnego `time.sleep()`, robot testujący musi oczekiwać na asynchroniczną reakcję serwera za pomocą np. wbudowanych asercji `expect(locator).to_be_visible()` lub jawnego `expect_response` do kontrolowania ruchu AJAX/HTMX.
+- **Odłączenie Obliczania Pokrycia:** Ponieważ test E2E weryfikuje głównie renderowanie po stronie serwera i w niewielkim stopniu dotyka Czystej Domeny, musi on zostać zignorowany przez system mierzący próg `coverage` (fail-under=80) na poziomie skryptu CI.

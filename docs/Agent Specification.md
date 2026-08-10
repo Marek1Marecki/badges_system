@@ -97,6 +97,8 @@ Jeśli widok Django (`views.py`) pobiera obiekty powiązane (np. odznaki dla dan
 5. Endpointy MVT (`.pbf`) służą wyłącznie do pobierania statycznej topografii i nigdy nie mogą zawierać logiki zależnej od zalogowanego użytkownika (User-Agnostic).
 6. **Ochrona przed IDOR w kontrolerach API:** Widok API nigdy nie może ufać parametrowi `user_id` lub `profile_id` przesłanemu w ciele żądania (JSON Payload). Identyfikacja użytkownika i profilu musi ZAWSZE następować na podstawie `request.user.id` oraz bezpiecznej sesji `request.session.get("active_profile_id")`.
 7. **Trailing Slashes:** Każda definicja ścieżki w `urls.py` musi kończyć się ukośnikiem (`/`). Wszystkie wywołania `fetch()` w JavaScript lub testach muszą odpytywać adres zawierający ten ukośnik na końcu (ochrona przed `301 Redirect` gubiącym payload POST).
+8. **Zabezpieczenie przed Open Redirect (CWE-601):** Widoki nie mogą bezkrytycznie przekierowywać użytkowników na adresy URL pochodzące z nagłówków (np. `HTTP_REFERER`) lub parametrów GET (`?next=`). Każdy dynamicznie budowany URL powrotny przed użyciem w funkcji `redirect()` musi zostać zwalidowany za pomocą wbudowanej funkcji `url_has_allowed_host_and_scheme()` z podaniem nazwy lokalnego hosta.
+9. **Ochrona przed Supply-Chain Attack (GitOps):** W przypadku edycji lub tworzenia plików dla potoku CI/CD (np. `.github/workflows/ci.yml`), kategorycznie zakazuje się używania luźnych tagów wersji dla zewnętrznych akcji i obrazów (np. `@v4`, `@latest`). Każda zależność wdrożeniowa musi być przypięta do niezmiennego klucza kryptograficznego SHA (np. `actions/checkout@11bd7190...`).
 
 **Zakazane:**
 - Obsługa wyjątków typu `try/except DomainValidationError: return JsonResponse(...)` na poziomie każdego widoku. Polegamy na centralnym `RFC7807ErrorMiddleware`.
@@ -170,6 +172,7 @@ Zabrania się wstrzykiwania logiki z użyciem tagów `{{ }}` z Django Templates 
 8. **Prewencja zjawiska N+1 (Eager Loading):** Przy każdym zapytaniu ORM, które pobiera listę obiektów, a następnie w pętli odwołuje się do ich relacji (np. sprawdzanie, do jakich odznak należy dany szczyt), masz **bezwzględny obowiązek** użycia `select_related()` (dla kluczy obcych / relacji 1:1) lub `prefetch_related()` (dla relacji M2M i odwrotnych kluczy obcych). Zabrania się generowania setek zapytań SQL podczas renderowania list i rankingów w Pythonie/HTML.
 10. **Wzorzec Łączenia Redis z Django ORM (Ochrona N+1):** W widokach lub serwisach agregujących (np. rankingi), gdzie część stanu żyje w zmaterializowanym cache Redis, a reszta w bazie relacyjnej, bezwzględnie zakazuje się iterowania po kluczach Redis i odpytywania bazy w pętli (np. `Model.objects.get(id=...)`). Należy zawsze wyekstrahować płaską listę identyfikatorów, a następnie użyć klauzuli `filter(id__in=valid_ids)` wspartej odpowiednim `select_related` / `prefetch_related`.
 11. **Zapytania Bitemporalne i Wektorowe (Historyczne):** Przy konstruowaniu zapytań ORM filtrujących po dacie dla encji posiadających wektory czasu (np. `BadgeVersionModel.valid_from/valid_to` lub `TouristObject.existence_start/end`), zakazuje się ufania wyłącznie kolumnie początkowej (`lte`). Należy bezwzględnie implementować pełne okno czasowe za pomocą klauzul `Q`, traktując wartość `NULL` jako zbiór otwarty na nieskończoność (np. `Q(existence_end__isnull=True) | Q(existence_end__gte=date)`).
+12. **Testy Adapterów Bazy Danych (Integration Strictness):** Testowanie adapterów z `infrastructure/adapters/persistence/` musi odbywać się **wyłącznie na prawdziwej bazie danych**. Kategorycznie zakazuje się używania funkcji `@patch`, `MagicMock` lub `Monkeypatching` do symulowania zachowania modeli Django ORM lub połączeń z bazą. Testy te muszą być oznaczone markerami `@pytest.mark.django_db` oraz `@pytest.mark.integration`, co odcina je od lokalnego procesu `make check` i przenosi wykonanie wyłącznie do hermetycznego środowiska potoku CI/CD.
 
 **Zakazane:**
 - Ciche łapanie wyjątków (`except Exception: pass`) w warstwie GIS i hydracji.
@@ -215,7 +218,8 @@ Przed zatwierdzeniem kodu agent musi sprawdzić poniższą checklistę:
 ```
 INVARIANTY
 [ ] Czy żadna zmiana nie narusza INVARIANTS.md (np. czy Czysta Domena nie używa GIS)?
-[ ] Czy zmiana w regułach biznesowych posiada test mutacyjny weryfikujący krawędzie błędu?
+[ ] Czy zmiana w regułach biznesowych PTTK (np. nowa klasa dziedzicząca po `BadgeRule`) posiada dedykowany test właściwościowy (Property-Based Test) wykorzystujący bibliotekę `Hypothesis` w katalogu `tests/domain/`?
+[ ] Czy test Hypothesis weryfikuje wartości brzegowe (np. puste listy, zduplikowane daty, lata przestępne)?
 [ ] Czy użyto ClockPort dla pojęcia czasu?
 
 BEZPIECZEŃSTWO

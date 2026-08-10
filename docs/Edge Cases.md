@@ -499,3 +499,15 @@ Wdrożono twarde reguły nadpisywania:
 **Status:** `resolved`  
 **Opis:** Plik konfiguracyjny projektu narzuca twardy wymóg: `fail-under=80` (minimum 80% pokrycia kodu testami). Uruchomienie potoku testów E2E, który z założenia "klika" tylko po wierzchu aplikacji (Smoke Tests), siłą rzeczy pokrywa jedynie mały procent linii kodu. Pytest kończył się z sukcesem dla testów, ale narzędzie `pytest-cov` rzucało kodem błędu 1, blokując cały pipeline CI na GitHubie.
 **Rozwiązanie / workaround:** W zadaniu GitHub Actions odpowiadającym za testy E2E nadpisano opcje konfiguracyjne w locie, stosując flagę `--override-ini="addopts="`. Neutralizuje to globalne ustawienia coverage, pozwalając testom E2E skupić się wyłącznie na poprawności funkcjonalnej, bez generowania bezużytecznych statystyk pokrycia.
+
+### EC-085 — Awarie chmury i wąskie gardła w GitHub Actions (Capacity Limits)
+**Obszar:** `CI/CD`, `.github/workflows/ci.yml`  
+**Status:** `resolved (Workaround defined)`  
+**Opis:** Ze względu na korzystanie ze współdzielonych zasobów (Shared Runners) w GitHub Actions, projekt jest narażony na globalne awarie infrastruktury Microsoftu. Objawia się to opóźnionymi uruchomieniami potoków (Queued), twardymi błędy uruchomienia runnera, lub odrzuceniami obrazów Docker w fazie budowania.
+**Rozwiązanie / workaround:** Zgodnie z filozofią "Infrastructure as Code", cały pipeline został scentralizowany i zabezpieczony w skryptach systemowych (np. `make check`, `scripts/test-run.sh`, `scripts/e2e-run.sh`). Zależność od GitHub Actions ograniczono wyłącznie do warstwy orkiestracji (wyzwalania skryptu). W przypadku długotrwałej awarii GitHuba, Release Manager może z powodzeniem uruchomić kompletną pętlę walidacyjną lokalnie, wywołując polecenie `make verify`, które uderza w izolowane środowiska Dockera, gwarantując 100% pewności wdrażanego kodu nawet bez połączenia z chmurą.
+
+### EC-086 — Fałszywe poczucie bezpieczeństwa z nieobsługiwanymi flagami (np. `--snapshot`)
+**Obszar:** `management/commands/restore_reference_data.py`, skrypty wdrożeniowe  
+**Status:** `resolved`  
+**Opis:** Podczas pracy nad mechanizmem Rollbacku, w skryptach bashowych (np. `bootstrap.sh`) przekazywano do komend Django argument `--snapshot="${SNAPSHOT_ID}"`. Sama implementacja pythonowej komendy `restore_reference_data` nie obsługiwała jednak tego argumentu w bibliotece `argparse`. Zamiast przywracać wybraną, starszą wersję (Rollback), komenda cicho ignorowała parametr i po prostu wczytywała najnowsze dane znajdujące się w katalogu `data/reference/`. Stwarzało to iluzję działającego procesu Rollbacku.
+**Rozwiązanie / workaround:** Zastosowano zasadę "No False Promises" (Żadnych Fałszywych Obietnic). Flaga `--snapshot` została usunięta z wywołań w skryptach powłoki. Rollback (aż do pełnej implementacji wersjonowanych katalogów w Pythonie) musi być wywoływany ręcznie poprzez cofnięcie commita w Gicie (`git checkout`) przed użyciem standardowej komendy `restore_reference_data`.

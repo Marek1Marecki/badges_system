@@ -293,7 +293,44 @@ Jeśli turysta spróbuje zasubskrybować 4. odznakę na pakiecie `FREE`, interfe
 
 ---
 
-## 3. Zależności Architektoniczne (Faza C) - Nowe Porty
+### SCN-017 — Eksploracja Geograficzna i Rankingowa (Nawigacja)
+
+**Obszar:** `poi_ranking_view`, `region_ranking_view`  
+**Powiązane invarianty:** M-01, M-02  
+**Powiązane User Stories:** US-C10, US-C12  
+**Aktorzy:** Turysta  
+
+**Warunki wstępne:**
+- System załadował pełny snapshot Danych Referencyjnych PTTK.
+- Baza Cache Redis zwróciła wyniki potencjału 100/n dla szczytów.
+
+**Kroki (Test Scenarios E2E):**
+1. Turysta klika w menu "Ranking".
+   → System ładuje podstronę `/ranking/` z wczytaną tabelą najwyżej punktowanych szczytów (lub widok "Pusty stan", jeśli brak odznak).
+2. Turysta klika zakładkę "Skumulowane Regiony".
+   → System przełącza widok i poprawnie agreguje sumy punktowe dla państw, województw i mezoregionów.
+3. Turysta z poziomu Rankingu klika w konkretny Obiekt (np. `data-testid="link-ranking-object-15"`).
+   → Następuje płynne przekierowanie na stronę Detali Obiektu (`/object/15/`).
+
+---
+
+### SCN-018 — Osobisty Profil i Zmiana Preferencji (Konto Rodzinne)
+
+**Obszar:** `profile_settings_view`  
+**Powiązane User Stories:** US-C01  
+**Aktorzy:** Turysta  
+
+**Warunki wstępne:**
+- Użytkownik jest zalogowany (posiada sesję w przeglądarce).
+
+**Kroki (Test Scenarios E2E):**
+1. Turysta klika w "Twój Profil" z rozwijanego menu nawigacji.
+   → Formularz profilu renderuje się z poprawnymi aktualnymi wartościami (np. Nickname).
+2. Turysta wpisuje w pole nowy Nickname i klika "Zapisz".
+   → HTMX asynchronicznie przesyła żądanie `PATCH /api/v1/profiles/{id}/`.
+   → Po sukcesie (baza danych zaktualizowana), wyświetla się powiadomienie Toast o sukcesie.
+3. Użytkownik wykorzystuje testowy przycisk zmiany pakietu (MOCK na "PRO").
+   → System wymusza w backendzie zmianę poziomu konta, co w przyszłych wywołaniach uwalnia limity Freemium.
 
 **UWAGA DO AGENTÓW ARCHITEKTONICZNYCH:** Implementacja powyższych scenariuszy będzie wymagała w pierwszej kolejności zdefiniowania i zamockowania (Tests/Fakes) następujących nowych Portów w katalogu `application/ports/`:
 
