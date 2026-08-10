@@ -156,13 +156,17 @@ class AscentLogView(View):
         try:
             body = json.loads(request.body)
             ascent_input = AscentInputDTO(**body)
-        except (json.JSONDecodeError, ValueError) as e:
+        except (json.JSONDecodeError, ValueError):
+            logger.warning(
+                "invalid_ascent_payload",
+                extra={"request_id": getattr(request, "request_id", "unknown")},
+            )
             return _problem_detail(
                 request=request,
                 error_type="validation-error",
                 title="Błąd Walidacji Danych Wejściowych",
                 status=422,
-                detail=str(e),
+                detail="Nieprawidłowe dane wejściowe.",
             )
 
         try:

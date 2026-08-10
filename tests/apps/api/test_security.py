@@ -5,12 +5,12 @@ w odpowiedziach HTTP, a nieoczekiwane błędy są logowane z pełnym tracebackie
 """
 
 import json
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from application.exceptions import ApplicationException, ConflictError, ResourceNotFoundError, UseCaseError
-from apps.api.views import _handle_application_exception, _problem_detail
+from apps.api.views import AscentLogView, _handle_application_exception, _problem_detail
 
 pytestmark = pytest.mark.integration
 
@@ -26,6 +26,20 @@ def factory():
             return req
 
     return SessionRequestFactory()
+
+
+@pytest.fixture
+def mock_user():
+    user = MagicMock()
+    user.is_authenticated = True
+    user.id = 1
+    user.username = "turysta"
+
+    mock_profile = MagicMock()
+    mock_profile.id = 1
+    user.profiles.first.return_value = mock_profile
+
+    return user
 
 
 @pytest.fixture
@@ -164,4 +178,58 @@ class TestHandleApplicationExceptionDoesNotLeakSecrets:
 
         call_kwargs = mock_logger.info.call_args.kwargs
         assert "exc_info" not in call_kwargs
+
+
+class TestValidationErrorDoesNotLeakParserDetails:
+    """Werytuje, że błędy parsowania JSON/ValueError nie ujawniają szczegółów."""
+
+    def test_json_decode_error_returns_safe_message(self, factory, mock_user):
+        request = factory.post(
+            "/api/v1/ascents/",
+            data="nieprawidłowy json",
+            content_type="application/json",
+        )
+        request.user = mock_user
+        request.session = {}
+        request.request_id = "sec-json-1"
+        request.path = "/api/v1/ascents/"
+
+        with patch("apps.api.views.logger") as mock_logger:
+            response = AscentLogView.as_view()(request)
+
+        assert response.status_code == 422
+        data = json.loads(response.content)
+        assert data["detail"] == "Nieprawidłowe dane wejściowe."
+        assert "Expecting value" not in data["detail"]
+        assert "JSONDecodeError" not in data["detail"]
+
+        mock_logger.warning.assert_called_once_with(
+            "invalid_ascent_payload",
+            extra={"request_id": "sec-json-1"},
+        )
+
+    def test_value_error_does_not_leak_internal_details(self, factory, mock_user):
+        request = factory.post(
+            "/api/v1/ascents/",
+            data=json.dumps({"peak_id": "not_a_number"}),
+            content_type="application/json",
+        )
+        request.user = mock_user
+        request.session = {}
+        request.request_id = "sec-val-1"
+        request.path = "/api/v1/ascents/"
+
+        with patch("apps.api.views.logger") as mock_logger:
+            response = AscentLogView.as_view()(request)
+
+        assert response.status_code == 422
+        data = json.loads(response.content)
+        assert data["detail"] == "Nieprawidłowe dane wejściowe."
+        assert "not_a_number" not in data["detail"]
+        assert "ValueError" not in data["detail"]
+
+        mock_logger.warning.assert_called_once_with(
+            "invalid_ascent_payload",
+            extra={"request_id": "sec-val-1"},
+        )
 
