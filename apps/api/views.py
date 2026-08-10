@@ -13,6 +13,7 @@ dla nieoczekiwanych wyjątków w środowisku produkcyjnym.
 """
 
 import json
+import logging
 from typing import Any
 
 from django.contrib.gis.measure import D
@@ -38,6 +39,8 @@ from apps.badges.models import TouristObject
 from apps.badges.tasks import recalculate_poi_scores_task
 from apps.tourists.models import TouristProfile
 from bootstrap import get_container
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -83,20 +86,36 @@ def _handle_application_exception(request, exc: ApplicationException) -> JsonRes
 
     Wywoływany bezpośrednio z widoków, bo RequestFactory omija middleware.
     """
+    request_id = getattr(request, "request_id", "unknown")
+
     if isinstance(exc, ResourceNotFoundError):
+        logger.info("resource_not_found", extra={"request_id": request_id})
         return _problem_detail(request, "resource-not-found", "Zasób nie istnieje", 404, str(exc))
 
     if isinstance(exc, ConflictError):
+        logger.warning("conflict", extra={"request_id": request_id})
         return _problem_detail(request, "conflict", "Konflikt Danych", 409, str(exc))
 
     if isinstance(exc, BitemporalTimeError):
+        logger.warning("bitemporal_violation", extra={"request_id": request_id})
         return _problem_detail(request, "bitemporal-constraint-violated", "Naruszenie Bitemporalności", 422, str(exc))
 
     if isinstance(exc, UseCaseError):
+        logger.info("validation_failed", extra={"request_id": request_id})
         return _problem_detail(request, "validation-failed", "Błąd Walidacji", 422, str(exc))
 
-    # Fallback dla nieznanych podklas ApplicationException
-    return _problem_detail(request, "internal-error", "Wewnętrzny Błąd Serwera", 500, str(exc))
+    logger.error(
+        "unhandled_application_exception",
+        extra={"request_id": request_id},
+        exc_info=True,
+    )
+    return _problem_detail(
+        request,
+        "internal-error",
+        "Wewnętrzny Błąd Serwera",
+        500,
+        "Wystąpił wewnętrzny błąd serwera.",
+    )
 
 
 # ---------------------------------------------------------------------------
