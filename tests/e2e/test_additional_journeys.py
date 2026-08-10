@@ -123,15 +123,36 @@ def test_catalog_shows_badges_and_subscribe_button(auth_page: Page):
 
 @pytest.mark.e2e
 def test_ranking_page_shows_object_links(auth_page: Page):
-    """Ranking celów zawiera linki do szczegółów obiektów."""
+    """Test śledczy: Rozwiązywanie tajemnicy pustego rankingu."""
+
+    # 1. Start w Katalogu
     auth_page.goto("/catalog/")
     subscribe_btn = auth_page.locator("[data-testid='btn-subscribe-KGP']")
-    if subscribe_btn.is_visible():
-        subscribe_btn.click()
-        auth_page.wait_for_timeout(1000)
+
+    if subscribe_btn.count() > 0 and subscribe_btn.is_visible():
+        with auth_page.expect_response(re.compile(r".*/subscribe/")) as response_info:
+            subscribe_btn.click()
+
+        assert response_info.value.status == 201, "API nie przyjęło subskrypcji!"
+        expect(subscribe_btn).to_be_hidden(timeout=5000)
+        print("\n[DIAGNOZA] Z powodzeniem zapisano subskrypcję KGP w API.")
+
+    auth_page.wait_for_timeout(10000)
+
+    auth_page.goto("/")
+    expect(auth_page.locator("text=Twoje Odznaki")).to_be_visible()
+    is_badge_on_dash = auth_page.locator("text=Korona Gór Polskich").is_visible()
+    print(f"\n[DIAGNOZA] Czy KGP widać na Dashboardzie?: {is_badge_on_dash}")
 
     auth_page.goto("/ranking/")
-    expect(auth_page).to_have_url(re.compile(r".*/ranking/"))
+
+    page_html = auth_page.content()
+
+    if "Twój ranking jest pusty" in page_html:
+        print("\n[DIAGNOZA] TRAGEDIA: Strona twierdzi, że ranking jest pusty.")
+        print(page_html[:500])
+    else:
+        print("\n[DIAGNOZA] SUKCES: Strona ma dane rankingowe.")
 
     object_links = auth_page.locator("[data-testid^='link-ranking-object-']")
     expect(object_links.first).to_be_visible()

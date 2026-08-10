@@ -177,6 +177,8 @@ class BadgeSubscribeView(View):
             # WPISUJEMY TYLKO TO:
             progress_id = use_case.execute(profile_id=profile_id, badge_code=badge_code)
 
+            recalculate_poi_scores_task.delay(profile_id)
+
             return JsonResponse({"progress_id": progress_id, "status": "SUBSCRIBED"}, status=201)
 
         except ApplicationException as exc:
