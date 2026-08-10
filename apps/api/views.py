@@ -90,19 +90,25 @@ def _handle_application_exception(request, exc: ApplicationException) -> JsonRes
 
     if isinstance(exc, ResourceNotFoundError):
         logger.info("resource_not_found", extra={"request_id": request_id})
-        return _problem_detail(request, "resource-not-found", "Zasób nie istnieje", 404, str(exc))
+        return _problem_detail(request, "resource-not-found", "Zasób nie istnieje", 404, "Zasób nie istnieje.")
 
     if isinstance(exc, ConflictError):
         logger.warning("conflict", extra={"request_id": request_id})
-        return _problem_detail(request, "conflict", "Konflikt Danych", 409, str(exc))
+        return _problem_detail(request, "conflict", "Konflikt Danych", 409, "Konflikt danych.")
 
     if isinstance(exc, BitemporalTimeError):
         logger.warning("bitemporal_violation", extra={"request_id": request_id})
-        return _problem_detail(request, "bitemporal-constraint-violated", "Naruszenie Bitemporalności", 422, str(exc))
+        return _problem_detail(
+            request,
+            "bitemporal-constraint-violated",
+            "Naruszenie Bitemporalności",
+            422,
+            "Naruszenie bitemporalności.",
+        )
 
     if isinstance(exc, UseCaseError):
         logger.info("validation_failed", extra={"request_id": request_id})
-        return _problem_detail(request, "validation-failed", "Błąd Walidacji", 422, str(exc))
+        return _problem_detail(request, "validation-failed", "Błąd Walidacji", 422, "Błąd walidacji.")
 
     logger.error(
         "unhandled_application_exception",

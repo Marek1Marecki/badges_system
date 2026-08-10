@@ -102,7 +102,8 @@ class TestHandleApplicationExceptionDoesNotLeakSecrets:
 
         assert response.status_code == 404
         data = json.loads(response.content)
-        assert data["detail"] == "Profil o podanym identyfikatorze nie istnieje."
+        assert data["detail"] == "Zasób nie istnieje."
+        assert "Profil o podanym identyfikatorze nie istnieje." not in data["detail"]
         assert "SECRET" not in data["detail"]
 
         mock_logger.info.assert_called_once_with(
@@ -118,7 +119,8 @@ class TestHandleApplicationExceptionDoesNotLeakSecrets:
 
         assert response.status_code == 409
         data = json.loads(response.content)
-        assert data["detail"] == "Duplicate entry for key 'ascent'"
+        assert data["detail"] == "Konflikt danych."
+        assert "Duplicate entry for key 'ascent'" not in data["detail"]
         assert "Traceback" not in data["detail"]
 
         mock_logger.warning.assert_called_once_with(
@@ -134,7 +136,8 @@ class TestHandleApplicationExceptionDoesNotLeakSecrets:
 
         assert response.status_code == 422
         data = json.loads(response.content)
-        assert data["detail"] == "Brak regulaminu dla daty 2024-01-01"
+        assert data["detail"] == "Błąd walidacji."
+        assert "Brak regulaminu dla daty 2024-01-01" not in data["detail"]
         assert "Traceback" not in data["detail"]
         assert "File " not in data["detail"]
 
