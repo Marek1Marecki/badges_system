@@ -27,6 +27,7 @@ on:
       - '.importlinter'
   schedule:
     - cron: '30 2 * * 1'
+  workflow_dispatch:
 
 jobs:
   analyze:
@@ -50,12 +51,13 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@f0489abddd4e5e9dff53ed28a45b1d6f88978a1b
+        uses: github/codeql-action/init@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81
         with:
           languages: ${{ matrix.language }}
+          build-mode: none
           queries: security-extended
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@f0489abddd4e5e9dff53ed28a45b1d6f88978a1b
+        uses: github/codeql-action/analyze@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81
         with:
           category: "/language:${{matrix.language}}"
