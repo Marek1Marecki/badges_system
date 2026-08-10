@@ -91,7 +91,7 @@ jobs:
 
       - name: Zapisz raporty z testów do archiwum Github Actions
         if: always()
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: unit-test-results
           path: unit-test-results.xml
@@ -162,14 +162,14 @@ jobs:
 
       - name: Upload dump'a PostgreSQL jako artefakt
         if: always()
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: postgis-dump
           path: /tmp/postgis_dump.custom
 
       - name: Upload logów Dockera jako artefakt
         if: always()
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: integration-test-docker-logs
           path: integration-test-docker-logs.txt
@@ -190,7 +190,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Pobieranie dump'a PostgreSQL z jobu integration-tests
-        uses: actions/download-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: postgis-dump
           path: /tmp/postgis-dump
@@ -275,7 +275,7 @@ jobs:
 
       - name: Upload logów Dockera jako artefakt
         if: always()
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: e2e-docker-logs
           path: e2e-docker-logs.txt
