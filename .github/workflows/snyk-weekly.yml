@@ -17,13 +17,13 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Konfiguracja narzędzia UV
-        uses: astral-sh/setup-uv@887a942a15af3a7626099df99e897a18d9e5ab3a
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
-          version: "0.5.11"
+          version: "0.12.3"
           enable-cache: true
 
       - name: Zrzut zależności z 'uv' do standardowego formatu (dla Snyka)
-        run: uv pip compile pyproject.toml --no-dev -o snyk_requirements.txt
+        run: uv pip compile pyproject.toml -o snyk_requirements.txt
 
       - name: Skanowanie Snyk Open Source
         uses: snyk/actions/python@12140f4059e244892ae643824a95459a102120dd
