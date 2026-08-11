@@ -26,9 +26,10 @@ jobs:
         run: uv pip compile pyproject.toml -o requirements.txt
 
       - name: Instalacja Snyk CLI
-        uses: snyk/actions/setup@12140f4059e244892ae643824a95459a102120dd
-        with:
-          docker: false
+        run: |
+          curl -sSL https://downloads.snyk.io/cli/latest/snyk-linux -o /usr/local/bin/snyk
+          chmod +x /usr/local/bin/snyk
+          snyk version
 
       - name: Skanowanie Snyk Open Source
         # Snyk NIE BLOKUJE pipeline. To tylko monitoring.
