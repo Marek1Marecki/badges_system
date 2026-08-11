@@ -1,0 +1,36 @@
+name: Snyk Weekly Security Scan
+
+# Uruchamiamy w każdy poniedziałek o 3:00 UTC.
+# Pozwalamy też na ręczne odpalenie (workflow_dispatch) na wypadek testów.
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+jobs:
+  snyk-scan:
+    name: Opcjonalny Skan Bezpieczeństwa Zależności
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Pobieranie repozytorium
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Konfiguracja narzędzia UV
+        uses: astral-sh/setup-uv@887a942a15af3a7626099df99e897a18d9e5ab3a
+        with:
+          version: "0.5.11"
+          enable-cache: true
+
+      - name: Zrzut zależności z 'uv' do standardowego formatu (dla Snyka)
+        run: uv pip compile pyproject.toml --no-dev -o snyk_requirements.txt
+
+      - name: Skanowanie Snyk Open Source
+        uses: snyk/actions/python@12140f4059e244892ae643824a95459a102120dd
+        # Snyk NIE BLOKUJE pipeline. To tylko monitoring.
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          file: snyk_requirements.txt
+          args: --severity-threshold=high
