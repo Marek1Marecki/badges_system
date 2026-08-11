@@ -39,4 +39,4 @@ jobs:
         run: |
           uv venv .snyk-venv
           uv pip install --python .snyk-venv/bin/python -r requirements.txt
-          VIRTUAL_ENV=.snyk-venv snyk test --severity-threshold=high --file=requirements.txt --no-root --python=.snyk-venv/bin/python --python=.snyk-venv/bin/python --python=.snyk-venv/bin/python --python=.snyk-venv/bin/python --python=.snyk-venv/bin/python --python=.snyk-venv/bin/python --python=.snyk-venv/bin/python --python=.snyk-venv/bin/python
+          VIRTUAL_ENV=.snyk-venv snyk test --severity-threshold=high --file=requirements.txt --no-root
