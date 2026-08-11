@@ -53,6 +53,58 @@ class TestFetchOsmDataTask:
 
         assert "Błąd logiki" in result
 
+    @patch("bootstrap.get_container")
+    @patch("apps.badges.tasks.calculate_object_regions_task.delay")
+    def test_osm_adapter_error_triggers_retry(self, mock_delay, mock_get_container, mock_container):
+        from infrastructure.adapters.osm_adapter import OsmAdapterError
+
+        mock_get_container.return_value = mock_container
+        mock_container.fetch_osm_data.execute.side_effect = OsmAdapterError("Błąd OSM")
+
+        result = fetch_osm_data_task.apply(args=(42,))
+
+        assert result is not None
+
+    def test_osm_adapter_error_max_retries_marks_object_error(self):
+        """Po max retries ustawia ERROR na obiekcie i zwraca komunikat."""
+        from django.core.exceptions import ObjectDoesNotExist
+        from infrastructure.adapters.osm_adapter import OsmAdapterError
+
+        mock_container = MagicMock()
+        mock_container.fetch_osm_data.execute.side_effect = OsmAdapterError("Błąd OSM")
+
+        mock_obj = MagicMock()
+
+        with patch("bootstrap.get_container", return_value=mock_container):
+            with patch("apps.badges.models.TouristObject") as mock_tourist_object:
+                mock_tourist_object.DoesNotExist = ObjectDoesNotExist
+                mock_tourist_object.objects.get.return_value = mock_obj
+
+                result = fetch_osm_data_task.apply(args=(42,), retries=15)
+
+        assert result.state == "SUCCESS"
+        assert "BŁĄD KRYTYCZNY" in result.result
+        mock_obj.status = "ERROR"
+        mock_obj.save.assert_called_once_with(update_fields=["status", "osm_error"])
+
+    def test_osm_adapter_error_max_retries_object_not_found(self):
+        """Po max retries gdy obiekt nie istnieje, zwraca komunikat bez zapisu."""
+        from django.core.exceptions import ObjectDoesNotExist
+        from infrastructure.adapters.osm_adapter import OsmAdapterError
+
+        mock_container = MagicMock()
+        mock_container.fetch_osm_data.execute.side_effect = OsmAdapterError("Błąd OSM")
+
+        with patch("bootstrap.get_container", return_value=mock_container):
+            with patch("apps.badges.models.TouristObject") as mock_tourist_object:
+                mock_tourist_object.DoesNotExist = ObjectDoesNotExist
+                mock_tourist_object.objects.get.side_effect = ObjectDoesNotExist
+
+                result = fetch_osm_data_task.apply(args=(42,), retries=15)
+
+        assert result.state == "SUCCESS"
+        assert "BŁĄD KRYTYCZNY" in result.result
+
 
 class TestScanProximityCandidatesTask:
     @patch("bootstrap.get_container")
@@ -180,3 +232,14 @@ class TestBuildTouristRegionGeometryTask:
 
         with pytest.raises(Exception, match="Geometry error"):
             build_tourist_region_geometry_task(1)
+
+    @patch("bootstrap.get_container")
+    def test_use_case_error_returns_message(self, mock_get_container, mock_container):
+        from application.exceptions import UseCaseError
+
+        mock_get_container.return_value = mock_container
+        mock_container.build_tourist_region_geometry.execute.side_effect = UseCaseError("Błąd logiki")
+
+        result = build_tourist_region_geometry_task(1)
+
+        assert "Błąd: Błąd logiki" in result

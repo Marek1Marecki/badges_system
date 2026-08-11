@@ -189,3 +189,81 @@ def test_fetch_news_with_missing_icon_or_link(monkeypatch):
 def test_source_url_constant():
     """Test that SOURCE_URL constant is set correctly."""
     assert BeautifulSoupNewsScraper.SOURCE_URL == "https://odznaki.org/zmiany/"
+
+
+def test_fetch_news_with_non_string_href(monkeypatch):
+    """Test fetch_news handles non-string href (line 85)."""
+
+    def mock_urlopen(request, timeout=None):
+        html = """
+        <html>
+            <body>
+                <h2>Ostatnie 50 zmian</h2>
+                <ul>
+                    <li>
+                        2023 - <span class="material-icons">add_circle</span>
+                        <a href="">Badge 1</a> Nowa odznaka
+                    </li>
+                </ul>
+            </body>
+        </html>
+        """
+        return MockResponse(html)
+
+    monkeypatch.setattr("urllib.request.urlopen", mock_urlopen)
+
+    scraper = BeautifulSoupNewsScraper()
+    result = scraper.fetch_news()
+
+    assert len(result) == 1
+    assert result[0].badge_name == "Badge 1"
+
+
+def test_fetch_news_with_href_as_list(monkeypatch):
+    """Test fetch_news handles href as list (line 81)."""
+
+    def mock_urlopen(request, timeout=None):
+        html = """
+        <html>
+            <body>
+                <h2>Ostatnie 50 zmian</h2>
+                <ul>
+                    <li>
+                        2023 - <span class="material-icons">add_circle</span>
+                        <a href="/badge1">Badge 1</a> Nowa odznaka
+                    </li>
+                </ul>
+            </body>
+        </html>
+        """
+        return MockResponse(html)
+
+    from unittest.mock import patch, MagicMock
+
+    scraper = BeautifulSoupNewsScraper()
+
+    with patch("urllib.request.urlopen", mock_urlopen):
+        with patch("bs4.BeautifulSoup") as MockBS:
+            mock_soup = MagicMock()
+            MockBS.return_value = mock_soup
+
+            mock_header = MagicMock()
+            mock_soup.find.return_value = mock_header
+
+            mock_list = MagicMock()
+            mock_header.find_next_sibling.return_value = mock_list
+
+            mock_item = MagicMock()
+            mock_list.find_all.return_value = [mock_item]
+
+            mock_icon = MagicMock()
+            mock_icon.get_text.return_value = "add_circle"
+            mock_item.find.side_effect = lambda *args, **kwargs: (
+                mock_icon if args[0] == "span" else MagicMock(get_text=MagicMock(return_value="Badge 1"), get=MagicMock(return_value=["/badge1"]))
+            )
+
+            mock_item.get_text.return_value = "2023 - add_circle - Badge 1 Nowa odznaka"
+
+            result = scraper.fetch_news()
+
+    assert len(result) == 1

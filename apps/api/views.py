@@ -511,13 +511,13 @@ class BulkAscentLogView(View):
             if not isinstance(body, list):
                 raise ValueError("Payload musi być listą obiektów JSON.")
             ascents = [AscentInputDTO(**item) for item in body]
-        except (json.JSONDecodeError, ValueError) as e:
+        except (json.JSONDecodeError, ValueError, ValidationError):
             return _problem_detail(
                 request=request,
                 error_type="validation-error",
                 title="Błąd Walidacji Danych Wejściowych",
                 status=422,
-                detail=str(e),
+                detail="Nieprawidłowe dane wejściowe.",
             )
         try:
             use_case = get_container().bulk_log_ascents

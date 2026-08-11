@@ -14,6 +14,7 @@ from application.exceptions import ApplicationException, ConflictError, Resource
 from apps.api.views import (
     AscentLogView,
     BadgeLogisticsView,
+    BulkAscentLogView,
     MapObjectsView,
     _handle_application_exception,
     _problem_detail,
@@ -329,4 +330,61 @@ class TestBadgeLogisticsViewValidation:
         with patch("apps.api.views.LogisticStatusUpdateDTO", side_effect=RuntimeError("DTO boom")):
             with pytest.raises(RuntimeError, match="DTO boom"):
                 BadgeLogisticsView.as_view()(request, progress_id=1)
+
+
+class TestBulkAscentLogViewValidation:
+    """Werytuje, że BulkAscentLogView nie ujawnia szczegółów wyjątków walidacji."""
+
+    def test_non_list_payload_returns_safe_422(self, factory, mock_user):
+        request = factory.post(
+            "/api/v1/ascents/bulk/",
+            data=json.dumps("not-a-list"),
+            content_type="application/json",
+        )
+        request.user = mock_user
+        request.session = {}
+        request.request_id = "sec-bulk-1"
+        request.path = "/api/v1/ascents/bulk/"
+
+        response = BulkAscentLogView.as_view()(request)
+
+        assert response.status_code == 422
+        data = json.loads(response.content)
+        assert data["detail"] == "Nieprawidłowe dane wejściowe."
+        assert "not-a-list" not in data["detail"]
+        assert "ValueError" not in data["detail"]
+
+    def test_invalid_ascent_item_returns_safe_422(self, factory, mock_user):
+        request = factory.post(
+            "/api/v1/ascents/bulk/",
+            data=json.dumps([{"peak_id": "not_a_number", "ascent_date": str(date.today())}]),
+            content_type="application/json",
+        )
+        request.user = mock_user
+        request.session = {}
+        request.request_id = "sec-bulk-2"
+        request.path = "/api/v1/ascents/bulk/"
+
+        response = BulkAscentLogView.as_view()(request)
+
+        assert response.status_code == 422
+        data = json.loads(response.content)
+        assert data["detail"] == "Nieprawidłowe dane wejściowe."
+        assert "not_a_number" not in data["detail"]
+        assert "ValidationError" not in data["detail"]
+
+    def test_unexpected_exception_is_not_masked_as_422(self, factory, mock_user):
+        request = factory.post(
+            "/api/v1/ascents/bulk/",
+            data=json.dumps([{"peak_id": 1, "ascent_date": str(date.today())}]),
+            content_type="application/json",
+        )
+        request.user = mock_user
+        request.session = {}
+        request.request_id = "sec-bulk-3"
+        request.path = "/api/v1/ascents/bulk/"
+
+        with patch("apps.api.views.AscentInputDTO", side_effect=RuntimeError("DTO boom")):
+            with pytest.raises(RuntimeError, match="DTO boom"):
+                BulkAscentLogView.as_view()(request)
 

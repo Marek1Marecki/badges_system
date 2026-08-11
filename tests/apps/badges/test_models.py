@@ -1,5 +1,9 @@
 """Testy dla modeli Django."""
 
+from unittest.mock import MagicMock
+
+import pytest
+
 from apps.badges.models import (
     RULES_SCHEMA,
     BadgeModel,
@@ -336,3 +340,178 @@ class TestBadgeTierModel:
     def test_badge_tier_model_str_method(self):
         """Test metody __str__."""
         assert hasattr(BadgeTierModel, "__str__")
+
+
+class TestBadgeModelStr:
+    """Testy __str__ modeli odznak."""
+
+    def test_badge_model_str(self):
+        """Test __str__ BadgeModel."""
+        badge = MagicMock()
+        badge.name = "Korona Sudetów"
+        result = BadgeModel.__str__(badge)
+        assert "Korona Sudetów" in result
+
+    def test_badge_version_model_str(self):
+        """Test __str__ BadgeVersionModel."""
+        badge = MagicMock()
+        badge.name = "KGP"
+        version = MagicMock()
+        version.badge = badge
+        version.version_code = "v2024"
+        result = BadgeVersionModel.__str__(version)
+        assert "KGP" in result
+        assert "v2024" in result
+
+    def test_object_region_cache_str(self):
+        """Test __str__ ObjectRegionCache."""
+        from apps.badges.models import ObjectRegionCache
+
+        obj = MagicMock()
+        obj.tourist_object.name = "Rysy"
+        obj.region_name = "Tatry"
+        obj.get_region_level_display.return_value = "Region"
+        obj.distance_meters = 0
+
+        result = ObjectRegionCache.__str__(obj)
+
+        assert "Rysy" in result
+        assert "Tatry" in result
+
+    def test_object_region_cache_str_with_distance(self):
+        """Test __str__ ObjectRegionCache z odległością."""
+        from apps.badges.models import ObjectRegionCache
+
+        obj = MagicMock()
+        obj.tourist_object.name = "Rysy"
+        obj.region_name = "Tatry"
+        obj.get_region_level_display.return_value = "Region"
+        obj.distance_meters = 150
+
+        result = ObjectRegionCache.__str__(obj)
+
+        assert "Rysy" in result
+        assert "Bufor 150m" in result
+
+    def test_country_model_str(self):
+        """Test __str__ CountryModel."""
+        from apps.badges.models import CountryModel
+
+        country = MagicMock()
+        country.name = "Polska"
+        country.code = "PL"
+        result = CountryModel.__str__(country)
+        assert "Polska" in result
+        assert "PL" in result
+
+    def test_organizer_model_str(self):
+        """Test __str__ OrganizerModel."""
+        from apps.badges.models import OrganizerModel
+
+        organizer = MagicMock()
+        organizer.name = "PTTK"
+        result = OrganizerModel.__str__(organizer)
+        assert "PTTK" in result
+
+    def test_osm_type_mapping_str_ignored(self):
+        """Test __str__ OsmTypeMapping gdy ignorowany."""
+        from apps.badges.models import OsmTypeMapping
+
+        mapping = MagicMock()
+        mapping.osm_key = "tourism"
+        mapping.osm_value = "hotel"
+        mapping.target_type = "HOTEL"
+        mapping.is_ignored = True
+        result = OsmTypeMapping.__str__(mapping)
+        assert "tourism=hotel" in result
+        assert "HOTEL" in result
+        assert "Ignorowany" in result
+
+    def test_tourist_object_str_with_altitude(self):
+        """Test __str__ TouristObject z wysokością."""
+        from apps.badges.models import TouristObject
+
+        obj = MagicMock()
+        obj.name = "Rysy"
+        obj.altitude = 2499
+        obj.type = "peak"
+        obj.is_active = True
+        result = TouristObject.__str__(obj)
+        assert "Rysy" in result
+        assert "2499m" in result
+        assert "peak" in result
+
+    def test_tourist_object_str_inactive(self):
+        """Test __str__ TouristObject nieaktywny."""
+        from apps.badges.models import TouristObject
+
+        obj = MagicMock()
+        obj.name = "Stary szczyt"
+        obj.altitude = None
+        obj.type = "peak"
+        obj.is_active = False
+        result = TouristObject.__str__(obj)
+        assert "Stary szczyt" in result
+        assert "[peak]" in result
+        assert "NIE ISTNIEJE" in result
+
+    def test_badge_tier_model_str(self):
+        """Test __str__ BadgeTierModel."""
+        from apps.badges.models import BadgeTierModel
+
+        tier = MagicMock()
+        tier.version = "v2024"
+        tier.get_name_display.return_value = "Standard"
+        result = BadgeTierModel.__str__(tier)
+        assert "v2024" in result
+        assert "Standard" in result
+
+    def test_proximity_candidate_str(self):
+        """Test __str__ ProximityCandidate."""
+        from apps.badges.models import ProximityCandidate
+
+        obj_a = MagicMock()
+        obj_a.name = "Rysy"
+        obj_a.get_type_display.return_value = "Szczyt"
+        obj_a.type = "peak"
+        obj_b = MagicMock()
+        obj_b.name = "Czarny Staw"
+        obj_b.get_type_display.return_value = "Jezioro"
+        obj_b.type = "lake"
+
+        candidate = MagicMock()
+        candidate.obj_a = obj_a
+        candidate.obj_b = obj_b
+        candidate.distance_meters = 250
+
+        result = ProximityCandidate.__str__(candidate)
+
+        assert "Rysy" in result
+        assert "Czarny Staw" in result
+        assert "250m" in result
+
+    def test_osm_sync_conflict_str(self):
+        """Test __str__ OsmSyncConflict."""
+        from apps.badges.models import OsmSyncConflict
+
+        obj = MagicMock()
+        obj.tourist_object.name = "Rysy"
+        obj.field_name = "name"
+        obj.old_value = "Old Name"
+        obj.new_value = "New Name"
+        result = OsmSyncConflict.__str__(obj)
+        assert "Rysy" in result
+        assert "name" in result
+        assert "Old Name" in result
+        assert "New Name" in result
+
+    def test_badge_news_item_str(self):
+        """Test __str__ BadgeNewsItem."""
+        from apps.badges.models import BadgeNewsItem
+
+        item = MagicMock()
+        item.get_change_type_display.return_value = "DODANO"
+        item.badge_name = "KGP"
+        result = BadgeNewsItem.__str__(item)
+        assert "DODANO" in result
+        assert "KGP" in result

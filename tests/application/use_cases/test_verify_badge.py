@@ -5,7 +5,10 @@ from unittest.mock import MagicMock
 import pytest
 
 from application.exceptions import ResourceNotFoundError
-from application.use_cases.verify_badge import EvaluateBadgeProgressQuery
+from application.use_cases.verify_badge import (
+    EvaluateBadgeProgressQuery,
+    UpdateBadgeProgressCommand,
+)
 from domain.value_objects.verification_result import TierResult, VerificationResult
 from tests.fakes.clock import FakeClock
 
@@ -142,3 +145,78 @@ class TestEvaluateBadgeProgressQuery:
         assert result["status"] == "COMPLETED"
         assert result["errors"] == ["Wiek nie spełnia wymogów"]
         assert result["tiers"][0]["status"] == "IN_PROGRESS"
+
+
+class TestEvaluateBadgeProgressQueryNoVersion:
+    """Testy EvaluateBadgeProgressQuery gdy brakuje wersji odznaki."""
+
+    def test_execute_raises_when_badge_version_not_found(self) -> None:
+        """Podnosi ResourceNotFoundError gdy get_badge_version_by_id zwróci None."""
+        progress_repo = MagicMock()
+        progress = MagicMock()
+        progress.version_id = 99
+        progress_repo.get_progress.return_value = progress
+
+        badge_repo = MagicMock()
+        badge_repo.get_version_id_for_date.return_value = 99
+        badge_repo.get_badge_version_by_id.return_value = None
+
+        ascent_repo = MagicMock()
+        profile_repo = MagicMock()
+
+        uc = EvaluateBadgeProgressQuery(progress_repo, ascent_repo, profile_repo, badge_repo, FakeClock())
+
+        with pytest.raises(ResourceNotFoundError, match="Nie udało się odtworzyć struktury odznaki"):
+            uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
+
+
+class TestUpdateBadgeProgressCommand:
+    """Testy UpdateBadgeProgressCommand."""
+
+    def test_execute_returns_early_when_no_progress(self) -> None:
+        """Zwraca None gdy nie istnieje postęp."""
+        progress_repo = MagicMock()
+        progress_repo.get_progress.return_value = None
+
+        query_service = MagicMock()
+        cmd = UpdateBadgeProgressCommand(query_service, progress_repo)
+
+        result = cmd.execute(profile_id=1, badge_code="KGP", cycle_number=1)
+
+        assert result is None
+        query_service.execute.assert_not_called()
+        progress_repo.update_domain_status.assert_not_called()
+
+    def test_execute_updates_status_when_changed(self) -> None:
+        """Aktualizuje status gdy się zmienił."""
+        progress = MagicMock()
+        progress.progress_id = 10
+        progress.domain_status = "IN_PROGRESS"
+
+        progress_repo = MagicMock()
+        progress_repo.get_progress.return_value = progress
+
+        query_service = MagicMock()
+        query_service.execute.return_value = {"status": "COMPLETED"}
+
+        cmd = UpdateBadgeProgressCommand(query_service, progress_repo)
+        cmd.execute(profile_id=1, badge_code="KGP", cycle_number=1)
+
+        progress_repo.update_domain_status.assert_called_once_with(10, "COMPLETED")
+
+    def test_execute_does_not_update_when_status_unchanged(self) -> None:
+        """Nie aktualizuje statusu gdy się nie zmienił."""
+        progress = MagicMock()
+        progress.progress_id = 10
+        progress.domain_status = "IN_PROGRESS"
+
+        progress_repo = MagicMock()
+        progress_repo.get_progress.return_value = progress
+
+        query_service = MagicMock()
+        query_service.execute.return_value = {"status": "IN_PROGRESS"}
+
+        cmd = UpdateBadgeProgressCommand(query_service, progress_repo)
+        cmd.execute(profile_id=1, badge_code="KGP", cycle_number=1)
+
+        progress_repo.update_domain_status.assert_not_called()
