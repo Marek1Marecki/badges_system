@@ -107,6 +107,13 @@ dev = [
     { name = "semgrep" },
     { name = "types-python-dateutil" },
 ]
+test = [
+    { name = "hypothesis" },
+    { name = "playwright" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-django" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -149,6 +156,13 @@ dev = [
     { name = "ruff", specifier = ">=0.15.10" },
     { name = "semgrep", specifier = ">=1.172.0" },
     { name = "types-python-dateutil", specifier = ">=2.9.0.20260408" },
+]
+test = [
+    { name = "hypothesis", specifier = ">=6.116.0" },
+    { name = "playwright", specifier = ">=1.62.0" },
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "pytest-cov", specifier = ">=7.1.0" },
+    { name = "pytest-django", specifier = ">=4.12.0" },
 ]
 
 [[package]]

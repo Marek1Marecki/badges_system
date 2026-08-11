@@ -30,6 +30,13 @@ dependencies = [
 ]
 
 [dependency-groups]
+test = [
+    "hypothesis>=6.116.0",
+    "playwright>=1.62.0",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.1.0",
+    "pytest-django>=4.12.0",
+]
 dev = [
     "hypothesis>=6.116.0",
     "import-linter>=2.11",

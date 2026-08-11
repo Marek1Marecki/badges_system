@@ -8,7 +8,7 @@
 
 ARG PYTHON_BASE=python:3.14-slim-bookworm
 # Wersja uv przypięta jawnie — brak `latest` (08-base-image-policy.md)
-ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.5.11
+ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.12.3
 
 # ==============================================================================
 # 0. ETAP POMOCNICZY — źródło binarki `uv`
@@ -106,19 +106,21 @@ CMD ["uv", "run", "python", "manage.py", "runserver", "0.0.0.0:8005"]
 
 
 # ==============================================================================
-# 4. ETAP TESTOWY (TESTING) — kod zamrożony w obrazie, pełne zależności dev
+# 4. ETAP TESTOWY (TESTING) — kod zamrożony w obrazie, wyłącznie zależności testowe
 # ==============================================================================
 FROM builder AS testing
 
 ENV PATH="/opt/venv/bin:$PATH"
-# UWAGA: `builder` zainstalował wyłącznie zależności produkcyjne
-# (--no-dev). Samo `uv sync --frozen` bez dalszych flag NIE gwarantuje
-# doinstalowania grupy `dev` — zależy to od tego, czy `dev` jest oznaczona
-# jako domyślna grupa w `[tool.uv] default-groups` w pyproject.toml, co jest
-# szczegółem konfiguracji projektu, nie czymś, na czym powinien polegać
-# Dockerfile. Żądamy grupy `dev` jawnie, żeby zachowanie było deterministyczne
-# niezależnie od konfiguracji domyślnych grup.
-RUN uv sync --frozen --group dev
+# W uv 0.12.3 domyślnie włączone są grupy dev, więc używamy --only-group test,
+# aby zainstalować WYŁĄCZNIE zależności testowe, bez dev.
+RUN uv sync --frozen --only-group test
+
+# Hardening: usunięcie narzędzi paczkujących (vendored CVE w obrazie bazowym).
+# `|| true` jest tu ŚWIADOMYM wyjątkiem od zasady "nie maskuj błędów" —
+# celowo ignorujemy sytuację, w której pip/setuptools/wheel już nie istnieją
+# w obrazie bazowym (np. po jego aktualizacji), bo cel (ich brak) jest wtedy
+# już osiągnięty. Nie maskujemy tym innych, niezwiązanych błędów tej komendy.
+RUN pip uninstall -y pip setuptools wheel || true
 
 # Instalacja przeglądarek Playwright i zależności systemowych
 RUN playwright install --with-deps chromium

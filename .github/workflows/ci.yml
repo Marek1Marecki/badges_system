@@ -118,9 +118,9 @@ jobs:
             libproj-dev
 
       - name: Konfiguracja narzędzia UV (dla celów zapytań CI)
-        uses: astral-sh/setup-uv@887a942a15af3a7626099df99e897a18d9e5ab3a
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
-          version: "0.5.11"
+          version: "0.12.3"
           enable-cache: true
 
       - name: Konfiguracja Pythona 3.14
@@ -159,7 +159,6 @@ jobs:
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
           ignore-unfixed: true
-          trivyignores: '.trivyignore'
 
       - name: Sprawdź skrypty w obrazie testowym
         run: docker compose --env-file .env -f compose.yml -f compose.test.yml run --rm web ls -la /app/scripts/
