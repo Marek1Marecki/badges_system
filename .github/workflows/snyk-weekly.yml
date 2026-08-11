@@ -1,7 +1,5 @@
 name: Snyk Weekly Security Scan
 
-# Uruchamiamy w każdy poniedziałek o 3:00 UTC.
-# Pozwalamy też na ręczne odpalenie (workflow_dispatch) na wypadek testów.
 on:
   schedule:
     - cron: '0 3 * * 1'
@@ -22,6 +20,11 @@ jobs:
           version: "0.12.3"
           enable-cache: true
 
+      - name: Eksport runtime dependencies dla Snyk
+        run: |
+          uv export --format requirements-txt --no-dev --output-file requirements.txt
+          sed -n '1,200p' requirements.txt
+
       - name: Instalacja Snyk CLI (przypięta wersja + checksum)
         run: |
           curl -fsSL https://downloads.snyk.io/cli/v1.1306.3/snyk-linux -o /tmp/snyk-linux
@@ -33,10 +36,14 @@ jobs:
           snyk version
 
       - name: Skanowanie Snyk Open Source
-        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk test --severity-threshold=high --file=pyproject.toml --no-root --json-file-output=snyk-results.json || true
+        run: |
+          snyk test \
+            --file=requirements.txt \
+            --package-manager=pip \
+            --severity-threshold=high \
+            --json-file-output=snyk-results.json
 
       - name: Upload wyników Snyk jako artifact
         if: always()
