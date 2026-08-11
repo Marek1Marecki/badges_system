@@ -188,6 +188,21 @@ W pliku `config/settings.py` adres ten jest rozbijany na czynniki pierwsze za po
 
 ---
 
+### AGENT-DEVOPS-CODE — Wymagania Dotyczące Budowy Obrazu i CI/CD
+
+**Obszar:** `Dockerfile`, `.github/workflows/`, `pyproject.toml`, `compose.*.yml`  
+**Typ:** kodujący / DevOps
+
+**Zasady:**
+1. **Zasada Całkowitej Sterylności Obrazów i Podziału Pakietów (Zero-Dev Leakage):**
+   - Obraz produkcyjny (cel `production`) nie może pod żadnym pozorem zawierać narzędzi deweloperskich. Wymaga on flagi `--no-dev` podczas synchronizacji `uv`. Co więcej, na końcu budowy należy wykonać hardening obrazu poprzez wymuszenie usunięcia menedżerów pakietów: `RUN pip uninstall -y pip setuptools wheel || true`.
+   - Obraz testowy w potoku CI/CD (cel `testing`) nie może zawierać pełnej puli deweloperskiej (np. skanerów SAST `semgrep`), aby uniknąć fałszywych alarmów (False Positives) w bramkach bezpieczeństwa Trivy. Do środowiska testowego instalujemy *wyłącznie* pakiety testowe za pomocą dyrektywy: `uv sync --frozen --group test --no-dev`. Wszystkie pakiety analityczne i lintery muszą przebywać wyłącznie w wydzielonej podgrupie `[dependency-groups.dev]` w pliku `pyproject.toml`.
+
+**Zakazane:**
+- Umieszczanie narzędzi deweloperskich w głównych zależnościach obrazu produkcyjnego.
+
+---
+
 ### AGENT-DB-MIGRATIONS — Migracje i Modele Danych
 
 **Obszar:** `apps/[app_name]/models.py`, `migrations/`  

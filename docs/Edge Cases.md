@@ -523,3 +523,15 @@ Wdrożono twarde reguły nadpisywania:
 **Status:** `resolved`  
 **Opis:** Narzędzie CodeQL próbuje domyślnie używać kroku `autobuild`, który sprawdza pliki Makefile lub skrypty budujące w poszukiwaniu języków kompilowanych (C/C++/Java). Dla projektów opartych na Pythonie (jak Django) jest to potężna strata zasobów i czasu (szczególnie na Self-Hosted Runnerach), co dodatkowo "zaśmieca" środowisko wirtualne niepotrzebnymi procesami.
 **Rozwiązanie / workaround:** W konfiguracji kroku `init` dla narzędzia CodeQL wprowadzono twardą flagę `build-mode: none`. Powoduje to natychmiastowe przejście do czystej analizy statycznej kodu (AST), skracając czas działania skanera do kilkudziesięciu sekund.
+
+### EC-089 — Zatrzymanie potoku CI/CD przez pakiety deweloperskie w obrazie
+**Obszar:** `Dockerfile`, `Trivy`, `pyproject.toml`  
+**Status:** `resolved`  
+**Opis:** Na etapie budowy obrazów dla środowiska testowego (CI/CD) ładowano całą grupę pakietów `--group dev` (zawierającą m.in. narzędzie `semgrep` opierające się na pakiecie `mcp`). Kiedy bramka bezpieczeństwa (Skaner Trivy) analizowała obraz przed testami E2E, blokowała cały pipeline zgłaszając podatności (CRITICAL) w tym pakiecie.
+**Rozwiązanie / workaround:** Wprowadzono twardą segregację w `pyproject.toml`. Utworzono nową grupę `[dependency-groups.test]` zawierającą wyłącznie pakiety niezbędne do uruchomienia testów w kontenerze (np. `pytest`, `pytest-django`, `hypothesis`). W etapie `testing` w Dockerfile wymuszono użycie polecenia `uv sync --frozen --group test --no-dev`. Grupa `dev` służy od tej pory wyłącznie do testów uruchamianych manualnie na hoście (Lintery).
+
+### EC-090 — Niepoprawne nadpisywanie pliku środowiskowego w testach (Test Isolation)
+**Obszar:** `tests/config/test_app_settings.py`, `pydantic-settings`  
+**Status:** `resolved`  
+**Opis:** Testy próbujące udowodnić, że aplikacja domyślnie wstaje w trybie `development` po wyłączeniu wszystkich flag, kończyły się błędem (`AssertionError: assert 'test' == 'development'`). Wynikało to z faktu, że środowisko CI/CD (lub `Makefile`) miało sztywno zapisaną zmienną `APP_ENV=test` lub ładujące `.env.test`. Próba obejścia tego za pomocą `monkeypatch.setenv("ENV_FILE", ".dummy")` w Pyteście nie działała, ponieważ klasa `AppSettings` i sam Pydantic "zatrzaskują" w pamięci (Cache) raz odczytany stan ze zmiennych środowiskowych przy pierwszym załadowaniu modułu.
+**Rozwiązanie / workaround:** Zamiast operować na powłoce systemowej Pytestu, wprowadzono ręczne, bezpośrednie wstrzykiwanie braku pliku podczas instancjowania klasy do celów testowych: `AppSettings(_env_file=None)`. Weryfikuje to bezpośrednio kod klasy, całkowicie izolując testy od `os.environ` w środowisku testowym. Dodatkowo wprowadzono customowy walidator w `AppSettings`, zamieniający słowo tekstowe `"release"` na fałsz logiczny `False` w celu uodpornienia na specyficzne wartości podawane przez starsze skrypty w `DEBUG`.

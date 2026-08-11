@@ -13,9 +13,10 @@
 | **Property/Fuzz** | Testowanie krawędzi matematyki domenowej milionami wygenerowanych wariacji danych. | `pytest` + `Hypothesis` | < 10s | Każdy commit (`make check`) |
 | **Unit** | Czysta logika biznesowa, Wzorzec Strategii (Reguły), Invarianty | `pytest` + `Fake` repozytoria | < 5s | Każdy commit (`make check`) |
 | **Integration** | Adaptery bazodanowe (GeoDjango), weryfikacja zapytań HTTP do OSM | `pytest` + `@pytest.mark.django_db` | < 30s | W CI Pipeline (`test-run.sh --full`) |
-| **SecOps (SAST)** | Skanowanie kodu Pythona i konfiguracji w poszukiwaniu znanych wzorców podatności (OWASP, wycieki haseł). | `Semgrep` | < 10s | Każdy commit (`make security-audit`) |
-| **SecOps (SCA)** | Semantyczna analiza przepływu danych (Taint Flow Analysis). Zapobiega np. przekazywaniu niebezpiecznych danych do zapytań SQL lub odpowiedzi HTTP. | `CodeQL` | ~2 min | Dedykowany potok w chmurze GitHub Actions. |
+| **SecOps (SAST)** | Analiza statyczna na żywym kodzie źródłowym i plikach konfiguracyjnych YAML/JSON. Główna linia obrony dla wycieków haseł i złych wzorców Pythona. | `Semgrep` | < 10s | Każdy commit (`make security-audit`) |
+| **SecOps (SCA)** | Semantyczna analiza przepływu danych i logiki wstrzykiwania kodu (Injection) przed wdrożeniem. | `CodeQL` | ~2 min | Dedykowany potok w chmurze GitHub Actions. |
 | **E2E** | Złożone przepływy GUI turysty | `Playwright` | > 1m | Przed wydaniem na PRE-PROD |
+| **Supply Chain** | Skanowanie ostatecznie wygenerowanego Obrazu Dockera. Weryfikuje pakiety systemu operacyjnego (Debian) oraz listę zainstalowanych w `/opt/venv` bibliotek Pythona pod kątem zgłoszonych błędów CVE. Pełni rolę żelaznej bramki Gatingu blokującej dziurawe obrazy przed testami E2E. | `Trivy` | < 1m | Weryfikacja obrazu po etapie `build` w `ci.yml`. |
 
 ### Zautomatyzowany Potok CI/CD (GitHub Actions)
 
