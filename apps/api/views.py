@@ -352,8 +352,14 @@ class BadgeLogisticsView(View):
 
         try:
             dto = LogisticStatusUpdateDTO(**body)
-        except Exception as e:
-            return _problem_detail(request, "validation-failed", "Błąd Walidacji", 422, str(e))
+        except ValidationError:
+            return _problem_detail(
+                request,
+                "validation-failed",
+                "Błąd Walidacji",
+                422,
+                "Nieprawidłowe dane wejściowe.",
+            )
 
         # SECURITY: Identyfikacja użytkownika zawsze z sesji
         profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id

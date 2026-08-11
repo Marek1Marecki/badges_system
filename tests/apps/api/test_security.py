@@ -5,12 +5,19 @@ w odpowiedziach HTTP, a nieoczekiwane błędy są logowane z pełnym tracebackie
 """
 
 import json
+from datetime import date
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from application.exceptions import ApplicationException, ConflictError, ResourceNotFoundError, UseCaseError
-from apps.api.views import AscentLogView, MapObjectsView, _handle_application_exception, _problem_detail
+from apps.api.views import (
+    AscentLogView,
+    BadgeLogisticsView,
+    MapObjectsView,
+    _handle_application_exception,
+    _problem_detail,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -284,4 +291,42 @@ class TestMapObjectsViewValidation:
         with patch("apps.api.views.MapExploreRequestDTO", side_effect=RuntimeError("DTO boom")):
             with pytest.raises(RuntimeError, match="DTO boom"):
                 MapObjectsView.as_view()(request)
+
+
+class TestBadgeLogisticsViewValidation:
+    """Werytuje, że BadgeLogisticsView nie ujawnia szczegółów wyjątków walidacji."""
+
+    def test_validation_error_returns_safe_422(self, factory, mock_user):
+        request = factory.patch(
+            "/api/v1/progress/1/logistics/",
+            data=json.dumps({"logistic_status": "INVALID_STATUS", "status_date": "not-a-date"}),
+            content_type="application/json",
+        )
+        request.user = mock_user
+        request.session = {}
+        request.request_id = "sec-log-1"
+        request.path = "/api/v1/progress/1/logistics/"
+
+        response = BadgeLogisticsView.as_view()(request, progress_id=1)
+
+        assert response.status_code == 422
+        data = json.loads(response.content)
+        assert data["detail"] == "Nieprawidłowe dane wejściowe."
+        assert "not-a-date" not in data["detail"]
+        assert "ValidationError" not in data["detail"]
+
+    def test_unexpected_exception_is_not_masked_as_422(self, factory, mock_user):
+        request = factory.patch(
+            "/api/v1/progress/1/logistics/",
+            data=json.dumps({"logistic_status": "WAITING_FOR_VERIFICATION", "status_date": str(date.today())}),
+            content_type="application/json",
+        )
+        request.user = mock_user
+        request.session = {}
+        request.request_id = "sec-log-2"
+        request.path = "/api/v1/progress/1/logistics/"
+
+        with patch("apps.api.views.LogisticStatusUpdateDTO", side_effect=RuntimeError("DTO boom")):
+            with pytest.raises(RuntimeError, match="DTO boom"):
+                BadgeLogisticsView.as_view()(request, progress_id=1)
 
