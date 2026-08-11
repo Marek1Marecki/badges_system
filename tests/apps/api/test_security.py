@@ -16,6 +16,7 @@ from apps.api.views import (
     BadgeLogisticsView,
     BulkAscentLogView,
     MapObjectsView,
+    ProfileSettingsView,
     _handle_application_exception,
     _problem_detail,
 )
@@ -387,4 +388,50 @@ class TestBulkAscentLogViewValidation:
         with patch("apps.api.views.AscentInputDTO", side_effect=RuntimeError("DTO boom")):
             with pytest.raises(RuntimeError, match="DTO boom"):
                 BulkAscentLogView.as_view()(request)
+
+
+class TestProfileSettingsViewValidation:
+    """Werytuje, że ProfileSettingsView nie ujawnia szczegółów wyjątków walidacji."""
+
+    def test_validation_error_returns_safe_422(self, factory, mock_user):
+        request = factory.patch(
+            "/api/v1/profiles/1/",
+            data=json.dumps({"birth_date": "not-a-date"}),
+            content_type="application/json",
+        )
+        request.user = mock_user
+        request.session = {}
+        request.request_id = "sec-prof-1"
+        request.path = "/api/v1/profiles/1/"
+
+        mock_profile = MagicMock()
+        mock_profile.id = 1
+
+        with patch("apps.api.views.get_object_or_404", return_value=mock_profile):
+            response = ProfileSettingsView.as_view()(request, profile_id=1)
+
+        assert response.status_code == 422
+        data = json.loads(response.content)
+        assert data["detail"] == "Nieprawidłowe dane wejściowe."
+        assert "not-a-date" not in data["detail"]
+        assert "ValidationError" not in data["detail"]
+
+    def test_unexpected_exception_is_not_masked_as_422(self, factory, mock_user):
+        request = factory.patch(
+            "/api/v1/profiles/1/",
+            data=json.dumps({"nickname": "test"}),
+            content_type="application/json",
+        )
+        request.user = mock_user
+        request.session = {}
+        request.request_id = "sec-prof-2"
+        request.path = "/api/v1/profiles/1/"
+
+        mock_profile = MagicMock()
+        mock_profile.id = 1
+
+        with patch("apps.api.views.get_object_or_404", return_value=mock_profile):
+            with patch("apps.api.views.UpdateProfileRequestDTO", side_effect=RuntimeError("DTO boom")):
+                with pytest.raises(RuntimeError, match="DTO boom"):
+                    ProfileSettingsView.as_view()(request, profile_id=1)
 

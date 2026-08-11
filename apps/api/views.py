@@ -554,8 +554,14 @@ class ProfileSettingsView(View):
             if body.get("birth_date") == "":
                 body["birth_date"] = None
             dto = UpdateProfileRequestDTO(**body)
-        except Exception as e:
-            return _problem_detail(request, "validation-failed", "Błąd Walidacji", 422, str(e))
+        except ValidationError:
+            return _problem_detail(
+                request,
+                "validation-failed",
+                "Błąd Walidacji",
+                422,
+                "Nieprawidłowe dane wejściowe.",
+            )
 
         if dto.nickname:
             profile.nickname = dto.nickname
