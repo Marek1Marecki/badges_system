@@ -22,27 +22,20 @@ jobs:
           version: "0.12.3"
           enable-cache: true
 
-      - name: Eksport zależności z uv.lock do formatu Snyk
-        run: uv export --format requirements-txt --output-file requirements.txt
-
-      - name: Instalacja Snyk CLI (przypięta wersja)
+      - name: Instalacja Snyk CLI (przypięta wersja + checksum)
         run: |
-          curl -sSL https://downloads.snyk.io/cli/v1.1306.3/snyk-linux -o /usr/local/bin/snyk
+          curl -sSL https://downloads.snyk.io/cli/v1.1306.3/snyk-linux -o /tmp/snyk-linux
+          curl -sSL https://downloads.snyk.io/cli/v1.1306.3/snyk-linux.sha256 -o /tmp/snyk-linux.sha256
+          sha256sum /tmp/snyk-linux | diff - /tmp/snyk-linux.sha256
+          mv /tmp/snyk-linux /usr/local/bin/snyk
           chmod +x /usr/local/bin/snyk
           snyk version
 
       - name: Skanowanie Snyk Open Source
-        # Snyk NIE BLOKUJE pipeline. To tylko monitoring.
         continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk test --severity-threshold=high --file=requirements.txt --no-root
-
-      - name: Zapisanie wyników skanu jako artifact
-        if: always()
-        run: snyk test --json --file=requirements.txt --no-root > snyk-results.json || true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk test --severity-threshold=high --file=pyproject.toml --no-root --json-file-output=snyk-results.json || true
 
       - name: Upload wyników Snyk jako artifact
         if: always()
