@@ -33,4 +33,7 @@ jobs:
         continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk test --severity-threshold=high --file=requirements.txt --no-root
+        run: |
+          uv venv .snyk-venv
+          uv pip install --python .snyk-venv/bin/python -r requirements.txt
+          snyk test --severity-threshold=high --file=requirements.txt --no-root
