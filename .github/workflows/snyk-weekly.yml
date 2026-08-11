@@ -24,10 +24,11 @@ jobs:
 
       - name: Instalacja Snyk CLI (przypięta wersja + checksum)
         run: |
-          curl -sSL https://downloads.snyk.io/cli/v1.1306.3/snyk-linux -o /tmp/snyk-linux
-          curl -sSL https://downloads.snyk.io/cli/v1.1306.3/snyk-linux.sha256 -o /tmp/snyk-linux.sha256
-          sha256sum /tmp/snyk-linux | diff - /tmp/snyk-linux.sha256
-          mv /tmp/snyk-linux /usr/local/bin/snyk
+          curl -fsSL https://downloads.snyk.io/cli/v1.1306.3/snyk-linux -o /tmp/snyk-linux
+          curl -fsSL https://downloads.snyk.io/cli/v1.1306.3/snyk-linux.sha256 -o /tmp/snyk-linux.sha256
+          cd /tmp
+          sha256sum -c snyk-linux.sha256
+          mv snyk-linux /usr/local/bin/snyk
           chmod +x /usr/local/bin/snyk
           snyk version
 
