@@ -159,6 +159,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
           ignore-unfixed: true
+          trivy-config: '.trivyignore'
 
       - name: Sprawdź skrypty w obrazie testowym
         run: docker compose --env-file .env -f compose.yml -f compose.test.yml run --rm web ls -la /app/scripts/

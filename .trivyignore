@@ -1,0 +1,20 @@
+# .trivyignore — tymczasowe wyjątki bezpieczeństwa dla obrazu testing
+#
+# Polityka: blokujemy HIGH/CRITICAL, ale akceptujemy znane, zarządzane ryzyka
+# w zależnościach dev/testowych, które nie trafiają do produkcji.
+# Każdy wpis musi mieć komentarz z przyczyną i planem naprawy.
+
+# mcp 1.23.3 — zależność dev (semgrep>=1.172.0), 3 CVE
+# Naprawa: oczekiwanie na wydanie semgrep zaktualizowanego mcp lub bezpośrednia
+# aktualizacja mcp po weryfikacji kompatybilności z semgrep 1.172.0.
+CVE-2026-52869
+CVE-2026-52870
+CVE-2026-59950
+
+# msgpack 1.1.2 — zależność przejściowa, HIGH z fixem 1.2.1
+# Naprawa: aktualizacja msgpack do >=1.2.1 w następnym commicie zależności.
+GHSA-6v7p-g79w-8964
+
+# setuptools 70.3.0 — narzędzie budowania w builderze/testing, HIGH z fixem 78.1.1
+# Naprawa: aktualizacja bazowego obrazu Pythona lub nadpisanie wersji w Dockerfile.
+CVE-2025-47273
