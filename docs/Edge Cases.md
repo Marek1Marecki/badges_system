@@ -511,3 +511,15 @@ Wdrożono twarde reguły nadpisywania:
 **Status:** `resolved`  
 **Opis:** Podczas pracy nad mechanizmem Rollbacku, w skryptach bashowych (np. `bootstrap.sh`) przekazywano do komend Django argument `--snapshot="${SNAPSHOT_ID}"`. Sama implementacja pythonowej komendy `restore_reference_data` nie obsługiwała jednak tego argumentu w bibliotece `argparse`. Zamiast przywracać wybraną, starszą wersję (Rollback), komenda cicho ignorowała parametr i po prostu wczytywała najnowsze dane znajdujące się w katalogu `data/reference/`. Stwarzało to iluzję działającego procesu Rollbacku.
 **Rozwiązanie / workaround:** Zastosowano zasadę "No False Promises" (Żadnych Fałszywych Obietnic). Flaga `--snapshot` została usunięta z wywołań w skryptach powłoki. Rollback (aż do pełnej implementacji wersjonowanych katalogów w Pythonie) musi być wywoływany ręcznie poprzez cofnięcie commita w Gicie (`git checkout`) przed użyciem standardowej komendy `restore_reference_data`.
+
+### EC-087 — CodeQL: `Config file could not be found` (Rozjazd wersji SHA)
+**Obszar:** `.github/workflows/codeql.yml`  
+**Status:** `resolved`  
+**Opis:** Podczas uruchamiania potoku analitycznego CodeQL, zadanie `analyze` kończy się natychmiastowym błędem braku pliku konfiguracycyjnego bazy danych. Zjawisko to występuje, gdy krok inicjujący (`github/codeql-action/init@...`) korzysta z innej wersji narzędzia (inny hash Git/SHA) niż krok analizujący (`github/codeql-action/analyze@...`). Różne wersje nie potrafią odczytać swoich wewnętrznych artefaktów.
+**Rozwiązanie / workaround:** Zgodnie ze standardem *Supply-Chain Security*, wszystkie etapy wchodzące w skład tego samego narzędzia w jednym pliku CI muszą być "przypięte" (Pinned) do **dokładnie tego samego, 40-znakowego klucza SHA** (np. `e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81`).
+
+### EC-088 — Spadek wydajności CodeQL i niepotrzebne budowanie dla Pythona
+**Obszar:** `CodeQL`, środowisko Python  
+**Status:** `resolved`  
+**Opis:** Narzędzie CodeQL próbuje domyślnie używać kroku `autobuild`, który sprawdza pliki Makefile lub skrypty budujące w poszukiwaniu języków kompilowanych (C/C++/Java). Dla projektów opartych na Pythonie (jak Django) jest to potężna strata zasobów i czasu (szczególnie na Self-Hosted Runnerach), co dodatkowo "zaśmieca" środowisko wirtualne niepotrzebnymi procesami.
+**Rozwiązanie / workaround:** W konfiguracji kroku `init` dla narzędzia CodeQL wprowadzono twardą flagę `build-mode: none`. Powoduje to natychmiastowe przejście do czystej analizy statycznej kodu (AST), skracając czas działania skanera do kilkudziesięciu sekund.

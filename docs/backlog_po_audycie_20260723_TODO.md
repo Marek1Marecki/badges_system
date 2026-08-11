@@ -2197,3 +2197,19 @@ Twój komputer to teraz serwer CI/CD. Chociaż skrypty sprzątają po sobie (`do
 W chmurze AWS/GitHub maszyny są efemeryczne i znikają po zakończeniu testu. Na fizycznym sprzęcie musisz sam zarządzać cyklem życia artefaktów. Brak monitorowania dysku to gwarantowana awaria, która zatrzyma cały zespół.
 
 ---
+
+### [AUDYT-154] Utrzymanie i konserwacja potoku CodeQL
+**Obszar:** `DevSecOps / CI/CD`  
+**Priorytet:** `🟢 NISKI (Konserwacja)`  
+
+**Diagnoza Architekta:** 
+Z sukcesem wdrożono potok semantycznej analizy kodu (CodeQL) na Self-Hosted Runnerze z wyśmienitym czasem wykonania (1:22s). Posiada on jednak specyficzne wymagania operacyjne uodparniające go na awarie: wymóg identyczności kluczy SHA dla kroków `init` i `analyze` oraz wymóg `build-mode: none` dla projektów opartych na języku Python. 
+
+**Action Items (Do pilnowania przy przyszłych aktualizacjach):**
+- [ ] Przy ewentualnych aktualizacjach wersji narzędzia CodeQL (np. z `v4.37.3` na `v5.x`), programista ma bezwzględny obowiązek upewnić się, że zaktualizował ten sam Hash (SHA) w *każdym* kroku potoku wewnątrz pliku YAML.
+- [ ] Zignorować ewentualne ostrzeżenia deprecjacji ze strony środowisk `Node` w kroku `checkout`, faworyzując niezmienność i bezpieczeństwo przypiętych wersji (Pinning) nad nowości.
+
+**Komentarz Architekta:**
+System DevSecOps osiągnął pełną dojrzałość. Posiadamy analizę statyczną (Ruff, Mypy), architektoniczną (Import Linter), bezpieczeństwa tekstu (Semgrep) oraz analizę przepływów wektorów ataku (CodeQL).
+
+---

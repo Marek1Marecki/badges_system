@@ -123,6 +123,8 @@ class RFC7807ErrorMiddleware:
 ## Zasady dla agentów LLM (Strict Guidelines)
 
 ### ❌ Zakazane
+- **Eksponowanie danych z wyjątków (Stack Trace / Information Disclosure):** Kategorycznie zabrania się przekazywania surowych wyjątków (np. `str(e)`, `exc.args`) bezpośrednio do odpowiedzi HTTP dla klienta (np. w polu `detail` w `_problem_detail`). Rzuca to krytyczne alerty w skanerach semantycznych (CodeQL - `py/stack-trace-exposure`). W odpowiedzi JSON przekazuj wyłącznie ustandaryzowany, bezpieczny, "sztywny" ciąg tekstowy (np. `"Nieprawidłowe dane wejściowe."`). Surowe dane z błędów należy przekazywać wyłącznie do logów serwera (np. za pomocą `logger.warning(...)` powiązanego przez `request_id`).
+- **Używanie generycznego `except Exception:` do wyłapywania błędów walidacji** (np. przy deserializacji Pydantic DTO). Używaj wyłącznie wyizolowanych, precyzyjnych wyjątków takich jak `except (ValueError, TypeError, ValidationError):`, aby nie maskować niespodziewanych awarii kodu statusem `422`.
 - Rzucanie gołego `Exception` w Use Case'ach i Domenie — zawsze używaj klasy z hierarchii powyżej.
 - Zwracanie z widoku API płaskiego `{"error": "message"}` lub `{"detail": "..."}` zamiast pełnego słownika RFC 7807.
 - Zwracanie `status: 200 OK` z payloadem zawierającym pole `error` (tzw. GraphQL Error Pattern nie obowiązuje w REST API).

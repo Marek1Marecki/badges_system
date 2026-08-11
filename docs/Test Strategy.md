@@ -14,6 +14,7 @@
 | **Unit** | Czysta logika biznesowa, Wzorzec Strategii (Reguły), Invarianty | `pytest` + `Fake` repozytoria | < 5s | Każdy commit (`make check`) |
 | **Integration** | Adaptery bazodanowe (GeoDjango), weryfikacja zapytań HTTP do OSM | `pytest` + `@pytest.mark.django_db` | < 30s | W CI Pipeline (`test-run.sh --full`) |
 | **SecOps (SAST)** | Skanowanie kodu Pythona i konfiguracji w poszukiwaniu znanych wzorców podatności (OWASP, wycieki haseł). | `Semgrep` | < 10s | Każdy commit (`make security-audit`) |
+| **SecOps (SCA)** | Semantyczna analiza przepływu danych (Taint Flow Analysis). Zapobiega np. przekazywaniu niebezpiecznych danych do zapytań SQL lub odpowiedzi HTTP. | `CodeQL` | ~2 min | Dedykowany potok w chmurze GitHub Actions. |
 | **E2E** | Złożone przepływy GUI turysty | `Playwright` | > 1m | Przed wydaniem na PRE-PROD |
 
 ### Zautomatyzowany Potok CI/CD (GitHub Actions)
