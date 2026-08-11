@@ -35,13 +35,11 @@ def test_default_debug_is_false(monkeypatch) -> None:
 
 def test_default_app_env_is_development(monkeypatch):
     """Testuje, czy domyślną wartością klasy (bez wpływu środowiska) jest development."""
-    # Izolujemy test od Dockera / .env
     monkeypatch.delenv("APP_ENV", raising=False)
-    monkeypatch.setenv("ENV_FILE", ".env.dummy_nonexistent")
 
     from infrastructure.config.app_settings import AppSettings
 
-    settings = AppSettings()
+    settings = AppSettings(_env_file=None, **VALID_MINIMAL)
 
     assert settings.app_env == "development"
 
@@ -112,7 +110,7 @@ def test_all_valid_log_levels_are_accepted(level: str) -> None:
 
 
 def test_feature_flags_default_to_true() -> None:
-    settings = AppSettings(**VALID_MINIMAL)
+    settings = AppSettings(_env_file=None, **VALID_MINIMAL)
     assert settings.feature_osm_night_watchman is True
     assert settings.feature_proximity_scan is True
 

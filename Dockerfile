@@ -111,9 +111,8 @@ CMD ["uv", "run", "python", "manage.py", "runserver", "0.0.0.0:8005"]
 FROM builder AS testing
 
 ENV PATH="/opt/venv/bin:$PATH"
-# W uv 0.12.3 domyślnie włączone są grupy dev, więc używamy --only-group test,
-# aby zainstalować WYŁĄCZNIE zależności testowe, bez dev.
-RUN uv sync --frozen --only-group test
+# W uv 0.12.3 --group test --no-dev instaluje runtime dependencies + test, ale bez dev.
+RUN uv sync --frozen --group test --no-dev
 
 # Hardening: usunięcie narzędzi paczkujących (vendored CVE w obrazie bazowym).
 # `|| true` jest tu ŚWIADOMYM wyjątkiem od zasady "nie maskuj błędów" —

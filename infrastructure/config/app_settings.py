@@ -7,6 +7,7 @@ Zgodnie z 20-configuration-contract.md:
 """
 
 import os
+from typing import Any
 from urllib.parse import quote_plus
 
 from pydantic import Field, field_validator, model_validator
@@ -87,6 +88,14 @@ class AppSettings(BaseSettings):
         return f"redis://{self.redis_host}:{self.redis_port}/1"
 
     # --- WALIDATORY PYDANTIC (Przywrócenie logiki testowanej przez pytest) ---
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def validate_debug(cls, v: Any) -> Any:
+        """Mapuje niestandardowe wartości DEBUG (np. 'release') na boolean."""
+        if isinstance(v, str) and v.strip().lower() == "release":
+            return False
+        return v
 
     @field_validator("log_level")
     @classmethod

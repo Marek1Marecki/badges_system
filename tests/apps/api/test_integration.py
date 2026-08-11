@@ -142,7 +142,7 @@ class TestAscentLogView:
         assert response.status_code == 409
         data = json.loads(response.content)
         assert data["status"] == 409
-        assert "duplikatem" in data["detail"]
+        assert "Konflikt danych" in data["detail"]
         assert "request_id" in data
 
     def test_bitemporal_error_returns_422(self, factory, mock_user, use_cases) -> None:
