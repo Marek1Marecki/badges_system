@@ -78,3 +78,13 @@ class TestRunOsmNightWatchmanUseCase:
         # Powinien wygenerować konflikt "is_active -> False"
         repo.create_osm_sync_conflict.assert_called_once()
         repo.mark_sync_checked.assert_called_once()
+
+    def test_watchman_osm_connection_failure(self) -> None:
+        repo = MagicMock()
+        repo.get_objects_for_sync.return_value = [{"id": 1, "osm_id": "node/1", "is_active": True}]
+        repo.fetch_multiple_from_osm.return_value = None
+
+        uc = RunOsmNightWatchmanUseCase(repo, FakeClock())
+        result = uc.execute()
+
+        assert "PRZERWANO" in result

@@ -185,6 +185,46 @@ class TestPoiScoringServiceMissingCoverage:
         # cutoff_date is passed as the 3rd positional argument
         assert call_args.args[2] == date(2023, 1, 1)
 
+    def test_no_cutoff_date_when_no_previous_cycle(self) -> None:
+        """Dla cyklu 1 nie stosuje cutoff_date gdy poprzedni cykl nie istnieje."""
+        progress_repo = MagicMock()
+        ascent_repo = MagicMock()
+        profile_repo = MagicMock()
+        badge_repo = MagicMock()
+        cache = MagicMock()
+        clock = FakeClock()
+
+        profile = MagicMock()
+        profile.birth_date = None
+        profile.club_join_dates = {}
+        profile_repo.get_profile.return_value = profile
+
+        progress = MagicMock()
+        progress.badge_code = "KGP"
+        progress.domain_status = "IN_PROGRESS"
+        progress.version_id = 42
+        progress.cycle_number = 1
+        progress_repo.get_active_progresses.return_value = [progress]
+
+        progress_repo.get_progress.return_value = None
+
+        badge_version = MagicMock()
+        badge_version.pool_peak_ids = [1]
+        badge_version.evaluate.return_value = VerificationResult(
+            verified=False, status="NOT_STARTED", valid_ascents_count=0, errors=[], tiers=[]
+        )
+        badge_repo.get_badge_version_by_id.return_value = badge_version
+
+        ascent_repo.get_all_ascents_for_user.return_value = []
+        ascent_repo.get_unconsumed_ascents.return_value = []
+
+        uc = PoiScoringService(progress_repo, ascent_repo, profile_repo, badge_repo, clock, cache)
+        uc.recalculate_and_cache_for_profile(profile_id=1)
+
+        ascent_repo.get_unconsumed_ascents.assert_called_once()
+        call_args = ascent_repo.get_unconsumed_ascents.call_args
+        assert call_args.args[2] is None
+
     def test_calculates_score_for_red_peaks(self) -> None:
         """Oblicza wynik 100 dla szczytów, które kończą odznakę."""
         progress_repo = MagicMock()

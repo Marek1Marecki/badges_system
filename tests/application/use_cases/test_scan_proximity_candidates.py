@@ -23,3 +23,16 @@ def test_scan_proximity_candidates_use_case() -> None:
     repo.get_unprocessed_objects.assert_called_once_with(limit=100)
     repo.find_nearby_objects.assert_called_once_with(1, geom_mock, distance_m=150.0)
     repo.save_candidate_pairs.assert_called_once_with(parent_id=1, child_ids=[2, 3])
+
+
+def test_scan_proximity_candidates_skips_empty_geometry() -> None:
+    repo = MagicMock()
+    repo.get_unprocessed_objects.return_value = [(1, None), (2, MagicMock())]
+    repo.find_nearby_objects.return_value = [3]
+    repo.save_candidate_pairs.return_value = 1
+
+    uc = ScanProximityCandidatesUseCase(repo)
+    result = uc.execute()
+
+    assert "1 nowych kandydatów" in result
+    repo.find_nearby_objects.assert_called_once()

@@ -21,6 +21,7 @@ from django.core.cache import cache
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views import View
+from pydantic import ValidationError
 
 from application.dto.ascent_dto import AscentInputDTO
 from application.dto.map_dto import MapExploreRequestDTO
@@ -313,8 +314,14 @@ class MapObjectsView(View):
                 region_level=request.GET.get("region_level"),
                 region_id=int(region_id_str) if region_id_str else None,
             )
-        except Exception as e:
-            return _problem_detail(request, "validation-failed", "Nieprawidłowe dane wejściowe", 422, str(e))
+        except (ValueError, TypeError, ValidationError):
+            return _problem_detail(
+                request,
+                "validation-failed",
+                "Nieprawidłowe dane wejściowe",
+                422,
+                "Nieprawidłowe dane wejściowe.",
+            )
 
         try:
             use_case = get_container().explore_map

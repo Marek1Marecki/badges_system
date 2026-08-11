@@ -46,3 +46,9 @@ class TestMainUrls(SimpleTestCase):
         """Test that organizer detail URL resolves to organizer_detail_view."""
         url = reverse("organizer_detail", kwargs={"organizer_id": 1})
         assert resolve(url).func.__name__ == "organizer_detail_view"
+
+    def test_health_check_view(self):
+        """Test that health check view returns 200 OK."""
+        response = self.client.get("/health/")
+        assert response.status_code == 200
+        assert response.content == b"OK"

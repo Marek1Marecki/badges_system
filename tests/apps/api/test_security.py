@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from application.exceptions import ApplicationException, ConflictError, ResourceNotFoundError, UseCaseError
-from apps.api.views import AscentLogView, _handle_application_exception, _problem_detail
+from apps.api.views import AscentLogView, MapObjectsView, _handle_application_exception, _problem_detail
 
 pytestmark = pytest.mark.integration
 
@@ -232,4 +232,56 @@ class TestValidationErrorDoesNotLeakParserDetails:
             "invalid_ascent_payload",
             extra={"request_id": "sec-val-1"},
         )
+
+
+class TestMapObjectsViewValidation:
+    """Werytuje, że MapObjectsView nie ujawnia szczegółów wyjątków walidacji."""
+
+    def test_invalid_region_id_returns_safe_422(self, factory, mock_user):
+        request = factory.get(
+            "/api/v1/map/objects?bbox=1.0,2.0,3.0,4.0&region_id=abc",
+        )
+        request.user = mock_user
+        request.session = {}
+        request.request_id = "sec-map-1"
+        request.path = "/api/v1/map/objects"
+
+        response = MapObjectsView.as_view()(request)
+
+        assert response.status_code == 422
+        data = json.loads(response.content)
+        assert data["detail"] == "Nieprawidłowe dane wejściowe."
+        assert "abc" not in data["detail"]
+        assert "ValueError" not in data["detail"]
+
+    def test_invalid_pydantic_dto_returns_safe_422(self, factory, mock_user):
+        request = factory.get(
+            "/api/v1/map/objects?bbox=1.0,2.0,3.0,4.0",
+        )
+        request.user = mock_user
+        request.session = {}
+        request.request_id = "sec-map-2"
+        request.path = "/api/v1/map/objects"
+
+        with patch("apps.api.views.MapExploreRequestDTO", side_effect=ValueError("pydantic boom")):
+            response = MapObjectsView.as_view()(request)
+
+        assert response.status_code == 422
+        data = json.loads(response.content)
+        assert data["detail"] == "Nieprawidłowe dane wejściowe."
+        assert "pydantic boom" not in data["detail"]
+        assert "ValueError" not in data["detail"]
+
+    def test_unexpected_exception_is_not_masked_as_422(self, factory, mock_user):
+        request = factory.get(
+            "/api/v1/map/objects?bbox=1.0,2.0,3.0,4.0",
+        )
+        request.user = mock_user
+        request.session = {}
+        request.request_id = "sec-map-3"
+        request.path = "/api/v1/map/objects"
+
+        with patch("apps.api.views.MapExploreRequestDTO", side_effect=RuntimeError("DTO boom")):
+            with pytest.raises(RuntimeError, match="DTO boom"):
+                MapObjectsView.as_view()(request)
 

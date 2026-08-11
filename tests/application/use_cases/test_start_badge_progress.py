@@ -102,3 +102,15 @@ class TestStartBadgeProgressUseCase:
 
         with pytest.raises(UseCaseError, match="Przekroczono limit pakietu"):
             uc.execute(profile_id=1, badge_code="KGP")
+
+    def test_raises_error_when_profile_not_found(self) -> None:
+        repo = FakeTouristRepository()
+        badge_repo = MagicMock()
+        badge_repo.get_version_id_for_date.return_value = 42
+
+        uc = StartBadgeProgressUseCase(
+            repo, repo, badge_repo, repo, FakeClock(), MockUnitOfWork(), MockEventPublisher()
+        )
+
+        with pytest.raises(UseCaseError, match="Nie znaleziono profilu o ID 999"):
+            uc.execute(profile_id=999, badge_code="KGP")

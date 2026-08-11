@@ -141,3 +141,10 @@ def test_date_window_rule(ctx: VerificationContext) -> None:
     invalid_ascent = Ascent(peak_id=1, ascent_date=date(2021, 1, 1))
     assert not rule.validate([valid_ascent], ctx)
     assert len(rule.validate([invalid_ascent], ctx)) == 1
+
+
+def test_time_limit_rule_feb29_leap_year_edge_case() -> None:
+    rule = TimeLimitRule(limit_in_years=1)
+    ascents = [Ascent(peak_id=1, ascent_date=date(2020, 2, 29))]
+    result = rule.validate(ascents, VerificationContext(evaluation_time=datetime(2020, 2, 29, tzinfo=UTC)))
+    assert result == []

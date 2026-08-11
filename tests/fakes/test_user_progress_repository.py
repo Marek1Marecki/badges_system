@@ -50,6 +50,11 @@ class TestFakeTouristRepository:
         filtered_logs = repo.get_unconsumed_ascents(profile_id=1, badge_code="KGP", cutoff_date=date(2025, 12, 31))
         assert len(filtered_logs) == 0
 
+        # Pobieranie wszystkich wejść dla użytkownika
+        all_ascents = repo.get_all_ascents_for_user(profile_id=1)
+        assert len(all_ascents) == 1
+        assert all_ascents[0].peak_id == 15
+
     def test_user_progress_methods(self) -> None:
         repo = FakeTouristRepository()
 
