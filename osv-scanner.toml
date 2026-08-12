@@ -1,0 +1,23 @@
+# ==============================================================================
+# osv-scanner.toml - Akceptowalne Podatności (Risk Acceptance Register)
+# ==============================================================================
+
+# Ignorujemy poniższe luki bezpieczeństwa w pakiecie MCP (zależność Semgrep).
+# Zgodnie z decyzją architektoniczną EC-084, pakiety z grupy 'dev'
+# nigdy nie trafiają do skompilowanych obrazów na środowisko TEST/PRE-PROD/PROD.
+# Ryzyko wycieku zniwelowane przez `uv sync --no-dev`.
+
+[[IgnoredVulns]]
+id = "PYSEC-2026-3481"
+reason = "Zależność deweloperska Semgrep (przez mcp). Mitygacja: --no-dev / podział grup w pyproject.toml."
+ignoreUntil = 2027-01-01
+
+[[IgnoredVulns]]
+id = "PYSEC-2026-3482"
+reason = "Zależność deweloperska Semgrep (przez mcp). Mitygacja: --no-dev / podział grup w pyproject.toml."
+ignoreUntil = 2027-01-01
+
+[[IgnoredVulns]]
+id = "PYSEC-2026-3483"
+reason = "Zależność deweloperska Semgrep (przez mcp). Mitygacja: --no-dev / podział grup w pyproject.toml."
+ignoreUntil = 2027-01-01

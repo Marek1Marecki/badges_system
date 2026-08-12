@@ -17,8 +17,9 @@
 | **SecOps (SCA)** | Semantyczna analiza przepływu danych i logiki wstrzykiwania kodu (Injection) przed wdrożeniem. | `CodeQL` | ~2 min | Dedykowany potok w chmurze GitHub Actions. |
 | **E2E** | Złożone przepływy GUI turysty | `Playwright` | > 1m | Przed wydaniem na PRE-PROD |
 | **Supply Chain** | Skanowanie ostatecznie wygenerowanego Obrazu Dockera. Weryfikuje pakiety systemu operacyjnego (Debian) oraz listę zainstalowanych w `/opt/venv` bibliotek Pythona pod kątem zgłoszonych błędów CVE. Pełni rolę żelaznej bramki Gatingu blokującej dziurawe obrazy przed testami E2E. | `Trivy` | < 1m | Weryfikacja obrazu po etapie `build` w `ci.yml`. |
+| **Supply Chain (Monitoring)** | Asynchroniczne skanowanie repozytorium (codzienne/cotygodniowe) pod kątem starych lub podatnych wersji bibliotek w `pyproject.toml` oraz w akcjach GitHub Actions. | `Dependabot` | N/A | Działa natywnie w tle (jako GitHub App). Automatycznie tworzy Pull Requesty z gotowymi łatkami i nowymi kluczami SHA. Czasowo zawieszono wdrożenie zewnętrznych narzędzi (Snyk) ze względu na pokrywanie się ról i problemy z obsługą formatu `uv`. |
 
-### Zautomatyzowany Potok CI/CD (GitHub Actions)
+### Zasada Ograniczania Wielości Narzędzi (Tool Sprawl Prevention)
 
 System wykorzystuje dwie równoległe ścieżki weryfikacji (Quality Pipeline i Security Pipeline), aby szybko wychwytywać błędy bez blokowania się na długich testach:
 
@@ -236,4 +237,15 @@ W środowiskach zintegrowanych logowanie Google OAuth wymagałoby rozwiązywania
 W środowisku PRE-PROD uruchamiany jest zrobotyzowany test weryfikujący ostateczny rendering HTML, silnik HTMX i mapy (MapLibre). Zgodnie z dobrymi praktykami QA:
 - **Zasada Stabilności Selektorów:** Testy w Playwright nie mogą polegać na klasach CSS (np. `.btn-primary`) czy strukturze DOM (np. `div > ul > li`). Programista musi bezwzględnie wstrzykiwać dedykowane atrybuty **`data-testid`** w kodzie HTML i opierać asercje wyłącznie na nich (np. `page.locator("[data-testid='btn-subscribe-KGP']")`).
 - **Oczekiwanie Asynchroniczne (Smart Waiting):** Zamiast używania sztywnego `time.sleep()`, robot testujący musi oczekiwać na asynchroniczną reakcję serwera za pomocą np. wbudowanych asercji `expect(locator).to_be_visible()` lub jawnego `expect_response` do kontrolowania ruchu AJAX/HTMX.
-- **Odłączenie Obliczania Pokrycia:** Ponieważ test E2E weryfikuje głównie renderowanie po stronie serwera i w niewielkim stopniu dotyka Czystej Domeny, musi on zostać zignorowany przez system mierzący próg `coverage` (fail-under=80) na poziomie skryptu CI.
+ - **Odłączenie Obliczania Pokrycia:** Ponieważ test E2E weryfikuje głównie renderowanie po stronie serwera i w niewielkim stopniu dotyka Czystej Domeny, musi on zostać zignorowany przez system mierzący próg `coverage` (fail-under=80) na poziomie skryptu CI.
+
+## 4. Architektura Bezpieczeństwa Łańcucha Dostaw (Supply Chain Security)
+
+System wykorzystuje trójfilarowy, automatyczny model zabezpieczeń, który rozdziela odpowiedzialność (Separation of Concerns) pomiędzy kod źródłowy, dryf zależności oraz wygenerowane obrazy.
+
+| Filar Ochrony | Narzędzie | Zakres i Cel | Reakcja (Gating) |
+|:---|:---|:---|:---|
+| **Vulnerability & Code Quality** | `Semgrep` & `CodeQL` | Statyczna i semantyczna analiza samego **kodu źródłowego**. Wyłapuje m.in. wycieki haseł w YAML, ataki SQL Injection, błędne konfiguracje Django. | **Blokująca (Fail-Fast).** Wykonywana w potoku CI przy każdym Push/PR. |
+| **Supply Chain (Local)** | Szybka, bezkontenerowa weryfikacja pliku blokującego `uv.lock` bezpośrednio na maszynie programisty, zapobiegająca wypychaniu podatnych bibliotek do repozytorium. | `Google OSV-Scanner` | < 1s | Wywoływany lokalnie w ramach `make security-audit` przez bezpośrednie wywołanie binarki systemowej. |
+| **Dependency Drift (Aktualizacje)** | `Dependabot` | Niezależny strażnik starzenia się paczek. Utrzymuje w aktualności pakiety z `uv.lock` oraz wersje akcji wewnątrz plików GitHub Actions (`ci.yml`). | **Doradcza (Advisory).** Generuje osobne Pull Requesty (PR) dla każdej nowej wersji (Major/Minor). Każdy taki PR musi niezależnie przejść przez pełny potok testów integracyjnych zanim zostanie scalony. |
+| **Container & Runtime Security** | `Trivy` | Analiza końcowa. Skanuje w 100% zbudowany **Obraz Dockera**. Weryfikuje pakiety systemu bazowego (np. luki w `libgdal` na poziomie Debiana) oraz listę zainstalowanych w `/opt/venv` pakietów. | **Blokująca.** Weryfikacja następuje *po* zbudowaniu obrazu (Build), a *przed* odpaleniem środowiska E2E w CI. Blokuje pipeline przy lukach oznaczonych jako CRITICAL i HIGH. |

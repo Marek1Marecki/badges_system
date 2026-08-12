@@ -4,6 +4,7 @@
 PY_DIRS := domain application infrastructure apps bootstrap scripts
 TEST_DIRS := tests
 MIN_COVERAGE ?= 80
+export PATH := /home/dominik/.local/bin:$(PATH)
 
 # ===============================
 # CORE
@@ -65,6 +66,8 @@ security-audit:
 	  --config "p/secrets" \
 	  --error --skip-unknown-extensions \
 	  --exclude="tests/*" --exclude=".venv/*" --exclude="node_modules/*" --exclude="staticfiles/*"
+	@echo "\n=== ROZPOCZYNANIE SKANOWANIA GOOGLE OSV-SCANNER ==="
+	osv-scanner --lockfile=uv.lock --config=osv-scanner.toml
 
 check:
 	uv run ruff format --check $(PY_DIRS)

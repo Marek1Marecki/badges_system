@@ -160,6 +160,21 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
 
+      - name: Generowanie SBOM (Trivy CycloneDX)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: 'badges-system:${{ github.sha }}'
+          format: 'cyclonedx'
+          output: 'sbom.cdx.json'
+
+      - name: Upload SBOM jako artefakt
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: sbom
+          path: sbom.cdx.json
+          retention-days: 30
+
       - name: Sprawdź skrypty w obrazie testowym
         run: docker compose --env-file .env -f compose.yml -f compose.test.yml run --rm web ls -la /app/scripts/
 
