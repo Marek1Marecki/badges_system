@@ -220,11 +220,33 @@ jobs:
       - name: Pobieranie repozytorium
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
+      - name: Instalacja zależności systemowych (GDAL, GEOS, PROJ, PostgreSQL client, unzip)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gdal-bin \
+            libgdal-dev \
+            libgeos-dev \
+            libproj-dev \
+            postgresql-client \
+            unzip
+
       - name: Pobieranie dump'a PostgreSQL z jobu integration-tests
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
-        with:
-          name: postgis-dump
-          path: /tmp/postgis-dump
+        run: |
+          echo "=== Pobieranie dump'a PostgreSQL przez API ==="
+          ARTIFACT_ID=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/Marek1Marecki/badges_system/actions/runs/${{ github.run_id }}/artifacts" \
+            | grep -B5 '"name": "postgis-dump"' | grep '"id":' | head -1 | sed 's/.*"id": *\([0-9]*\).*/\1/')
+          if [ -z "$ARTIFACT_ID" ]; then
+            echo "BŁĄD: Nie znaleziono artifact 'postgis-dump'"
+            exit 1
+          fi
+          echo "Znaleziono artifact ID: $ARTIFACT_ID"
+          curl -L -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/Marek1Marecki/badges_system/actions/artifacts/$ARTIFACT_ID/zip" \
+            -o /tmp/postgis-dump.zip
+          unzip -q /tmp/postgis-dump.zip -d /tmp/postgis-dump
+          ls -la /tmp/postgis-dump/
 
       - name: Sprawdzenie dump'a PostgreSQL
         run: |
@@ -236,16 +258,6 @@ jobs:
             exit 1
           fi
           echo "✅ Dump istnieje: $(ls -lh /tmp/postgis-dump/postgis_dump.custom)"
-
-      - name: Instalacja zależności systemowych (GDAL, GEOS, PROJ, PostgreSQL client)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            gdal-bin \
-            libgdal-dev \
-            libgeos-dev \
-            libproj-dev \
-            postgresql-client
 
       - name: Konfiguracja narzędzia UV
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
