@@ -245,6 +245,8 @@ jobs:
           curl -L -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/Marek1Marecki/badges_system/actions/artifacts/$ARTIFACT_ID/zip" \
             -o /tmp/postgis-dump.zip
+          rm -rf /tmp/postgis-dump
+          mkdir -p /tmp/postgis-dump
           unzip -q /tmp/postgis-dump.zip -d /tmp/postgis-dump
           ls -la /tmp/postgis-dump/
 
