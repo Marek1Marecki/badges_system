@@ -104,6 +104,7 @@ jobs:
     timeout-minutes: 30
     env:
       COMPOSE_PROJECT_NAME: badges_system_test
+      TRIVY_DB_REPOSITORY: ghcr.io/aquasec/trivy-db
     steps:
       - name: Pobieranie repozytorium
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
