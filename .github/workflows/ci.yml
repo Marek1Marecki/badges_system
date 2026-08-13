@@ -192,6 +192,12 @@ jobs:
           name: postgis-dump
           path: postgis_dump.custom
 
+      - name: Debug - sprawdź rozmiar dumpa
+        if: always()
+        run: |
+          ls -la postgis_dump.custom 2>/dev/null || echo "PLIK NIE ISTNIEJE"
+          du -sh postgis_dump.custom 2>/dev/null || echo "ROZMIAR: 0"
+
       - name: Upload logów Dockera jako artefakt
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
