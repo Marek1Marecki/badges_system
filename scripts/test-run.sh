@@ -99,6 +99,12 @@ else
     fi
 fi
 
+echo ""
+echo "[3/3] Wgrywanie Danych Referencyjnych (Golden Set)..."
+for fixture in 01_regions.json.gz 02_tourist_objects.json.gz 03_badges.json.gz 04_osm_mappings.json.gz 05_badge_news.json.gz; do
+    "${COMPOSE[@]}" run --rm web python manage.py loaddata "data/reference/${fixture}"
+done
+
 if [ "$EXPORT_PG_DUMP" = true ]; then
     echo ""
     echo "=== EKSPORT DUMPA POSTGRESQL ==="
