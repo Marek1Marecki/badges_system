@@ -39,7 +39,6 @@ from application.exceptions import (
 from apps.badges.models import TouristObject
 from apps.badges.tasks import recalculate_poi_scores_task
 from apps.tourists.models import TouristProfile
-from bootstrap import get_container
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +170,7 @@ class AscentLogView(View):
             )
 
         try:
-            use_case = get_container().log_ascent
+            use_case = request.app_container.log_ascent
 
             # WPISUJEMY TYLKO TO (UoW i Event Publisher są zaszyte w środku!)
             ascent_id = use_case.execute(profile_id=profile_id, dto=ascent_input)
@@ -202,7 +201,7 @@ class BadgeSubscribeView(View):
         profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id
 
         try:
-            use_case = get_container().start_badge_progress
+            use_case = request.app_container.start_badge_progress
 
             # WPISUJEMY TYLKO TO:
             progress_id = use_case.execute(profile_id=profile_id, badge_code=badge_code)
@@ -222,7 +221,7 @@ class BadgeSubscribeView(View):
         profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id
 
         try:
-            use_case = get_container().unsubscribe_badge
+            use_case = request.app_container.unsubscribe_badge
             use_case.execute(profile_id=profile_id, badge_code=badge_code)
 
             return JsonResponse({"status": "UNSUBSCRIBED"}, status=200)
@@ -262,7 +261,7 @@ class BadgeProgressView(View):
         profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id
 
         try:
-            use_case = get_container().evaluate_badge_progress
+            use_case = request.app_container.evaluate_badge_progress
             result = use_case.execute(profile_id=profile_id, badge_code=badge_code, cycle_number=cycle_number)
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
@@ -324,7 +323,7 @@ class MapObjectsView(View):
             )
 
         try:
-            use_case = get_container().explore_map
+            use_case = request.app_container.explore_map
             geojson_data = use_case.execute(dto)
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
@@ -365,7 +364,7 @@ class BadgeLogisticsView(View):
         profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id
 
         try:
-            use_case = get_container().advance_logistic_status
+            use_case = request.app_container.advance_logistic_status
             use_case.execute(
                 profile_id=profile_id,
                 progress_id=progress_id,
@@ -386,7 +385,7 @@ class VectorTileView(View):
 
     def get(self, request, layer: str, z: int, x: int, y: int):
         try:
-            use_case = get_container().get_mvt_tile
+            use_case = request.app_container.get_mvt_tile
             # Use Case zwraca skompresowane bajty (lub None) z DB/Redis
             tile_data = use_case.execute(layer, z, x, y)
         except ApplicationException as exc:
@@ -484,7 +483,7 @@ class GpxAnalyzeView(View):
         file_content = gpx_file.read()
 
         try:
-            use_case = get_container().analyze_gpx_track
+            use_case = request.app_container.analyze_gpx_track
             result = use_case.execute(file_content)
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
@@ -520,7 +519,7 @@ class BulkAscentLogView(View):
                 detail="Nieprawidłowe dane wejściowe.",
             )
         try:
-            use_case = get_container().bulk_log_ascents
+            use_case = request.app_container.bulk_log_ascents
 
             # WPISUJEMY TYLKO TO:
             result = use_case.execute(profile_id=profile_id, ascents=ascents)

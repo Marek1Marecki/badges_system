@@ -91,7 +91,7 @@ Jeśli widok Django (`views.py`) pobiera obiekty powiązane (np. odznaki dla dan
 
 **Zasady:**
 1. Każdy endpoint przyjmuje wyłącznie surowy format HTTP, który natychmiast musi być zwalidowany do obiektu Pydantic DTO.
-2. Endpoint wywołuje przygotowany Use Case pobrany z Kontenera DI (`bootstrap.get_container()`).
+2. **Request-Scoped Dependency Injection:** Widokom (Controllers) kategorycznie zabrania się importowania kontenera DI (np. `from bootstrap import get_container`). Import taki złamie reguły narzędzia `import-linter` poprzez utworzenie tranzytywnej zależności do infrastruktury. Kontener DI jest wstrzykiwany do cyklu HTTP przez dedykowany middleware. Widoki muszą pobierać przygotowane Use Case'y wyłącznie z obiektu żądania: `request.app_container.moj_use_case`. (Wyjątkiem są zadania asynchroniczne Celery w `tasks.py`, które z racji braku dostępu do cyklu HTTP, jako jedyne zachowują prawo do bezpośredniego importowania kontenera).
 3. Endpointy zwracają `JsonResponse` lub `HttpResponse`. 
 4. Zwracany dynamiczny stan turysty musi być transportowany **wyłącznie** w formacie `GeoJSON` dla limitowanej liczby punktów (BBox). 
 5. Endpointy MVT (`.pbf`) służą wyłącznie do pobierania statycznej topografii i nigdy nie mogą zawierać logiki zależnej od zalogowanego użytkownika (User-Agnostic).
@@ -105,7 +105,7 @@ Jeśli widok Django (`views.py`) pobiera obiekty powiązane (np. odznaki dla dan
 - Zwracanie modeli ORM. Zawsze używaj metody `model_dump()` na obiekcie DTO zwróconym z Use Case'a.
 - **Zakaz używania djangowych dekoratorów autoryzacji w API:** Nie używaj `@login_required` ani `@method_decorator(require_auth)` nad klasami widoków w `apps/api/views.py`. Walidacja tożsamości musi odbywać się **wewnątrz ciała metody** (np. `def post(self, request):`) poprzez wywołanie lokalnego helpera: `auth_error = _require_auth(request); if auth_error: return auth_error`. 
 - **Zakaz list w dekoratorach klas:** Używaj wyłącznie `@method_decorator(csrf_exempt, name="dispatch")`. Przekazywanie list dekoratorów (np. `[csrf_exempt, require_auth]`) w tym projekcie powoduje konflikty z linterem ruff i testami.
-- 
+- Bezpośrednie importowanie modułu `bootstrap` (Composition Root) do jakiegokolwiek widoku w `apps/api/views.py` lub `apps/tourists/views.py`.
 - **Wyjątki:** Przy łapaniu wielu wyjątków bezwzględnie używaj krotek `except (ErrorA, ErrorB):`. Składnia z przecinkiem z Pythona 2 wywołuje `SyntaxError`.
 
 ---

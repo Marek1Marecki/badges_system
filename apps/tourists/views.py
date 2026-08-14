@@ -31,7 +31,6 @@ from apps.tourists.models import (
     TouristProfile,
     UserBadgeProgress,
 )
-from bootstrap import get_container
 
 
 def _get_active_profile_id(request) -> int:
@@ -254,7 +253,7 @@ def badge_detail_view(request, badge_code: str):
     if progress and progress.version_id:
         target_version = progress.version
         try:
-            query_service = get_container().evaluate_badge_progress
+            query_service = request.app_container.evaluate_badge_progress
             # Zmienna w szablonie nazywa się 'evaluation'
             evaluation = query_service.execute(profile_id=profile_id, badge_code=badge.code)
         except Exception:
@@ -459,7 +458,7 @@ def poi_ranking_view(request):
     profile_id = _get_active_profile_id(request)
 
     # 1. Odpytujemy Czysty Serwis Odczytu
-    queries_service = get_container().explore_queries_service
+    queries_service = request.app_container.explore_queries_service
     dto_response = queries_service.get_poi_ranking(profile_id=profile_id)
 
     context = {
@@ -481,7 +480,7 @@ def region_ranking_view(request):
         level = "MESOREGION"
 
     # 1. Odpytujemy Czysty Serwis Odczytu
-    queries_service = get_container().explore_queries_service
+    queries_service = request.app_container.explore_queries_service
     dto_response = queries_service.get_region_ranking(profile_id=profile_id, level=level)
 
     context = {

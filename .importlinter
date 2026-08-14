@@ -4,35 +4,111 @@ root_packages =
     application
     infrastructure
     apps
+    bootstrap
+    config
 include_external_packages = True
 
+# ==============================================================================
+# 1. TWIERDZA: CZYSTA DOMENA
+# ==============================================================================
 [importlinter:contract:domain-purity]
-name = Domain must not import from application, infrastructure, apps or django
+name = Domain must not import from application, infrastructure, apps, or any framework
 type = forbidden
 source_modules = domain
 forbidden_modules =
     application
     infrastructure
     apps
+    bootstrap
+    config
     django
     pydantic
+    celery
+    requests
 
+# ==============================================================================
+# 2. ORKIESTRATOR: WARSTWA APLIKACJI
+# ==============================================================================
 [importlinter:contract:application-purity]
-name = Application must not import from infrastructure, apps or django
+name = Application must not import from infrastructure, apps, config or django
 type = forbidden
 source_modules = application
 forbidden_modules =
     infrastructure
     apps
+    bootstrap
+    config
     django
+    celery
 
-[importlinter:contract:apps-purity]
-name = Apps Delivery Layer must not import infrastructure directly (except allowed integrations)
+# ==============================================================================
+# 3. ZASADY ZALEŻNOŚCI: DELIVERY I INFRASTRUKTURA
+# ==============================================================================
+#
+# Wybór typu kontraktu: `forbidden` zamiast `layers`.
+#
+# W `import-linter` kierunek domyślny dla `layers` to `imports` (lewa warstwa
+# może importować do prawej). Kolejność [infrastructure, apps] zatem
+# *fizycznie zezwala* na importy apps -> infrastructure, co jest sprzeczne
+# z nazwą i intencją reguły. Aby osiągnąć prawdziwe "must not depend",
+# używamy `type = forbidden`, który domyślnie BLOKUJE wszystkie bezpośrednie
+# importy z apps do infrastructure. Pozwala to na świadome, udokumentowane
+# wyłomy w `ignore_imports` (Architecture Debt Register).
+#
+[importlinter:contract:hexagonal-layers]
+name = Delivery Layer (Apps) must not depend on Infrastructure
 type = forbidden
 source_modules = apps
-forbidden_modules =
-    infrastructure
+forbidden_modules = infrastructure
 ignore_imports =
-    apps.tourists.context_processors -> infrastructure.config.map_layers
+    # DŁUG-001: apps.badges.tasks -> infrastructure.adapters.osm_adapter
+    # Powód: Zadanie Celery wywołuje OSMAdapter bezpośrednio do łapania
+    #        OsmAdapterError i uruchamiania retry logic na granicy warstw.
+    # Target: Przenieść retry logic do Application Service, który zwróci
+    #         dedykowany wyjątek biznesowy; task pozostaje cienkim wrapperem.
     apps.badges.tasks -> infrastructure.adapters.osm_adapter
+
+    # DŁUG-002: apps.badges.models -> infrastructure.schemas.badge_rules_schema
+    # Powód: Model Django importuje schemat JSONB do walidacji.
+    # Target: Przenieść walidację schematu do warstwy formularzy
+    #         administracyjnych (admin.py) lub do Application Service.
     apps.badges.models -> infrastructure.schemas.badge_rules_schema
+
+    # DŁUG-003: apps.tourists.context_processors -> infrastructure.config.map_layers
+    # Powód: Context Processor w Django wstrzykuje warstwy map bezpośrednio
+    #        do kontekstu szablonów HTML.
+    # Target: Wydzielić serwis konfiguracyjny zwracający DTO map dla
+    #         interfejsów (Faza D).
+    apps.tourists.context_processors -> infrastructure.config.map_layers
+
+    # EXC-001: apps.badges.tasks -> bootstrap
+    # Powód: Zadania Celery nie mają dostępu do obiektu request (cykl HTTP),
+    #        więc nie mogą otrzymać kontenera DI przez middleware. Jako jedyne
+    #        miejsce w warstwie Delivery, taski zachowują prawo do bezpośredniego
+    #        importowania Composition Root.
+    # Target: Brak — to jest zamierzony wyjątek architektoniczny.
+    apps.badges.tasks -> bootstrap
+
+    # EXC-002: apps.badges.tasks -> bootstrap.container
+    # Powód: Ten sam cel co powyżej — bezpośredni import kontenera w taskach
+    #        Celery, które działają poza cyklem HTTP.
+    # Target: Brak — to jest zamierzony wyjątek architektoniczny.
+    apps.badges.tasks -> bootstrap.container
+
+# ==============================================================================
+# 4. INFRASTRUKTURA: ZAKAZ INWERSJI KONTROLI (Kontener DI)
+# ==============================================================================
+[importlinter:contract:infrastructure-independence]
+name = Infrastructure must not import Dependency Injection Container
+type = forbidden
+source_modules = infrastructure
+forbidden_modules = bootstrap
+ignore_imports =
+    # DŁUG-004: infrastructure.adapters.celery_event_publisher -> apps.badges.tasks
+    # Powód: Adapter zdarzeń importuje nazwę zadania Celery do rejestracji
+    #        w punkcie końcowym (endpoint) wiadomości.
+    # Target: Zastąpić bezpośredni import rejestracją opartą na nazwie
+    #         ciągu znaków (string-based registry) lub slug.
+    infrastructure.adapters.celery_event_publisher -> apps.badges.tasks
+unrelated_modules =
+    apps.badges.tasks

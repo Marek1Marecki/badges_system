@@ -9,7 +9,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit
 
 help:
 	@echo "CORE targets:"
@@ -21,6 +21,9 @@ help:
 	@echo "  test-all     - wszystkie testy (jednostkowe + integracyjne) używane w CI/CD"
 	@echo "  audit        - audit architektoniczny (AST)"
 	@echo "  graph        - eksport grafu zaleznosci (DOT + SVG, opcjonalnie PNG)"
+	@echo "  graph-modules - graf zaleznosci modulow (pydeps -> SVG)"
+	@echo "  graph-classes - diagramy klas UML (pyreverse -> PNG)"
+	@echo "  graph-all    - wszystkie diagramy architektury"
 	@echo "  check        - lokalne CI: format --check + lint + type-check + test + audit"
 	@echo "  clean        - usuwa cache, artefakty"
 
@@ -56,6 +59,44 @@ secrets-check:
 graph:
 	uv run python scripts/audit_contracts.py
 	@if command -v dot >/dev/null 2>&1; then dot -Tpng dependencies.dot -o dependencies.png; echo "Rendered dependencies.png"; else echo "Graphviz dot not installed - kept dependencies.dot"; fi
+
+graph-modules:
+	mkdir -p docs/architecture
+	uv run pydeps . \
+		--only domain,application,infrastructure,apps,bootstrap \
+		--cluster \
+		--no-show \
+		-o docs/architecture/dependencies-pydeps.svg
+
+graph-classes:
+	mkdir -p docs/architecture /tmp/pyreverse-domain /tmp/pyreverse-application /tmp/pyreverse-infrastructure /tmp/pyreverse-apps
+	uv run pyreverse domain \
+		-o png \
+		-p badges_system \
+		--output-directory /tmp/pyreverse-domain \
+		--source-roots .
+	uv run pyreverse application \
+		-o png \
+		-p badges_system \
+		--output-directory /tmp/pyreverse-application \
+		--source-roots .
+	uv run pyreverse infrastructure \
+		-o png \
+		-p badges_system \
+		--output-directory /tmp/pyreverse-infrastructure \
+		--source-roots .
+	uv run pyreverse apps \
+		-o png \
+		-p badges_system \
+		--output-directory /tmp/pyreverse-apps \
+		--source-roots .
+	cp /tmp/pyreverse-domain/classes_badges_system.png docs/architecture/classes-domain.png
+	cp /tmp/pyreverse-application/classes_badges_system.png docs/architecture/classes-application.png
+	cp /tmp/pyreverse-infrastructure/classes_badges_system.png docs/architecture/classes-infrastructure.png
+	cp /tmp/pyreverse-apps/classes_badges_system.png docs/architecture/classes-apps.png
+	rm -rf /tmp/pyreverse-*
+
+graph-all: graph graph-modules graph-classes
 
 security-audit:
 	@echo "=== ROZPOCZYNANIE SKANOWANIA SEMGREP ==="

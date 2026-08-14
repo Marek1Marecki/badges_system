@@ -112,17 +112,31 @@ Ten projekt korzysta z rygorystycznych linterów (`import-linter`, `ruff TID251`
 
 ```text
 apps/ (UI/Tasks) ─────► bootstrap/ (DI Container) ◄───── infrastructure/ (Adapters)
-                               │                                │
-                               │                                │
-                               ▼                                ▼
-                       application/ (Use Cases & Ports) ────────┘
-                               │
-                               │
-                               ▼
-                       domain/ (Pure Business Logic)
+                                │                                │
+                                │                                │
+                                ▼                                ▼
+                        application/ (Use Cases & Ports) ────────┘
+                                │
+                                │
+                                ▼
+                        domain/ (Pure Business Logic)
 ```
 
 *(Strzałki oznaczają "Zależy od / Importuje z")*
+
+## Diagramy architektury
+
+Automatycznie generowane diagramy znajdują się w [`docs/architecture/`](../architecture/README.md):
+
+- [`../dependencies.svg`](../dependencies.svg) — warstwy i cykle zależności wykryte przez `audit_contracts.py`
+- [`dependencies-pydeps.svg`](../architecture/dependencies-pydeps.svg) — rzeczywisty graf zależności modułów (pydeps)
+- [`classes-domain.png`](../architecture/classes-domain.png) — struktura klas w warstwie `domain/`
+- [`classes-application.png`](../architecture/classes-application.png) — struktura klas w warstwie `application/`
+- [`classes-infrastructure.png`](../architecture/classes-infrastructure.png) — struktura klas w warstwie `infrastructure/`
+- [`classes-apps.png`](../architecture/classes-apps.png) — struktura klas w warstwie `apps/`
+
+Generowanie: `make graph-all`
+
 
 ---
 

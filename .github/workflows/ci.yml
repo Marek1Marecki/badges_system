@@ -38,14 +38,15 @@ jobs:
       - name: Pobieranie repozytorium
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - name: Instalacja zależności systemowych (GDAL, GEOS, PROJ)
+      - name: Instalacja zależności systemowych (GDAL, GEOS, PROJ, Graphviz)
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             gdal-bin \
             libgdal-dev \
             libgeos-dev \
-            libproj-dev
+            libproj-dev \
+            graphviz
 
       - name: Konfiguracja narzędzia UV
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
@@ -77,6 +78,19 @@ jobs:
 
       - name: Audyt SRE (Ochrona przed wyciekami i zakazanym API)
         run: uv run python scripts/audit_contracts.py
+
+      - name: Generowanie diagramów architektury (pydeps + pyreverse)
+        run: make graph-modules graph-classes
+
+      - name: Upload diagramów architektury
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: architecture-diagrams
+          path: |
+            docs/architecture/
+            dependencies-pydeps.svg
+          retention-days: 30
 
       - name: Generowanie kluczy na potrzeby testów z bazy w pamięci (Pydantic Bypass)
         run: |
