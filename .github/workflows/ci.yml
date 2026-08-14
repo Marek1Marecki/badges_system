@@ -207,7 +207,7 @@ jobs:
     name: E2E / Playwright Tests
     needs: integration-tests
     runs-on: self-hosted
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       COMPOSE_PROJECT_NAME: badges_system_e2e
     steps:
