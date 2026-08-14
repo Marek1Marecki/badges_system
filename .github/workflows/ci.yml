@@ -304,7 +304,9 @@ jobs:
           echo "=== Zastosowanie migracji na załadowanych danych ==="
           docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T web-e2e python manage.py migrate
           echo "=== Wgrywanie Danych Referencyjnych (Golden Set) ==="
-          docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T web-e2e python manage.py restore_reference_data
+          for fixture in 01_regions.json.gz 02_tourist_objects.json.gz 03_badges.json.gz 04_osm_mappings.json.gz 05_badge_news.json.gz; do
+            docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T web-e2e python manage.py loaddata "data/reference/${fixture}"
+          done
           docker compose --env-file .env -f compose.yml -f compose.test.yml -f compose.e2e.yml exec -T web-e2e python manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); user, _ = User.objects.get_or_create(username='admin', defaults={'email': 'admin@example.com', 'is_staff': True, 'is_superuser': True}); user.set_password('admin'); user.save(); print('Admin user ready')"
 
       - name: Uruchomienie testów e2e
