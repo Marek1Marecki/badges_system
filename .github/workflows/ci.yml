@@ -156,10 +156,22 @@ jobs:
           echo "⚠️  Pomijanie skanowania Trivy - brak dostępu do bazy danych CVE (GCR mirror zwraca 404, GHCR wymaga autoryzacji)"
           echo "   TODO: Skonfigurować alternatywne źródło bazy CVE lub wyłączyć ten krok po konsultacji z zespołem bezpieczeństwa"
 
-      - name: Generowanie SBOM (Trivy CycloneDX)
+      - name: Generowanie SBOM (Syft CycloneDX)
         run: |
-          echo "⚠️  Pomijanie generowania SBOM - brak dostępu do bazy danych CVE (GCR mirror zwraca 404, GHCR wymaga autoryzacji)"
-          echo "   TODO: Skonfigurować alternatywne źródło bazy CVE lub wyłączyć ten krok po konsultacji z zespołem bezpieczeństwa"
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$(pwd)":/work -w /work \
+            anchore/syft:latest \
+            packages docker:badges-system:${{ github.sha }} \
+            -o cyclonedx-json=sbom.cdx.json
+
+      - name: Weryfikacja SBOM - brak mcp w obrazie testowym
+        run: |
+          if grep -q '"name": "mcp"' sbom.cdx.json; then
+            echo "❌ mcp znaleziono w SBOM obrazu testowego"
+            exit 1
+          fi
+          echo "✅ mcp nie występuje w SBOM obrazu testowego"
 
       - name: Upload SBOM jako artefakt
         if: always()
