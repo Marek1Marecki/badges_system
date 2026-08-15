@@ -33,6 +33,33 @@ services:
     command: ["redis-server"]
     # Brak `ports:` — jak wyżej.
 
+  celery_beat:
+    image: badges-system:${IMAGE_TAG:-latest}
+    pull_policy: never
+    build:
+      context: .
+      target: testing
+    environment:
+      - ENV_FILE=.env.test
+      - APP_ENV=test
+      - DEBUG=False
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:?Ustaw POSTGRES_USER w .env}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Ustaw POSTGRES_PASSWORD w .env}
+      - POSTGRES_DB=${POSTGRES_DB:?Ustaw POSTGRES_DB w .env}
+      - CELERY_TASK_ALWAYS_EAGER=True
+      - EMAIL_BACKEND=django.core.mail.backends.locmem.EmailBackend
+      - GOOGLE_OAUTH_CLIENT_ID=mock-client-id
+      - GOOGLE_OAUTH_CLIENT_SECRET=mock-client-secret
+      - MAPY_CZ_API_KEY=mock-api-key
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uv run celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
   web:
     # UWAGA — realny incydent w tym projekcie: bez jawnej, unikalnej nazwy
     # `image:` Compose domyślnie taguje obraz jako `<nazwa_projektu>-web`.

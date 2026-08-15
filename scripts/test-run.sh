@@ -59,6 +59,17 @@ trap cleanup EXIT
 echo "=== TEST: uruchamianie efemerycznej infrastruktury (${PROJECT}) ==="
 "${COMPOSE[@]}" up -d --wait db redis
 
+echo ""
+echo "Oczekiwanie na gotowość bazy danych..."
+for i in {1..30}; do
+    if "${COMPOSE[@]}" exec -T db pg_isready -U "${POSTGRES_USER:-postgres}" >/dev/null 2>&1; then
+        echo "✅ Baza danych jest gotowa po ${i} próbach"
+        break
+    fi
+    echo "  próba ${i}/30: baza jeszcze niedostępna..."
+    sleep 2
+done
+
 # Widoczne potwierdzenie izolacji — nie tylko deklaracja w komentarzu.
 # Po incydencie z Rundy 9 (TEST po cichu dzielił nazwane wolumeny z DEV)
 # wolimy to jawnie widzieć w logu każdego uruchomienia, niż zakładać, że
