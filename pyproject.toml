@@ -123,7 +123,7 @@ application_paths = ["application"]
 bootstrap_paths = ["bootstrap"]
 
 [tool.uv]
-exclude-newer = "7 days"
+exclude-newer = "P7D"
 constraint-dependencies = [
     "sqlparse>=0.6.0",
 ]
