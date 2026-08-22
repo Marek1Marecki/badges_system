@@ -9,7 +9,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit lock
 
 help:
 	@echo "CORE targets:"
@@ -26,6 +26,7 @@ help:
 	@echo "  graph-all    - wszystkie diagramy architektury"
 	@echo "  check        - lokalne CI: format --check + lint + type-check + test + audit"
 	@echo "  clean        - usuwa cache, artefakty"
+	@echo "  lock         - regeneruje uv.lock z 7-dniowym cooldownem zależności"
 
 setup:
 	uv sync --group dev
@@ -106,7 +107,8 @@ security-audit:
 	  --config "p/owasp-top-ten" \
 	  --config "p/secrets" \
 	  --error --skip-unknown-extensions \
-	  --exclude="tests/*" --exclude=".venv/*" --exclude="node_modules/*" --exclude="staticfiles/*"
+	  --exclude="tests/*" --exclude=".venv/*" --exclude="node_modules/*" --exclude="staticfiles/*" \
+	  --exclude-rule=package_managers.uv.uv-missing-dependency-cooldown.uv-missing-dependency-cooldown
 	@echo "\n=== ROZPOCZYNANIE SKANOWANIA GOOGLE OSV-SCANNER ==="
 	osv-scanner --lockfile=uv.lock --config=osv-scanner.toml
 
@@ -123,6 +125,9 @@ clean:
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "__pycache__" -not -path "./.venv/*" -exec rm -rf {} +
 	rm -rf .coverage htmlcov/ .pytest_cache/ .mypy_cache/ coverage.xml .ruff_cache/
+
+lock:
+	uv lock --exclude-newer "7 days"
 
 dev-up:      ## Uruchom środowisko DEV (bezpieczne na świeżym i istniejącym wolumenie)
 	./scripts/dev-up.sh
