@@ -1,0 +1,8 @@
+<?xml version="1.0" ?>
+<ns2:softwareSystem xmlns:ns2="http://www.hello2morrow.com/sonargraph/core" id="f657d500762238651bc9114ec73692de" version="26.4.1.188">
+	<description></description>
+	<module name="badges_system" id="f41891767c2482b957a23191f938442c" language="Python">
+		<description></description>
+		<rootPath name="."></rootPath>
+	</module>
+</ns2:softwareSystem>

@@ -121,3 +121,9 @@ convention = "google"
 domain_paths = ["domain"]
 application_paths = ["application"]
 bootstrap_paths = ["bootstrap"]
+
+[tool.uv]
+exclude-newer = "7 days"
+constraint-dependencies = [
+    "sqlparse>=0.6.0",
+]
