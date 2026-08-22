@@ -118,7 +118,7 @@ jobs:
     timeout-minutes: 30
     env:
       COMPOSE_PROJECT_NAME: badges_system_test
-      TRIVY_DB_REPOSITORY: ghcr.io/aquasec/trivy-db
+      TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
     steps:
       - name: Pobieranie repozytorium
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -167,8 +167,15 @@ jobs:
 
       - name: Skanowanie obrazu produkcyjnego w poszukiwaniu luk CVE (Trivy)
         run: |
-          echo "⚠️  Pomijanie skanowania Trivy - brak dostępu do bazy danych CVE (GCR mirror zwraca 404, GHCR wymaga autoryzacji)"
-          echo "   TODO: Skonfigurować alternatywne źródło bazy CVE lub wyłączyć ten krok po konsultacji z zespołem bezpieczeństwa"
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$HOME/.cache/trivy":/root/.cache/trivy \
+            aquasec/trivy:0.58.0 \
+            image \
+            --db-repository public.ecr.aws/aquasecurity/trivy-db \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            badges-system:${{ github.sha }}
 
       - name: Generowanie SBOM (Syft CycloneDX)
         run: |
