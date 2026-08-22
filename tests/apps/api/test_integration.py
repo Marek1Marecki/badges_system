@@ -1,6 +1,8 @@
 """Testy integracyjne dla REST API turysty (Faza C).
 
-Strategia: RequestFactory + MagicMock user + patch na get_container.
+Strategia: RequestFactory + MagicMock user + request.app_container.
+Views używają request.app_container (ustawianego przez ContainerMiddleware),
+więc factory automatycznie wstrzykuje kontener DI do każdego requestu.
 """
 
 import json
@@ -34,14 +36,14 @@ pytestmark = [pytest.mark.integration, pytest.mark.django_db]
 
 
 @pytest.fixture
-def factory():
+def factory(use_cases):
     from django.test import RequestFactory
 
     class SessionRequestFactory(RequestFactory):
         def generic(self, *args, **kwargs):
             req = super().generic(*args, **kwargs)
-            # Wstrzyknięcie sesji, której RequestFactory domyślnie nie posiada
             req.session = {}
+            req.app_container = use_cases
             return req
 
     return SessionRequestFactory()
@@ -65,7 +67,12 @@ def mock_user():
 
 @pytest.fixture
 def use_cases():
-    """Zwraca kontener mocków Use Case'ów i patch na get_container."""
+    """Zwraca kontener mocków Use Case'ów.
+    
+    Views używają request.app_container (ustawianego przez ContainerMiddleware),
+    a nie bezpośredniego importu get_container. Fixture factory automatycznie
+    wstrzykuje ten kontener do każdego requestu.
+    """
     cases = {
         "log_ascent": MagicMock(),
         "start_badge_progress": MagicMock(),
@@ -79,8 +86,7 @@ def use_cases():
         "analyze_gpx_track": MagicMock(),
     }
     container = UseCaseContainer(cases)
-    with patch("apps.api.views.get_container", return_value=container):
-        yield container
+    yield container
 
 
 # ---------------------------------------------------------------------------
