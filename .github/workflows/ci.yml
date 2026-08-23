@@ -170,12 +170,49 @@ jobs:
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$HOME/.cache/trivy":/root/.cache/trivy \
+            -v "$(pwd)":/work -w /work \
             aquasec/trivy:0.58.0 \
             image \
             --db-repository public.ecr.aws/aquasecurity/trivy-db \
             --severity HIGH,CRITICAL \
+            --scanners vuln \
+            --format json \
+            --output /work/trivy-report.json \
             --exit-code 1 \
             badges-system:${{ github.sha }}
+
+      - name: Podsumowanie wyników skanowania Trivy
+        if: always()
+        run: |
+          if [ ! -f trivy-report.json ]; then
+            echo "⚠️  Brak raportu Trivy (prawdopodobnie skan nie został wykonany)"
+            exit 0
+          fi
+          echo "=== TRIVY REPORT SUMMARY ==="
+          CRITICAL=$(python3 -c "import json; data=json.load(open('trivy-report.json')); vulns=[v for r in data.get('Results',[]) for v in r.get('Vulnerabilities',[]) if v.get('Severity')=='CRITICAL']; print(len(vulns))" 2>/dev/null || echo "0")
+          HIGH=$(python3 -c "import json; data=json.load(open('trivy-report.json')); vulns=[v for r in data.get('Results',[]) for v in r.get('Vulnerabilities',[]) if v.get('Severity')=='HIGH']; print(len(vulns))" 2>/dev/null || echo "0")
+          echo "CRITICAL: ${CRITICAL}"
+          echo "HIGH: ${HIGH}"
+          echo ""
+          echo "Top affected packages:"
+          python3 -c "
+          import json
+          from collections import Counter
+          with open('trivy-report.json') as f:
+            data = json.load(f)
+          vulns = [v for r in data.get('Results', []) for v in r.get('Vulnerabilities', []) if v.get('Severity') in ('CRITICAL', 'HIGH')]
+          c = Counter(v.get('PkgName', 'unknown') for v in vulns)
+          for pkg, count in c.most_common(10):
+            print(f'  {count} - {pkg}')
+          " 2>/dev/null || echo "  (nie udało się wygenerować podsumowania)"
+
+      - name: Upload raportu Trivy jako artefakt
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: trivy-report
+          path: trivy-report.json
+          retention-days: 30
 
       - name: Generowanie SBOM (Syft CycloneDX)
         run: |
