@@ -127,6 +127,11 @@ RUN playwright install --with-deps chromium
 #ENTRYPOINT ["uv", "run", "pytest"]
 CMD ["uv", "run", "pytest", "-m", "not integration"]
 
+RUN useradd -m -d /app -s /bin/bash --uid 10001 django_user \
+    && chown -R django_user:django_user /opt/venv /app
+
+USER django_user
+
 
 # ==============================================================================
 # 5. ETAP PRODUKCYJNY / PRE-PROD (RUNTIME)
@@ -190,7 +195,7 @@ RUN chmod +x /app/scripts/*.sh
 # Stały, jawny UID (zgodnie z kontraktem bezpieczeństwa)
 RUN useradd -m -d /app -s /bin/bash --uid 10001 django_user \
     && mkdir -p /app/staticfiles \
-    && chown -R django_user:django_user /app
+    && chown -R django_user:django_user /app /opt/venv
 
 # ==============================================================================
 # UWAGA — BLOKUJĄCY WYMÓG PRZED PIERWSZYM URUCHOMIENIEM TEGO OBRAZU:
