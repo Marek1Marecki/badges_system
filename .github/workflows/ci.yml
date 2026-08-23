@@ -162,8 +162,8 @@ jobs:
           echo "POSTGRES_HOST=db" >> .env.test
           echo "LOG_LEVEL=DEBUG" >> .env.test
 
-      - name: Budowanie obrazu aplikacji (Build Once)
-        run: docker build --target testing -t badges-system:${{ github.sha }} .
+      - name: Budowanie obrazu produkcyjnego (Build Once)
+        run: docker build --target production -t badges-system:${{ github.sha }} .
 
       - name: Skanowanie obrazu produkcyjnego w poszukiwaniu luk CVE (Trivy)
         run: |
