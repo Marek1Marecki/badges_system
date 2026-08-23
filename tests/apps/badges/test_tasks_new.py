@@ -68,6 +68,7 @@ class TestFetchOsmDataTask:
     def test_osm_adapter_error_max_retries_marks_object_error(self):
         """Po max retries ustawia ERROR na obiekcie i zwraca komunikat."""
         from django.core.exceptions import ObjectDoesNotExist
+
         from infrastructure.adapters.osm_adapter import OsmAdapterError
 
         mock_container = MagicMock()
@@ -90,6 +91,7 @@ class TestFetchOsmDataTask:
     def test_osm_adapter_error_max_retries_object_not_found(self):
         """Po max retries gdy obiekt nie istnieje, zwraca komunikat bez zapisu."""
         from django.core.exceptions import ObjectDoesNotExist
+
         from infrastructure.adapters.osm_adapter import OsmAdapterError
 
         mock_container = MagicMock()

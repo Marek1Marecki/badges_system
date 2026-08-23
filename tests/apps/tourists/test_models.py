@@ -2,10 +2,7 @@
 
 from unittest.mock import MagicMock
 
-import pytest
-
-from apps.tourists.models import AscentLog, TouristProfile, UserBadgeProgress
-from apps.tourists.models import profile_directory_path
+from apps.tourists.models import AscentLog, TouristProfile, UserBadgeProgress, profile_directory_path
 
 
 class TestProfileDirectoryPath:

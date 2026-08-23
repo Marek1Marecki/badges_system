@@ -1,0 +1,249 @@
+{
+  "SchemaVersion": 2,
+  "CreatedAt": "2026-08-23T16:50:42.737477931Z",
+  "ArtifactName": "badges-system:analysis",
+  "ArtifactType": "container_image",
+  "Metadata": {
+    "OS": {
+      "Family": "debian",
+      "Name": "12.15"
+    },
+    "ImageID": "sha256:689660769f5c36c2de6e94be38852da3ba12d7e9f1ae240145b87e67b91c7a7c",
+    "DiffIDs": [
+      "sha256:66462cc862fe2053b9863fefa3866e07bb5dfb06f6b3ce3177cc096e4021aabe",
+      "sha256:33353281fc8ff89c4da74195a274f9ef2c427f3c9331aa0020f38a84a8944797",
+      "sha256:3fdefb1f2a4288cd698c3eacf7d4b74636ac66c4ea954ab73f62d969ef634cba",
+      "sha256:74913a75903825e52de9105ee787f8360084a3af8dc3c7a7f471418af7c52719",
+      "sha256:1323b11e018146469586fdfd01f71ce380d3361d1391661098a0ed38633032ca",
+      "sha256:5007407fd4b1270dcfc43d826248551b63eacc145672820fbc853063545b04f0",
+      "sha256:f29ac0cf8677a4098f6aa0414cdd270549dc158c959ba6ac737197964c45f196",
+      "sha256:3c6ccf620e112f2c31174450cee729ed8f1e534cbb154c5216da7c1640c63815",
+      "sha256:a39f62a155e4d73b37f770ad88721f4d1a7388f5cc741f9966225787859252b8",
+      "sha256:fad8287590430a6564ef4fe659cd0652bf4d8a5c72994bca99c6c12aed81498f",
+      "sha256:8a1a85ff36c1a2f36da5f25124d22dcf9b77297fd2ae8120f5ccb8a1035cb5c5",
+      "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+      "sha256:fc686237d680e25eb8c46e84ce062312d00c5a3cc328b33ccb0340d29fdaf180"
+    ],
+    "RepoTags": [
+      "badges-system:analysis"
+    ],
+    "RepoDigests": [
+      "badges-system@sha256:689660769f5c36c2de6e94be38852da3ba12d7e9f1ae240145b87e67b91c7a7c"
+    ],
+    "ImageConfig": {
+      "architecture": "amd64",
+      "created": "2026-08-23T08:46:03.373547831Z",
+      "history": [
+        {
+          "created": "2026-08-03T00:00:00Z",
+          "created_by": "# debian.sh --arch 'amd64' out/ 'bookworm' '@1785715200'",
+          "comment": "debuerreotype 0.17"
+        },
+        {
+          "created": "2026-08-05T16:26:18Z",
+          "created_by": "ENV PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-08-05T16:26:18Z",
+          "created_by": "RUN /bin/sh -c set -eux; \tapt-get update; \tapt-get install -y --no-install-recommends \t\tca-certificates \t\tnetbase \t\ttzdata \t; \trm -rf /var/lib/apt/lists/* # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-08-05T16:26:18Z",
+          "created_by": "ENV PYTHON_VERSION=3.14.7",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-08-05T16:26:18Z",
+          "created_by": "ENV PYTHON_SHA256=3b48dac8fb59f62eaa67ac83c1eb12bda1b7a08406dd286e252c11a66be27f81",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-08-05T16:38:04Z",
+          "created_by": "RUN /bin/sh -c set -eux; \t\tsavedAptMark=\"$(apt-mark showmanual)\"; \tapt-get update; \tapt-get install -y --no-install-recommends \t\tdpkg-dev \t\tgcc \t\tgnupg \t\tlibbluetooth-dev \t\tlibbz2-dev \t\tlibc6-dev \t\tlibdb-dev \t\tlibffi-dev \t\tlibgdbm-dev \t\tliblzma-dev \t\tlibncursesw5-dev \t\tlibreadline-dev \t\tlibsqlite3-dev \t\tlibssl-dev \t\tlibzstd-dev \t\tmake \t\ttk-dev \t\tuuid-dev \t\twget \t\txz-utils \t\tzlib1g-dev \t; \t\twget -O python.tar.xz \"https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz\"; \techo \"$PYTHON_SHA256 *python.tar.xz\" | sha256sum -c -; \tmkdir -p /usr/src/python; \ttar --extract --directory /usr/src/python --strip-components=1 --file python.tar.xz; \trm python.tar.xz; \t\tcd /usr/src/python; \tgnuArch=\"$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)\"; \t./configure \t\t--build=\"$gnuArch\" \t\t--enable-loadable-sqlite-extensions \t\t--enable-optimizations \t\t--enable-option-checking=fatal \t\t--enable-shared \t\t$(test \"${gnuArch%%-*}\" != 'riscv64' \u0026\u0026 echo '--with-lto') \t\t--with-ensurepip \t; \tnproc=\"$(nproc)\"; \tEXTRA_CFLAGS=\"$(dpkg-buildflags --get CFLAGS)\"; \tLDFLAGS=\"$(dpkg-buildflags --get LDFLAGS)\"; \tLDFLAGS=\"${LDFLAGS:-} -Wl,--strip-all\"; \tarch=\"$(dpkg --print-architecture)\"; arch=\"${arch##*-}\"; \tcase \"$arch\" in \t\tamd64|arm64) \t\t\tEXTRA_CFLAGS=\"${EXTRA_CFLAGS:-} -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer\"; \t\t\t;; \t\ti386) \t\t\t;; \t\t*) \t\t\tEXTRA_CFLAGS=\"${EXTRA_CFLAGS:-} -fno-omit-frame-pointer\"; \t\t\t;; \tesac; \tmake -j \"$nproc\" \t\t\"EXTRA_CFLAGS=${EXTRA_CFLAGS:-}\" \t\t\"LDFLAGS=${LDFLAGS:-}\" \t; \trm python; \tmake -j \"$nproc\" \t\t\"EXTRA_CFLAGS=${EXTRA_CFLAGS:-}\" \t\t\"LDFLAGS=${LDFLAGS:-} -Wl,-rpath='\\$\\$ORIGIN/../lib'\" \t\tpython \t; \tmake install; \t\tcd /; \trm -rf /usr/src/python; \t\tfind /usr/local -depth \t\t\\( \t\t\t\\( -type d -a \\( -name test -o -name tests -o -name idle_test \\) \\) \t\t\t-o \\( -type f -a \\( -name '*.pyc' -o -name '*.pyo' -o -name 'libpython*.a' \\) \\) \t\t\\) -exec rm -rf '{}' + \t; \t\tldconfig; \t\tapt-mark auto '.*' \u003e /dev/null; \tapt-mark manual $savedAptMark; \tfind /usr/local -type f -executable -not \\( -name '*tkinter*' \\) -exec ldd '{}' ';' \t\t| awk '/=\u003e/ { so = $(NF-1); if (index(so, \"/usr/local/\") == 1) { next }; gsub(\"^/(usr/)?\", \"\", so); printf \"*%s\\n\", so }' \t\t| sort -u \t\t| xargs -rt dpkg-query --search \t\t| awk 'sub(\":$\", \"\", $1) { print $1 }' \t\t| sort -u \t\t| xargs -r apt-mark manual \t; \tapt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \trm -rf /var/lib/apt/lists/*; \t\texport PYTHONDONTWRITEBYTECODE=1; \tpython3 --version; \tpip3 --version # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-08-05T16:38:04Z",
+          "created_by": "RUN /bin/sh -c set -eux; \tfor src in idle3 pip3 pydoc3 python3 python3-config; do \t\tdst=\"$(echo \"$src\" | tr -d 3)\"; \t\t[ -s \"/usr/local/bin/$src\" ]; \t\t[ ! -e \"/usr/local/bin/$dst\" ]; \t\tln -svT \"$src\" \"/usr/local/bin/$dst\"; \tdone # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-08-05T16:38:04Z",
+          "created_by": "CMD [\"python3\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-08-23T07:35:25Z",
+          "created_by": "ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 LANG=C.UTF-8 LC_ALL=C.UTF-8 UV_COMPILE_BYTECODE=1 UV_PROJECT_ENVIRONMENT=/opt/venv",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-08-23T07:35:25Z",
+          "created_by": "WORKDIR /app",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-08-23T07:35:25Z",
+          "created_by": "ENV PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-08-23T07:35:53Z",
+          "created_by": "RUN /bin/sh -c apt-get update \u0026\u0026 apt-get install -y --no-install-recommends         libgdal32         libproj25     \u0026\u0026 rm -rf /var/lib/apt/lists/* # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-08-23T07:35:53Z",
+          "created_by": "COPY /uv /usr/local/bin/uv # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-08-23T07:35:56Z",
+          "created_by": "RUN /bin/sh -c pip uninstall -y pip setuptools wheel || true # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-08-23T07:36:36Z",
+          "created_by": "COPY /opt/venv /opt/venv # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-08-23T08:45:46Z",
+          "created_by": "COPY /app /app # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-08-23T08:45:47Z",
+          "created_by": "RUN /bin/sh -c rm -rf /app/tests /app/docs /app/docs_sphinx     \u0026\u0026 rm -f /app/compose*.yml /app/Dockerfile /app/Caddyfile              /app/.env.example /app/README-infra.md /app/.dockerignore              /app/.pre-commit-config.yaml /app/scripts/dev-*.sh # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-08-23T08:45:47Z",
+          "created_by": "RUN /bin/sh -c chmod +x /app/scripts/*.sh # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-08-23T08:46:03Z",
+          "created_by": "RUN /bin/sh -c useradd -m -d /app -s /bin/bash --uid 10001 django_user     \u0026\u0026 mkdir -p /app/staticfiles     \u0026\u0026 chown -R django_user:django_user /app # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-08-23T08:46:03Z",
+          "created_by": "HEALTHCHECK {Test:[CMD-SHELL python -c \"import sys, http.client; conn = http.client.HTTPConnection('localhost:8000'); conn.request('GET', '/health/'); res = conn.getresponse(); sys.exit(0) if res.status == 200 else sys.exit(1)\"] Interval:30s Timeout:5s StartPeriod:10s StartInterval:0s Retries:3}",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-08-23T08:46:03Z",
+          "created_by": "USER 10001",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-08-23T08:46:03Z",
+          "created_by": "EXPOSE [8000/tcp]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-08-23T08:46:03Z",
+          "created_by": "ENTRYPOINT [\"/app/scripts/entrypoint.sh\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-08-23T08:46:03Z",
+          "created_by": "CMD [\"gunicorn\" \"config.wsgi:application\" \"--bind\" \"0.0.0.0:8000\" \"--workers\" \"3\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        }
+      ],
+      "os": "linux",
+      "rootfs": {
+        "type": "layers",
+        "diff_ids": [
+          "sha256:66462cc862fe2053b9863fefa3866e07bb5dfb06f6b3ce3177cc096e4021aabe",
+          "sha256:33353281fc8ff89c4da74195a274f9ef2c427f3c9331aa0020f38a84a8944797",
+          "sha256:3fdefb1f2a4288cd698c3eacf7d4b74636ac66c4ea954ab73f62d969ef634cba",
+          "sha256:74913a75903825e52de9105ee787f8360084a3af8dc3c7a7f471418af7c52719",
+          "sha256:1323b11e018146469586fdfd01f71ce380d3361d1391661098a0ed38633032ca",
+          "sha256:5007407fd4b1270dcfc43d826248551b63eacc145672820fbc853063545b04f0",
+          "sha256:f29ac0cf8677a4098f6aa0414cdd270549dc158c959ba6ac737197964c45f196",
+          "sha256:3c6ccf620e112f2c31174450cee729ed8f1e534cbb154c5216da7c1640c63815",
+          "sha256:a39f62a155e4d73b37f770ad88721f4d1a7388f5cc741f9966225787859252b8",
+          "sha256:fad8287590430a6564ef4fe659cd0652bf4d8a5c72994bca99c6c12aed81498f",
+          "sha256:8a1a85ff36c1a2f36da5f25124d22dcf9b77297fd2ae8120f5ccb8a1035cb5c5",
+          "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+          "sha256:fc686237d680e25eb8c46e84ce062312d00c5a3cc328b33ccb0340d29fdaf180"
+        ]
+      },
+      "config": {
+        "Cmd": [
+          "gunicorn",
+          "config.wsgi:application",
+          "--bind",
+          "0.0.0.0:8000",
+          "--workers",
+          "3"
+        ],
+        "Healthcheck": {
+          "Test": [
+            "CMD-SHELL",
+            "python -c \"import sys, http.client; conn = http.client.HTTPConnection('localhost:8000'); conn.request('GET', '/health/'); res = conn.getresponse(); sys.exit(0) if res.status == 200 else sys.exit(1)\""
+          ],
+          "Interval": 30000000000,
+          "Timeout": 5000000000,
+          "StartPeriod": 10000000000,
+          "Retries": 3
+        },
+        "Entrypoint": [
+          "/app/scripts/entrypoint.sh"
+        ],
+        "Env": [
+          "PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "PYTHON_VERSION=3.14.7",
+          "PYTHON_SHA256=3b48dac8fb59f62eaa67ac83c1eb12bda1b7a08406dd286e252c11a66be27f81",
+          "PYTHONUNBUFFERED=1",
+          "PYTHONDONTWRITEBYTECODE=1",
+          "LANG=C.UTF-8",
+          "LC_ALL=C.UTF-8",
+          "UV_COMPILE_BYTECODE=1",
+          "UV_PROJECT_ENVIRONMENT=/opt/venv"
+        ],
+        "User": "10001",
+        "WorkingDir": "/app",
+        "ArgsEscaped": true
+      }
+    }
+  },
+  "Results": [
+    {
+      "Target": "badges-system:analysis (debian 12.15)",
+      "Class": "os-pkgs",
+      "Type": "debian"
+    },
+    {
+      "Target": "Node.js",
+      "Class": "lang-pkgs",
+      "Type": "node-pkg"
+    },
+    {
+      "Target": "Python",
+      "Class": "lang-pkgs",
+      "Type": "python-pkg"
+    },
+    {
+      "Target": "usr/local/bin/uv",
+      "Class": "lang-pkgs",
+      "Type": "rustbinary"
+    }
+  ]
+}

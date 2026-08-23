@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from apps.badges.models import (
     RULES_SCHEMA,
     BadgeModel,

@@ -129,9 +129,7 @@ class TestHandleApplicationExceptionDoesNotLeakSecrets:
         assert "Profil o podanym identyfikatorze nie istnieje." not in data["detail"]
         assert "SECRET" not in data["detail"]
 
-        mock_logger.info.assert_called_once_with(
-            "resource_not_found", extra={"request_id": "security-test-123"}
-        )
+        mock_logger.info.assert_called_once_with("resource_not_found", extra={"request_id": "security-test-123"})
 
     def test_conflict_error_does_not_leak_internal_details(self, request_with_id):
         """ConflictError nie powinien ujawniać szczegółów technicznych."""
@@ -146,9 +144,7 @@ class TestHandleApplicationExceptionDoesNotLeakSecrets:
         assert "Duplicate entry for key 'ascent'" not in data["detail"]
         assert "Traceback" not in data["detail"]
 
-        mock_logger.warning.assert_called_once_with(
-            "conflict", extra={"request_id": "security-test-123"}
-        )
+        mock_logger.warning.assert_called_once_with("conflict", extra={"request_id": "security-test-123"})
 
     def test_use_case_error_does_not_leak_stack_trace(self, request_with_id):
         """UseCaseError nie powinien przekazywać tracebacku do klienta."""
@@ -164,9 +160,7 @@ class TestHandleApplicationExceptionDoesNotLeakSecrets:
         assert "Traceback" not in data["detail"]
         assert "File " not in data["detail"]
 
-        mock_logger.info.assert_called_once_with(
-            "validation_failed", extra={"request_id": "security-test-123"}
-        )
+        mock_logger.info.assert_called_once_with("validation_failed", extra={"request_id": "security-test-123"})
 
     def test_logger_exc_info_is_called_only_for_unexpected(self, request_with_id):
         """exc_info=True powinno być używane tylko dla nieoczekiwanych wyjątków."""
@@ -434,4 +428,3 @@ class TestProfileSettingsViewValidation:
             with patch("apps.api.views.UpdateProfileRequestDTO", side_effect=RuntimeError("DTO boom")):
                 with pytest.raises(RuntimeError, match="DTO boom"):
                     ProfileSettingsView.as_view()(request, profile_id=1)
-

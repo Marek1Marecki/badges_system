@@ -2,10 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from apps.tourists.signals import create_tourist_profile
-from apps.tourists.models import TouristProfile
 
 
 class TestCreateTouristProfileSignal:

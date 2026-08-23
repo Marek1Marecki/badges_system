@@ -158,10 +158,11 @@ Najpierw załóżmy w bazie konto "szarego" turysty (jeśli go jeszcze nie masz)
 3. Wklej ten krótki kod Pythona, żeby na sztywno utworzyć użytkownika o loginie `turysta`:
    ```python
    from django.contrib.auth import get_user_model
+
    User = get_user_model()
    # Zmieniając 'turysta' na cokolwiek innego, możesz tworzyć kolejne konta
-   user, created = User.objects.get_or_create(username='turysta', defaults={'email': 'turysta@test.com'})
-   user.set_password('haslo123')
+   user, created = User.objects.get_or_create(username="turysta", defaults={"email": "turysta@test.com"})
+   user.set_password("haslo123")
    user.save()
    print("Gotowe!")
    exit()

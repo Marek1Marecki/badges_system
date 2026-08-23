@@ -68,7 +68,7 @@ def mock_user():
 @pytest.fixture
 def use_cases():
     """Zwraca kontener mocków Use Case'ów.
-    
+
     Views używają request.app_container (ustawianego przez ContainerMiddleware),
     a nie bezpośredniego importu get_container. Fixture factory automatycznie
     wstrzykuje ten kontener do każdego requestu.

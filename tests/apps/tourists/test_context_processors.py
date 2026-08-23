@@ -2,10 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from apps.tourists.context_processors import tourist_profiles
-from infrastructure.config.map_layers import AVAILABLE_MAP_LAYERS
 
 
 def test_returns_empty_dict_for_unauthenticated_user():

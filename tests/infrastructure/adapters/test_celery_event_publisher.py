@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from domain.events import UserProgressStateChanged
 from infrastructure.adapters.celery_event_publisher import CeleryEventPublisher
 

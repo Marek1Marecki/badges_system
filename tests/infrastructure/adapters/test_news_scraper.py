@@ -238,7 +238,7 @@ def test_fetch_news_with_href_as_list(monkeypatch):
         """
         return MockResponse(html)
 
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import MagicMock, patch
 
     scraper = BeautifulSoupNewsScraper()
 
@@ -259,7 +259,9 @@ def test_fetch_news_with_href_as_list(monkeypatch):
             mock_icon = MagicMock()
             mock_icon.get_text.return_value = "add_circle"
             mock_item.find.side_effect = lambda *args, **kwargs: (
-                mock_icon if args[0] == "span" else MagicMock(get_text=MagicMock(return_value="Badge 1"), get=MagicMock(return_value=["/badge1"]))
+                mock_icon
+                if args[0] == "span"
+                else MagicMock(get_text=MagicMock(return_value="Badge 1"), get=MagicMock(return_value=["/badge1"]))
             )
 
             mock_item.get_text.return_value = "2023 - add_circle - Badge 1 Nowa odznaka"
