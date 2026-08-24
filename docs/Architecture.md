@@ -165,6 +165,18 @@ Aplikacja operuje na dwóch fundamentalnie różnych typach danych, które podle
 
 ---
 
+## 8. Architecture Governance (Nadzór i Obserwowalność)
+
+System implementuje trójfilarowy model zarządzania architekturą: **Intended** (Zamierzona), **Actual** (Rzeczywista) oraz **Debt** (Dług Architektoniczny). Oparty jest on na zautomatyzowanym procesie Continuous Integration i generowaniu wizualnych artefaktów.
+
+| Filar Governance | Cel | Narzędzie | Generowane Artefakty | Opis Artefaktu |
+|:---|:---|:---|:---|:---|
+| **1. Intended Architecture** | Definiowanie reguł. | `audit_contracts.py` | `dependencies.svg` | **Model kontraktowy:** Pokazuje, jak architektura powinna wyglądać w teorii, ignorując fizyczne powiązania w kodzie. Służy jako referencja dla nowych projektów. |
+| **2. Actual Architecture** | Odkrywanie rzeczywistego stanu. | `pydeps` & `pyreverse` | `dependencies-pydeps.svg`, `classes-*.png` | **Model faktyczny:** Zrzuca rzeczywiste, żywe drzewo importów i klas. Generowany dynamicznie przy każdym buildzie w CI/CD, udostępniany jako 30-dniowy artefakt. Pozwala na porównywanie ewolucji kodu na przestrzeni lat. |
+| **3. Conformance & Debt** | Egzekwowanie reguł. | `Import Linter` | *Brak (Zwraca Status 0/1)* | **Strażnik Granic:** Narzuca zbieżność między modelem *Intended* a *Actual*. Blokuje wdrożenie. Świadome, zaakceptowane wyłomy w architekturze są wpisywane do sekcji `ignore_imports` jako **Rejestr Długu Architektonicznego (Architecture Debt Register)** z określonym celem refaktoryzacyjnym (Target Removal). |
+
+---
+
 ## Historia zmian
 
 | Wersja | Data | Autor | Opis zmiany |

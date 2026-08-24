@@ -87,6 +87,9 @@ jobs:
       - name: Audyt SRE (Ochrona przed wyciekami i zakazanym API)
         run: uv run python scripts/audit_contracts.py
 
+      - name: Analiza Złożoności (Radon + Xenon)
+        run: make complexity-check
+
       - name: Generowanie diagramów architektury (pydeps + pyreverse)
         run: make graph-modules graph-classes
 

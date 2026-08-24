@@ -27,7 +27,12 @@ echo "[1/2] Database Release (migracje)..."
 docker compose run --rm web ./scripts/release-database.sh
 
 echo "[2/2] Start pozostałych usług..."
-docker compose up -d
+# --force-recreate wymusza odtworzenie kontenerów aplikacji. Jest to celowe:
+# po restarcie Docker Desktop istniejące kontenery mogą mieć przestarzałą
+# konfigurację (np. brak restart: unless-stopped). W DEV bind-mount ./:/app
+# zachowuje kod, a wolumeny db/redis pozostają nietknięte — zmienia się tylko
+# warstwa kontenera.
+docker compose up -d --force-recreate
 
 echo ""
 echo "=== DEV gotowy. Sprawdź stan: ./scripts/dev-status.sh (lub: make dev-status) ==="

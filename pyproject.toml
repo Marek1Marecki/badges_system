@@ -54,6 +54,8 @@ dev = [
     "types-python-dateutil>=2.9.0.20260716",
     "pyvis>=0.3.2",
     "semgrep>=1.172.0",
+    "radon>=6.0.1",
+    "xenon>=0.9.3",
 ]
 
 [tool.pytest.ini_options]

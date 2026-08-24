@@ -31,6 +31,7 @@ services:
       - "6379:6379"
 
   web:
+    restart: unless-stopped
     build:
       context: .
       target: development
@@ -59,6 +60,7 @@ services:
         condition: service_healthy
 
   celery_worker:
+    restart: unless-stopped
     build:
       context: .
       target: development
@@ -79,6 +81,7 @@ services:
         condition: service_healthy
 
   celery_beat:
+    restart: unless-stopped
     build:
       context: .
       target: development
@@ -98,6 +101,7 @@ services:
 
   # Uruchamiany tylko na żądanie: docker compose --profile monitoring up flower
   flower:
+    restart: unless-stopped
     build:
       context: .
       target: development

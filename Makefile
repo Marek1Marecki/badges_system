@@ -9,7 +9,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit lock
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check lock
 
 help:
 	@echo "CORE targets:"
@@ -24,9 +24,11 @@ help:
 	@echo "  graph-modules - graf zaleznosci modulow (pydeps -> SVG)"
 	@echo "  graph-classes - diagramy klas UML (pyreverse -> PNG)"
 	@echo "  graph-all    - wszystkie diagramy architektury"
-	@echo "  check        - lokalne CI: format --check + lint + type-check + test + audit"
+	@echo "  check        - lokalne CI: format --check + lint + type-check + test + audit + complexity-check + security-audit"
 	@echo "  clean        - usuwa cache, artefakty"
-	@echo "  lock         - regeneruje uv.lock z 7-dniowym cooldownem zależności"
+	@echo "  security-audit - semgrep + osv-scanner"
+	@echo "  complexity-check - radon + xenon (complexity + maintainability metrics)"
+	@echo "  lock           - regeneruje uv.lock z 7-dniowym cooldownem zależności"
 
 setup:
 	uv sync --group dev
@@ -99,6 +101,11 @@ graph-classes:
 
 graph-all: graph graph-modules graph-classes
 
+complexity-check:
+	uv run radon cc $(PY_DIRS) -a -n B
+	uv run radon mi $(PY_DIRS) -n C
+	uv run xenon . --config xenon.ini
+
 security-audit:
 	@echo "=== ROZPOCZYNANIE SKANOWANIA SEMGREP ==="
 	uv run semgrep scan \
@@ -119,6 +126,7 @@ check:
 	uv run lint-imports
 	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) -m "not integration and not e2e"
 	uv run python scripts/audit_contracts.py
+	make complexity-check
 	make security-audit
 
 clean:

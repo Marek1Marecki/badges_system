@@ -18,6 +18,7 @@
 
 services:
   db:
+    restart: unless-stopped
     # PostgreSQL 18 (przez PostGIS) — WAŻNE: patrz ADR-025 (PostgreSQL Volume
     # Layout). Wersja i ścieżka montowania wolumenu NIE są tu niezależnymi
     # decyzjami — od PG 18 oficjalny obraz zmienił domyślny PGDATA na
@@ -28,7 +29,6 @@ services:
     # bazę zamiast rozpoznać istniejące dane (to dokładnie tak stracono dane
     # w tym projekcie — patrz ADR-025, Kontekst).
     image: postgis/postgis:18-3.6-alpine
-    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?Ustaw POSTGRES_USER w pliku .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Ustaw POSTGRES_PASSWORD w pliku .env}

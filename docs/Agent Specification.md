@@ -259,6 +259,19 @@ ARCHITEKTURA
 
 ---
 
+### AGENT-ARCHITECTURE-OBSERVABILITY — Ciągła Analiza i Wizualizacja
+
+Projekt implementuje zautomatyzowany rygor Obserwowalności Architektury (Architecture Observability), w którym dokumentacja jest nierozerwalnie związana z kodem (Docs as Code).
+1. **Separacja Obowiązków Analitycznych:**
+   - **Egzekwowanie (Enforcement):** Narzędzie `Import Linter` pełni rolę bramki Gatingu (Fitness Function). Przerwanie kontraktu (np. `apps` importujące `infrastructure`) blokuje potok CI.
+   - **Odkrywanie (Discovery):** Narzędzia `pydeps` i `pyreverse` pełnią rolę informacyjną. Generują one grafy zależności (modułów i struktur obiektowych).
+2. **Generowanie Artefaktów (CI/CD):**
+   Wszelkie skrypty generujące diagramy architektoniczne (wskazane w `Makefile` jako cele `graph-modules` i `graph-classes`) są podpięte pod zautomatyzowany potok GitHub Actions. Wygenerowane pliki wideo/graficzne (`.svg` / `.png`) eksportowane są jako stałe, 30-dniowe artefakty wdrożeniowe.
+3. **Zasada Nienaruszalności Narzędzi Dev:**
+   Kategorycznie zakazuje się usuwania pakietów `pydeps`, `pylint` (dla pyreverse) oraz `graphviz` z pliku `pyproject.toml` (grupa `dev`). Są one fundamentem auto-dokumentacji systemu.
+
+---
+
 ## Instrukcja obowiązkowa przed każdym zadaniem z kodowaniem
 
 Przed wygenerowaniem pierwszego bloku kodu, agent musi odpowiedzieć na 5 pytań w formie listy punktowanej:
