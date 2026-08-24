@@ -112,7 +112,9 @@ FROM builder AS testing
 
 ENV PATH="/opt/venv/bin:$PATH"
 # W uv 0.12.3 --group test --no-dev instaluje runtime dependencies + test, ale bez dev.
-RUN uv sync --frozen --group test --no-dev
+# Zwiększony timeout i retries na wypadek niestabilnego połączenia z PyPI w CI.
+ENV UV_INDEX_TIMEOUT=60 UV_CONNECT_TIMEOUT=60
+RUN uv sync --frozen --group test --no-dev --connect-timeout 60 --retries 5
 
 # Hardening: usunięcie narzędzi paczkujących (vendored CVE w obrazie bazowym).
 # `|| true` jest tu ŚWIADOMYM wyjątkiem od zasady "nie maskuj błędów" —
