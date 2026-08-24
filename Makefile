@@ -9,7 +9,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check lock
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock
 
 help:
 	@echo "CORE targets:"
@@ -28,6 +28,7 @@ help:
 	@echo "  clean        - usuwa cache, artefakty"
 	@echo "  security-audit - semgrep + osv-scanner"
 	@echo "  complexity-check - radon + xenon (complexity + maintainability metrics)"
+	@echo "  complexity-trend - wily (complexity trends over git history)"
 	@echo "  lock           - regeneruje uv.lock z 7-dniowym cooldownem zależności"
 
 setup:
@@ -101,6 +102,13 @@ graph-classes:
 
 graph-all: graph graph-modules graph-classes
 
+complexity-trend:
+	uv run wily build $(PY_DIRS) -n 20 -a filesystem
+	@for dir in $(PY_DIRS); do \
+		echo "=== $$dir ==="; \
+		uv run wily report $$dir || true; \
+	done
+
 complexity-check:
 	uv run radon cc $(PY_DIRS) -a -n B
 	uv run radon mi $(PY_DIRS) -n C
@@ -132,7 +140,7 @@ check:
 clean:
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "__pycache__" -not -path "./.venv/*" -exec rm -rf {} +
-	rm -rf .coverage htmlcov/ .pytest_cache/ .mypy_cache/ coverage.xml .ruff_cache/
+	rm -rf .coverage htmlcov/ .pytest_cache/ .mypy_cache/ coverage.xml .ruff_cache/ .wily/
 
 lock:
 	uv lock --exclude-newer "7 days"
