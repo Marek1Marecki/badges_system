@@ -20,7 +20,8 @@ services:
       - GOOGLE_OAUTH_CLIENT_ID=mock-client-id
       - GOOGLE_OAUTH_CLIENT_SECRET=mock-client-secret
       - MAPY_CZ_API_KEY=mock-api-key
-      - PLAYWRIGHT_LAUNCH_OPTIONS={"headless": true, "args": ["--no-sandbox", "--disable-setuid-sandbox"]}
+      - PLAYWRIGHT_HEADLESS=true
+      - PLAYWRIGHT_CHROMIUM_SANDBOX=false
     command: python manage.py runserver 0.0.0.0:8009
     ports:
       - "8009:8009"
