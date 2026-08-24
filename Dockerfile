@@ -124,15 +124,18 @@ RUN uv sync --frozen --group test --no-dev
 RUN pip uninstall -y pip setuptools wheel || true
 
 # Instalacja przeglądarek Playwright i zależności systemowych
+# --with-deps instaluje pakiety systemowe jako root; przeglądarkę instalujemy
+# ponownie jako django_user, żeby trafiła do cache użytkownika, a nie roota.
 RUN playwright install --with-deps chromium
-
-#ENTRYPOINT ["uv", "run", "pytest"]
-CMD ["uv", "run", "pytest", "-m", "not integration"]
 
 RUN useradd -m -d /app -s /bin/bash --uid 10001 django_user \
     && chown -R django_user:django_user /opt/venv /app
 
 USER django_user
+RUN playwright install chromium
+
+#ENTRYPOINT ["uv", "run", "pytest"]
+CMD ["uv", "run", "pytest", "-m", "not integration"]
 
 
 # ==============================================================================
