@@ -57,7 +57,7 @@ jobs:
             graphviz
 
       - name: Konfiguracja narzędzia UV
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
         with:
           version: "0.5.11"
           enable-cache: true
@@ -141,7 +141,7 @@ jobs:
             libproj-dev
 
       - name: Konfiguracja narzędzia UV (dla celów zapytań CI)
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           version: "0.12.3"
           enable-cache: true
@@ -349,7 +349,7 @@ jobs:
           echo "✅ Dump istnieje: $(ls -lh /tmp/postgis-dump/postgis_dump.custom)"
 
       - name: Konfiguracja narzędzia UV
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
         with:
           version: "0.5.11"
           enable-cache: true
