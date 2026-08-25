@@ -17,10 +17,6 @@ class UseCaseError(ApplicationException):
     Używany dla: daty z przyszłości (T-03), brak regulaminu,
     brak subskrypcji przy weryfikacji.
     Mapuje na: 422 Unprocessable Entity
-
-    Args:
-
-    Returns:
     """
 
 
@@ -29,10 +25,6 @@ class ResourceNotFoundError(ApplicationException):
 
     Używany dla: turysta nie subskrybuje odznaki, odznaka nie istnieje w bazie.
     Mapuje na: 404 Not Found
-
-    Args:
-
-    Returns:
     """
 
 
@@ -42,10 +34,6 @@ class BitemporalTimeError(ApplicationException):
     Używany dla: data wejścia przed powstaniem obiektu lub po jego
     likwidacji (Invariant T-01).
     Mapuje na: 422 Unprocessable Entity
-
-    Args:
-
-    Returns:
     """
 
 
@@ -55,8 +43,4 @@ class ConflictError(ApplicationException):
     Używany dla: duplikat logu wejścia (D-04),
     błędne przejście stanu logistycznego.
     Mapuje na: 409 Conflict
-
-    Args:
-
-    Returns:
     """

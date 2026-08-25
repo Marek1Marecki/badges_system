@@ -46,15 +46,12 @@ class StartBadgeProgressUseCase:
         """Rozpoczyna śledzenie postępu odznaki w 100% transakcyjnie.
 
         Args:
-          profile_id: int:
-          badge_code: str:
-          cycle_number: int:  (Default value = 1)
-          profile_id: int:
-          badge_code: str:
-          cycle_number: int:  (Default value = 1)
+          profile_id: ID profilu turysty.
+          badge_code: Kod odznaki.
+          cycle_number: Numer cyklu odznaki (domyślnie 1).
 
         Returns:
-
+          ID nowo utworzonego postępu.
         """
         # 1. Walidacja Limitów (US-C01c)
         profile_dto = self._profile_repo.get_profile(profile_id)

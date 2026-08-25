@@ -18,12 +18,7 @@ class DomainEvent:
 class UserProgressStateChanged(DomainEvent):
     """Zdarzenie emitowane, gdy stan postępów turysty ulegnie zmianie.
 
-    Wyzwalane m.in. po dodaniu logu wejścia, usunięciu logu, lub
-    zmianie subskrybowanych odznak.
-
-    Args:
-
-    Returns:
+    Wyzwalane m.in. po dodaniu logu wejścia, usunięciu logu, lub zmianie subskrybowanych odznak.
     """
 
     profile_id: int

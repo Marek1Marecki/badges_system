@@ -44,12 +44,11 @@ class BulkLogAscentsUseCase:
         Zapisuje tylko poprawne logi i zwraca raport w trybie Partial Success.
 
         Args:
-          profile_id: int:
-          ascents: list[AscentInputDTO]:
-          profile_id: int:
-          ascents: list[AscentInputDTO]:
+          profile_id: ID profilu turysty.
+          ascents: Lista wejść do zapisania.
 
         Returns:
+          Raport z liczbą zapisanych wejść i listą błędów.
         """
         today = self._clock.now().date()
         errors = []

@@ -23,10 +23,10 @@ class ExploreMapUseCase:
         """Zwraca gotowy do wyświetlenia słownik w formacie GeoJSON.
 
         Args:
-          request: MapExploreRequestDTO:
-          request: MapExploreRequestDTO:
+          request: Żądanie eksploracji mapy z parametrami widoku.
 
         Returns:
+          Dane w formacie GeoJSON FeatureCollection.
         """
         # 1. Pobranie fizycznych obiektów z okna mapy (Docinanie BBox)
         objects = self._map_repo.get_objects_in_bbox(

@@ -234,12 +234,12 @@ class BadgeSubscribeView(View):
         """Rozpoczyna zdobywanie nowej odznaki i zakotwicza regulamin (US-C05).
 
         Args:
-          request: Any:
-          badge_code: str:
-          request: Any:
-          badge_code: str:
+            request: Żądanie HTTP z zalogowanym użytkownikiem.
+            badge_code: Kod odznaki do subskrypcji.
 
         Returns:
+            201: {"progress_id": int, "status": "SUBSCRIBED"}
+            401/404/422: RFC 7807 Problem Details
         """
         auth_error = _require_auth(request)
         if auth_error:
@@ -261,15 +261,15 @@ class BadgeSubscribeView(View):
             return _handle_application_exception(request, exc)
 
     def delete(self, request, badge_code: str):
-        """
+        """Anuluje subskrypcję odznaki i usuwa postęp (US-C05).
 
         Args:
-          request:
-          badge_code: str:
-          badge_code: str:
+            request: Żądanie HTTP z zalogowanym użytkownikiem.
+            badge_code: Kod odznaki do wyrejestrowania.
 
         Returns:
-
+            200: {"status": "UNSUBSCRIBED"}
+            401/404: RFC 7807 Problem Details
         """
         auth_error = _require_auth(request)
         if auth_error:
@@ -304,15 +304,15 @@ class BadgeProgressView(View):
     """
 
     def get(self, request, badge_code: str):
-        """
+        """Oblicza i zwraca aktualny postęp turysty w zdobywaniu odznaki (On-Demand).
 
         Args:
-          request:
-          badge_code: str:
-          badge_code: str:
+            request: Żądanie HTTP z zalogowanym użytkownikiem.
+            badge_code: Kod odznaki do sprawdzenia.
 
         Returns:
-
+            200: Słownik z wynikiem ewaluacji domenowej.
+            401/404/422: RFC 7807 Problem Details.
         """
         auth_error = _require_auth(request)
         if auth_error:
@@ -350,13 +350,16 @@ class MapObjectsView(View):
     """
 
     def get(self, request):
-        """
+        """Zwraca GeoJSON z obiektami dla widocznego okna mapy (ADR-011).
+
+        Kolory punktów odzwierciedlają postęp turysty (ADR-010).
 
         Args:
-          request:
+            request: Żądanie HTTP z parametrami bbox, region_id, badge_code.
 
         Returns:
-
+            200: GeoJSON FeatureCollection z obiektami i kolorami.
+            401/422: RFC 7807 Problem Details.
         """
         auth_error = _require_auth(request)
         if auth_error:
@@ -423,15 +426,15 @@ class BadgeLogisticsView(View):
     """
 
     def patch(self, request, progress_id: int):
-        """
+        """Aktualizuje status logistyczny odznaki w Osobistym Trackerze Turysty.
 
         Args:
-          request:
-          progress_id: int:
-          progress_id: int:
+            request: Żądanie HTTP z JSON body zawierającym logistic_status i status_date.
+            progress_id: ID postępu do aktualizacji.
 
         Returns:
-
+            200: {"status": "UPDATED", "logistic_status": str}
+            401/404/422: RFC 7807 Problem Details.
         """
         auth_error = _require_auth(request)
         if auth_error:
@@ -486,18 +489,16 @@ class VectorTileView(View):
         """
 
         Args:
-          request:
-          layer: str:
-          z: int:
-          x: int:
-          y: int:
-          layer: str:
-          z: int:
-          x: int:
-          y: int:
+            request: Żądanie HTTP.
+            layer: Nazwa warstwy mapy.
+            z: Zoom.
+            x: Kolumna kafelka.
+            y: Rząd kafelka.
 
         Returns:
-
+            200: Skompresowany kafelek wektorowy (GZIP).
+            204: Brak danych dla tego obszaru.
+            401/404: RFC 7807 Problem Details.
         """
         try:
             use_case = request.app_container.get_mvt_tile
@@ -528,16 +529,15 @@ class NearbyObjectsView(View):
     """
 
     def get(self, request: HttpRequest, object_id: int) -> JsonResponse:
-        """
+        """Zwraca obiekty w promieniu 2 km od celu w formacie GeoJSON (US-C14).
 
         Args:
-          request: HttpRequest:
-          object_id: int:
-          request: HttpRequest:
-          object_id: int:
+            request: Żądanie HTTP z zalogowanym użytkownikiem.
+            object_id: ID centralnego obiektu turystycznego.
 
         Returns:
-
+            200: GeoJSON FeatureCollection z obiektami i kolorami.
+            401/404: RFC 7807 Problem Details.
         """
         center_obj = get_object_or_404(TouristObject, id=object_id)
 
@@ -597,14 +597,14 @@ class GpxAnalyzeView(View):
     """
 
     def post(self, request: HttpRequest) -> JsonResponse:
-        """
+        """Analizuje w locie przesłany plik GPX (w RAM) i zwraca propozycje obiektów.
 
         Args:
-          request: HttpRequest:
-          request: HttpRequest:
+            request: Żądanie HTTP z plikiem GPX w polu 'file'.
 
         Returns:
-
+            200: Wynik analizy GPX.
+            401/422: RFC 7807 Problem Details.
         """
         auth_error = _require_auth(request)
         if auth_error:
@@ -648,10 +648,11 @@ class BulkAscentLogView(View):
         """Masowo rejestruje logi wejść z pliku GPX (US-C17).
 
         Args:
-          request: Any:
-          request: Any:
+            request: Żądanie HTTP z listą wejść w body JSON.
 
         Returns:
+            200: Wynik częściowy zapisu.
+            401/422: RFC 7807 Problem Details.
         """
         auth_error = _require_auth(request)
         if auth_error:
@@ -695,15 +696,16 @@ class ProfileSettingsView(View):
     """
 
     def patch(self, request, profile_id: int):
-        """
+        """Aktualizuje ustawienia profilu (np.
 
-        Args:
-          request:
-          profile_id: int:
-          profile_id: int:
+        Wiek, Mapa). Posiada ochronę IDOR.
+                Args:
+                    request: Żądanie HTTP z JSON body (nickname, birth_date, preferred_base_map).
+                    profile_id: ID profilu do aktualizacji.
 
-        Returns:
-
+                Returns:
+                    200: {"status": "UPDATED"}
+                    401/404/422: RFC 7807 Problem Details.
         """
         auth_error = _require_auth(request)
         if auth_error:
@@ -752,15 +754,15 @@ class ProfileUpgradeView(View):
     """
 
     def post(self, request, profile_id: int):
-        """
+        """Sztuczna bramka płatności (Wymusza pakiet PRO dla testów UX).
 
         Args:
-          request:
-          profile_id: int:
-          profile_id: int:
+            request: Żądanie HTTP z zalogowanym użytkownikiem.
+            profile_id: ID profilu do podniesienia.
 
         Returns:
-
+            200: {"status": "UPGRADED"}
+            401/404: RFC 7807 Problem Details.
         """
         auth_error = _require_auth(request)
         if auth_error:

@@ -37,14 +37,11 @@ class BadgeVersionDomain:
         Zwraca ogólny status oraz szczegółową listę postępów dla każdego stopnia.
 
         Args:
-          ascents: list[Ascent]:
-          context: VerificationContext:
-          ascents: list[Ascent]:
-          context: VerificationContext:
-          ascents: list[Ascent]:
-          context: VerificationContext:
+          ascents: Lista wejść turysty na szczyty.
+          context: Kontekst weryfikacyjny.
 
         Returns:
+          Wynik weryfikacji ze statusem i szczegółami stopni.
         """
         # 1. Sito przestrzenne (Odrzucenie szczytów spoza Menu)
         if self.pool_peak_ids:

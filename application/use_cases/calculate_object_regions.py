@@ -16,10 +16,10 @@ class CalculateObjectRegionsUseCase:
         """Przelicza relacje przestrzenne w locie, delegując złączenia do portów.
 
         Args:
-          object_id: int:
-          object_id: int:
+          object_id: ID obiektu turystycznego.
 
         Returns:
+          None.
         """
         # 1. Sprawdzamy, czy obiekt istnieje i ma geometrię (delegacja do portu)
         has_geometry, raw_tags = self._repo.check_object_geometry_and_tags(object_id)

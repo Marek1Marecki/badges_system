@@ -32,16 +32,13 @@ class AdvanceLogisticStatusUseCase:
         """Przesuwa status logistyczny zdobytej odznaki.
 
         Args:
-          profile_id: int:
-          progress_id: int:
-          new_logistic_status: str:
-          status_date: date:
-          profile_id: int:
-          progress_id: int:
-          new_logistic_status: str:
-          status_date: date:
+          profile_id: ID profilu turysty.
+          progress_id: ID postępu odznaki.
+          new_logistic_status: Nowy status logistyczny.
+          status_date: Data zmiany statusu.
 
         Returns:
+          None.
 
         Raises:
           UseCaseError: Gdy postęp nie istnieje lub nie należy do turysty.

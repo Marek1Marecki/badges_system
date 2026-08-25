@@ -25,10 +25,10 @@ class AnalyzeGpxTrackUseCase:
         """Parsuje plik, generuje linię i odpytuje bazę GIS o sąsiadów.
 
         Args:
-          file_content: bytes:
-          file_content: bytes:
+          file_content: Zawartość pliku GPX w bajtach.
 
         Returns:
+          Wynik analizy z sugerowaną datą i pobliskimi szczytami.
         """
         # 1. Parsowanie i upraszczanie śladu
         line_wkt, suggested_date = self._gpx_parser.parse_gpx(file_content)

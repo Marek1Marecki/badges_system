@@ -2,6 +2,7 @@
 # CONFIG
 # ===============================
 PY_DIRS := domain application infrastructure apps bootstrap scripts
+DOCFORMATTER_EXCLUDE := --exclude application/exceptions.py --exclude domain/exceptions.py --exclude infrastructure/exceptions.py
 TEST_DIRS := tests
 MIN_COVERAGE ?= 80
 export PATH := /home/dominik/.local/bin:$(PATH)
@@ -43,10 +44,10 @@ format:
 	uv run ruff format $(PY_DIRS)
 
 doc-format:
-	uv run docformatter --in-place --wrap-summaries 120 --wrap-descriptions 120 --style sphinx --recursive $(PY_DIRS)
+	find $(PY_DIRS) -name '*.py' ! -name 'exceptions.py' | xargs uv run docformatter --in-place --wrap-summaries 120 --wrap-descriptions 120 --style sphinx
 
 doc-check:
-	uv run docformatter --check --wrap-summaries 120 --wrap-descriptions 120 --style sphinx --recursive $(PY_DIRS)
+	find $(PY_DIRS) -name '*.py' ! -name 'exceptions.py' | xargs uv run docformatter --check --wrap-summaries 120 --wrap-descriptions 120 --style sphinx
 
 lint:
 	uv run ruff check $(PY_DIRS)

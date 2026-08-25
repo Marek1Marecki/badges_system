@@ -20,10 +20,5 @@ class NewsRepositoryPort(Protocol):
         """Zapisuje newsa.
 
         Zwraca True jeśli wpis jest nowy, False jeśli to duplikat.
-                Args:
-                  dto: BadgeNewsDTO:
-                  dto: BadgeNewsDTO:
-
-                Returns:
         """
         ...

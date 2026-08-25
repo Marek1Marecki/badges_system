@@ -11,39 +11,16 @@ class CachePort(Protocol):
     """Interfejs dostępu do globalnej pamięci podręcznej."""
 
     def set(self, key: str, value: Any, timeout_seconds: int) -> None:
-        """Zapisuje wartość pod kluczem z określonym czasem wygaśnięcia.
-
-        Args:
-          key: str:
-          value: Any:
-          timeout_seconds: int:
-          key: str:
-          value: Any:
-          timeout_seconds: int:
-
-        Returns:
-        """
+        """Zapisuje wartość pod kluczem z określonym czasem wygaśnięcia."""
         ...
 
     def get(self, key: str) -> Any | None:
         """Pobiera wartość.
 
         Zwraca None, jeśli klucz nie istnieje.
-                Args:
-                  key: str:
-                  key: str:
-
-                Returns:
         """
         ...
 
     def delete(self, key: str) -> None:
-        """Usuwa klucz z pamięci.
-
-        Args:
-          key: str:
-          key: str:
-
-        Returns:
-        """
+        """Usuwa klucz z pamięci."""
         ...

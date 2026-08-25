@@ -14,11 +14,5 @@ class GpxParserPort(Protocol):
         """Przetwarza plik GPX.
 
         Zwraca: (Geometria w formacie WKT, sugerowana data wycieczki).
-
-        Args:
-          file_content: bytes:
-          file_content: bytes:
-
-        Returns:
         """
         ...

@@ -53,10 +53,10 @@ class PoiScoringService:
         """Główna metoda wywoływana przez Celery w tle.
 
         Args:
-          profile_id: int:
-          profile_id: int:
+          profile_id: ID profilu turysty.
 
         Returns:
+          None.
         """
         now = self._clock.now()
         today_date = now.date()

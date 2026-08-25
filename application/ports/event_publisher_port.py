@@ -12,10 +12,5 @@ class DomainEventPublisherPort(Protocol):
         """Publikuje zdarzenie (np.
 
         do message brokera, Celery lub na szynę lokalną).
-                Args:
-                  event: DomainEvent:
-                  event: DomainEvent:
-
-                Returns:
         """
         ...

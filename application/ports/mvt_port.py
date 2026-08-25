@@ -7,18 +7,5 @@ class MvtRepositoryPort(Protocol):
     """Interfejs odpytywania bazy o binarne kafelki wektorowe PBF."""
 
     def get_tile(self, layer_name: str, z: int, x: int, y: int) -> bytes | None:
-        """Zwraca binarne dane kafelka MVT lub None, jeśli pusty.
-
-        Args:
-          layer_name: str:
-          z: int:
-          x: int:
-          y: int:
-          layer_name: str:
-          z: int:
-          x: int:
-          y: int:
-
-        Returns:
-        """
+        """Zwraca binarne dane kafelka MVT lub None, jeśli pusty."""
         ...

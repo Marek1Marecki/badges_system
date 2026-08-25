@@ -31,10 +31,10 @@ class ExploreQueriesService:
         """Buduje sklastrowany ranking pojedynczych obiektów turystycznych (Szczytów).
 
         Args:
-          profile_id: int:
-          profile_id: int:
+          profile_id: ID profilu turysty.
 
         Returns:
+          Ranking obiektów POI z klasterami i wynikami.
         """
         active_progresses = self._progress_repo.get_active_progresses(profile_id)
         subscribed_badge_codes = [p.badge_code for p in active_progresses]
@@ -113,13 +113,13 @@ class ExploreQueriesService:
         """Buduje skumulowany ranking dla całych regionów (np.
 
         wszystkich szczytów w Tatrach).
-                Args:
-                  profile_id: int:
-                  level: str:
-                  profile_id: int:
-                  level: str:
 
-                Returns:
+        Args:
+          profile_id: ID profilu turysty.
+          level: Poziom geograficzny regionów.
+
+        Returns:
+          Ranking regionów z wynikami.
         """
         map_state = self._cache.get(f"map_state:{profile_id}") or {}
         scores = map_state.get("scores", {})

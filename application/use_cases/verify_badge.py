@@ -45,15 +45,12 @@ class EvaluateBadgeProgressQuery:
         """Weryfikuje status matematyczny w locie.
 
         Args:
-          profile_id: int:
-          badge_code: str:
-          cycle_number: int:  (Default value = 1)
-          profile_id: int:
-          badge_code: str:
-          cycle_number: int:  (Default value = 1)
+          profile_id: ID profilu turysty.
+          badge_code: Kod odznaki.
+          cycle_number: Numer cyklu odznaki (domyślnie 1).
 
         Returns:
-
+          Słownik ze statusem weryfikacji i szczegółami.
         """
         # 1. Pobieramy postęp by mieć referencję do zakotwiczonej wersji (P-01)
         progress = self._progress_repo.get_progress(profile_id, badge_code, cycle_number)
@@ -132,15 +129,12 @@ class UpdateBadgeProgressCommand:
         """Przelicza i wymusza twardy zapis do bazy.
 
         Args:
-          profile_id: int:
-          badge_code: str:
-          cycle_number: int:  (Default value = 1)
-          profile_id: int:
-          badge_code: str:
-          cycle_number: int:  (Default value = 1)
+          profile_id: ID profilu turysty.
+          badge_code: Kod odznaki.
+          cycle_number: Numer cyklu odznaki (domyślnie 1).
 
         Returns:
-
+          None.
         """
         progress = self._progress_repo.get_progress(profile_id, badge_code, cycle_number)
         if not progress:

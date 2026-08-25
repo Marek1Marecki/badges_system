@@ -71,16 +71,18 @@ class OverpassClient:
     }
 
     def fetch_object(self, osm_id: str, max_retries: int = 3) -> OsmNodeDTO:
-        """
+        """Pobiera pojedynczy obiekt OSM z Overpass API z mechanizmem retry.
 
         Args:
-          osm_id: str:
-          max_retries: int:  (Default value = 3)
-          osm_id: str:
-          max_retries: int:  (Default value = 3)
+            osm_id: Identyfikator w formacie 'typ/id' (np. 'node/12345').
+            max_retries: Maksymalna liczba prób przy błędach sieci.
 
         Returns:
+            OsmNodeDTO z danymi obiektu.
 
+        Raises:
+            OsmAdapterError: Gdy format ID jest nieprawidłowy, obiekt nie istnieje,
+                lub wszystkie próby połączenia się nie powiodły.
         """
         logger.info(f"\n--- ROZPOCZĘCIE POBIERANIA OSM ID: {osm_id} ---")
 
@@ -157,13 +159,11 @@ class OverpassClient:
         """Pobiera zbiorczo obiekty z OSM (Bulk Fetching) dla optymalizacji ruchu.
 
         Args:
-          osm_ids: list[str]:
-          max_retries: int:  (Default value = 3)
-          osm_ids: list[str]:
-          max_retries: int:  (Default value = 3)
+            osm_ids: Lista identyfikatorów w formacie 'typ/id'.
+            max_retries: Maksymalna liczba prób przy błędach sieci.
 
         Returns:
-
+            Słownik {osm_id: OsmNodeDTO} dla znalezionych obiektów.
         """
         if not osm_ids:
             return {}
@@ -269,16 +269,14 @@ class OsmDataExtractor:
 
     @staticmethod
     def extract_alt_name(tags: dict[str, str], primary_name: str | None) -> str | None:
-        """Pobiera alternatywną nazwę z OSM (uwzględniając tagi językowe), unikając duplikacji.
+        """Pobiera alternatywną nazwę z OSM, unikając duplikacji z nazwą podstawową.
 
         Args:
-          tags: dict[str:
-          str]:
-          primary_name: str | None:
-          tags: dict[str:
-          primary_name: str | None:
+            tags: Tagi obiektu OSM.
+            primary_name: Nazwa podstawowa obiektu.
 
         Returns:
+            Alternatywna nazwa lub None, jeśli brakuje lub duplikuje.
         """
         # Szukamy najpierw polskiej alternatywy, a potem ogólnej
         alt = tags.get("alt_name:pl") or tags.get("alt_name")
@@ -291,11 +289,10 @@ class OsmDataExtractor:
         """Bezpiecznie parsuje wysokość z tagu 'ele'.
 
         Args:
-          tags: dict[str:
-          str]:
-          tags: dict[str:
+            tags: Tagi obiektu OSM.
 
         Returns:
+            Wysokość w metrach lub None, jeśli brak tagu.
         """
         ele_str = tags.get("ele")
         if not ele_str:
@@ -308,16 +305,13 @@ class OsmDataExtractor:
 
     @staticmethod
     def determine_type(tags: dict[str, str]) -> tuple[str | None, list[str]]:
-        """Przeszukuje klasyfikujące tagi OSM.
-
-        Zwraca krotkę: (Zmapowany Typ lub None, Lista nowo utworzonych wpisów do Inboxu).
+        """Przeszukuje klasyfikujące tagi OSM i zwraca zmapowany typ.
 
         Args:
-          tags: dict[str:
-          str]:
-          tags: dict[str:
+            tags: Tagi obiektu OSM.
 
         Returns:
+            Krotka: (Zmapowany typ lub None, Lista nowych wpisów do Inboxu).
         """
         found_type = None
         newly_created_mappings = []
@@ -346,11 +340,10 @@ class OsmDataExtractor:
         """Pobiera i formatuje referencję do Wikipedii z tagów OSM.
 
         Args:
-          tags: dict[str:
-          str]:
-          tags: dict[str:
+            tags: Tagi obiektu OSM.
 
         Returns:
+            Pełny URL do artykułu Wikipedia lub None.
         """
         # 1. Szukamy tagów wiki. Faworyzujemy bezpośrednie polskie linki,
         # potem ogólny tag 'wikipedia' (który często ma w sobie przedrostek pl:),

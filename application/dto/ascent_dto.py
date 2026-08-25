@@ -11,12 +11,8 @@ from domain.value_objects.ascent import Ascent
 class AscentDTO(BaseModel):
     """Zhydrowany snapshot wejścia turysty używany przez porty aplikacyjne.
 
-    `region_ids` są płaskimi ID z CQRS, dzięki czemu przyszłe reguły wildcard
-    mogą działać bez importowania GIS lub odpytywania infrastruktury w domenie.
-
-    Args:
-
-    Returns:
+    `region_ids` są płaskimi ID z CQRS, dzięki czemu przyszłe reguły wildcard mogą działać bez importowania GIS lub
+    odpytywania infrastruktury w domenie.
     """
 
     model_config = ConfigDict(frozen=True)

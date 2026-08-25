@@ -25,12 +25,11 @@ class UnsubscribeBadgeUseCase:
         """Kasuje subskrypcję i inwaliduje cache mapy.
 
         Args:
-          profile_id: int:
-          badge_code: str:
-          profile_id: int:
-          badge_code: str:
+          profile_id: ID profilu turysty.
+          badge_code: Kod odznaki do usunięcia.
 
         Returns:
+          None.
         """
         progress = self._progress_repo.get_progress(profile_id, badge_code, 1)
         if not progress:

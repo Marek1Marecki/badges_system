@@ -22,10 +22,8 @@ class ScanProximityCandidatesUseCase:
     def execute(self) -> str:
         """Wykonuje skanowanie radarem przestrzennym (ST_DWithin).
 
-        Args:
-
         Returns:
-          : Tekstowy raport o ilości zapisanych potencjalnych klastrów.
+          Tekstowy raport o ilości zapisanych potencjalnych klastrów.
         """
         # Szukamy kandydatów z portu (100 z wierzchu)
         unprocessed = self._repo.get_unprocessed_objects(limit=100)

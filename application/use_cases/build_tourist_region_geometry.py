@@ -18,10 +18,10 @@ class BuildTouristRegionGeometryUseCase:
         """Kompiluje obrys składników do jednego Poligonu i go zapisuje.
 
         Args:
-          region_id: int:
-          region_id: int:
+          region_id: ID regionu turystycznego.
 
         Returns:
+          Komunikat o wyniku scalenia geometrii.
         """
         # Oddelegowanie całkowitej brudnej roboty GIS i złączeń do Adaptera (infrastruktury)
         success = self._repo.update_region_geometry(region_id)

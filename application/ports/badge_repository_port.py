@@ -10,58 +10,23 @@ class BadgeRepositoryPort(Protocol):
     """Port repozytorium do zarządzania odznakami.
 
     Infrastruktura (Django) musi zaimplementować ten interfejs.
-
-    Args:
-
-    Returns:
     """
 
     def get_badge_version(self, badge_code: str, version_code: str) -> BadgeVersionDomain | None:
-        """Pobiera konkretną wersję odznaki z bazy i rekonstruuje obiekt domenowy.
-
-        Args:
-          badge_code: str:
-          version_code: str:
-          badge_code: str:
-          version_code: str:
-
-        Returns:
-        """
+        """Pobiera konkretną wersję odznaki z bazy i rekonstruuje obiekt domenowy."""
         ...
 
     def get_version_id_for_date(self, badge_code: str, target_date: date) -> int | None:
         """Pobiera ID wersji odznaki obowiązującej w podanym dniu.
 
         Wyszukuje najnowszą wersję, której valid_from <= target_date.
-
-        Args:
-          badge_code: str:
-          target_date: date:
-          badge_code: str:
-          target_date: date:
-
-        Returns:
         """
         ...
 
     def get_badge_version_by_id(self, version_id: int) -> BadgeVersionDomain | None:
-        """Pobiera Wersję Odznaki po jej wewnętrznym ID.
-
-        Args:
-          version_id: int:
-          version_id: int:
-
-        Returns:
-        """
+        """Pobiera Wersję Odznaki po jej wewnętrznym ID."""
         ...
 
     def get_latest_badge_version(self, badge_code: str) -> BadgeVersionDomain | None:
-        """Pobiera najnowszą opublikowaną (oficjalną) wersję regulaminu dla odznaki.
-
-        Args:
-          badge_code: str:
-          badge_code: str:
-
-        Returns:
-        """
+        """Pobiera najnowszą opublikowaną (oficjalną) wersję regulaminu dla odznaki."""
         ...
