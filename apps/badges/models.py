@@ -23,6 +23,8 @@ class RegionBaseModel(gis_models.Model):
     updated_at = gis_models.DateTimeField(auto_now=True)
 
     class Meta:
+        """"""
+
         abstract = True
 
     def __str__(self) -> str:
@@ -35,6 +37,8 @@ class PhysicalRegionMixin(gis_models.Model):
     neighbors = gis_models.ManyToManyField("self", blank=True, verbose_name="Sąsiedzi")
 
     class Meta:
+        """"""
+
         abstract = True
 
 
@@ -44,6 +48,8 @@ class CountryModel(RegionBaseModel, PhysicalRegionMixin):
     order = gis_models.IntegerField(default=0)
 
     class Meta:
+        """"""
+
         db_table = "odznaki_country"
         verbose_name = "Państwo"
         verbose_name_plural = "Państwa"
@@ -55,6 +61,8 @@ class VoivodeshipModel(RegionBaseModel, PhysicalRegionMixin):
     country = gis_models.ForeignKey(CountryModel, on_delete=gis_models.CASCADE)
 
     class Meta:
+        """"""
+
         db_table = "odznaki_voivodeship"
         unique_together = [("country", "code"), ("country", "name")]
         verbose_name = "Województwo"
@@ -67,6 +75,8 @@ class ProvinceModel(RegionBaseModel, PhysicalRegionMixin):
     country = gis_models.ForeignKey(CountryModel, on_delete=gis_models.CASCADE)
 
     class Meta:
+        """"""
+
         db_table = "odznaki_province"
         unique_together = [("country", "code")]
         verbose_name = "Prowincja"
@@ -79,6 +89,8 @@ class SubprovinceModel(RegionBaseModel, PhysicalRegionMixin):
     province = gis_models.ForeignKey(ProvinceModel, on_delete=gis_models.CASCADE)
 
     class Meta:
+        """"""
+
         db_table = "odznaki_subprovince"
         unique_together = [("province", "code")]
         verbose_name = "Podprowincja"
@@ -91,6 +103,8 @@ class MacroregionModel(RegionBaseModel, PhysicalRegionMixin):
     subprovince = gis_models.ForeignKey(SubprovinceModel, on_delete=gis_models.CASCADE, null=True, blank=True)
 
     class Meta:
+        """"""
+
         db_table = "odznaki_macroregion"
         verbose_name = "Makroregion"
         verbose_name_plural = "Makroregiony"
@@ -102,6 +116,8 @@ class MesoregionModel(RegionBaseModel, PhysicalRegionMixin):
     macroregion = gis_models.ForeignKey(MacroregionModel, on_delete=gis_models.CASCADE, null=True, blank=True)
 
     class Meta:
+        """"""
+
         db_table = "odznaki_mesoregion"
         verbose_name = "Mezoregion"
         verbose_name_plural = "Mezoregiony"
@@ -116,6 +132,8 @@ class TouristRegionModel(RegionBaseModel):
     mesoregions = models.ManyToManyField(MesoregionModel, blank=True, verbose_name="Mezoregiony")
 
     class Meta:
+        """"""
+
         db_table = "odznaki_tourist_region"
         verbose_name = "Region Turystyczny"
         verbose_name_plural = "Regiony Turystyczne"
@@ -127,7 +145,10 @@ class TouristRegionModel(RegionBaseModel):
 
 
 class OrganizerModel(models.Model):
-    """Reprezentuje organizatora odznaki (np. Oddział PTTK, Klub)."""
+    """Reprezentuje organizatora odznaki (np.
+
+    Oddział PTTK, Klub).
+    """
 
     name = models.CharField(
         max_length=255,
@@ -174,6 +195,8 @@ class OrganizerModel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """"""
+
         db_table = "odznaki_organizer"
         verbose_name = "Organizator"
         verbose_name_plural = "Organizatorzy"
@@ -209,6 +232,8 @@ class OsmTypeMapping(models.Model):
     )
 
     class Meta:
+        """"""
+
         db_table = "odznaki_osm_type_mapping"
         verbose_name = "Mapowanie Typu OSM"
         verbose_name_plural = "Słownik Mapowań OSM"
@@ -368,6 +393,8 @@ class TouristObject(gis_models.Model):
     updated_at = gis_models.DateTimeField(auto_now=True)
 
     class Meta:
+        """"""
+
         db_table = "odznaki_tourist_object"
         verbose_name = "Obiekt Turystyczny"
         verbose_name_plural = "Obiekty Turystyczne"
@@ -415,7 +442,14 @@ class TouristObject(gis_models.Model):
                 )
 
     def save(self, *args, **kwargs) -> None:
-        """Wymuszenie twardej walidacji przy każdym zapisie (również z Akcji Admina i Celery)."""
+        """Wymuszenie twardej walidacji przy każdym zapisie (również z Akcji Admina i Celery).
+
+        Args:
+          *args:
+          **kwargs:
+
+        Returns:
+        """
         self.clean()  # <--- To rozwiązuje problem omijania walidacji!
         super().save(*args, **kwargs)
 
@@ -438,10 +472,14 @@ class RegionLevelType(models.TextChoices):
 
 
 class ObjectRegionCache(models.Model):
-    """
-    Płaska tabela odczytu (CQRS Read Model) wypełniana asynchronicznie przez Celery.
+    """Płaska tabela odczytu (CQRS Read Model) wypełniana asynchronicznie przez Celery.
+
     Łączy punkt (TouristObject) z dowolnym z 6 typów regionów na podstawie ST_DWithin.
     Zamiast 6 tabel M2M, mamy jedną, błyskawiczną w odpytywaniu.
+
+    Args:
+
+    Returns:
     """
 
     tourist_object = models.ForeignKey(TouristObject, on_delete=models.CASCADE, related_name="cached_regions")
@@ -461,6 +499,8 @@ class ObjectRegionCache(models.Model):
     )
 
     class Meta:
+        """"""
+
         db_table = "odznaki_object_region_cache"
         # Uniemożliwiamy zduplikowanie przypisania tego samego regionu do obiektu
         unique_together = ("tourist_object", "region_level", "region_id")
@@ -505,6 +545,8 @@ class BadgeModel(models.Model):
     )
 
     class Meta:
+        """"""
+
         db_table = "odznaki_badge"
         verbose_name = "Odznaka"
         verbose_name_plural = "Odznaki"
@@ -570,6 +612,8 @@ class BadgeVersionModel(models.Model):
     )
 
     class Meta:
+        """"""
+
         db_table = "odznaki_badge_version"
         verbose_name = "Wersja Regulaminu"
         verbose_name_plural = "Wersje Regulaminów"
@@ -600,7 +644,10 @@ class LevelType(models.TextChoices):
 
 
 class BadgeTierModel(models.Model):
-    """Stopień odznaki (Obserwator postępu). To tutaj weryfikujemy wymaganą ilość szczytów z puli."""
+    """Stopień odznaki (Obserwator postępu).
+
+    To tutaj weryfikujemy wymaganą ilość szczytów z puli.
+    """
 
     version = models.ForeignKey(
         BadgeVersionModel,
@@ -634,6 +681,8 @@ class BadgeTierModel(models.Model):
     )
 
     class Meta:
+        """"""
+
         db_table = "odznaki_badge_tier"
         unique_together = ("version", "name")
         ordering = ["version", "order"]
@@ -654,6 +703,8 @@ class BadgeTierModel(models.Model):
 
 
 class ProximityStatus(models.TextChoices):
+    """"""
+
     PENDING = "PENDING", "Oczekujące na decyzję"
     RESOLVED = "RESOLVED", "Rozwiązane (Połączone)"
     IGNORED = "IGNORED", "Ignorowane"
@@ -670,10 +721,11 @@ class ProximityCandidate(models.Model):
     status = models.CharField(
         max_length=20, choices=ProximityStatus.choices, default=ProximityStatus.PENDING, verbose_name="Status"
     )
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        """"""
+
         db_table = "odznaki_proximity_candidate"
         verbose_name = "Kandydat do Klastrowania (Radar)"
         verbose_name_plural = "Radar Klastrowania"
@@ -692,6 +744,8 @@ class ProximityCandidate(models.Model):
 
 
 class SyncConflictStatus(models.TextChoices):
+    """"""
+
     PENDING = "PENDING", "Oczekujące na decyzję"
     ACCEPTED = "ACCEPTED", "Zaakceptowane (Nadpisane)"
     REJECTED = "REJECTED", "Odrzucone (Zachowano stare)"
@@ -713,6 +767,8 @@ class OsmSyncConflict(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        """"""
+
         db_table = "odznaki_osm_sync_conflict"
         verbose_name = "Konflikt Danych OSM"
         verbose_name_plural = "Konflikty Danych OSM"
@@ -723,6 +779,8 @@ class OsmSyncConflict(models.Model):
 
 
 class NewsChangeType(models.TextChoices):
+    """"""
+
     ADDITION = "ADDITION", "Nowa odznaka"
     CHANGE = "CHANGE", "Zmiana regulaminu"
 
@@ -739,6 +797,8 @@ class BadgeNewsItem(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        """"""
+
         db_table = "odznaki_badge_news_item"
         verbose_name = "Aktualność Odznaki"
         verbose_name_plural = "Radar Aktualności"

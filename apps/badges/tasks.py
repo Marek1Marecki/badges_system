@@ -22,13 +22,28 @@ from bootstrap.container import get_container
 
 
 def _str(result: object) -> str:
-    """Rzutuje wynik execute() na str — mypy nie zna typów z dict kontenera."""
+    """Rzutuje wynik execute() na str — mypy nie zna typów z dict kontenera.
+
+    Args:
+      result: object:
+      result: object:
+
+    Returns:
+    """
     return str(result)
 
 
 @shared_task(bind=True, max_retries=15)
 def fetch_osm_data_task(self, object_id: int) -> str:
-    """Pobiera dane z OSM dla pojedynczego obiektu. Przy błędzie ponawia co 60s."""
+    """Pobiera dane z OSM dla pojedynczego obiektu.
+
+    Przy błędzie ponawia co 60s.
+        Args:
+          object_id: int:
+          object_id: int:
+
+        Returns:
+    """
     from bootstrap import get_container
     from infrastructure.adapters.osm_adapter import OsmAdapterError
 
@@ -56,7 +71,16 @@ def fetch_osm_data_task(self, object_id: int) -> str:
 
 @shared_task(bind=True, max_retries=3)
 def calculate_object_regions_task(self: Any, object_id: int) -> str:
-    """Task asynchroniczny: Przelicza regiony i buduje płaską tabelę CQRS."""
+    """Task asynchroniczny: Przelicza regiony i buduje płaską tabelę CQRS.
+
+    Args:
+      self: Any:
+      object_id: int:
+      self: Any:
+      object_id: int:
+
+    Returns:
+    """
     try:
         use_case = get_container().calculate_object_regions
         use_case.execute(object_id=object_id)  # <--- BEZ PRZYPISANIA DO ZMIENNEJ
@@ -68,7 +92,14 @@ def calculate_object_regions_task(self: Any, object_id: int) -> str:
 
 @shared_task
 def build_tourist_region_geometry_task(region_id: int) -> str:
-    """Buduje geometrię Regionu Turystycznego i aktualizuje cache szczytów."""
+    """Buduje geometrię Regionu Turystycznego i aktualizuje cache szczytów.
+
+    Args:
+      region_id: int:
+      region_id: int:
+
+    Returns:
+    """
     from bootstrap import get_container
 
     try:
@@ -103,7 +134,15 @@ def scan_proximity_candidates_task() -> str:
 
 @shared_task
 def run_osm_night_watchman_task(batch_size: int = 50) -> str:
-    """Nocny skaner OSM — weryfikuje partię obiektów i zgłasza konflikty."""
+    """Nocny skaner OSM — weryfikuje partię obiektów i zgłasza konflikty.
+
+    Args:
+      batch_size: int:  (Default value = 50)
+      batch_size: int:  (Default value = 50)
+
+    Returns:
+
+    """
     from bootstrap import get_container
 
     try:
@@ -123,6 +162,12 @@ def recalculate_poi_scores_task(profile_id: int) -> str:
 
     Zadanie to jest wyzwalane asynchronicznie przez transakcje API,
     gwarantując niezaburzanie pracy wątku HTTP (Event-Driven Invalidation).
+
+    Args:
+      profile_id: int:
+      profile_id: int:
+
+    Returns:
     """
     from bootstrap import get_container
 

@@ -17,9 +17,19 @@ from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
+    """"""
+
     help = "Eksportuje cały Snapshot systemu PTTK (obiekty, odznaki, regiony) oraz generuje Manifest."
 
     def add_arguments(self, parser):
+        """
+
+        Args:
+          parser:
+
+        Returns:
+
+        """
         parser.add_argument(
             "--dry-run",
             action="store_true",
@@ -32,7 +42,14 @@ class Command(BaseCommand):
         )
 
     def _compress_file(self, file_path: Path) -> Path:
-        """Kompresuje plik JSON do GZIP i usuwa oryginał."""
+        """Kompresuje plik JSON do GZIP i usuwa oryginał.
+
+        Args:
+          file_path: Path:
+          file_path: Path:
+
+        Returns:
+        """
         gz_path = file_path.with_suffix(".json.gz")
         with open(file_path, "rb") as f_in:
             with gzip.open(gz_path, "wb", compresslevel=9) as f_out:
@@ -42,6 +59,15 @@ class Command(BaseCommand):
 
     @staticmethod
     def _sha256(file_path: Path) -> str:
+        """
+
+        Args:
+          file_path: Path:
+          file_path: Path:
+
+        Returns:
+
+        """
         h = hashlib.sha256()
         with open(file_path, "rb") as f:
             for chunk in iter(lambda: f.read(65536), b""):
@@ -49,11 +75,29 @@ class Command(BaseCommand):
         return h.hexdigest()
 
     def _get_model_count(self, app_label: str, model_name: str) -> int:
-        """Pobiera ilość rekordów w tabeli."""
+        """Pobiera ilość rekordów w tabeli.
+
+        Args:
+          app_label: str:
+          model_name: str:
+          app_label: str:
+          model_name: str:
+
+        Returns:
+        """
         model = apps.get_model(app_label, model_name)
         return int(model.objects.count())
 
     def handle(self, *args, **options):
+        """
+
+        Args:
+          *args:
+          **options:
+
+        Returns:
+
+        """
         is_dry_run = options["dry_run"]
         output_dir = Path(settings.BASE_DIR) / "data" / "reference"
 
@@ -166,6 +210,15 @@ class Command(BaseCommand):
             self._create_pg_dump(output_dir)
 
     def _create_pg_dump(self, output_dir: Path) -> None:
+        """
+
+        Args:
+          output_dir: Path:
+          output_dir: Path:
+
+        Returns:
+
+        """
         db = settings.DATABASES["default"]
         dump_path = output_dir / "postgis_dump.custom"
         env = os.environ.copy()

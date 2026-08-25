@@ -1,7 +1,7 @@
 """Kontekst weryfikacyjny dla Czystej Domeny.
 
-Zgodnie z INVARIANTS.md (T-02) i modelem domenowym, ten obiekt
-wstrzykuje stan turysty i czasu do bezstanowych reguł biznesowych.
+Zgodnie z INVARIANTS.md (T-02) i modelem domenowym, ten obiekt wstrzykuje stan turysty i czasu do bezstanowych reguł
+biznesowych.
 """
 
 from dataclasses import dataclass, field

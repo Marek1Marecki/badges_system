@@ -1,7 +1,7 @@
 """Przypadek użycia: Pobieranie i synchronizacja danych z OpenStreetMap.
 
-Zgodnie z 14-domain-purity.md — zero importów apps/, django/, infrastructure/.
-Zgodnie z 17-determinism-contract.md — czas wstrzykiwany przez ClockPort.
+Zgodnie z 14-domain-purity.md — zero importów apps/, django/, infrastructure/. Zgodnie z 17-determinism-contract.md —
+czas wstrzykiwany przez ClockPort.
 """
 
 from application.exceptions import UseCaseError
@@ -26,13 +26,15 @@ class FetchOsmDataUseCase:
         """Pobiera dane z OSM i aktualizuje obiekt turystyczny.
 
         Args:
-            object_id: ID obiektu TouristObject do zaktualizowania.
+          object_id: ID obiektu TouristObject do zaktualizowania.
+          object_id: int:
+          object_id: int:
 
         Returns:
-            Komunikat tekstowy o statusie.
+          : Komunikat tekstowy o statusie.
 
         Raises:
-            UseCaseError: Gdy obiekt nie istnieje lub nie ma OSM ID.
+          UseCaseError: Gdy obiekt nie istnieje lub nie ma OSM ID.
         """
         obj = self._repo.get_object_for_osm_fetch(object_id)
 
@@ -66,10 +68,13 @@ class RunOsmNightWatchmanUseCase:
         """Sprawdza partię obiektów w OSM i zgłasza konflikty.
 
         Args:
-            batch_size: Liczba obiektów do sprawdzenia w jednym uruchomieniu.
+          batch_size: Liczba obiektów do sprawdzenia w jednym uruchomieniu.
+          batch_size: int:  (Default value = 50)
+          batch_size: int:  (Default value = 50)
 
         Returns:
-            Komunikat tekstowy z wynikiem skanowania.
+          : Komunikat tekstowy z wynikiem skanowania.
+
         """
         objects_to_check = self._repo.get_objects_for_sync(batch_size)
 

@@ -54,7 +54,21 @@ def _problem_detail(
     status: int,
     detail: str,
 ) -> JsonResponse:
-    """Buduje odpowiedź RFC 7807 Problem Details."""
+    """Buduje odpowiedź RFC 7807 Problem Details.
+
+    Args:
+      request:
+      error_type: str:
+      title: str:
+      status: int:
+      detail: str:
+      error_type: str:
+      title: str:
+      status: int:
+      detail: str:
+
+    Returns:
+    """
     return JsonResponse(
         {
             "type": f"https://api.pttk-badges.pl/errors/{error_type}",
@@ -69,7 +83,13 @@ def _problem_detail(
 
 
 def _require_auth(request) -> JsonResponse | None:
-    """Guard: zwraca 401 jeśli użytkownik nie jest zalogowany."""
+    """Guard: zwraca 401 jeśli użytkownik nie jest zalogowany.
+
+    Args:
+      request:
+
+    Returns:
+    """
     if not request.user or not request.user.is_authenticated:
         return _problem_detail(
             request,
@@ -85,6 +105,13 @@ def _handle_application_exception(request, exc: ApplicationException) -> JsonRes
     """Centralny mapper wyjątków aplikacyjnych → RFC 7807.
 
     Wywoływany bezpośrednio z widoków, bo RequestFactory omija middleware.
+
+    Args:
+      request:
+      exc: ApplicationException:
+      exc: ApplicationException:
+
+    Returns:
     """
     request_id = getattr(request, "request_id", "unknown")
 
@@ -138,15 +165,24 @@ class AscentLogView(View):
         peak_id (int): ID obiektu turystycznego
         ascent_date (str): Data wejścia w formacie YYYY-MM-DD
 
+    Args:
+
     Returns:
-        201: {"ascent_id": int}
-        401: RFC 7807 — brak autentykacji
-        409: RFC 7807 — duplikat wejścia (D-04)
-        422: RFC 7807 — naruszenie bitemporalności (T-01) lub data z przyszłości (T-03)
+      201: {"ascent_id": int}
+      401: RFC 7807 — brak autentykacji
+      409: RFC 7807 — duplikat wejścia (D-04)
+      422: RFC 7807 — naruszenie bitemporalności (T-01) lub data z przyszłości (T-03)
     """
 
     def post(self, request: Any) -> JsonResponse:
-        """Rejestruje nowe wejście na szczyt (US-C03)."""
+        """Rejestruje nowe wejście na szczyt (US-C03).
+
+        Args:
+          request: Any:
+          request: Any:
+
+        Returns:
+        """
         auth_error = _require_auth(request)
         if auth_error:
             return auth_error
@@ -186,14 +222,25 @@ class BadgeSubscribeView(View):
 
     Rozpoczyna zdobywanie odznaki (subskrypcja + zakotwiczenie Praw Nabytych).
 
+    Args:
+
     Returns:
-        201: {"progress_id": int, "status": "SUBSCRIBED"}
-        401: RFC 7807 — brak autentykacji
-        422: RFC 7807 — brak regulaminu dla daty zakotwiczenia
+      201: {"progress_id": int, "status": "SUBSCRIBED"}
+      401: RFC 7807 — brak autentykacji
+      422: RFC 7807 — brak regulaminu dla daty zakotwiczenia
     """
 
     def post(self, request: Any, badge_code: str) -> JsonResponse:
-        """Rozpoczyna zdobywanie nowej odznaki i zakotwicza regulamin (US-C05)."""
+        """Rozpoczyna zdobywanie nowej odznaki i zakotwicza regulamin (US-C05).
+
+        Args:
+          request: Any:
+          badge_code: str:
+          request: Any:
+          badge_code: str:
+
+        Returns:
+        """
         auth_error = _require_auth(request)
         if auth_error:
             return auth_error
@@ -214,6 +261,16 @@ class BadgeSubscribeView(View):
             return _handle_application_exception(request, exc)
 
     def delete(self, request, badge_code: str):
+        """
+
+        Args:
+          request:
+          badge_code: str:
+          badge_code: str:
+
+        Returns:
+
+        """
         auth_error = _require_auth(request)
         if auth_error:
             return auth_error
@@ -238,13 +295,25 @@ class BadgeProgressView(View):
     Query params:
         cycle (int, optional): Numer cyklu, domyślnie 1
 
+    Args:
+
     Returns:
-        200: słownik z wynikiem ewaluacji domenowej
-        401: RFC 7807 — brak autentykacji
-        404: RFC 7807 — turysta nie subskrybuje odznaki
+      200: słownik z wynikiem ewaluacji domenowej
+      401: RFC 7807 — brak autentykacji
+      404: RFC 7807 — turysta nie subskrybuje odznaki
     """
 
     def get(self, request, badge_code: str):
+        """
+
+        Args:
+          request:
+          badge_code: str:
+          badge_code: str:
+
+        Returns:
+
+        """
         auth_error = _require_auth(request)
         if auth_error:
             return auth_error
@@ -274,9 +343,21 @@ class MapObjectsView(View):
 
     Zwraca GeoJSON z obiektami dla widocznego okna mapy (ADR-011).
     Kolory punktów odzwierciedlają postęp turysty (ADR-010).
+
+    Args:
+
+    Returns:
     """
 
     def get(self, request):
+        """
+
+        Args:
+          request:
+
+        Returns:
+
+        """
         auth_error = _require_auth(request)
         if auth_error:
             return auth_error
@@ -335,9 +416,23 @@ class BadgeLogisticsView(View):
     """PATCH /api/v1/progress/{progress_id}/logistics/
 
     Aktualizuje status logistyczny odznaki w Osobistym Trackerze Turysty.
+
+    Args:
+
+    Returns:
     """
 
     def patch(self, request, progress_id: int):
+        """
+
+        Args:
+          request:
+          progress_id: int:
+          progress_id: int:
+
+        Returns:
+
+        """
         auth_error = _require_auth(request)
         if auth_error:
             return auth_error
@@ -378,12 +473,32 @@ class BadgeLogisticsView(View):
 
 
 class VectorTileView(View):
-    """GET /api/v1/tiles/{layer}/{z}/{x}/{y}.pbf
+    """GET /api/v1/tiles/{layer}/{z}/{x}/{y}.pbf.
 
     Zwraca zbuforowane, skompresowane (GZIP) kafelki wektorowe.
+
+    Args:
+
+    Returns:
     """
 
     def get(self, request, layer: str, z: int, x: int, y: int):
+        """
+
+        Args:
+          request:
+          layer: str:
+          z: int:
+          x: int:
+          y: int:
+          layer: str:
+          z: int:
+          x: int:
+          y: int:
+
+        Returns:
+
+        """
         try:
             use_case = request.app_container.get_mvt_tile
             # Use Case zwraca skompresowane bajty (lub None) z DB/Redis
@@ -406,9 +521,24 @@ class NearbyObjectsView(View):
     """GET /api/v1/objects/{id}/nearby/
 
     Zwraca obiekty w promieniu 2 km od celu w formacie GeoJSON (US-C14).
+
+    Args:
+
+    Returns:
     """
 
     def get(self, request: HttpRequest, object_id: int) -> JsonResponse:
+        """
+
+        Args:
+          request: HttpRequest:
+          object_id: int:
+          request: HttpRequest:
+          object_id: int:
+
+        Returns:
+
+        """
         center_obj = get_object_or_404(TouristObject, id=object_id)
 
         if not center_obj.geom:
@@ -460,9 +590,22 @@ class GpxAnalyzeView(View):
     """POST /api/v1/gpx/analyze/
 
     Analizuje w locie przesłany plik GPX (w RAM) i zwraca propozycje obiektów.
+
+    Args:
+
+    Returns:
     """
 
     def post(self, request: HttpRequest) -> JsonResponse:
+        """
+
+        Args:
+          request: HttpRequest:
+          request: HttpRequest:
+
+        Returns:
+
+        """
         auth_error = _require_auth(request)
         if auth_error:
             return auth_error
@@ -495,10 +638,21 @@ class BulkAscentLogView(View):
     """POST /api/v1/ascents/bulk/
 
     Masowy zapis logów (np. po akceptacji z GPX). Zwraca wynik częściowy.
+
+    Args:
+
+    Returns:
     """
 
     def post(self, request: Any) -> JsonResponse:
-        """Masowo rejestruje logi wejść z pliku GPX (US-C17)."""
+        """Masowo rejestruje logi wejść z pliku GPX (US-C17).
+
+        Args:
+          request: Any:
+          request: Any:
+
+        Returns:
+        """
         auth_error = _require_auth(request)
         if auth_error:
             return auth_error
@@ -534,9 +688,23 @@ class ProfileSettingsView(View):
     """PATCH /api/v1/profiles/{profile_id}/
 
     Aktualizuje ustawienia profilu (np. Wiek, Mapa). Posiada ochronę IDOR.
+
+    Args:
+
+    Returns:
     """
 
     def patch(self, request, profile_id: int):
+        """
+
+        Args:
+          request:
+          profile_id: int:
+          profile_id: int:
+
+        Returns:
+
+        """
         auth_error = _require_auth(request)
         if auth_error:
             return auth_error
@@ -577,9 +745,23 @@ class ProfileUpgradeView(View):
     """POST /api/v1/profiles/{profile_id}/upgrade/
 
     Sztuczna bramka płatności (Wymusza pakiet PRO dla testów UX).
+
+    Args:
+
+    Returns:
     """
 
     def post(self, request, profile_id: int):
+        """
+
+        Args:
+          request:
+          profile_id: int:
+          profile_id: int:
+
+        Returns:
+
+        """
         auth_error = _require_auth(request)
         if auth_error:
             return auth_error

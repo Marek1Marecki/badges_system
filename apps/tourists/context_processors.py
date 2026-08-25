@@ -1,7 +1,7 @@
 """Wstrzykiwanie kontekstu turysty do szablonów HTML.
 
-Umożliwia dostęp do aktywnego profilu i listy sub-profili (Konta Rodzinne)
-we wszystkich widokach (np. na pasku nawigacyjnym base.html).
+Umożliwia dostęp do aktywnego profilu i listy sub-profili (Konta Rodzinne) we wszystkich widokach (np. na pasku
+nawigacyjnym base.html).
 """
 
 import json
@@ -13,7 +13,13 @@ from infrastructure.config.map_layers import AVAILABLE_MAP_LAYERS
 
 
 def tourist_profiles(request):
-    """Zwraca aktywny profil i konfigurację Freemium (Premium Maps)."""
+    """Zwraca aktywny profil i konfigurację Freemium (Premium Maps).
+
+    Args:
+      request:
+
+    Returns:
+    """
     if not request.user.is_authenticated:
         return {}
 

@@ -25,6 +25,8 @@ REQUIRED_MANIFEST_FIELDS = {
 
 
 class Command(BaseCommand):
+    """"""
+
     help = (
         "Walidacja Manifestu Snapshotu danych referencyjnych "
         "(sha256 zawartości plików + pole compatible_schema). "
@@ -32,6 +34,14 @@ class Command(BaseCommand):
     )
 
     def add_arguments(self, parser):
+        """
+
+        Args:
+          parser:
+
+        Returns:
+
+        """
         parser.add_argument(
             "--snapshot",
             default=None,
@@ -42,6 +52,15 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        """
+
+        Args:
+          *args:
+          **options:
+
+        Returns:
+
+        """
         data_dir = Path(self._settings_base_dir()) / "data" / "reference"
         manifest_path = data_dir / "manifest.json"
 
@@ -67,16 +86,37 @@ class Command(BaseCommand):
 
     @staticmethod
     def _settings_base_dir() -> str:
+        """"""
         from django.conf import settings
 
         return str(settings.BASE_DIR)
 
     @staticmethod
     def _load_json(path: Path) -> dict:
+        """
+
+        Args:
+          path: Path:
+          path: Path:
+
+        Returns:
+
+        """
         with open(path, encoding="utf-8") as f:
             return json.load(f)  # type: ignore[no-any-return]
 
     def _validate_structure(self, manifest: dict, manifest_path: Path) -> None:
+        """
+
+        Args:
+          manifest: dict:
+          manifest_path: Path:
+          manifest: dict:
+          manifest_path: Path:
+
+        Returns:
+
+        """
         missing = [
             field
             for field, expected_type in REQUIRED_MANIFEST_FIELDS.items()
@@ -92,6 +132,15 @@ class Command(BaseCommand):
             raise CommandError("Pole 'files' w manifest jest puste — snapshot musi zawierać co najmniej jeden plik.")
 
     def _validate_schema_version(self, manifest: dict) -> None:
+        """
+
+        Args:
+          manifest: dict:
+          manifest: dict:
+
+        Returns:
+
+        """
         compatible = manifest.get("compatible_schema")
         if compatible != REFERENCE_DATA_SCHEMA_VERSION:
             raise CommandError(
@@ -101,11 +150,33 @@ class Command(BaseCommand):
             )
 
     def _validate_files_exist(self, manifest: dict, data_dir: Path) -> None:
+        """
+
+        Args:
+          manifest: dict:
+          data_dir: Path:
+          manifest: dict:
+          data_dir: Path:
+
+        Returns:
+
+        """
         missing = [f for f in manifest["files"] if not (data_dir / f).exists()]
         if missing:
             raise CommandError(f"Brakujące pliki snapshotu wymienione w manifest: {', '.join(missing)}")
 
     def _validate_checksums(self, manifest: dict, data_dir: Path) -> None:
+        """
+
+        Args:
+          manifest: dict:
+          data_dir: Path:
+          manifest: dict:
+          data_dir: Path:
+
+        Returns:
+
+        """
         checksums = manifest.get("checksums")
         if not checksums:
             raise CommandError(
@@ -135,6 +206,15 @@ class Command(BaseCommand):
 
     @staticmethod
     def _sha256(file_path: Path) -> str:
+        """
+
+        Args:
+          file_path: Path:
+          file_path: Path:
+
+        Returns:
+
+        """
         h = hashlib.sha256()
         with open(file_path, "rb") as f:
             for chunk in iter(lambda: f.read(65536), b""):

@@ -26,7 +26,14 @@ class DjangoExploreQueriesRepository(ExploreQueriesRepositoryPort):
         )
 
     def get_regions_by_level(self, level: str) -> Any:
-        """Zwraca wszystkie regiony z danego poziomu."""
+        """Zwraca wszystkie regiony z danego poziomu.
+
+        Args:
+          level: str:
+          level: str:
+
+        Returns:
+        """
         if level == "VOIVODESHIP":
             return VoivodeshipModel.objects.all()
         elif level == "MACROREGION":
@@ -36,5 +43,12 @@ class DjangoExploreQueriesRepository(ExploreQueriesRepositoryPort):
         return []
 
     def get_object_region_cache_for_level(self, level: str) -> Any:
-        """Pobiera powiązania CQRS z płaskiej tabeli."""
+        """Pobiera powiązania CQRS z płaskiej tabeli.
+
+        Args:
+          level: str:
+          level: str:
+
+        Returns:
+        """
         return ObjectRegionCache.objects.filter(region_level=level)

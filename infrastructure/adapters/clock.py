@@ -1,8 +1,7 @@
 """Produkcyjna implementacja ClockPort.
 
-Używa django.utils.timezone.now() zamiast datetime.now(), bo aplikacja
-korzysta z Django i USE_TZ=True — timezone.now() zawsze zwraca
-datetime ze strefą UTC niezależnie od ustawień systemu operacyjnego.
+Używa django.utils.timezone.now() zamiast datetime.now(), bo aplikacja korzysta z Django i USE_TZ=True — timezone.now()
+zawsze zwraca datetime ze strefą UTC niezależnie od ustawień systemu operacyjnego.
 """
 
 from datetime import datetime

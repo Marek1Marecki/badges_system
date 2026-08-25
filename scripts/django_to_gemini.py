@@ -3,7 +3,18 @@ from pathlib import Path
 
 
 def is_ignored(name: str, ignore_exact: set, ignore_ext: set) -> bool:
-    """Szybkie sprawdzanie po nazwie lub rozszerzeniu."""
+    """Szybkie sprawdzanie po nazwie lub rozszerzeniu.
+
+    Args:
+      name: str:
+      ignore_exact: set:
+      ignore_ext: set:
+      name: str:
+      ignore_exact: set:
+      ignore_ext: set:
+
+    Returns:
+    """
     if name in ignore_exact:
         return True
     if any(name.endswith(ext) for ext in ignore_ext):
@@ -12,6 +23,17 @@ def is_ignored(name: str, ignore_exact: set, ignore_ext: set) -> bool:
 
 
 def generate_repo_summary(root_dir: str, output_file: str) -> None:
+    """
+
+    Args:
+      root_dir: str:
+      output_file: str:
+      root_dir: str:
+      output_file: str:
+
+    Returns:
+
+    """
     root = Path(root_dir).resolve()
 
     # 1. Twarde katalogi/pliki do wykluczenia (dokładna nazwa)

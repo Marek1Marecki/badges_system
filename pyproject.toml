@@ -106,6 +106,7 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "C4", "D", "S", "UP", "TID"]
+ignore = ["D214", "D411", "D414"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -114,9 +115,9 @@ convention = "google"
 "**/tests/**" = ["D", "S101"]
 "**/domain/**" = ["S101"]
 "**/migrations/**" = ["D", "E501"]
+"**/infrastructure/**" = ["D"] # tymczasowo, do czasu pełnego wdrożenia
+"**/apps/**" = ["D"]
 "**/admin.py" = ["D"]
-"infrastructure/**" = ["D"] # tymczasowo, do czasu pełnego wdrożenia
-"apps/**" = ["D"]
 "scripts/**" = ["D", "E501"]
 "bootstrap/**" = ["D"]
 

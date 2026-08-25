@@ -1,7 +1,7 @@
 """Port dla mechanizmu buforowania (Cache).
 
-Zgodnie z ADR-015 chroni usługi aplikacyjne przed bezpośrednim
-zależeniem od konkretnych implementacji (np. Redis, Memcached).
+Zgodnie z ADR-015 chroni usługi aplikacyjne przed bezpośrednim zależeniem od konkretnych implementacji (np. Redis,
+Memcached).
 """
 
 from typing import Any, Protocol
@@ -11,13 +11,39 @@ class CachePort(Protocol):
     """Interfejs dostępu do globalnej pamięci podręcznej."""
 
     def set(self, key: str, value: Any, timeout_seconds: int) -> None:
-        """Zapisuje wartość pod kluczem z określonym czasem wygaśnięcia."""
+        """Zapisuje wartość pod kluczem z określonym czasem wygaśnięcia.
+
+        Args:
+          key: str:
+          value: Any:
+          timeout_seconds: int:
+          key: str:
+          value: Any:
+          timeout_seconds: int:
+
+        Returns:
+        """
         ...
 
     def get(self, key: str) -> Any | None:
-        """Pobiera wartość. Zwraca None, jeśli klucz nie istnieje."""
+        """Pobiera wartość.
+
+        Zwraca None, jeśli klucz nie istnieje.
+                Args:
+                  key: str:
+                  key: str:
+
+                Returns:
+        """
         ...
 
     def delete(self, key: str) -> None:
-        """Usuwa klucz z pamięci."""
+        """Usuwa klucz z pamięci.
+
+        Args:
+          key: str:
+          key: str:
+
+        Returns:
+        """
         ...

@@ -1,8 +1,7 @@
 """Weryfikacja obecności sekretów w środowisku.
 
-Skrypt sprawdza, czy wszystkie klucze zdefiniowane w .env.example
-znajdują się w lokalnym pliku .env (lub w zmiennych środowiskowych OS).
-Zgodnie z 10-secrets-management.md.
+Skrypt sprawdza, czy wszystkie klucze zdefiniowane w .env.example znajdują się w lokalnym pliku .env (lub w zmiennych
+środowiskowych OS). Zgodnie z 10-secrets-management.md.
 """
 
 import os
@@ -11,6 +10,7 @@ from pathlib import Path
 
 
 def check_secrets() -> None:
+    """"""
     example_path = Path(".env.example")
     env_path = Path(".env")
 

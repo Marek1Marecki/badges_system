@@ -1,7 +1,7 @@
 """Jednorazowy skrypt do pre-kalkulacji sąsiadów geograficznych.
 
-Realizuje Opcję 3 z analizy architektonicznej: zamiast liczyć ST_Distance w locie,
-wylicza to raz i zapisuje jako twardą relację M2M w bazie danych.
+Realizuje Opcję 3 z analizy architektonicznej: zamiast liczyć ST_Distance w locie, wylicza to raz i zapisuje jako twardą
+relację M2M w bazie danych.
 """
 
 from django.contrib.gis.measure import D
@@ -20,9 +20,20 @@ from apps.badges.models import (
 
 
 class Command(BaseCommand):
+    """"""
+
     help = "Przelicza i zapisuje sąsiadów (z tolerancją 50m) dla wszystkich regionów."
 
     def handle(self, *args, **options):
+        """
+
+        Args:
+          *args:
+          **options:
+
+        Returns:
+
+        """
         # Lista modeli do przeliczenia
         models_to_process = [
             CountryModel,

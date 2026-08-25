@@ -1,7 +1,7 @@
 """Przypadek użycia: Eksploracja Mapy (Generowanie GeoJSON).
 
-Zgodnie z ADR-011 i ADR-013: Łączy szybkie zapytanie przestrzenne (BBox)
-z pre-kalkulowanymi stanami z pamięci Cache (Kolor i Punktacja POI).
+Zgodnie z ADR-011 i ADR-013: Łączy szybkie zapytanie przestrzenne (BBox) z pre-kalkulowanymi stanami z pamięci Cache
+(Kolor i Punktacja POI).
 """
 
 from typing import Any
@@ -20,7 +20,14 @@ class ExploreMapUseCase:
         self._cache = cache
 
     def execute(self, request: MapExploreRequestDTO) -> dict[str, Any]:
-        """Zwraca gotowy do wyświetlenia słownik w formacie GeoJSON."""
+        """Zwraca gotowy do wyświetlenia słownik w formacie GeoJSON.
+
+        Args:
+          request: MapExploreRequestDTO:
+          request: MapExploreRequestDTO:
+
+        Returns:
+        """
         # 1. Pobranie fizycznych obiektów z okna mapy (Docinanie BBox)
         objects = self._map_repo.get_objects_in_bbox(
             min_lon=request.min_lon,

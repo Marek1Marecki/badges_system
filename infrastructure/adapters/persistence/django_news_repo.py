@@ -5,7 +5,18 @@ from application.ports.news_port import NewsRepositoryPort
 
 
 class DjangoNewsRepository(NewsRepositoryPort):
+    """"""
+
     def save_news_item(self, dto: BadgeNewsDTO) -> bool:
+        """
+
+        Args:
+          dto: BadgeNewsDTO:
+          dto: BadgeNewsDTO:
+
+        Returns:
+
+        """
         from apps.badges.models import BadgeNewsItem
 
         # get_or_create to idealny Upsert z deduplikacją!

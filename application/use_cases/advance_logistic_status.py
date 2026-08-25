@@ -1,8 +1,7 @@
 """Przypadek użycia: Osobisty Tracker Logistyki (Kanban).
 
-Zgodnie z US-C07, US-C08 i Invariantem S-03:
-Zarządza wyłącznie stanem logistycznym odznaki, pod warunkiem
-że matematyczny stan z Czystej Domeny to COMPLETED.
+Zgodnie z US-C07, US-C08 i Invariantem S-03: Zarządza wyłącznie stanem logistycznym odznaki, pod warunkiem że
+matematyczny stan z Czystej Domeny to COMPLETED.
 """
 
 from datetime import date
@@ -32,9 +31,21 @@ class AdvanceLogisticStatusUseCase:
     def execute(self, profile_id: int, progress_id: int, new_logistic_status: str, status_date: date) -> None:
         """Przesuwa status logistyczny zdobytej odznaki.
 
+        Args:
+          profile_id: int:
+          progress_id: int:
+          new_logistic_status: str:
+          status_date: date:
+          profile_id: int:
+          progress_id: int:
+          new_logistic_status: str:
+          status_date: date:
+
+        Returns:
+
         Raises:
-            UseCaseError: Gdy postęp nie istnieje lub nie należy do turysty.
-            ConflictError: Gdy domena nie jest COMPLETED lub przejście FSM jest nielegalne.
+          UseCaseError: Gdy postęp nie istnieje lub nie należy do turysty.
+          ConflictError: Gdy domena nie jest COMPLETED lub przejście FSM jest nielegalne.
         """
         # 1. Weryfikacja tożsamości i istnienia zasobu
         progress = self._progress_repo.get_progress_by_id(profile_id=profile_id, progress_id=progress_id)

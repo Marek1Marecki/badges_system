@@ -18,6 +18,10 @@ class FetchBadgeNewsUseCase:
 
         Zgodnie z US-A01: W razie błędu struktury HTML lub braku sieci,
         Use Case musi zignorować błąd (Fail-Silently), by nie wywalić nocnej kolejki Celery.
+
+        Args:
+
+        Returns:
         """
         try:
             items = self._scraper.fetch_news()

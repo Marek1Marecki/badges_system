@@ -1,8 +1,7 @@
 """Skrypt analityczny: Żywa Mapa Architektury (Architecture Graph).
 
-Skanuje pliki projektu (AST), analizuje kierunki importów pomiędzy modułami
-i wizualizuje je za pomocą pyvis. Oznacza na czerwono importy łamiące
-zasady Architektury Heksagonalnej (zdefiniowane w MODULES.md).
+Skanuje pliki projektu (AST), analizuje kierunki importów pomiędzy modułami i wizualizuje je za pomocą pyvis. Oznacza na
+czerwono importy łamiące zasady Architektury Heksagonalnej (zdefiniowane w MODULES.md).
 """
 
 import ast
@@ -24,13 +23,29 @@ LAYER_COLORS = {
 
 
 def get_layer(module_name: str) -> str:
-    """Zwraca główną warstwę dla danego modułu."""
+    """Zwraca główną warstwę dla danego modułu.
+
+    Args:
+      module_name: str:
+      module_name: str:
+
+    Returns:
+    """
     base = module_name.split(".")[0]
     return base if base in ROOT_PACKAGES else "unknown"
 
 
 def is_illegal_import(source_layer: str, target_layer: str) -> bool:
-    """Implementacja twardych kontraktów z MODULES.md."""
+    """Implementacja twardych kontraktów z MODULES.md.
+
+    Args:
+      source_layer: str:
+      target_layer: str:
+      source_layer: str:
+      target_layer: str:
+
+    Returns:
+    """
     if source_layer == target_layer:
         return False
     if target_layer == "unknown":
@@ -55,7 +70,14 @@ def is_illegal_import(source_layer: str, target_layer: str) -> bool:
 
 
 def extract_imports(filepath: Path) -> list[str]:
-    """Przeszukuje plik .py w poszukiwaniu importów za pomocą AST."""
+    """Przeszukuje plik .py w poszukiwaniu importów za pomocą AST.
+
+    Args:
+      filepath: Path:
+      filepath: Path:
+
+    Returns:
+    """
     imports = []
     try:
         content = filepath.read_text(encoding="utf-8")
@@ -72,6 +94,7 @@ def extract_imports(filepath: Path) -> list[str]:
 
 
 def generate_architecture_map() -> None:
+    """"""
     print("Skanowanie drzewa plików projektu...")
     project_root = Path(__file__).resolve().parent.parent
 

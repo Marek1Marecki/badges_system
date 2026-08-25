@@ -1,8 +1,7 @@
 """Przypadek użycia: Analiza pliku GPX i szukanie obiektów na trasie.
 
-Zgodnie z US-C17: Wczytuje ślad w pamięci (bez zapisu), redukuje liczbę
-wierzchołków dla optymalizacji PostGIS i zwraca propozycje zaliczeń
-w strefie buforowej.
+Zgodnie z US-C17: Wczytuje ślad w pamięci (bez zapisu), redukuje liczbę wierzchołków dla optymalizacji PostGIS i zwraca
+propozycje zaliczeń w strefie buforowej.
 """
 
 from application.dto.ascent_dto import GpxAnalysisResultDTO
@@ -23,7 +22,14 @@ class AnalyzeGpxTrackUseCase:
         self._map_repo = map_repository
 
     def execute(self, file_content: bytes) -> GpxAnalysisResultDTO:
-        """Parsuje plik, generuje linię i odpytuje bazę GIS o sąsiadów."""
+        """Parsuje plik, generuje linię i odpytuje bazę GIS o sąsiadów.
+
+        Args:
+          file_content: bytes:
+          file_content: bytes:
+
+        Returns:
+        """
         # 1. Parsowanie i upraszczanie śladu
         line_wkt, suggested_date = self._gpx_parser.parse_gpx(file_content)
 

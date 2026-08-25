@@ -6,12 +6,31 @@ from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
+    """"""
+
     help = "Tworzy sesję testową dla podanego użytkownika i zwraca session ID."
 
     def add_arguments(self, parser):
+        """
+
+        Args:
+          parser:
+
+        Returns:
+
+        """
         parser.add_argument("username", type=str, help="Nazwa użytkownika, dla którego tworzymy sesję.")
 
     def handle(self, *args, **options):
+        """
+
+        Args:
+          *args:
+          **options:
+
+        Returns:
+
+        """
         username = options["username"]
         User = get_user_model()
         user, _ = User.objects.get_or_create(username=username, defaults={"is_active": True})

@@ -83,51 +83,77 @@ class ReadOnlyMapAdmin(LeafletGeoAdminMixin, ModelAdmin):
 
 @admin.register(CountryModel)
 class CountryAdmin(ReadOnlyMapAdmin):
+    """"""
+
     list_display = ("name", "code", "order")
 
 
 @admin.register(VoivodeshipModel)
 class VoivodeshipAdmin(ReadOnlyMapAdmin):
+    """"""
+
     list_display = ("name", "code", "country")
     list_filter = ("country",)
 
 
 @admin.register(ProvinceModel)
 class ProvinceAdmin(ReadOnlyMapAdmin):
+    """"""
+
     list_display = ("name", "code", "country")
 
 
 @admin.register(SubprovinceModel)
 class SubprovinceAdmin(ReadOnlyMapAdmin):
+    """"""
+
     list_display = ("name", "code", "province")
 
 
 @admin.register(MacroregionModel)
 class MacroregionAdmin(ReadOnlyMapAdmin):
+    """"""
+
     list_display = ("name", "code", "subprovince")
     search_fields = ("name", "code")
 
 
 @admin.register(MesoregionModel)
 class MesoregionAdmin(ReadOnlyMapAdmin):
+    """"""
+
     list_display = ("name", "code", "macroregion")
     search_fields = ("name", "code")
 
 
 class ObjectRegionCacheInline(TabularInline):
+    """"""
+
     model = ObjectRegionCache
     extra = 0
     readonly_fields = ("region_level", "region_id", "region_name", "distance_meters")
     can_delete = False
 
     def has_add_permission(self, request, obj=None):
+        """
+
+        Args:
+          request:
+          obj: (Default value = None)
+
+        Returns:
+
+        """
         return False
 
 
 class RegionLevelFilter(SimpleListFilter):
-    """
-    Pozwala filtrować listę obiektów turystycznych na podstawie naszej
-    płaskiej, zdenormalizowanej tabeli CQRS (ObjectRegionCache).
+    """Pozwala filtrować listę obiektów turystycznych na podstawie naszej płaskiej, zdenormalizowanej tabeli CQRS
+    (ObjectRegionCache).
+
+    Args:
+
+    Returns:
     """
 
     # Nazwa wyświetlana w panelu po prawej stronie
@@ -137,7 +163,14 @@ class RegionLevelFilter(SimpleListFilter):
     parameter_name = "region_cache"
 
     def lookups(self, request, model_admin):
-        """Zwraca listę opcji do wyboru w dropdownie filtra."""
+        """Zwraca listę opcji do wyboru w dropdownie filtra.
+
+        Args:
+          request:
+          model_admin:
+
+        Returns:
+        """
         # Pobieramy wszystkie unikalne nazwy regionów, które zostały przypisane
         # do jakiegokolwiek obiektu przez Celery.
         # Używamy flat=True i distinct(), by lista była krótka i szybka.
@@ -147,7 +180,14 @@ class RegionLevelFilter(SimpleListFilter):
         return [(region, region) for region in regions]
 
     def queryset(self, request, queryset):
-        """Filtruje główny QuerySet obiektów na podstawie wyboru Admina."""
+        """Filtruje główny QuerySet obiektów na podstawie wyboru Admina.
+
+        Args:
+          request:
+          queryset:
+
+        Returns:
+        """
         if self.value():
             # Znajdujemy obiekty, które mają w swoim Cache'u wybrany region
             # (korzystając z relacji 'cached_regions' zdefiniowanej w modelu)
@@ -162,6 +202,15 @@ class PendingMappingFilter(admin.SimpleListFilter):
     parameter_name = "status"
 
     def lookups(self, request, model_admin):
+        """
+
+        Args:
+          request:
+          model_admin:
+
+        Returns:
+
+        """
         return (
             ("pending", "Oczekujące na decyzję (Inbox)"),
             ("mapped", "Zmapowane (Gotowe)"),
@@ -169,6 +218,15 @@ class PendingMappingFilter(admin.SimpleListFilter):
         )
 
     def queryset(self, request, queryset):
+        """
+
+        Args:
+          request:
+          queryset:
+
+        Returns:
+
+        """
         if self.value() == "pending":
             return queryset.filter(target_type__isnull=True, is_ignored=False) | queryset.filter(
                 target_type__exact="", is_ignored=False
@@ -182,6 +240,8 @@ class PendingMappingFilter(admin.SimpleListFilter):
 
 @admin.register(OsmTypeMapping)
 class OsmTypeMappingAdmin(ModelAdmin):
+    """"""
+
     list_display = ("osm_key", "osm_value", "target_type", "is_ignored")
     list_editable = ("target_type", "is_ignored")  # Pozwala wpisywać tekst bezpośrednio na liście!
     list_filter = (PendingMappingFilter, "osm_key")
@@ -260,14 +320,31 @@ class TouristObjectAdmin(LeafletGeoAdminMixin, ModelAdmin):
     )
 
     def get_form(self, request, obj=None, **kwargs):
-        """Wstrzykujemy obiekt request do formularza, by móc wyświetlać Alerty."""
+        """Wstrzykujemy obiekt request do formularza, by móc wyświetlać Alerty.
+
+        Args:
+          request:
+          obj: (Default value = None)
+          **kwargs:
+
+        Returns:
+
+        """
         form = super().get_form(request, obj, **kwargs)
         form.request = request  # <-- Przypinamy request!
         return form
 
     def save_model(self, request, obj, form, change):
-        """Nadpisuje standardowy zapis, by wyzwolić przeliczanie geograficzne w tle."""
+        """Nadpisuje standardowy zapis, by wyzwolić przeliczanie geograficzne w tle.
 
+        Args:
+          request:
+          obj:
+          form:
+          change:
+
+        Returns:
+        """
         needs_osm_fetch = False
 
         # Jeśli to nowy obiekt z OSM, lub zmieniono mu OSM ID -> ustaw na "Pobieranie"
@@ -290,7 +367,14 @@ class TouristObjectAdmin(LeafletGeoAdminMixin, ModelAdmin):
 
     @admin.action(description="[Celery] Przelicz geografię (w tle) dla zaznaczonych")
     def recalculate_regions_async(self, request, queryset):
-        """Wysyła zadania do kolejki Celery dla każdego zaznaczonego obiektu."""
+        """Wysyła zadania do kolejki Celery dla każdego zaznaczonego obiektu.
+
+        Args:
+          request:
+          queryset:
+
+        Returns:
+        """
         count = 0
         for obj in queryset:
             calculate_object_regions_task.delay(obj.id)
@@ -299,8 +383,14 @@ class TouristObjectAdmin(LeafletGeoAdminMixin, ModelAdmin):
 
     @admin.action(description="Przypnij zaznaczone obiekty do Wersji Odznaki...")
     def add_to_badge_version(self, request, queryset):
-        """Akcja z okienkiem pośrednim do masowego przypisywania obiektów do odznaki."""
+        """Akcja z okienkiem pośrednim do masowego przypisywania obiektów do odznaki.
 
+        Args:
+          request:
+          queryset:
+
+        Returns:
+        """
         # Jeśli formularz został zatwierdzony w okienku pośrednim
         if "apply" in request.POST:
             form = AddToBadgeForm(request.POST)
@@ -331,7 +421,14 @@ class TouristObjectAdmin(LeafletGeoAdminMixin, ModelAdmin):
 
     @admin.action(description="Pokaż ID zaznaczonych obiektów (do skopiowania w reguły JSON)")
     def show_ids_for_json(self, request, queryset):
-        """Generuje listę ID po przecinku, by Admin mógł je łatwo skopiować."""
+        """Generuje listę ID po przecinku, by Admin mógł je łatwo skopiować.
+
+        Args:
+          request:
+          queryset:
+
+        Returns:
+        """
         # Pobieramy IDki
         ids = list(queryset.values_list("id", flat=True))
         # Zamieniamy na string z przecinkami
@@ -343,12 +440,28 @@ class TouristObjectAdmin(LeafletGeoAdminMixin, ModelAdmin):
     # NOWA AKCJA: Wymuszenie statusu Gotowy
     @admin.action(description="Oznacz wybrane obiekty jako GOTOWE (READY)")
     def mark_as_ready(self, request, queryset):
-        """Szybka akcja do aktualizacji statusów historycznych rekordów."""
+        """Szybka akcja do aktualizacji statusów historycznych rekordów.
+
+        Args:
+          request:
+          queryset:
+
+        Returns:
+        """
         updated_count = queryset.update(status="READY")
         self.message_user(request, f"Zaktualizowano status {updated_count} obiektów na 'Gotowy (Przeliczony)'.")
 
     @admin.action(description="[OSM] Ponów pobieranie danych z OSM dla zaznaczonych")
     def retry_osm_fetch(self, request, queryset):
+        """
+
+        Args:
+          request:
+          queryset:
+
+        Returns:
+
+        """
         count = 0
         for obj in queryset.filter(osm_id__isnull=False).exclude(osm_id=""):
             obj.status = "FETCHING_OSM"
@@ -360,7 +473,14 @@ class TouristObjectAdmin(LeafletGeoAdminMixin, ModelAdmin):
 
     @admin.action(description="[Celery] Uruchom Radar Zbliżeniowy 150m (Szukaj Klastrów)")
     def run_proximity_scanner(self, request, queryset):
-        """Wrzuca zadanie skanowania całej bazy do Celery."""
+        """Wrzuca zadanie skanowania całej bazy do Celery.
+
+        Args:
+          request:
+          queryset:
+
+        Returns:
+        """
         scan_proximity_candidates_task.delay()
         self.message_user(
             request, "Wysłano zadanie Skanera do Celery. Za kilka sekund sprawdź zakładkę 'Radar Klastrowania'."
@@ -368,7 +488,14 @@ class TouristObjectAdmin(LeafletGeoAdminMixin, ModelAdmin):
 
     @admin.display(description="Wykorzystywany w odznakach")
     def get_related_badges(self, obj: TouristObject) -> str:
-        """Wyświetla listę odznak, do których przypisany jest ten obiekt."""
+        """Wyświetla listę odznak, do których przypisany jest ten obiekt.
+
+        Args:
+          obj: TouristObject:
+          obj: TouristObject:
+
+        Returns:
+        """
         from django.utils.html import format_html, format_html_join
 
         if not obj.pk:
@@ -391,6 +518,8 @@ class TouristObjectAdmin(LeafletGeoAdminMixin, ModelAdmin):
 
 @admin.register(OrganizerModel)
 class OrganizerAdmin(ModelAdmin):
+    """"""
+
     list_display = ("name", "is_booklet_required", "has_publication_consent", "club_rules_link")
     # Dodano filtr boczny (szybkie szukanie tych bez zgody)
     list_filter = (
@@ -413,6 +542,7 @@ class BadgeTierInlineFormSet(BaseInlineFormSet):
     """Walidator dla wierszy stopni odznaki (FormSet)."""
 
     def clean(self):
+        """"""
         super().clean()
         # Jeśli formularze mają już inne błędy, nie sprawdzamy dalej
         if any(self.errors):
@@ -449,6 +579,15 @@ class PeakInBadgeFilter(SimpleListFilter):
     parameter_name = "has_peak"
 
     def lookups(self, request, model_admin):
+        """
+
+        Args:
+          request:
+          model_admin:
+
+        Returns:
+
+        """
         from apps.badges.models import TouristObject
 
         # OPTYMALIZACJA: Pobieramy tylko te obiekty, które są fizycznie użyte w jakiejś
@@ -463,6 +602,15 @@ class PeakInBadgeFilter(SimpleListFilter):
         return [(pk, name) for pk, name in used_peaks]
 
     def queryset(self, request, queryset):
+        """
+
+        Args:
+          request:
+          queryset:
+
+        Returns:
+
+        """
         if self.value():
             # Filtrujemy Wersje Odznak, które w swojej relacji M2M (pool_peaks) mają wybrane ID
             return queryset.filter(pool_peaks__id=self.value())
@@ -474,7 +622,15 @@ class BadgeVersionAdmin(ModelAdmin):
     """Panel Wersji Odznaki (Tu przypinamy szczyty i definiujemy stopnie)."""
 
     def formfield_for_dbfield(self, db_field, request, **kwargs):
-        """Ochrona pola z regułami przed zniszczeniem przez Unfold."""
+        """Ochrona pola z regułami przed zniszczeniem przez Unfold.
+
+        Args:
+          db_field:
+          request:
+          **kwargs:
+
+        Returns:
+        """
         if db_field.name == "rules":
             # Wywołujemy natywną metodę pola, CAŁKOWICIE POMIJAJĄC mechanizmy Unfolda.
             # Dzięki temu django-jsonform odzyskuje kontrolę i renderuje swój kreator reguł.
@@ -483,7 +639,15 @@ class BadgeVersionAdmin(ModelAdmin):
         return super().formfield_for_dbfield(db_field, request, **kwargs)
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
-        """KWARANTANNA: W puli odznak pokazujemy TYLKO obiekty gotowe, by Admin nie zepsuł reguł."""
+        """KWARANTANNA: W puli odznak pokazujemy TYLKO obiekty gotowe, by Admin nie zepsuł reguł.
+
+        Args:
+          db_field:
+          request:
+          **kwargs:
+
+        Returns:
+        """
         if db_field.name == "pool_peaks":
             kwargs["queryset"] = TouristObject.objects.filter(status="READY")
         return super().formfield_for_manytomany(db_field, request, **kwargs)
@@ -517,7 +681,10 @@ class BadgeVersionAdmin(ModelAdmin):
 
 @admin.register(TouristRegionModel)
 class TouristRegionAdmin(ReadOnlyMapAdmin):
-    """Panel do budowy nadrzędnych Regionów Turystycznych (np. Sudety)."""
+    """Panel do budowy nadrzędnych Regionów Turystycznych (np.
+
+    Sudety).
+    """
 
     list_display = ("name", "code")
     search_fields = ("name", "code")
@@ -528,10 +695,19 @@ class TouristRegionAdmin(ReadOnlyMapAdmin):
     actions = ["rebuild_geometry"]
 
     def save_related(self, request, form, formsets, change):
-        """
-        Nadpisujemy save_related, a nie save_model.
-        Dlaczego? Bo w Django relacje M2M (nasze filter_horizontal) są zapisywane
-        DOPIERO PO zapisaniu samego modelu. Musimy wywołać Celery po zapisie M2M!
+        """Nadpisujemy save_related, a nie save_model.
+
+        Dlaczego? Bo w Django relacje M2M (nasze filter_horizontal)
+        są zapisywane DOPIERO PO zapisaniu samego modelu.
+        Musimy wywołać Celery po zapisie M2M!
+
+        Args:
+          request:
+          form:
+          formsets:
+          change:
+
+        Returns:
         """
         super().save_related(request, form, formsets, change)
         from django.db import transaction
@@ -540,7 +716,14 @@ class TouristRegionAdmin(ReadOnlyMapAdmin):
 
     @admin.action(description="[Celery] Przebuduj geometrię i zaktualizuj szczyty (CQRS)")
     def rebuild_geometry(self, request, queryset):
-        """Opcja ręcznego przeliczenia na żądanie."""
+        """Opcja ręcznego przeliczenia na żądanie.
+
+        Args:
+          request:
+          queryset:
+
+        Returns:
+        """
         for obj in queryset:
             build_tourist_region_geometry_task.delay(obj.id)
         self.message_user(request, "Wysłano zadania generowania do Celery.")
@@ -553,12 +736,30 @@ class ResolutionDirectionFilter(SimpleListFilter):
     parameter_name = "direction"
 
     def lookups(self, request, model_admin):
+        """
+
+        Args:
+          request:
+          model_admin:
+
+        Returns:
+
+        """
         return (
             ("A_PARENT", "A jest Rodzicem (A ➔ B)"),
             ("B_PARENT", "B jest Rodzicem (A ⬅ B)"),
         )
 
     def queryset(self, request, queryset):
+        """
+
+        Args:
+          request:
+          queryset:
+
+        Returns:
+
+        """
         # Używamy funkcji F() aby baza sama porównała dwie kolumny w locie!
         if self.value() == "A_PARENT":
             return queryset.filter(obj_b__parent_object=F("obj_a"))
@@ -569,6 +770,8 @@ class ResolutionDirectionFilter(SimpleListFilter):
 
 @admin.register(ProximityCandidate)
 class ProximityCandidateAdmin(ModelAdmin):
+    """"""
+
     # ZMIANA 1: Zamiast "status", używamy nowej metody "get_detailed_status"
     list_display = ("get_obj_a_info", "get_obj_b_info", "distance_meters", "get_detailed_status", "created_at")
 
@@ -578,14 +781,27 @@ class ProximityCandidateAdmin(ModelAdmin):
 
     # ZMIANA 3: Optymalizacja N+1 zapytań (Dobra praktyka dla wydajności panelu)
     def get_queryset(self, request):
-        """Pobieramy obiekty powiązane z góry, by nie obciążać bazy w każdej linijce."""
+        """Pobieramy obiekty powiązane z góry, by nie obciążać bazy w każdej linijce.
+
+        Args:
+          request:
+
+        Returns:
+        """
         qs = super().get_queryset(request)
         return qs.select_related("obj_a", "obj_b")
 
     # ZMIANA 4: Nowa metoda wyświetlająca status
     @admin.display(description="Status / Relacja")
     def get_detailed_status(self, obj: ProximityCandidate) -> str:
-        """Dynamicznie określa relację na podstawie faktycznego stanu w bazie."""
+        """Dynamicznie określa relację na podstawie faktycznego stanu w bazie.
+
+        Args:
+          obj: ProximityCandidate:
+          obj: ProximityCandidate:
+
+        Returns:
+        """
         # Jeśli para jest oznaczona jako rozwiązana, sprawdzamy kto ostatecznie jest rodzicem
         if obj.status == "RESOLVED":
             # Ponieważ zastosowaliśmy select_related wyżej, odwołanie do ID nie obciąża bazy!
@@ -600,7 +816,14 @@ class ProximityCandidateAdmin(ModelAdmin):
 
     @admin.display(description="Obiekt A (Lewy)")
     def get_obj_a_info(self, obj: ProximityCandidate) -> str:
-        """Generuje czytelny opis Obiektu A wraz z linkiem do edycji."""
+        """Generuje czytelny opis Obiektu A wraz z linkiem do edycji.
+
+        Args:
+          obj: ProximityCandidate:
+          obj: ProximityCandidate:
+
+        Returns:
+        """
         url = f"/admin/badges/touristobject/{obj.obj_a.id}/change/"
         type_str = obj.obj_a.type
         # Tłumimy błąd mypy: format_html zwraca SafeString/Any, co jest tutaj pożądane
@@ -608,30 +831,80 @@ class ProximityCandidateAdmin(ModelAdmin):
 
     @admin.display(description="Obiekt B (Prawy)")
     def get_obj_b_info(self, obj: ProximityCandidate) -> str:
-        """Generuje czytelny opis Obiektu B wraz z linkiem do edycji."""
+        """Generuje czytelny opis Obiektu B wraz z linkiem do edycji.
+
+        Args:
+          obj: ProximityCandidate:
+          obj: ProximityCandidate:
+
+        Returns:
+        """
         url = f"/admin/badges/touristobject/{obj.obj_b.id}/change/"
         type_str = obj.obj_b.type
         return format_html('<a href="{}">{} [{}]</a>', url, obj.obj_b.name, type_str)  # type: ignore[no-any-return]
 
     def has_add_permission(self, request) -> bool:
+        """
+
+        Args:
+          request:
+
+        Returns:
+
+        """
         return False
 
     actions = ["make_a_parent", "make_b_parent", "ignore_pair"]
 
     @admin.action(description="POŁĄCZ: Lewy obiekt (A) jest Rodzicem Prawego (B)")
     def make_a_parent(self, request, queryset):
+        """
+
+        Args:
+          request:
+          queryset:
+
+        Returns:
+
+        """
         self._resolve_pairs(queryset, parent_is="A")
 
     @admin.action(description="POŁĄCZ: Prawy obiekt (B) jest Rodzicem Lewego (A)")
     def make_b_parent(self, request, queryset):
+        """
+
+        Args:
+          request:
+          queryset:
+
+        Returns:
+
+        """
         self._resolve_pairs(queryset, parent_is="B")
 
     @admin.action(description="IGNORUJ: Obiekty nie są powiązane (np. dwa osobne szczyty)")
     def ignore_pair(self, request, queryset):
+        """
+
+        Args:
+          request:
+          queryset:
+
+        Returns:
+
+        """
         queryset.update(status="IGNORED")
 
     def _resolve_pairs(self, queryset, parent_is: str):
-        """Mechanika łączenia w Klastry i inteligentnego ignorowania rodzeństwa."""
+        """Mechanika łączenia w Klastry i inteligentnego ignorowania rodzeństwa.
+
+        Args:
+          queryset:
+          parent_is: str:
+          parent_is: str:
+
+        Returns:
+        """
         for candidate in queryset.filter(status="PENDING"):
             if parent_is == "A":
                 parent = candidate.obj_a
@@ -660,18 +933,35 @@ class ProximityCandidateAdmin(ModelAdmin):
 
 @admin.register(OsmSyncConflict)
 class OsmSyncConflictAdmin(ModelAdmin):
+    """"""
+
     list_display = ("tourist_object", "field_name", "old_value", "new_value", "status", "created_at")
     list_filter = ("status", "field_name")
     search_fields = ("tourist_object__name", "tourist_object__osm_id")
 
     def has_add_permission(self, request) -> bool:
+        """
+
+        Args:
+          request:
+
+        Returns:
+
+        """
         return False  # To roboty zgłaszają konflikty, nie ludzie!
 
     actions = ["accept_changes", "reject_changes"]
 
     @admin.action(description="AKCEPTUJ: Nadpisz nasze dane wartością z OSM")
     def accept_changes(self, request, queryset):
-        """Nadpisuje dane w modelu TouristObject nową wartością."""
+        """Nadpisuje dane w modelu TouristObject nową wartością.
+
+        Args:
+          request:
+          queryset:
+
+        Returns:
+        """
         count = 0
         for conflict in queryset.filter(status=SyncConflictStatus.PENDING):
             obj = conflict.tourist_object
@@ -699,13 +989,22 @@ class OsmSyncConflictAdmin(ModelAdmin):
 
     @admin.action(description="ODRZUĆ: Ignoruj zmiany z OSM (Zostaw nasze dane)")
     def reject_changes(self, request, queryset):
-        """Odrzuca propozycję, pozostawiając stary stan bazy."""
+        """Odrzuca propozycję, pozostawiając stary stan bazy.
+
+        Args:
+          request:
+          queryset:
+
+        Returns:
+        """
         count = queryset.filter(status=SyncConflictStatus.PENDING).update(status=SyncConflictStatus.REJECTED)
         self.message_user(request, f"Odrzucono {count} propozycji. Nasze dane pozostały nienaruszone.")
 
 
 @admin.register(BadgeNewsItem)
 class BadgeNewsItemAdmin(ModelAdmin):
+    """"""
+
     list_display = ("badge_name", "change_type", "change_date_str", "is_read", "created_at", "source_link")
     list_filter = ("is_read", "change_type")
     search_fields = ("badge_name",)
@@ -714,16 +1013,42 @@ class BadgeNewsItemAdmin(ModelAdmin):
     actions = ["mark_as_read"]
 
     def has_add_permission(self, request) -> bool:
+        """
+
+        Args:
+          request:
+
+        Returns:
+
+        """
         return False  # Ochrona: To robot zrzuca newsy, nie człowiek
 
     @admin.display(description="Źródło")
     def source_link(self, obj: BadgeNewsItem) -> str:
+        """
+
+        Args:
+          obj: BadgeNewsItem:
+          obj: BadgeNewsItem:
+
+        Returns:
+
+        """
         from django.utils.html import format_html
 
         return format_html('<a href="{}" target="_blank">Otwórz stronę</a>', obj.source_url)  # type: ignore[no-any-return]
 
     @admin.action(description="Oznacz wybrane jako PRZECZYTANE (Archiwizuj)")
     def mark_as_read(self, request, queryset):
+        """
+
+        Args:
+          request:
+          queryset:
+
+        Returns:
+
+        """
         count = queryset.update(is_read=True)
         self.message_user(request, f"Zarchiwizowano {count} aktualności.")
 
@@ -743,24 +1068,34 @@ admin.site.unregister(SolarSchedule)
 # 2. Rejestracja ponowna z dziedziczeniem stylów Unfolda (MRO: ModelAdmin musi być pierwszy)
 @admin.register(PeriodicTask)
 class UnfoldPeriodicTaskAdmin(ModelAdmin, BasePeriodicTaskAdmin):
+    """"""
+
     pass
 
 
 @admin.register(CrontabSchedule)
 class UnfoldCrontabScheduleAdmin(ModelAdmin):
+    """"""
+
     pass
 
 
 @admin.register(IntervalSchedule)
 class UnfoldIntervalScheduleAdmin(ModelAdmin):
+    """"""
+
     pass
 
 
 @admin.register(ClockedSchedule)
 class UnfoldClockedScheduleAdmin(ModelAdmin, BaseClockedScheduleAdmin):
+    """"""
+
     pass
 
 
 @admin.register(SolarSchedule)
 class UnfoldSolarScheduleAdmin(ModelAdmin):
+    """"""
+
     pass

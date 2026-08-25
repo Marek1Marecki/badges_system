@@ -3,7 +3,14 @@ from pathlib import Path
 
 
 def estimate_tokens(text: str) -> dict[str, int]:
-    """Szacuje ilość tokenów używając darmowych heurystyk."""
+    """Szacuje ilość tokenów używając darmowych heurystyk.
+
+    Args:
+      text: str:
+      text: str:
+
+    Returns:
+    """
     characters = len(text)
     # Rozbijamy po białych znakach (w tym spacjach, enterach i znakach tabulacji)
     words = len(text.split())
@@ -21,6 +28,15 @@ def estimate_tokens(text: str) -> dict[str, int]:
 
 
 def analyze_file(filepath: str) -> None:
+    """
+
+    Args:
+      filepath: str:
+      filepath: str:
+
+    Returns:
+
+    """
     path = Path(filepath)
     if not path.exists():
         print(f"❌ Plik {filepath} nie istnieje!")

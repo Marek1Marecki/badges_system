@@ -27,9 +27,17 @@ def configure_logging(*, json_mode: bool = False, level: str = "INFO") -> None:
     adapterów. Kolejne wywołania nadpiszą poprzednią konfigurację.
 
     Args:
-        json_mode: True → JSON na stdout (produkcja, ELK/Loki).
-                   False → kolorowy format czytelny dla dewelopera.
-        level: Minimalny poziom logowania (DEBUG/INFO/WARNING/ERROR/CRITICAL).
+      json_mode: True → JSON na stdout (produkcja, ELK/Loki).
+    False → kolorowy format czytelny dla dewelopera.
+      level: Minimalny poziom logowania (DEBUG/INFO/WARNING/ERROR/CRITICAL).
+      *:
+      json_mode: bool:  (Default value = False)
+      level: str:  (Default value = "INFO")
+      json_mode: bool:  (Default value = False)
+      level: str:  (Default value = "INFO")
+
+    Returns:
+
     """
     logger.remove()  # usuń domyślny handler Loguru
 

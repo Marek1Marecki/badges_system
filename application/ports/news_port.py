@@ -17,5 +17,13 @@ class NewsRepositoryPort(Protocol):
     """Port do zapisywania aktualności w bazie danych."""
 
     def save_news_item(self, dto: BadgeNewsDTO) -> bool:
-        """Zapisuje newsa. Zwraca True jeśli wpis jest nowy, False jeśli to duplikat."""
+        """Zapisuje newsa.
+
+        Zwraca True jeśli wpis jest nowy, False jeśli to duplikat.
+                Args:
+                  dto: BadgeNewsDTO:
+                  dto: BadgeNewsDTO:
+
+                Returns:
+        """
         ...

@@ -64,12 +64,15 @@ ORM_MODULE_PREFIXES = {"django.db", "peewee", "sqlalchemy"}
 
 @dataclass
 class AuditConfig:
+    """"""
+
     domain_paths: list[pathlib.Path] = field(default_factory=list)
     application_paths: list[pathlib.Path] = field(default_factory=list)
     bootstrap_paths: list[pathlib.Path] = field(default_factory=list)
 
     @classmethod
     def from_pyproject(cls) -> "AuditConfig":
+        """"""
         pyproject = ROOT / "pyproject.toml"
         config = cls()
 
@@ -97,6 +100,17 @@ class AuditConfig:
 
 
 def _autodiscover(root: pathlib.Path, name: str) -> list[pathlib.Path]:
+    """
+
+    Args:
+      root: pathlib.Path:
+      name: str:
+      root: pathlib.Path:
+      name: str:
+
+    Returns:
+
+    """
     results = []
     for path in root.rglob(name):
         if path.is_dir() and not any(
@@ -107,6 +121,15 @@ def _autodiscover(root: pathlib.Path, name: str) -> list[pathlib.Path]:
 
 
 def _autodiscover_bootstrap(root: pathlib.Path) -> list[pathlib.Path]:
+    """
+
+    Args:
+      root: pathlib.Path:
+      root: pathlib.Path:
+
+    Returns:
+
+    """
     candidates = ["bootstrap.py", "manage.py", "wsgi.py", "asgi.py", "main.py"]
     return [root / candidate for candidate in candidates if (root / candidate).exists()]
 
@@ -118,6 +141,8 @@ def _autodiscover_bootstrap(root: pathlib.Path) -> list[pathlib.Path]:
 
 @dataclass(frozen=True)
 class ImportReference:
+    """"""
+
     base_module: str
     full_module: str
     is_type_checking: bool
@@ -125,6 +150,15 @@ class ImportReference:
 
 
 def collect_python_files(paths: list[pathlib.Path]) -> list[pathlib.Path]:
+    """
+
+    Args:
+      paths: list[pathlib.Path]:
+      paths: list[pathlib.Path]:
+
+    Returns:
+
+    """
     files: list[pathlib.Path] = []
     for path in paths:
         if path.is_dir():
@@ -135,6 +169,15 @@ def collect_python_files(paths: list[pathlib.Path]) -> list[pathlib.Path]:
 
 
 def parse_file(path: pathlib.Path) -> ast.Module | None:
+    """
+
+    Args:
+      path: pathlib.Path:
+      path: pathlib.Path:
+
+    Returns:
+
+    """
     try:
         return ast.parse(path.read_text(encoding="utf-8"))
     except SyntaxError:
@@ -142,6 +185,15 @@ def parse_file(path: pathlib.Path) -> ast.Module | None:
 
 
 def module_name_for_path(path: pathlib.Path) -> str:
+    """
+
+    Args:
+      path: pathlib.Path:
+      path: pathlib.Path:
+
+    Returns:
+
+    """
     relative = path.relative_to(ROOT)
     parts = list(relative.parts)
     if parts[-1] == "__init__.py":
@@ -152,6 +204,15 @@ def module_name_for_path(path: pathlib.Path) -> str:
 
 
 def package_parts_for_path(path: pathlib.Path) -> list[str]:
+    """
+
+    Args:
+      path: pathlib.Path:
+      path: pathlib.Path:
+
+    Returns:
+
+    """
     relative = path.relative_to(ROOT)
     parts = list(relative.parts)
     if parts[-1] == "__init__.py":
@@ -160,6 +221,7 @@ def package_parts_for_path(path: pathlib.Path) -> list[str]:
 
 
 def get_local_module_names() -> set[str]:
+    """"""
     local_modules: set[str] = set()
     for path in ROOT.iterdir():
         if path.name.startswith(".") or path.name in {"__pycache__", "node_modules"}:
@@ -172,12 +234,34 @@ def get_local_module_names() -> set[str]:
 
 
 def is_local_module(module_name: str) -> bool:
+    """
+
+    Args:
+      module_name: str:
+      module_name: str:
+
+    Returns:
+
+    """
     if not module_name:
         return False
     return module_name.split(".")[0] in LOCAL_LAYER_ROOTS
 
 
 def _resolve_relative_import(path: pathlib.Path, node: ast.ImportFrom, alias_name: str) -> str | None:
+    """
+
+    Args:
+      path: pathlib.Path:
+      node: ast.ImportFrom:
+      alias_name: str:
+      path: pathlib.Path:
+      node: ast.ImportFrom:
+      alias_name: str:
+
+    Returns:
+
+    """
     package_parts = package_parts_for_path(path)
     levels_up = max(node.level - 1, 0)
 
@@ -197,6 +281,15 @@ def _resolve_relative_import(path: pathlib.Path, node: ast.ImportFrom, alias_nam
 
 
 def _is_type_checking_node(node: ast.If) -> bool:
+    """
+
+    Args:
+      node: ast.If:
+      node: ast.If:
+
+    Returns:
+
+    """
     test = node.test
     return (isinstance(test, ast.Name) and test.id == "TYPE_CHECKING") or (
         isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING"
@@ -209,6 +302,21 @@ def _collect_imports_from_stmts(
     in_type_checking: bool,
     results: list[ImportReference],
 ) -> None:
+    """
+
+    Args:
+      path: pathlib.Path:
+      statements: list[ast.stmt]:
+      in_type_checking: bool:
+      results: list[ImportReference]:
+      path: pathlib.Path:
+      statements: list[ast.stmt]:
+      in_type_checking: bool:
+      results: list[ImportReference]:
+
+    Returns:
+
+    """
     for node in statements:
         if isinstance(node, ast.Import):
             for alias in node.names:
@@ -256,12 +364,33 @@ def _collect_imports_from_stmts(
 
 
 def get_import_references(path: pathlib.Path, tree: ast.Module) -> list[ImportReference]:
+    """
+
+    Args:
+      path: pathlib.Path:
+      tree: ast.Module:
+      path: pathlib.Path:
+      tree: ast.Module:
+
+    Returns:
+
+    """
     results: list[ImportReference] = []
     _collect_imports_from_stmts(path, tree.body, False, results)
     return results
 
 
 def detect_layer_from_parts(parts: tuple[str, ...] | list[str]) -> str | None:
+    """
+
+    Args:
+      parts: tuple[str:
+      ...] | list[str]:
+      parts: tuple[str:
+
+    Returns:
+
+    """
     parts_set = set(parts)
     if "application" in parts_set and "ports" in parts_set:
         return "ports"
@@ -272,10 +401,28 @@ def detect_layer_from_parts(parts: tuple[str, ...] | list[str]) -> str | None:
 
 
 def detect_layer(path: pathlib.Path) -> str | None:
+    """
+
+    Args:
+      path: pathlib.Path:
+      path: pathlib.Path:
+
+    Returns:
+
+    """
     return detect_layer_from_parts(path.parts)
 
 
 def layer_of(module_name: str) -> str:
+    """
+
+    Args:
+      module_name: str:
+      module_name: str:
+
+    Returns:
+
+    """
     if module_name.startswith("application.ports") or module_name == "application.ports":
         return "ports"
     detected = detect_layer_from_parts(module_name.split("."))
@@ -283,10 +430,30 @@ def layer_of(module_name: str) -> str:
 
 
 def is_in_layer(path: pathlib.Path, layer_name: str) -> bool:
+    """
+
+    Args:
+      path: pathlib.Path:
+      layer_name: str:
+      path: pathlib.Path:
+      layer_name: str:
+
+    Returns:
+
+    """
     return layer_name in path.parts
 
 
 def is_port_class(node: ast.ClassDef) -> bool:
+    """
+
+    Args:
+      node: ast.ClassDef:
+      node: ast.ClassDef:
+
+    Returns:
+
+    """
     for base in node.bases:
         if isinstance(base, ast.Name) and base.id in {"Protocol", "ABC"}:
             return True
@@ -296,6 +463,15 @@ def is_port_class(node: ast.ClassDef) -> bool:
 
 
 def collect_import_aliases(tree: ast.Module) -> dict[str, str]:
+    """
+
+    Args:
+      tree: ast.Module:
+      tree: ast.Module:
+
+    Returns:
+
+    """
     aliases: dict[str, str] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -315,6 +491,8 @@ def collect_import_aliases(tree: ast.Module) -> dict[str, str]:
 
 @dataclass
 class Failure:
+    """"""
+
     category: str
     message: str
     file: pathlib.Path
@@ -329,6 +507,17 @@ class Failure:
 
 
 def check_forbidden_imports(files: list[pathlib.Path], failures: list[Failure]) -> None:
+    """
+
+    Args:
+      files: list[pathlib.Path]:
+      failures: list[Failure]:
+      files: list[pathlib.Path]:
+      failures: list[Failure]:
+
+    Returns:
+
+    """
     stdlib_modules = set(sys.stdlib_module_names)
     explicitly_forbidden_stdlib = {"logging", "os", "random"}
     local_modules = get_local_module_names()
@@ -353,6 +542,17 @@ def check_forbidden_imports(files: list[pathlib.Path], failures: list[Failure]) 
 
 
 def check_determinism(files: list[pathlib.Path], failures: list[Failure]) -> None:
+    """
+
+    Args:
+      files: list[pathlib.Path]:
+      failures: list[Failure]:
+      files: list[pathlib.Path]:
+      failures: list[Failure]:
+
+    Returns:
+
+    """
     forbidden_attr_calls = {
         "datetime.now",
         "datetime.utcnow",
@@ -403,6 +603,17 @@ def check_determinism(files: list[pathlib.Path], failures: list[Failure]) -> Non
 
 
 def check_dataframe_in_domain(files: list[pathlib.Path], failures: list[Failure]) -> None:
+    """
+
+    Args:
+      files: list[pathlib.Path]:
+      failures: list[Failure]:
+      files: list[pathlib.Path]:
+      failures: list[Failure]:
+
+    Returns:
+
+    """
     for path in files:
         tree = parse_file(path)
         if tree is None:
@@ -432,6 +643,17 @@ def check_dataframe_in_domain(files: list[pathlib.Path], failures: list[Failure]
 
 
 def check_env_access_in_application(files: list[pathlib.Path], failures: list[Failure]) -> None:
+    """
+
+    Args:
+      files: list[pathlib.Path]:
+      failures: list[Failure]:
+      files: list[pathlib.Path]:
+      failures: list[Failure]:
+
+    Returns:
+
+    """
     for path in files:
         tree = parse_file(path)
         if tree is None:
@@ -477,6 +699,15 @@ def check_env_access_in_application(files: list[pathlib.Path], failures: list[Fa
 
 
 def check_python_version_consistency(failures: list[Failure]) -> None:
+    """
+
+    Args:
+      failures: list[Failure]:
+      failures: list[Failure]:
+
+    Returns:
+
+    """
     versions: dict[str, str | None] = {
         ".python-version": None,
         "Dockerfile": None,
@@ -524,6 +755,17 @@ def check_python_version_consistency(failures: list[Failure]) -> None:
 
 
 def check_layer_dependencies(files: list[pathlib.Path], failures: list[Failure]) -> None:
+    """
+
+    Args:
+      files: list[pathlib.Path]:
+      failures: list[Failure]:
+      files: list[pathlib.Path]:
+      failures: list[Failure]:
+
+    Returns:
+
+    """
     for path in files:
         tree = parse_file(path)
         if tree is None:
@@ -550,6 +792,17 @@ def check_layer_dependencies(files: list[pathlib.Path], failures: list[Failure])
 
 
 def check_side_effects(files: list[pathlib.Path], failures: list[Failure]) -> None:
+    """
+
+    Args:
+      files: list[pathlib.Path]:
+      failures: list[Failure]:
+      files: list[pathlib.Path]:
+      failures: list[Failure]:
+
+    Returns:
+
+    """
     for path in files:
         tree = parse_file(path)
         if tree is None:
@@ -600,6 +853,15 @@ def check_side_effects(files: list[pathlib.Path], failures: list[Failure]) -> No
 
 
 def collect_ports(files: list[pathlib.Path]) -> set[str]:
+    """
+
+    Args:
+      files: list[pathlib.Path]:
+      files: list[pathlib.Path]:
+
+    Returns:
+
+    """
     ports: set[str] = set()
     for path in files:
         if "ports" not in path.parts:
@@ -617,6 +879,19 @@ def collect_ports(files: list[pathlib.Path]) -> set[str]:
 
 
 def check_port_implementation(files: list[pathlib.Path], ports: set[str], failures: list[Failure]) -> None:
+    """
+
+    Args:
+      files: list[pathlib.Path]:
+      ports: set[str]:
+      failures: list[Failure]:
+      files: list[pathlib.Path]:
+      ports: set[str]:
+      failures: list[Failure]:
+
+    Returns:
+
+    """
     if not ports:
         return
 
@@ -655,6 +930,17 @@ def check_port_implementation(files: list[pathlib.Path], ports: set[str], failur
 
 
 def check_orm_usage(files: list[pathlib.Path], failures: list[Failure]) -> None:
+    """
+
+    Args:
+      files: list[pathlib.Path]:
+      failures: list[Failure]:
+      files: list[pathlib.Path]:
+      failures: list[Failure]:
+
+    Returns:
+
+    """
     for path in files:
         source_layer = detect_layer(path)
         if source_layer not in {"domain", "application", "ports"}:
@@ -680,6 +966,15 @@ def check_orm_usage(files: list[pathlib.Path], failures: list[Failure]) -> None:
 
 
 def build_dependency_graph(files: list[pathlib.Path]) -> dict[str, set[str]]:
+    """
+
+    Args:
+      files: list[pathlib.Path]:
+      files: list[pathlib.Path]:
+
+    Returns:
+
+    """
     graph: dict[str, set[str]] = defaultdict(set)
 
     for path in files:
@@ -699,6 +994,15 @@ def build_dependency_graph(files: list[pathlib.Path]) -> dict[str, set[str]]:
 
 
 def _canonicalize_cycle(cycle: list[str]) -> tuple[str, ...]:
+    """
+
+    Args:
+      cycle: list[str]:
+      cycle: list[str]:
+
+    Returns:
+
+    """
     core = cycle[:-1]
     if not core:
         return ()
@@ -710,6 +1014,16 @@ def _canonicalize_cycle(cycle: list[str]) -> tuple[str, ...]:
 
 
 def detect_cycles(graph: dict[str, set[str]]) -> list[list[str]]:
+    """
+
+    Args:
+      graph: dict[str:
+      set[str]]:
+      graph: dict[str:
+
+    Returns:
+
+    """
     visited: set[str] = set()
     stack: list[str] = []
     stack_index: dict[str, int] = {}
@@ -717,6 +1031,15 @@ def detect_cycles(graph: dict[str, set[str]]) -> list[list[str]]:
     cycles: list[list[str]] = []
 
     def visit(node: str) -> None:
+        """
+
+        Args:
+          node: str:
+          node: str:
+
+        Returns:
+
+        """
         visited.add(node)
         stack_index[node] = len(stack)
         stack.append(node)
@@ -745,6 +1068,18 @@ def detect_cycles(graph: dict[str, set[str]]) -> list[list[str]]:
 
 
 def check_cycles(graph: dict[str, set[str]], failures: list[Failure]) -> None:
+    """
+
+    Args:
+      graph: dict[str:
+      set[str]]:
+      failures: list[Failure]:
+      graph: dict[str:
+      failures: list[Failure]:
+
+    Returns:
+
+    """
     for cycle in detect_cycles(graph):
         failures.append(
             Failure(
@@ -756,6 +1091,18 @@ def check_cycles(graph: dict[str, set[str]], failures: list[Failure]) -> None:
 
 
 def export_graph_dot(graph: dict[str, set[str]], output: pathlib.Path = GRAPH_DOT_OUTPUT) -> pathlib.Path:
+    """
+
+    Args:
+      graph: dict[str:
+      set[str]]:
+      output: pathlib.Path:  (Default value = GRAPH_DOT_OUTPUT)
+      graph: dict[str:
+      output: pathlib.Path:  (Default value = GRAPH_DOT_OUTPUT)
+
+    Returns:
+
+    """
     local_nodes = sorted(node for node in graph if is_local_module(node))
     grouped_nodes: dict[str, list[str]] = {layer: [] for layer in GRAPH_LAYER_ORDER}
 
@@ -794,6 +1141,18 @@ def export_graph_dot(graph: dict[str, set[str]], output: pathlib.Path = GRAPH_DO
 
 
 def export_graph_svg(graph: dict[str, set[str]], output: pathlib.Path = GRAPH_SVG_OUTPUT) -> pathlib.Path:
+    """
+
+    Args:
+      graph: dict[str:
+      set[str]]:
+      output: pathlib.Path:  (Default value = GRAPH_SVG_OUTPUT)
+      graph: dict[str:
+      output: pathlib.Path:  (Default value = GRAPH_SVG_OUTPUT)
+
+    Returns:
+
+    """
     local_nodes = sorted(node for node in graph if is_local_module(node))
     grouped_nodes: dict[str, list[str]] = {layer: [] for layer in GRAPH_LAYER_ORDER}
 
@@ -904,6 +1263,15 @@ def export_graph_svg(graph: dict[str, set[str]], output: pathlib.Path = GRAPH_SV
 
 
 def run(config: AuditConfig) -> int:
+    """
+
+    Args:
+      config: AuditConfig:
+      config: AuditConfig:
+
+    Returns:
+
+    """
     failures: list[Failure] = []
 
     print("=== CONTRACT AUDIT ===")

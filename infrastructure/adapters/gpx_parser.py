@@ -1,8 +1,7 @@
 """Adapter przestrzenny do parsowania śladów GPX.
 
-Wykorzystuje wyłącznie bibliotekę standardową (ElementTree) oraz GeoDjango.
-Zgodnie z ADR-002 ukrywa operacje GEOS przed warstwą aplikacji, oddając
-czysty tekst WKT (Well-Known Text).
+Wykorzystuje wyłącznie bibliotekę standardową (ElementTree) oraz GeoDjango. Zgodnie z ADR-002 ukrywa operacje GEOS przed
+warstwą aplikacji, oddając czysty tekst WKT (Well-Known Text).
 """
 
 from datetime import date
@@ -15,7 +14,18 @@ from infrastructure.exceptions import InfrastructureException
 
 
 class DjangoGpxParser(GpxParserPort):
+    """"""
+
     def parse_gpx(self, file_content: bytes) -> tuple[str | None, date | None]:
+        """
+
+        Args:
+          file_content: bytes:
+          file_content: bytes:
+
+        Returns:
+
+        """
         try:
             # Używamy bezpiecznej wersji chroniącej przed atakami DoS na pamięć RAM
             root = ET.fromstring(file_content)

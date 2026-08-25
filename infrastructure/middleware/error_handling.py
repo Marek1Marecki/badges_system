@@ -22,7 +22,22 @@ def _problem_detail(
     status: int,
     detail: str,
 ) -> JsonResponse:
-    """Buduje odpowiedź RFC 7807 Problem Details."""
+    """Buduje odpowiedź RFC 7807 Problem Details.
+
+    Args:
+      request: HttpRequest:
+      error_type: str:
+      title: str:
+      status: int:
+      detail: str:
+      request: HttpRequest:
+      error_type: str:
+      title: str:
+      status: int:
+      detail: str:
+
+    Returns:
+    """
     return JsonResponse(
         {
             "type": f"https://api.pttk-badges.pl/errors/{error_type}",
@@ -51,8 +66,15 @@ class RFC7807ErrorMiddleware:
             return self.get_response(request)
 
     def process_exception(self, request: HttpRequest, exception: Exception) -> JsonResponse | None:
-        """Django wywołuje tę metodę tylko, gdy widok rzuci nieobsłużony wyjątek."""
+        """Django wywołuje tę metodę tylko, gdy widok rzuci nieobsłużony wyjątek.
 
+        Args:
+          request: HttpRequest
+          request: HttpRequest:
+          exception: Exception:
+
+        Returns:
+        """
         # Jeśli tu dotarliśmy, oznacza to, że aplikacja wybuchła w sposób niekontrolowany
         # (np. padła baza, literówka w kodzie). Wyjątki domenowe są łapane w views.py.
 

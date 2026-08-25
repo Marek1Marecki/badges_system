@@ -22,6 +22,27 @@ class DjangoMapRepository(MapRepositoryPort):
         region_level: str | None,
         region_id: int | None,
     ) -> list[TouristObjectGeoDTO]:
+        """
+
+        Args:
+          min_lon: float:
+          min_lat: float:
+          max_lon: float:
+          max_lat: float:
+          badge_code: str | None:
+          region_level: str | None:
+          region_id: int | None:
+          min_lon: float:
+          min_lat: float:
+          max_lon: float:
+          max_lat: float:
+          badge_code: str | None:
+          region_level: str | None:
+          region_id: int | None:
+
+        Returns:
+
+        """
         from apps.badges.models import BadgeVersionModel, ObjectRegionCache, TouristObject
 
         # 1. Główny filtr przestrzenny z użyciem Bounding Boxa (Indeks GiST)
@@ -57,7 +78,16 @@ class DjangoMapRepository(MapRepositoryPort):
         ]
 
     def get_objects_along_line(self, line_wkt: str, buffer_meters: float) -> list[dict[str, Any]]:
-        """Szuka obiektów wokół podanej linii WKT za pomocą indeksów GiST."""
+        """Szuka obiektów wokół podanej linii WKT za pomocą indeksów GiST.
+
+        Args:
+          line_wkt: str:
+          buffer_meters: float:
+          line_wkt: str:
+          buffer_meters: float:
+
+        Returns:
+        """
         from apps.badges.models import TouristObject
 
         try:

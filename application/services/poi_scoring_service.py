@@ -1,7 +1,7 @@
 """Usługa Aplikacyjna: Silnik Punktacji i Kolorowania Mapy.
 
-Zgodnie z ADR-010 i ADR-015: Wylicza punkty 100/n dla szczytów i nadaje im kolory.
-Wynik jest agresywnie buforowany w Cache z precyzyjnym czasem wygaśnięcia o północy.
+Zgodnie z ADR-010 i ADR-015: Wylicza punkty 100/n dla szczytów i nadaje im kolory. Wynik jest agresywnie buforowany w
+Cache z precyzyjnym czasem wygaśnięcia o północy.
 """
 
 from collections import defaultdict
@@ -50,7 +50,14 @@ class PoiScoringService:
         self._cache = cache
 
     def recalculate_and_cache_for_profile(self, profile_id: int) -> None:
-        """Główna metoda wywoływana przez Celery w tle."""
+        """Główna metoda wywoływana przez Celery w tle.
+
+        Args:
+          profile_id: int:
+          profile_id: int:
+
+        Returns:
+        """
         now = self._clock.now()
         today_date = now.date()
 

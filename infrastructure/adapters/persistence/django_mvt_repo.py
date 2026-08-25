@@ -32,6 +32,21 @@ class DjangoMvtRepository(MvtRepositoryPort):
     """Implementuje MvtRepositoryPort korzystając z potęgi funkcji PostGIS."""
 
     def get_tile(self, layer_name: str, z: int, x: int, y: int) -> bytes | None:
+        """
+
+        Args:
+          layer_name: str:
+          z: int:
+          x: int:
+          y: int:
+          layer_name: str:
+          z: int:
+          x: int:
+          y: int:
+
+        Returns:
+
+        """
         table_name = LAYER_TO_TABLE_MAP.get(layer_name)
         if not table_name:
             raise InfrastructureException(f"Nieznana warstwa MVT: {layer_name}")

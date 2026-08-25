@@ -1,7 +1,7 @@
 """Data Transfer Objects (DTO) dla widoków mapowych.
 
-Zgodnie z ADR-013, chroni Czystą Domenę przed typami GIS z PostGIS.
-Współrzędne są przekazywane jako czyste wartości zmiennoprzecinkowe (float).
+Zgodnie z ADR-013, chroni Czystą Domenę przed typami GIS z PostGIS. Współrzędne są przekazywane jako czyste wartości
+zmiennoprzecinkowe (float).
 """
 
 from pydantic import BaseModel, ConfigDict

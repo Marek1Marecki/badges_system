@@ -1,8 +1,8 @@
 """Wstrzykiwanie zależności i konfiguracja kontenera (Dependency Injection).
 
-Punkt spinający adaptery infrastruktury z przypadkami użycia z warstwy aplikacji.
-Zwraca teraz formalny, typowany obiekt AppContainer zamiast generycznego słownika,
-dzięki czemu Mypy gwarantuje bezpieczeństwo typów we wszystkich widokach i taskach (Eliminacja String-Keys).
+Punkt spinający adaptery infrastruktury z przypadkami użycia z warstwy aplikacji. Zwraca teraz formalny, typowany obiekt
+AppContainer zamiast generycznego słownika, dzięki czemu Mypy gwarantuje bezpieczeństwo typów we wszystkich widokach i
+taskach (Eliminacja String-Keys).
 """
 
 from dataclasses import dataclass
@@ -177,10 +177,12 @@ def build_container() -> AppContainer:
 
 
 def get_container() -> AppContainer:
+    """"""
     return build_container()
 
 
 def reset_container() -> None:
+    """"""
     global _container_instance
     _container_instance = None
 

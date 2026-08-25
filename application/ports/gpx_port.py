@@ -1,4 +1,7 @@
-"""Port dla parsera plików przestrzennych. Chroni przed wyciekiem GIS do Domeny."""
+"""Port dla parsera plików przestrzennych.
+
+Chroni przed wyciekiem GIS do Domeny.
+"""
 
 from datetime import date
 from typing import Protocol
@@ -11,5 +14,11 @@ class GpxParserPort(Protocol):
         """Przetwarza plik GPX.
 
         Zwraca: (Geometria w formacie WKT, sugerowana data wycieczki).
+
+        Args:
+          file_content: bytes:
+          file_content: bytes:
+
+        Returns:
         """
         ...

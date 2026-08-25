@@ -7,10 +7,22 @@ from apps.badges.models import TouristRegionModel
 
 
 class DjangoTouristRegionGeometryRepository(TouristRegionGeometryRepositoryPort):
+    """"""
+
     def get_regions_without_geometry(self) -> list[int]:
+        """"""
         return list(TouristRegionModel.objects.filter(shape__isnull=True).values_list("id", flat=True))
 
     def update_region_geometry(self, region_id: int) -> bool:
+        """
+
+        Args:
+          region_id: int:
+          region_id: int:
+
+        Returns:
+
+        """
         try:
             region = TouristRegionModel.objects.get(id=region_id)
         except TouristRegionModel.DoesNotExist:

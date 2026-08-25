@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Update docs/security-backlog.md from Trivy JSON report.
+"""Update docs/security-backlog.md from Trivy JSON report.
 
 Usage:
     python scripts/update_security_backlog.py trivy-report.json
@@ -23,11 +22,29 @@ from typing import Any, cast
 
 
 def load_trivy_report(path: Path) -> dict[str, Any]:
+    """
+
+    Args:
+      path: Path:
+      path: Path:
+
+    Returns:
+
+    """
     with open(path) as f:
         return cast(dict[str, Any], json.load(f))
 
 
 def extract_vulns(data: dict) -> list[dict]:
+    """
+
+    Args:
+      data: dict:
+      data: dict:
+
+    Returns:
+
+    """
     vulns: list[dict] = []
     for result in data.get("Results", []):
         for v in result.get("Vulnerabilities", []):
@@ -36,6 +53,15 @@ def extract_vulns(data: dict) -> list[dict]:
 
 
 def classify_vulns(vulns: list[dict]) -> dict[str, list[dict]]:
+    """
+
+    Args:
+      vulns: list[dict]:
+      vulns: list[dict]:
+
+    Returns:
+
+    """
     groups: dict[str, list[dict]] = defaultdict(list)
     for v in vulns:
         severity = v.get("Severity", "UNKNOWN")
@@ -53,6 +79,17 @@ def classify_vulns(vulns: list[dict]) -> dict[str, list[dict]]:
 
 
 def pkg_table(vulns: list[dict], max_rows: int = 50) -> str:
+    """
+
+    Args:
+      vulns: list[dict]:
+      max_rows: int:  (Default value = 50)
+      vulns: list[dict]:
+      max_rows: int:  (Default value = 50)
+
+    Returns:
+
+    """
     by_pkg: dict[str, list[dict]] = defaultdict(list)
     for v in vulns:
         by_pkg[v.get("PkgName", "unknown")].append(v)
@@ -78,6 +115,17 @@ def pkg_table(vulns: list[dict], max_rows: int = 50) -> str:
 
 
 def top_packages(vulns: list[dict], n: int = 10) -> str:
+    """
+
+    Args:
+      vulns: list[dict]:
+      n: int:  (Default value = 10)
+      vulns: list[dict]:
+      n: int:  (Default value = 10)
+
+    Returns:
+
+    """
     c = Counter(v.get("PkgName", "unknown") for v in vulns)
     lines: list[str] = []
     for pkg, count in c.most_common(n):
@@ -86,12 +134,23 @@ def top_packages(vulns: list[dict], n: int = 10) -> str:
 
 
 def _next_review() -> str:
+    """"""
     today = date.today()
     target = today + timedelta(days=42)
     return target.strftime("%Y-%m-%d")
 
 
 def build_backlog(groups: dict[str, list[dict]]) -> str:
+    """
+
+    Args:
+      groups: dict[str:
+      list[dict]]:
+      groups: dict[str:
+
+    Returns:
+
+    """
     today = date.today().isoformat()
     total = sum(len(v) for v in groups.values())
 
@@ -240,6 +299,7 @@ def build_backlog(groups: dict[str, list[dict]]) -> str:
 
 
 def main() -> int:
+    """"""
     parser = argparse.ArgumentParser(description="Update security-backlog.md from Trivy JSON report")
     parser.add_argument("report", type=Path, help="Path to trivy-report.json")
     parser.add_argument(

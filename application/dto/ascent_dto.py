@@ -13,6 +13,10 @@ class AscentDTO(BaseModel):
 
     `region_ids` są płaskimi ID z CQRS, dzięki czemu przyszłe reguły wildcard
     mogą działać bez importowania GIS lub odpytywania infrastruktury w domenie.
+
+    Args:
+
+    Returns:
     """
 
     model_config = ConfigDict(frozen=True)
@@ -31,7 +35,10 @@ class AscentDTO(BaseModel):
 
 
 class AscentInputDTO(BaseModel):
-    """Waliduje dane logu wejścia pochodzące z zewnątrz (np. formularza/API)."""
+    """Waliduje dane logu wejścia pochodzące z zewnątrz (np.
+
+    formularza/API).
+    """
 
     peak_id: int = Field(gt=0)
     ascent_date: date

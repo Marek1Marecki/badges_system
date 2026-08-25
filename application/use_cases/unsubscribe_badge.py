@@ -22,7 +22,16 @@ class UnsubscribeBadgeUseCase:
         self._event_publisher = event_publisher
 
     def execute(self, profile_id: int, badge_code: str) -> None:
-        """Kasuje subskrypcję i inwaliduje cache mapy."""
+        """Kasuje subskrypcję i inwaliduje cache mapy.
+
+        Args:
+          profile_id: int:
+          badge_code: str:
+          profile_id: int:
+          badge_code: str:
+
+        Returns:
+        """
         progress = self._progress_repo.get_progress(profile_id, badge_code, 1)
         if not progress:
             raise UseCaseError(f"Nie subskrybujesz odznaki {badge_code}.")

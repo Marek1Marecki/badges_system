@@ -1,7 +1,6 @@
 """Routing URL dla obszaru API (apps/api/urls.py).
 
-Rejestracja w głównym urls.py projektu:
-    path("api/v1/", include("apps.api.urls", namespace="api")),
+Rejestracja w głównym urls.py projektu:     path("api/v1/", include("apps.api.urls", namespace="api")),
 """
 
 from django.urls import path

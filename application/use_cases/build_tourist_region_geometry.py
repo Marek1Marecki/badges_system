@@ -15,7 +15,14 @@ class BuildTouristRegionGeometryUseCase:
         self._repo = geometry_repository
 
     def execute(self, region_id: int) -> str:
-        """Kompiluje obrys składników do jednego Poligonu i go zapisuje."""
+        """Kompiluje obrys składników do jednego Poligonu i go zapisuje.
+
+        Args:
+          region_id: int:
+          region_id: int:
+
+        Returns:
+        """
         # Oddelegowanie całkowitej brudnej roboty GIS i złączeń do Adaptera (infrastruktury)
         success = self._repo.update_region_geometry(region_id)
 

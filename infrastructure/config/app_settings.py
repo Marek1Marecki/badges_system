@@ -92,7 +92,15 @@ class AppSettings(BaseSettings):
     @field_validator("debug", mode="before")
     @classmethod
     def validate_debug(cls, v: Any) -> Any:
-        """Mapuje niestandardowe wartości DEBUG (np. 'release') na boolean."""
+        """Mapuje niestandardowe wartości DEBUG (np.
+
+        'release') na boolean.
+                Args:
+                  v: Any:
+                  v: Any:
+
+                Returns:
+        """
         if isinstance(v, str) and v.strip().lower() == "release":
             return False
         return v
@@ -100,7 +108,14 @@ class AppSettings(BaseSettings):
     @field_validator("log_level")
     @classmethod
     def validate_log_level(cls, v: str) -> str:
-        """Wymusza, by poziom logów był zawsze pisany dużymi literami i dozwolony."""
+        """Wymusza, by poziom logów był zawsze pisany dużymi literami i dozwolony.
+
+        Args:
+          v: str:
+          v: str:
+
+        Returns:
+        """
         valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
         upper_v = v.upper()
         if upper_v not in valid_levels:

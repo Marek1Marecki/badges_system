@@ -42,7 +42,19 @@ class EvaluateBadgeProgressQuery:
         self._clock = clock
 
     def execute(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> dict[str, Any]:
-        """Weryfikuje status matematyczny w locie."""
+        """Weryfikuje status matematyczny w locie.
+
+        Args:
+          profile_id: int:
+          badge_code: str:
+          cycle_number: int:  (Default value = 1)
+          profile_id: int:
+          badge_code: str:
+          cycle_number: int:  (Default value = 1)
+
+        Returns:
+
+        """
         # 1. Pobieramy postęp by mieć referencję do zakotwiczonej wersji (P-01)
         progress = self._progress_repo.get_progress(profile_id, badge_code, cycle_number)
         if not progress:
@@ -117,7 +129,19 @@ class UpdateBadgeProgressCommand:
         self._progress_repo = progress_repository
 
     def execute(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> None:
-        """Przelicza i wymusza twardy zapis do bazy."""
+        """Przelicza i wymusza twardy zapis do bazy.
+
+        Args:
+          profile_id: int:
+          badge_code: str:
+          cycle_number: int:  (Default value = 1)
+          profile_id: int:
+          badge_code: str:
+          cycle_number: int:  (Default value = 1)
+
+        Returns:
+
+        """
         progress = self._progress_repo.get_progress(profile_id, badge_code, cycle_number)
         if not progress:
             return

@@ -1,5 +1,5 @@
-"""Linter migracji — statyczna introspekcja `Migration.operations` względem
-whitelisty dozwolonych operacji (ADR-024, pkt 6).
+"""Linter migracji — statyczna introspekcja `Migration.operations` względem whitelisty dozwolonych operacji (ADR-024,
+pkt 6).
 
 UMIEJSCOWIENIE: ten plik NIE jest częścią repozytorium infrastruktury —
 skopiuj go do tej samej aplikacji Django, w której już macie
@@ -61,6 +61,8 @@ BLOCKED = (
 
 
 class Command(BaseCommand):
+    """"""
+
     help = (
         "Statyczna introspekcja plików migracji względem whitelisty "
         "dozwolonych operacji (ADR-024, pkt 6). Kod wyjścia != 0 wyłącznie "
@@ -70,6 +72,14 @@ class Command(BaseCommand):
     )
 
     def add_arguments(self, parser):
+        """
+
+        Args:
+          parser:
+
+        Returns:
+
+        """
         parser.add_argument(
             "--app-label",
             action="append",
@@ -90,6 +100,15 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        """
+
+        Args:
+          *args:
+          **options:
+
+        Returns:
+
+        """
         # `connection=None` — celowo nie łączymy się z bazą. Ten linter
         # sprawdza TREŚĆ plików migracji na dysku, nie stan konkretnej bazy
         # danych (ten sam wynik niezależnie od środowiska — wymóg
@@ -168,6 +187,12 @@ class Command(BaseCommand):
         `/app` — bez tego rozdzielenia ta heurystyka mogłaby dawać fałszywe
         wyniki (np. gdyby zależności instalowały się do `.venv` wewnątrz
         katalogu projektu).
+
+        Args:
+          loader: MigrationLoader:
+          loader: MigrationLoader:
+
+        Returns:
         """
         try:
             base_dir = Path(str(settings.BASE_DIR)).resolve()
@@ -207,6 +232,12 @@ class Command(BaseCommand):
         (wymaga zbadania pola, nie samej klasy operacji), na końcu reszta
         operacji wymagających review. Wszystko inne (w tym CreateModel)
         jest dozwolone automatycznie.
+
+        Args:
+          operation: Operation:
+          operation: Operation:
+
+        Returns:
         """
         if isinstance(operation, BLOCKED):
             return "blocked", operation.__class__.__name__

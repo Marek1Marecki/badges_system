@@ -34,7 +34,13 @@ from apps.tourists.models import (
 
 
 def _get_active_profile_id(request) -> int:
-    """Helper: Pobiera ID aktywnego profilu (Konto Rodzinne) z sesji."""
+    """Helper: Pobiera ID aktywnego profilu (Konto Rodzinne) z sesji.
+
+    Args:
+      request:
+
+    Returns:
+    """
     active_id = request.session.get("active_profile_id")
     if active_id:
         return int(active_id)
@@ -63,7 +69,13 @@ def _get_active_profile_id(request) -> int:
 
 @login_required
 def dashboard_view(request):
-    """Główny ekran aplikacji turysty (Pulpit z mapą i odznakami)."""
+    """Główny ekran aplikacji turysty (Pulpit z mapą i odznakami).
+
+    Args:
+      request:
+
+    Returns:
+    """
     profile_id = _get_active_profile_id(request)
 
     active_progresses = (
@@ -77,7 +89,13 @@ def dashboard_view(request):
 
 @login_required
 def badge_catalog_view(request):
-    """Katalog wszystkich dostępnych odznak z opcją subskrypcji i podglądem szczytów."""
+    """Katalog wszystkich dostępnych odznak z opcją subskrypcji i podglądem szczytów.
+
+    Args:
+      request:
+
+    Returns:
+    """
     profile_id = _get_active_profile_id(request)
 
     # 1. Pobieramy wszystkie odznaki
@@ -120,7 +138,15 @@ def badge_catalog_view(request):
 
 @login_required
 def switch_profile_view(request, profile_id: int):
-    """Zmienia aktywny profil w sesji (Przełącznik Rodzinny)."""
+    """Zmienia aktywny profil w sesji (Przełącznik Rodzinny).
+
+    Args:
+      request:
+      profile_id: int:
+      profile_id: int:
+
+    Returns:
+    """
     profile = get_object_or_404(TouristProfile, id=profile_id, user=request.user)
 
     request.session["active_profile_id"] = profile.id
@@ -140,7 +166,13 @@ def switch_profile_view(request, profile_id: int):
 
 @login_required
 def profile_settings_view(request):
-    """Formularz zarządzania profilami (Konta Rodzinne)."""
+    """Formularz zarządzania profilami (Konta Rodzinne).
+
+    Args:
+      request:
+
+    Returns:
+    """
     profiles = list(TouristProfile.objects.filter(user=request.user))
     main_profile = next((p for p in profiles if p.is_main_profile), None)
 
@@ -193,7 +225,15 @@ def profile_settings_view(request):
 
 @login_required
 def object_detail_view(request, object_id: int):
-    """Szczegóły konkretnego obiektu, klastry i historia wejść."""
+    """Szczegóły konkretnego obiektu, klastry i historia wejść.
+
+    Args:
+      request:
+      object_id: int:
+      object_id: int:
+
+    Returns:
+    """
     profile_id = _get_active_profile_id(request)
 
     # NOWE: Pobieramy kody odznak subskrybowanych przez ten profil
@@ -241,7 +281,15 @@ def object_detail_view(request, object_id: int):
 
 @login_required
 def badge_detail_view(request, badge_code: str):
-    """Szczegóły odznaki: mapa, regulamin, postęp, logistyka i wykaz obiektów."""
+    """Szczegóły odznaki: mapa, regulamin, postęp, logistyka i wykaz obiektów.
+
+    Args:
+      request:
+      badge_code: str:
+      badge_code: str:
+
+    Returns:
+    """
     profile_id = _get_active_profile_id(request)
     badge = get_object_or_404(BadgeModel.objects.select_related("organizer"), code=badge_code)
 
@@ -341,7 +389,17 @@ def badge_detail_view(request, badge_code: str):
 
 @login_required
 def region_detail_view(request, region_level: str, region_id: int):
-    """Szczegóły regionu geograficznego z rankingiem obiektów i mapą."""
+    """Szczegóły regionu geograficznego z rankingiem obiektów i mapą.
+
+    Args:
+      request:
+      region_level: str:
+      region_id: int:
+      region_level: str:
+      region_id: int:
+
+    Returns:
+    """
     profile_id = _get_active_profile_id(request)
 
     # Mapowanie typu regionu na konkretny model Django
@@ -454,7 +512,13 @@ def region_detail_view(request, region_level: str, region_id: int):
 
 @login_required
 def poi_ranking_view(request):
-    """Widok: Ranking Poszczególnych Celów (Szczytów i Klastrów)."""
+    """Widok: Ranking Poszczególnych Celów (Szczytów i Klastrów).
+
+    Args:
+      request:
+
+    Returns:
+    """
     profile_id = _get_active_profile_id(request)
 
     # 1. Odpytujemy Czysty Serwis Odczytu
@@ -471,7 +535,13 @@ def poi_ranking_view(request):
 
 @login_required
 def region_ranking_view(request):
-    """Widok: Skumulowany ranking dla całych regionów z podziałem na poziomy."""
+    """Widok: Skumulowany ranking dla całych regionów z podziałem na poziomy.
+
+    Args:
+      request:
+
+    Returns:
+    """
     profile_id = _get_active_profile_id(request)
 
     # Bezpieczne pobieranie poziomu z URL, z domyślnym przejściem na MEZOREGION
@@ -492,7 +562,15 @@ def region_ranking_view(request):
 
 @login_required
 def organizer_detail_view(request, organizer_id: int):
-    """Szczegóły organizatora i wylistowanie wszystkich jego odznak."""
+    """Szczegóły organizatora i wylistowanie wszystkich jego odznak.
+
+    Args:
+      request:
+      organizer_id: int:
+      organizer_id: int:
+
+    Returns:
+    """
     profile_id = _get_active_profile_id(request)
     organizer = get_object_or_404(OrganizerModel, id=organizer_id)
 
@@ -512,7 +590,13 @@ def organizer_detail_view(request, organizer_id: int):
 
 @login_required
 def logistics_view(request):
-    """Centralna tablica Kanban dla wysyłek i weryfikacji fizycznych."""
+    """Centralna tablica Kanban dla wysyłek i weryfikacji fizycznych.
+
+    Args:
+      request:
+
+    Returns:
+    """
     profile_id = _get_active_profile_id(request)
 
     completed_progresses = (

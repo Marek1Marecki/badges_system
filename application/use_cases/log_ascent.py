@@ -1,8 +1,8 @@
 """Przypadek użycia: Logowanie wejścia turysty (AscentLog).
 
-Zgodnie z US-C03 i Invariantem T-01: Use case weryfikuje bitemporalność obiektu PRZED zapisem do bazy.
-Zgodnie z Invariantem T-03: Odrzuca wejścia z przyszłości.
-Zgodnie z Invariantem D-04: Blokuje zapisywanie duplikatów dla danego dnia.
+Zgodnie z US-C03 i Invariantem T-01: Use case weryfikuje bitemporalność obiektu PRZED zapisem do bazy. Zgodnie z
+Invariantem T-03: Odrzuca wejścia z przyszłości. Zgodnie z Invariantem D-04: Blokuje zapisywanie duplikatów dla danego
+dnia.
 """
 
 from application.dto.ascent_dto import AscentInputDTO
@@ -39,16 +39,20 @@ class LogAscentUseCase:
         """Wykonuje operację logowania wejścia.
 
         Args:
-            profile_id: ID turysty z kontekstu sesji (API).
-            dto: Zwalidowane dane wejściowe.
+          profile_id: ID turysty z kontekstu sesji (API).
+          dto: Zwalidowane dane wejściowe.
+          profile_id: int:
+          dto: AscentInputDTO:
+          profile_id: int:
+          dto: AscentInputDTO:
 
         Returns:
-            ID utworzonego logu wejścia.
+          : ID utworzonego logu wejścia.
 
         Raises:
-            UseCaseError: Gdy data wybiega w przyszłość (T-03) lub obiekt nie istnieje.
-            BitemporalTimeError: Jeśli data wejścia wykracza poza cykl życia obiektu (T-01).
-            ConflictError: Jeśli turysta zalogował już ten obiekt tego samego dnia (D-04).
+          UseCaseError: Gdy data wybiega w przyszłość (T-03) lub obiekt nie istnieje.
+          BitemporalTimeError: Jeśli data wejścia wykracza poza cykl życia obiektu (T-01).
+          ConflictError: Jeśli turysta zalogował już ten obiekt tego samego dnia (D-04).
         """
         # 1. Zakaz logowania w przyszłości (Invariant T-03)
         today = self._clock.now().date()

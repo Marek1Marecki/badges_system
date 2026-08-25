@@ -11,7 +11,15 @@ class CeleryEventPublisher(DomainEventPublisherPort):
     """Tłumaczy czyste zdarzenia domenowe na konkretne taski Celery."""
 
     def publish(self, event: DomainEvent) -> None:
-        """Publikuje zdarzenie. Gwarantuje uruchomienie po commicie DB (lub natychmiast w testach)."""
+        """Publikuje zdarzenie.
+
+        Gwarantuje uruchomienie po commicie DB (lub natychmiast w testach).
+                Args:
+                  event: DomainEvent:
+                  event: DomainEvent:
+
+                Returns:
+        """
         if isinstance(event, UserProgressStateChanged):
             from apps.badges.tasks import recalculate_poi_scores_task
 

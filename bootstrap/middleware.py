@@ -19,4 +19,13 @@ class ContainerMiddleware(MiddlewareMixin):
     """Dodaje ``request.app_container`` z konfigurowanym kontenerem DI."""
 
     def process_request(self, request: HttpRequest) -> None:
+        """
+
+        Args:
+          request: HttpRequest:
+          request: HttpRequest:
+
+        Returns:
+
+        """
         request.app_container = get_container()

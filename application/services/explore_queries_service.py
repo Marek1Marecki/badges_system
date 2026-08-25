@@ -28,7 +28,14 @@ class ExploreQueriesService:
         self._cache = cache
 
     def get_poi_ranking(self, profile_id: int) -> PoiRankingResponseDTO:
-        """Buduje sklastrowany ranking pojedynczych obiektów turystycznych (Szczytów)."""
+        """Buduje sklastrowany ranking pojedynczych obiektów turystycznych (Szczytów).
+
+        Args:
+          profile_id: int:
+          profile_id: int:
+
+        Returns:
+        """
         active_progresses = self._progress_repo.get_active_progresses(profile_id)
         subscribed_badge_codes = [p.badge_code for p in active_progresses]
 
@@ -103,7 +110,17 @@ class ExploreQueriesService:
         )
 
     def get_region_ranking(self, profile_id: int, level: str) -> RegionRankingResponseDTO:
-        """Buduje skumulowany ranking dla całych regionów (np. wszystkich szczytów w Tatrach)."""
+        """Buduje skumulowany ranking dla całych regionów (np.
+
+        wszystkich szczytów w Tatrach).
+                Args:
+                  profile_id: int:
+                  level: str:
+                  profile_id: int:
+                  level: str:
+
+                Returns:
+        """
         map_state = self._cache.get(f"map_state:{profile_id}") or {}
         scores = map_state.get("scores", {})
 

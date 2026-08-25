@@ -33,6 +33,16 @@ logger = logging.getLogger(__name__)
 
 
 def _build_time_limit_rule(data: dict[str, Any]) -> TimeLimitRule:
+    """
+
+    Args:
+      data: dict[str:
+      Any]:
+      data: dict[str:
+
+    Returns:
+
+    """
     limit = data.get("limit_in_years")
     if limit is None:
         raise ValueError("TimeLimitRule wymaga parametru 'limit_in_years'.")
@@ -40,10 +50,30 @@ def _build_time_limit_rule(data: dict[str, Any]) -> TimeLimitRule:
 
 
 def _build_club_join_rule(data: dict[str, Any]) -> RequiresClubJoinDateRule:
+    """
+
+    Args:
+      data: dict[str:
+      Any]:
+      data: dict[str:
+
+    Returns:
+
+    """
     return RequiresClubJoinDateRule()
 
 
 def _build_min_age_rule(data: dict[str, Any]) -> MinAgeRule:
+    """
+
+    Args:
+      data: dict[str:
+      Any]:
+      data: dict[str:
+
+    Returns:
+
+    """
     age = data.get("min_age")
     if age is None:
         raise ValueError("MinAgeRule wymaga parametru 'min_age'.")
@@ -51,6 +81,16 @@ def _build_min_age_rule(data: dict[str, Any]) -> MinAgeRule:
 
 
 def _build_max_age_rule(data: dict[str, Any]) -> MaxAgeRule:
+    """
+
+    Args:
+      data: dict[str:
+      Any]:
+      data: dict[str:
+
+    Returns:
+
+    """
     age = data.get("max_age")
     if age is None:
         raise ValueError("MaxAgeRule wymaga parametru 'max_age'.")
@@ -58,6 +98,16 @@ def _build_max_age_rule(data: dict[str, Any]) -> MaxAgeRule:
 
 
 def _build_start_date_rule(data: dict[str, Any]) -> StartDateRule:
+    """
+
+    Args:
+      data: dict[str:
+      Any]:
+      data: dict[str:
+
+    Returns:
+
+    """
     date_str = data.get("start_date")
     if not date_str:
         raise ValueError("StartDateRule wymaga parametru 'start_date'.")
@@ -69,6 +119,16 @@ def _build_start_date_rule(data: dict[str, Any]) -> StartDateRule:
 
 
 def _build_date_window_rule(data: dict[str, Any]) -> DateWindowRule:
+    """
+
+    Args:
+      data: dict[str:
+      Any]:
+      data: dict[str:
+
+    Returns:
+
+    """
     start_str = data.get("start_date")
     end_str = data.get("end_date")
     if not start_str or not end_str:
@@ -80,6 +140,16 @@ def _build_date_window_rule(data: dict[str, Any]) -> DateWindowRule:
 
 
 def _build_mandatory_objects_rule(data: dict[str, Any]) -> MandatoryObjectsRule:
+    """
+
+    Args:
+      data: dict[str:
+      Any]:
+      data: dict[str:
+
+    Returns:
+
+    """
     raw_ids = data.get("mandatory_peak_ids")
     if not raw_ids:
         raise ValueError("MandatoryObjectsRule wymaga listy 'mandatory_peak_ids'.")
@@ -88,6 +158,16 @@ def _build_mandatory_objects_rule(data: dict[str, Any]) -> MandatoryObjectsRule:
 
 
 def _build_grouped_alternatives_rule(data: dict[str, Any]) -> GroupedAlternativesRule:
+    """
+
+    Args:
+      data: dict[str:
+      Any]:
+      data: dict[str:
+
+    Returns:
+
+    """
     min_req = data.get("min_groups_required")
     raw_groups_list = data.get("groups")
 
@@ -110,6 +190,16 @@ def _build_grouped_alternatives_rule(data: dict[str, Any]) -> GroupedAlternative
 
 
 def _build_multi_pool_rule(data: dict[str, Any]) -> MultiPoolRequirementRule:
+    """
+
+    Args:
+      data: dict[str:
+      Any]:
+      data: dict[str:
+
+    Returns:
+
+    """
     raw_pools = data.get("pools")
     if not raw_pools:
         raise ValueError("MultiPoolRequirementRule wymaga listy 'pools'.")
@@ -133,6 +223,16 @@ def _build_multi_pool_rule(data: dict[str, Any]) -> MultiPoolRequirementRule:
 
 
 def _build_prerequisite_badge_rule(data: dict[str, Any]) -> PrerequisiteBadgeRule:
+    """
+
+    Args:
+      data: dict[str:
+      Any]:
+      data: dict[str:
+
+    Returns:
+
+    """
     code = data.get("required_badge_code")
     if not code:
         raise ValueError("PrerequisiteBadgeRule wymaga parametru 'required_badge_code'.")
@@ -140,6 +240,16 @@ def _build_prerequisite_badge_rule(data: dict[str, Any]) -> PrerequisiteBadgeRul
 
 
 def _build_region_count_rule(data: dict[str, Any]) -> RegionCountRule:
+    """
+
+    Args:
+      data: dict[str:
+      Any]:
+      data: dict[str:
+
+    Returns:
+
+    """
     region_id = data.get("region_id")
     req_count = data.get("required_count")
     if region_id is None or req_count is None:
@@ -171,6 +281,17 @@ class DjangoBadgeRepository(BadgeRepositoryPort):
     """Implementuje komunikację z bazą relacyjną przy użyciu Django ORM."""
 
     def get_badge_version(self, badge_code: str, version_code: str) -> BadgeVersionDomain | None:
+        """
+
+        Args:
+          badge_code: str:
+          version_code: str:
+          badge_code: str:
+          version_code: str:
+
+        Returns:
+
+        """
         try:
             version_model = BadgeVersionModel.objects.prefetch_related("pool_peaks").get(
                 badge__code=badge_code, version_code=version_code
@@ -180,6 +301,15 @@ class DjangoBadgeRepository(BadgeRepositoryPort):
         return self._hydrate_version(version_model, badge_code)
 
     def get_badge_version_by_id(self, version_id: int) -> BadgeVersionDomain | None:
+        """
+
+        Args:
+          version_id: int:
+          version_id: int:
+
+        Returns:
+
+        """
         try:
             version_model = BadgeVersionModel.objects.prefetch_related("pool_peaks").get(id=version_id)
         except BadgeVersionModel.DoesNotExist:
@@ -187,6 +317,17 @@ class DjangoBadgeRepository(BadgeRepositoryPort):
         return self._hydrate_version(version_model, version_model.badge.code)
 
     def get_version_id_for_date(self, badge_code: str, target_date: date) -> int | None:
+        """
+
+        Args:
+          badge_code: str:
+          target_date: date:
+          badge_code: str:
+          target_date: date:
+
+        Returns:
+
+        """
         version = (
             BadgeVersionModel.objects.filter(
                 badge__code=badge_code,
@@ -199,7 +340,16 @@ class DjangoBadgeRepository(BadgeRepositoryPort):
         return version.id if version else None
 
     def _hydrate_version(self, version_model: BadgeVersionModel, badge_code: str) -> BadgeVersionDomain:
-        """Prywatna metoda tłumacząca ORM na obiekt domenowy."""
+        """Prywatna metoda tłumacząca ORM na obiekt domenowy.
+
+        Args:
+          version_model: BadgeVersionModel:
+          badge_code: str:
+          version_model: BadgeVersionModel:
+          badge_code: str:
+
+        Returns:
+        """
         pool_peaks = {peak.id for peak in version_model.pool_peaks.all()}
         domain_rules: list[BadgeRule] = []
 
@@ -246,6 +396,15 @@ class DjangoBadgeRepository(BadgeRepositoryPort):
         )
 
     def get_latest_badge_version(self, badge_code: str) -> BadgeVersionDomain | None:
+        """
+
+        Args:
+          badge_code: str:
+          badge_code: str:
+
+        Returns:
+
+        """
         from django.utils import timezone
 
         from apps.badges.models import BadgeVersionModel

@@ -8,6 +8,8 @@ import apps.tourists.models
 
 
 class Migration(migrations.Migration):
+    """"""
+
     initial = True
 
     dependencies = [

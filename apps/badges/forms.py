@@ -10,11 +10,24 @@ from apps.badges.models import TouristObject
 
 # 1. TWORZYMY WIDŻET DATALIST (Dropdown, w którym można pisać własny tekst)
 class DatalistTextInput(UnfoldAdminTextInputWidget):
+    """"""
+
     def __init__(self, datalist, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.datalist = datalist
 
     def render(self, name, value, attrs=None, renderer=None):
+        """
+
+        Args:
+          name:
+          value:
+          attrs: (Default value = None)
+          renderer: (Default value = None)
+
+        Returns:
+
+        """
         list_id = f"datalist_{name}"
         if attrs is None:
             attrs = {}
@@ -32,13 +45,19 @@ class DatalistTextInput(UnfoldAdminTextInputWidget):
 
 
 class TouristObjectAdminForm(forms.ModelForm):
-    """
-    Wymusza logiczną spójność danych podczas wprowadzania w panelu Admina.
+    """Wymusza logiczną spójność danych podczas wprowadzania w panelu Admina.
     Zasada: Albo podajesz OSM_ID (wtedy resztę pobierzemy synchronicznie),
     albo podajesz Nazwę i Punkt na mapie (własny obiekt PTTK).
+
+    Args:
+
+    Returns:
+
     """
 
     class Meta:
+        """"""
+
         model = TouristObject
         fields = "__all__"
 
@@ -65,6 +84,7 @@ class TouristObjectAdminForm(forms.ModelForm):
         self.fields["type"].widget = DatalistTextInput(datalist=all_types)
 
     def clean(self):
+        """"""
         cleaned_data = super().clean()
         osm_id = cleaned_data.get("osm_id")
         code = cleaned_data.get("code")

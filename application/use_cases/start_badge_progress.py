@@ -1,9 +1,8 @@
 """Przypadek użycia: Rozpoczęcie zdobywania odznaki (Subskrypcja).
 
-Zgodnie z US-C05 (Prawa Nabyte) oraz Invariantem P-01:
-System automatycznie wyszukuje najstarszy log wejścia turysty dla danej odznaki.
-Jeśli turysta wchodził na szczyty np. w 2018 roku, zostaje "zakotwiczony"
-w regulaminie z 2018 roku, niezależnie od tego, że dzisiaj mamy nowszą wersję.
+Zgodnie z US-C05 (Prawa Nabyte) oraz Invariantem P-01: System automatycznie wyszukuje najstarszy log wejścia turysty dla
+danej odznaki. Jeśli turysta wchodził na szczyty np. w 2018 roku, zostaje "zakotwiczony" w regulaminie z 2018 roku,
+niezależnie od tego, że dzisiaj mamy nowszą wersję.
 """
 
 from datetime import date
@@ -44,7 +43,19 @@ class StartBadgeProgressUseCase:
         self._event_publisher = event_publisher
 
     def execute(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> int:
-        """Rozpoczyna śledzenie postępu odznaki w 100% transakcyjnie."""
+        """Rozpoczyna śledzenie postępu odznaki w 100% transakcyjnie.
+
+        Args:
+          profile_id: int:
+          badge_code: str:
+          cycle_number: int:  (Default value = 1)
+          profile_id: int:
+          badge_code: str:
+          cycle_number: int:  (Default value = 1)
+
+        Returns:
+
+        """
         # 1. Walidacja Limitów (US-C01c)
         profile_dto = self._profile_repo.get_profile(profile_id)
         if not profile_dto:

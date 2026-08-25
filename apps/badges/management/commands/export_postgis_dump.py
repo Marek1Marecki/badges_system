@@ -9,9 +9,20 @@ from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
+    """"""
+
     help = "Tworzy binarny dump PostgreSQL (pg_dump -Fc) z bieżącej bazy referencyjnej."
 
     def handle(self, *args, **options):
+        """
+
+        Args:
+          *args:
+          **options:
+
+        Returns:
+
+        """
         output_dir = Path(settings.BASE_DIR) / "data" / "reference"
         output_dir.mkdir(parents=True, exist_ok=True)
         dump_path = output_dir / "postgis_dump.custom"

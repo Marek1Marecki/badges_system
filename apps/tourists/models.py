@@ -11,12 +11,23 @@ from apps.badges.models import BadgeModel, BadgeVersionModel, TouristObject
 
 
 def profile_directory_path(instance, filename: str) -> str:
-    """Dynamicznie generuje ścieżkę do zdjęcia: media/ascents/profile_<id>/<data>_<plik>."""
+    """Dynamicznie generuje ścieżkę do zdjęcia: media/ascents/profile_<id>/<data>_<plik>.
+
+    Args:
+      instance:
+      filename: str:
+      filename: str:
+
+    Returns:
+    """
     return f"ascents/profile_{instance.profile_id}/{instance.ascent_date}_{filename}"
 
 
 class TouristProfile(models.Model):
-    """Profil Turysty. Jedno konto User może posiadać wiele profili (Konto Rodzinne)."""
+    """Profil Turysty.
+
+    Jedno konto User może posiadać wiele profili (Konto Rodzinne).
+    """
 
     # ZMIANA: ForeignKey zamiast OneToOne!
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profiles")
@@ -38,6 +49,8 @@ class TouristProfile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """"""
+
         db_table = "tourists_profile"
         verbose_name = "Profil Turysty"
         verbose_name_plural = "Profile Turystów"
@@ -50,7 +63,10 @@ class TouristProfile(models.Model):
 
 
 class AscentLog(models.Model):
-    """Historyczny dziennik wejść. Czysta ewidencja faktów."""
+    """Historyczny dziennik wejść.
+
+    Czysta ewidencja faktów.
+    """
 
     # ZMIANA: Wskazuje na Profil, a nie na Usera!
     profile = models.ForeignKey(TouristProfile, on_delete=models.CASCADE, related_name="ascents")
@@ -64,6 +80,8 @@ class AscentLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        """"""
+
         db_table = "tourists_ascent_log"
         verbose_name = "Log Wejścia"
         verbose_name_plural = "Logi Wejść"
@@ -77,12 +95,16 @@ class AscentLog(models.Model):
 
 
 class DomainStatus(models.TextChoices):
+    """"""
+
     NOT_STARTED = "NOT_STARTED", "Subskrybowana (Czeka na logi)"
     IN_PROGRESS = "IN_PROGRESS", "W trakcie zdobywania"
     COMPLETED = "COMPLETED", "Skompletowana matematycznie"
 
 
 class LogisticStatus(models.TextChoices):
+    """"""
+
     WAITING_FOR_SEND = "WAITING_FOR_SEND", "Gotowa do wysyłki (Skompletowana)"
     WAITING_FOR_VERIFICATION = "WAITING_FOR_VERIFICATION", "Wysłana do PTTK (Weryfikacja)"
     WAITING_FOR_RECEIVING = "WAITING_FOR_RECEIVING", "Zatwierdzona (Czeka na listonosza)"
@@ -114,6 +136,8 @@ class UserBadgeProgress(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """"""
+
         db_table = "tourists_badge_progress"
         verbose_name = "Postęp Odznaki (Subskrypcja)"
         verbose_name_plural = "Postępy Odznak"

@@ -10,9 +10,19 @@ from django.db import transaction
 
 
 class Command(BaseCommand):
+    """"""
+
     help = "Odtwarza autorytatywny stan systemu PTTK z plików Snapshotu i weryfikuje Manifest."
 
     def add_arguments(self, parser):
+        """
+
+        Args:
+          parser:
+
+        Returns:
+
+        """
         parser.add_argument(
             "--dry-run",
             action="store_true",
@@ -20,6 +30,15 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        """
+
+        Args:
+          *args:
+          **options:
+
+        Returns:
+
+        """
         is_dry_run = options["dry_run"]
         data_dir = Path(settings.BASE_DIR) / "data" / "reference"
 

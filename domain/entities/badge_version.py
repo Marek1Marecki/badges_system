@@ -1,7 +1,7 @@
 """Agregat domenowy Wersji Odznaki.
 
-Odpowiada za ewaluację zgłoszonych wejść (Sito Domenowe) względem puli,
-reguł biznesowych zdefiniowanych w tej wersji regulaminu oraz progów stopni.
+Odpowiada za ewaluację zgłoszonych wejść (Sito Domenowe) względem puli, reguł biznesowych zdefiniowanych w tej wersji
+regulaminu oraz progów stopni.
 """
 
 from dataclasses import dataclass
@@ -35,6 +35,16 @@ class BadgeVersionDomain:
         """Ocenia matematyczny postęp turysty w tej wersji odznaki.
 
         Zwraca ogólny status oraz szczegółową listę postępów dla każdego stopnia.
+
+        Args:
+          ascents: list[Ascent]:
+          context: VerificationContext:
+          ascents: list[Ascent]:
+          context: VerificationContext:
+          ascents: list[Ascent]:
+          context: VerificationContext:
+
+        Returns:
         """
         # 1. Sito przestrzenne (Odrzucenie szczytów spoza Menu)
         if self.pool_peak_ids:

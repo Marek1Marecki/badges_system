@@ -20,7 +20,10 @@ from domain.events import UserProgressStateChanged
 
 
 class BulkLogAscentsUseCase:
-    """Odpowiada za masowe zrzucanie logów do bazy (np. ze śladu GPX)."""
+    """Odpowiada za masowe zrzucanie logów do bazy (np.
+
+    ze śladu GPX).
+    """
 
     def __init__(
         self,
@@ -39,6 +42,14 @@ class BulkLogAscentsUseCase:
         """Przetwarza listę wejść, blokując nieistniejące obiekty (T-01, T-03).
 
         Zapisuje tylko poprawne logi i zwraca raport w trybie Partial Success.
+
+        Args:
+          profile_id: int:
+          ascents: list[AscentInputDTO]:
+          profile_id: int:
+          ascents: list[AscentInputDTO]:
+
+        Returns:
         """
         today = self._clock.now().date()
         errors = []

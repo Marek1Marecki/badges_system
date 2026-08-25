@@ -1,8 +1,7 @@
 """Adapter repozytorium dla obszaru Turysty (B2C).
 
-Implementuje porty z application/ports/user_progress_port.py przy użyciu Django ORM.
-Zgodnie z 22-ports-adapters-dto-contract.md, izoluje Use Case'y od bazy danych,
-zwracając i przyjmując wyłącznie DTO oraz proste typy Pythona.
+Implementuje porty z application/ports/user_progress_port.py przy użyciu Django ORM. Zgodnie z 22-ports-adapters-dto-
+contract.md, izoluje Use Case'y od bazy danych, zwracając i przyjmując wyłącznie DTO oraz proste typy Pythona.
 """
 
 from collections import defaultdict
@@ -32,6 +31,15 @@ class DjangoTouristRepository(
     # =====================================================================
 
     def get_profile(self, profile_id: int) -> TouristProfileDTO | None:
+        """
+
+        Args:
+          profile_id: int:
+          profile_id: int:
+
+        Returns:
+
+        """
         from apps.tourists.models import TouristProfile
 
         try:
@@ -59,6 +67,15 @@ class DjangoTouristRepository(
     # =====================================================================
 
     def get_object_lifespan(self, peak_id: int) -> tuple[date | None, date | None] | None:
+        """
+
+        Args:
+          peak_id: int:
+          peak_id: int:
+
+        Returns:
+
+        """
         from apps.badges.models import TouristObject
 
         try:
@@ -69,12 +86,36 @@ class DjangoTouristRepository(
         return (obj.existence_start, obj.existence_end)
 
     def ascent_exists(self, profile_id: int, peak_id: int, ascent_date: date) -> bool:
+        """
+
+        Args:
+          profile_id: int:
+          peak_id: int:
+          ascent_date: date:
+          profile_id: int:
+          peak_id: int:
+          ascent_date: date:
+
+        Returns:
+
+        """
         from apps.tourists.models import AscentLog
 
         qs = AscentLog.objects.filter(profile_id=profile_id, peak_id=peak_id, ascent_date=ascent_date)
         return bool(qs.exists())
 
     def get_oldest_ascent_date(self, profile_id: int, badge_code: str) -> date | None:
+        """
+
+        Args:
+          profile_id: int:
+          badge_code: str:
+          profile_id: int:
+          badge_code: str:
+
+        Returns:
+
+        """
         from apps.badges.models import BadgeVersionModel
         from apps.tourists.models import AscentLog
 
@@ -89,6 +130,19 @@ class DjangoTouristRepository(
         return cast(date | None, result["oldest"])
 
     def save_ascent(self, profile_id: int, peak_id: int, ascent_date: date) -> int:
+        """
+
+        Args:
+          profile_id: int:
+          peak_id: int:
+          ascent_date: date:
+          profile_id: int:
+          peak_id: int:
+          ascent_date: date:
+
+        Returns:
+
+        """
         from apps.tourists.models import AscentLog
 
         # Idempotentny Upsert (Invariant D-04). Jeśli z powodu laga sieciowego
@@ -102,6 +156,19 @@ class DjangoTouristRepository(
         return cast(int, log.id)
 
     def get_unconsumed_ascents(self, profile_id: int, badge_code: str, cutoff_date: date | None) -> list[AscentDTO]:
+        """
+
+        Args:
+          profile_id: int:
+          badge_code: str:
+          cutoff_date: date | None:
+          profile_id: int:
+          badge_code: str:
+          cutoff_date: date | None:
+
+        Returns:
+
+        """
         from apps.badges.models import BadgeVersionModel, ObjectRegionCache
         from apps.tourists.models import AscentLog
 
@@ -141,7 +208,14 @@ class DjangoTouristRepository(
         ]
 
     def get_objects_lifespans(self, peak_ids: set[int]) -> dict[int, tuple[date | None, date | None]]:
-        """Pobiera bitemporalne ramy życia dla wielu obiektów naraz (Optymalizacja N+1)."""
+        """Pobiera bitemporalne ramy życia dla wielu obiektów naraz (Optymalizacja N+1).
+
+        Args:
+          peak_ids: set[int]:
+          peak_ids: set[int]:
+
+        Returns:
+        """
         from apps.badges.models import TouristObject
 
         # Pobieramy tylko niezbędne 3 kolumny
@@ -149,7 +223,17 @@ class DjangoTouristRepository(
         return {row[0]: (row[1], row[2]) for row in qs}
 
     def bulk_save_ascents(self, profile_id: int, ascents: list[AscentInputDTO]) -> int:
-        """Masowo zapisuje wejścia. Ignoruje duplikaty (Idempotentność D-04)."""
+        """Masowo zapisuje wejścia.
+
+        Ignoruje duplikaty (Idempotentność D-04).
+                Args:
+                  profile_id: int:
+                  ascents: list[AscentInputDTO]:
+                  profile_id: int:
+                  ascents: list[AscentInputDTO]:
+
+                Returns:
+        """
         from apps.tourists.models import AscentLog
 
         new_logs = [
@@ -174,7 +258,13 @@ class DjangoTouristRepository(
     # =====================================================================
 
     def _to_progress_dto(self, progress_obj) -> BadgeProgressDTO:
-        """Prywatny mapper ORM -> DTO."""
+        """Prywatny mapper ORM -> DTO.
+
+        Args:
+          progress_obj:
+
+        Returns:
+        """
         return BadgeProgressDTO(
             progress_id=progress_obj.id,
             profile_id=progress_obj.profile_id,
@@ -187,12 +277,34 @@ class DjangoTouristRepository(
         )
 
     def get_active_progresses(self, profile_id: int) -> list[BadgeProgressDTO]:
+        """
+
+        Args:
+          profile_id: int:
+          profile_id: int:
+
+        Returns:
+
+        """
         from apps.tourists.models import UserBadgeProgress
 
         qs = UserBadgeProgress.objects.filter(profile_id=profile_id).select_related("badge", "version")
         return [self._to_progress_dto(p) for p in qs]
 
     def get_progress(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> BadgeProgressDTO | None:
+        """
+
+        Args:
+          profile_id: int:
+          badge_code: str:
+          cycle_number: int:  (Default value = 1)
+          profile_id: int:
+          badge_code: str:
+          cycle_number: int:  (Default value = 1)
+
+        Returns:
+
+        """
         from apps.tourists.models import UserBadgeProgress
 
         try:
@@ -204,6 +316,21 @@ class DjangoTouristRepository(
             return None
 
     def start_progress(self, profile_id: int, badge_code: str, version_id: int, cycle_number: int = 1) -> int:
+        """
+
+        Args:
+          profile_id: int:
+          badge_code: str:
+          version_id: int:
+          cycle_number: int:  (Default value = 1)
+          profile_id: int:
+          badge_code: str:
+          version_id: int:
+          cycle_number: int:  (Default value = 1)
+
+        Returns:
+
+        """
         from apps.badges.models import BadgeModel
         from apps.tourists.models import UserBadgeProgress
 
@@ -221,11 +348,35 @@ class DjangoTouristRepository(
         return cast(int, prog.id)
 
     def update_domain_status(self, progress_id: int, status: str) -> None:
+        """
+
+        Args:
+          progress_id: int:
+          status: str:
+          progress_id: int:
+          status: str:
+
+        Returns:
+
+        """
         from apps.tourists.models import UserBadgeProgress
 
         UserBadgeProgress.objects.filter(id=progress_id).update(domain_status=status)
 
     def update_logistic_status(self, progress_id: int, logistic_status: str, status_date: date) -> None:
+        """
+
+        Args:
+          progress_id: int:
+          logistic_status: str:
+          status_date: date:
+          progress_id: int:
+          logistic_status: str:
+          status_date: date:
+
+        Returns:
+
+        """
         from apps.tourists.models import UserBadgeProgress
 
         UserBadgeProgress.objects.filter(id=progress_id).update(
@@ -233,6 +384,15 @@ class DjangoTouristRepository(
         )
 
     def get_completed_badge_codes(self, profile_id: int) -> frozenset[str]:
+        """
+
+        Args:
+          profile_id: int:
+          profile_id: int:
+
+        Returns:
+
+        """
         from apps.tourists.models import DomainStatus, UserBadgeProgress
 
         codes = (
@@ -243,6 +403,17 @@ class DjangoTouristRepository(
         return frozenset(codes)
 
     def get_progress_by_id(self, profile_id: int, progress_id: int) -> BadgeProgressDTO | None:
+        """
+
+        Args:
+          profile_id: int:
+          progress_id: int:
+          profile_id: int:
+          progress_id: int:
+
+        Returns:
+
+        """
         from apps.tourists.models import UserBadgeProgress
 
         try:
@@ -254,6 +425,15 @@ class DjangoTouristRepository(
             return None
 
     def get_all_ascents_for_user(self, profile_id: int) -> list[AscentDTO]:
+        """
+
+        Args:
+          profile_id: int:
+          profile_id: int:
+
+        Returns:
+
+        """
         from apps.badges.models import ObjectRegionCache
         from apps.tourists.models import AscentLog
 
@@ -283,6 +463,17 @@ class DjangoTouristRepository(
         ]
 
     def delete_progress(self, profile_id: int, badge_code: str) -> None:
+        """
+
+        Args:
+          profile_id: int:
+          badge_code: str:
+          profile_id: int:
+          badge_code: str:
+
+        Returns:
+
+        """
         from apps.tourists.models import UserBadgeProgress
 
         UserBadgeProgress.objects.filter(profile_id=profile_id, badge__code=badge_code).delete()

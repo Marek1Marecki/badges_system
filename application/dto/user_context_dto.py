@@ -1,7 +1,7 @@
 """Data Transfer Objects dla kontekstu użytkownika i subskrypcji.
 
-Zgodnie z zasadą Domain Purity, domena nie może odpytywać bazy o profil użytkownika.
-Te DTO służą do transportu danych z infrastruktury do Use Case'ów.
+Zgodnie z zasadą Domain Purity, domena nie może odpytywać bazy o profil użytkownika. Te DTO służą do transportu danych z
+infrastruktury do Use Case'ów.
 """
 
 from datetime import date

@@ -24,7 +24,14 @@ class OsmRepository:
     """Zarządza pobieraniem danych OSM i zapisem wyników do bazy Django."""
 
     def get_object_for_osm_fetch(self, object_id: int) -> TouristObjectOsmSnapshot | None:
-        """Zwraca dane obiektu potrzebne do pobrania z OSM lub None."""
+        """Zwraca dane obiektu potrzebne do pobrania z OSM lub None.
+
+        Args:
+          object_id: int:
+          object_id: int:
+
+        Returns:
+        """
         from apps.badges.models import TouristObject
 
         try:
@@ -46,8 +53,14 @@ class OsmRepository:
     def fetch_from_osm(self, osm_id: str) -> OsmNodeData:
         """Pobiera dane węzła z Overpass API.
 
+        Args:
+          osm_id: str:
+          osm_id: str:
+
+        Returns:
+
         Raises:
-            OsmAdapterError: Przy błędzie połączenia lub parsowania.
+          OsmAdapterError: Przy błędzie połączenia lub parsowania.
         """
         client = OverpassClient()
         return client.fetch_object(osm_id)
@@ -55,8 +68,12 @@ class OsmRepository:
     def fetch_multiple_from_osm(self, osm_ids: list[str]) -> dict[str, OsmNodeData] | None:
         """Pobiera dane wielu węzłów z Overpass API.
 
+        Args:
+          osm_ids: list[str]:
+          osm_ids: list[str]:
+
         Returns:
-            Słownik {osm_id: node} lub None przy błędzie połączenia.
+          Słownik {osm_id: node} lub None przy błędzie połączenia.
         """
         client = OverpassClient()
         try:
@@ -70,7 +87,18 @@ class OsmRepository:
         osm_node: OsmNodeData,
         current_data: TouristObjectOsmSnapshot,
     ) -> None:
-        """Aktualizuje obiekt turystyczny danymi z OSM (Data Override — chroni ręczne dane)."""
+        """Aktualizuje obiekt turystyczny danymi z OSM (Data Override — chroni ręczne dane).
+
+        Args:
+          object_id: int:
+          osm_node: OsmNodeData:
+          current_data: TouristObjectOsmSnapshot:
+          object_id: int:
+          osm_node: OsmNodeData:
+          current_data: TouristObjectOsmSnapshot:
+
+        Returns:
+        """
         from django.contrib.gis.geos import Point
 
         from apps.badges.models import TouristObject
@@ -117,7 +145,14 @@ class OsmRepository:
         obj.save()
 
     def get_objects_for_sync(self, batch_size: int) -> list[TouristObjectOsmSyncSnapshot]:
-        """Zwraca partię obiektów do synchronizacji (najdawniej sprawdzane)."""
+        """Zwraca partię obiektów do synchronizacji (najdawniej sprawdzane).
+
+        Args:
+          batch_size: int:
+          batch_size: int:
+
+        Returns:
+        """
         from django.db.models import F
 
         from apps.badges.models import TouristObject
@@ -147,7 +182,23 @@ class OsmRepository:
         osm_timestamp: datetime | None,
         last_sync_check: datetime,
     ) -> None:
-        """Zapisuje wynik synchronizacji OSM do obiektu."""
+        """Zapisuje wynik synchronizacji OSM do obiektu.
+
+        Args:
+          object_id: int:
+          osm_raw_tags: dict[str:
+          Any]:
+          osm_version: int | None:
+          osm_timestamp: datetime | None:
+          last_sync_check: datetime:
+          object_id: int:
+          osm_raw_tags: dict[str:
+          osm_version: int | None:
+          osm_timestamp: datetime | None:
+          last_sync_check: datetime:
+
+        Returns:
+        """
         from apps.badges.models import TouristObject
 
         TouristObject.objects.filter(id=object_id).update(
@@ -158,13 +209,35 @@ class OsmRepository:
         )
 
     def mark_sync_checked(self, object_id: int, checked_at: datetime) -> None:
-        """Aktualizuje tylko pole last_sync_check."""
+        """Aktualizuje tylko pole last_sync_check.
+
+        Args:
+          object_id: int:
+          checked_at: datetime:
+          object_id: int:
+          checked_at: datetime:
+
+        Returns:
+        """
         from apps.badges.models import TouristObject
 
         TouristObject.objects.filter(id=object_id).update(last_sync_check=checked_at)
 
     def create_osm_sync_conflict(self, object_id: int, field_name: str, old_value: str, new_value: str) -> None:
-        """Tworzy wpis konfliktu synchronizacji OSM jeśli nie istnieje."""
+        """Tworzy wpis konfliktu synchronizacji OSM jeśli nie istnieje.
+
+        Args:
+          object_id: int:
+          field_name: str:
+          old_value: str:
+          new_value: str:
+          object_id: int:
+          field_name: str:
+          old_value: str:
+          new_value: str:
+
+        Returns:
+        """
         from apps.badges.models import OsmSyncConflict, TouristObject
 
         obj = TouristObject.objects.get(id=object_id)
@@ -182,8 +255,16 @@ class OsmRepository:
     ) -> int:
         """Porównuje dane lokalne z OSM i zapisuje konflikty.
 
+        Args:
+          object_id: int:
+          current_data: TouristObjectOsmSyncSnapshot:
+          osm_node: OsmNodeData:
+          object_id: int:
+          current_data: TouristObjectOsmSyncSnapshot:
+          osm_node: OsmNodeData:
+
         Returns:
-            Liczba nowo utworzonych konfliktów.
+          : Liczba nowo utworzonych konfliktów.
         """
         conflicts = 0
 

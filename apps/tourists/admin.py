@@ -1,8 +1,7 @@
 """Konfiguracja panelu administracyjnego dla obszaru Turysty (B2C).
 
-Zgodnie z zasadami z AGENT_SPEC.md:
-Wszystkie klasy muszą dziedziczyć po ModelAdmin z pakietu 'unfold',
-aby utrzymać spójny motyw wizualny Tailwind CSS.
+Zgodnie z zasadami z AGENT_SPEC.md: Wszystkie klasy muszą dziedziczyć po ModelAdmin z pakietu 'unfold', aby utrzymać
+spójny motyw wizualny Tailwind CSS.
 """
 
 from django.contrib import admin
@@ -63,7 +62,14 @@ class AscentLogAdmin(ModelAdmin):
 
     @admin.display(description="Pamiątka", boolean=True)
     def has_souvenir(self, obj: AscentLog) -> bool:
-        """Szybki znacznik czy turysta wgrał zdjęcie."""
+        """Szybki znacznik czy turysta wgrał zdjęcie.
+
+        Args:
+          obj: AscentLog:
+          obj: AscentLog:
+
+        Returns:
+        """
         return bool(obj.souvenir_image)
 
 
@@ -112,7 +118,14 @@ class UserBadgeProgressAdmin(ModelAdmin):
 
     @admin.display(description="Wersja (Regulamin)")
     def version_code(self, obj: UserBadgeProgress) -> str:
-        """Ułatwia podgląd wersji w głównej liście."""
+        """Ułatwia podgląd wersji w głównej liście.
+
+        Args:
+          obj: UserBadgeProgress:
+          obj: UserBadgeProgress:
+
+        Returns:
+        """
         return obj.version.version_code if obj.version else "BRAK (Oczekuje)"
 
 
@@ -125,5 +138,7 @@ admin.site.unregister(Site)
 # Re-register with Unfold's ModelAdmin
 @admin.register(Site)
 class SiteAdmin(ModelAdmin):
+    """"""
+
     list_display = ("domain", "name")
     search_fields = ("domain", "name")

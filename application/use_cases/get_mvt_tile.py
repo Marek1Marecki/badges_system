@@ -24,7 +24,20 @@ class GetMvtTileUseCase:
         self._cache = cache
 
     def execute(self, layer: str, z: int, x: int, y: int) -> bytes | None:
-        """Pobiera kafelek dla określonej warstwy i współrzędnych XYZ."""
+        """Pobiera kafelek dla określonej warstwy i współrzędnych XYZ.
+
+        Args:
+          layer: str:
+          z: int:
+          x: int:
+          y: int:
+          layer: str:
+          z: int:
+          x: int:
+          y: int:
+
+        Returns:
+        """
         if layer not in SUPPORTED_LAYERS:
             raise UseCaseError(f"Nieznana warstwa kafelków: {layer}")
 

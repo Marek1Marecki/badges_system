@@ -71,6 +71,17 @@ class OverpassClient:
     }
 
     def fetch_object(self, osm_id: str, max_retries: int = 3) -> OsmNodeDTO:
+        """
+
+        Args:
+          osm_id: str:
+          max_retries: int:  (Default value = 3)
+          osm_id: str:
+          max_retries: int:  (Default value = 3)
+
+        Returns:
+
+        """
         logger.info(f"\n--- ROZPOCZĘCIE POBIERANIA OSM ID: {osm_id} ---")
 
         try:
@@ -143,7 +154,17 @@ class OverpassClient:
             raise OsmAdapterError(f"Błąd parsowania danych z OSM: {e}") from e
 
     def fetch_multiple_objects(self, osm_ids: list[str], max_retries: int = 3) -> dict[str, OsmNodeDTO]:
-        """Pobiera zbiorczo obiekty z OSM (Bulk Fetching) dla optymalizacji ruchu."""
+        """Pobiera zbiorczo obiekty z OSM (Bulk Fetching) dla optymalizacji ruchu.
+
+        Args:
+          osm_ids: list[str]:
+          max_retries: int:  (Default value = 3)
+          osm_ids: list[str]:
+          max_retries: int:  (Default value = 3)
+
+        Returns:
+
+        """
         if not osm_ids:
             return {}
 
@@ -229,7 +250,15 @@ class OsmDataExtractor:
 
     @staticmethod
     def extract_name(tags: dict[str, str]) -> str | None:
-        """Pobiera najlepszą dostępną nazwę."""
+        """Pobiera najlepszą dostępną nazwę.
+
+        Args:
+          tags: dict[str:
+          str]:
+          tags: dict[str:
+
+        Returns:
+        """
         if "name:pl" in tags:
             return tags["name:pl"]
         if "name" in tags:
@@ -240,7 +269,17 @@ class OsmDataExtractor:
 
     @staticmethod
     def extract_alt_name(tags: dict[str, str], primary_name: str | None) -> str | None:
-        """Pobiera alternatywną nazwę z OSM (uwzględniając tagi językowe), unikając duplikacji."""
+        """Pobiera alternatywną nazwę z OSM (uwzględniając tagi językowe), unikając duplikacji.
+
+        Args:
+          tags: dict[str:
+          str]:
+          primary_name: str | None:
+          tags: dict[str:
+          primary_name: str | None:
+
+        Returns:
+        """
         # Szukamy najpierw polskiej alternatywy, a potem ogólnej
         alt = tags.get("alt_name:pl") or tags.get("alt_name")
         if alt and alt != primary_name:
@@ -249,7 +288,15 @@ class OsmDataExtractor:
 
     @staticmethod
     def extract_altitude(tags: dict[str, str]) -> int | None:
-        """Bezpiecznie parsuje wysokość z tagu 'ele'."""
+        """Bezpiecznie parsuje wysokość z tagu 'ele'.
+
+        Args:
+          tags: dict[str:
+          str]:
+          tags: dict[str:
+
+        Returns:
+        """
         ele_str = tags.get("ele")
         if not ele_str:
             return None
@@ -261,9 +308,16 @@ class OsmDataExtractor:
 
     @staticmethod
     def determine_type(tags: dict[str, str]) -> tuple[str | None, list[str]]:
-        """
-        Przeszukuje klasyfikujące tagi OSM.
+        """Przeszukuje klasyfikujące tagi OSM.
+
         Zwraca krotkę: (Zmapowany Typ lub None, Lista nowo utworzonych wpisów do Inboxu).
+
+        Args:
+          tags: dict[str:
+          str]:
+          tags: dict[str:
+
+        Returns:
         """
         found_type = None
         newly_created_mappings = []
@@ -289,8 +343,15 @@ class OsmDataExtractor:
 
     @staticmethod
     def extract_wikipedia_link(tags: dict[str, str]) -> str | None:
-        """Pobiera i formatuje referencję do Wikipedii z tagów OSM."""
+        """Pobiera i formatuje referencję do Wikipedii z tagów OSM.
 
+        Args:
+          tags: dict[str:
+          str]:
+          tags: dict[str:
+
+        Returns:
+        """
         # 1. Szukamy tagów wiki. Faworyzujemy bezpośrednie polskie linki,
         # potem ogólny tag 'wikipedia' (który często ma w sobie przedrostek pl:),
         # a na koniec inne języki (np. dla obiektów w 100% po stronie czeskiej).
@@ -321,7 +382,15 @@ class OsmDataExtractor:
 
     @staticmethod
     def extract_start_date(tags: dict[str, str]) -> date | None:
-        """Próbuje bezpiecznie wyciągnąć i sformatować datę powstania obiektu z tagów OSM."""
+        """Próbuje bezpiecznie wyciągnąć i sformatować datę powstania obiektu z tagów OSM.
+
+        Args:
+          tags: dict[str:
+          str]:
+          tags: dict[str:
+
+        Returns:
+        """
         start_str = tags.get("start_date")
         if not start_str:
             return None

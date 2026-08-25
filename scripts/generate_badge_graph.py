@@ -1,7 +1,7 @@
 """Skrypt analityczny: Generowanie interaktywnego grafu powiązań (Odznaki <-> Obiekty).
 
-Zgodnie z zasadą z SCRIPTS.md, jest to skrypt w pełni odizolowany od runtime'u,
-generujący plik HTML do ręcznego podglądu w przeglądarce. Wykorzystuje bibliotekę pyvis.
+Zgodnie z zasadą z SCRIPTS.md, jest to skrypt w pełni odizolowany od runtime'u, generujący plik HTML do ręcznego
+podglądu w przeglądarce. Wykorzystuje bibliotekę pyvis.
 """
 
 import os

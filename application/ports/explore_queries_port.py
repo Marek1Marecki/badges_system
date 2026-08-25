@@ -11,9 +11,24 @@ class ExploreQueriesRepositoryPort(Protocol):
         ...
 
     def get_regions_by_level(self, level: str) -> Any:
-        """Pobiera wszystkie regiony z danego poziomu geograficznego (np. 'MESOREGION')."""
+        """Pobiera wszystkie regiony z danego poziomu geograficznego (np.
+
+        'MESOREGION').
+                Args:
+                  level: str:
+                  level: str:
+
+                Returns:
+        """
         ...
 
     def get_object_region_cache_for_level(self, level: str) -> Any:
-        """Pobiera płaską relację CQRS dla obiektów na zadanym poziomie."""
+        """Pobiera płaską relację CQRS dla obiektów na zadanym poziomie.
+
+        Args:
+          level: str:
+          level: str:
+
+        Returns:
+        """
         ...
