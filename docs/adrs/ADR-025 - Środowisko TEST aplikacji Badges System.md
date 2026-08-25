@@ -50,4 +50,5 @@ Aby zapewnić stabilność danych na środowiskach zachowujących stan (DEV, PRE
       - postgis_data:/var/lib/postgresql
 
 ## Relacje (Related)
+- **C4 Diagram:** docs/architecture/containers.puml
 - **ADR-020 — Architektura Wdrożeń (Deployment & SRE):** Środowisko TEST implementuje zasadę izolacji środowisk i efemeryczności zdefiniowaną w ADR-020.

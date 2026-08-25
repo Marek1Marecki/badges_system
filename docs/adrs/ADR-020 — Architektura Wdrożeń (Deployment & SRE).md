@@ -132,5 +132,6 @@ Dokument wymaga uzupełnienia o **ADR-021 (Strategia Backupów i Disaster Recove
 Rewizja niniejszego dokumentu jest również wymagana w przypadku: wprowadzenia piątego środowiska wdrożeniowego, zmiany dostawcy sekretów/konfiguracji, odkrycia przypadku, w którym proces odtwarzania danych referencyjnych przestaje być idempotentny, lub zmiany technologii przechowywania artefaktów referencyjnych.
 
 ## Relacje (Related)
+- **C4 Diagram:** docs/architecture/containers.puml
 - **ADR-021 — Strategia Backupów i Disaster Recovery:** Dokument wymagany do uzupełnienia przed otwarciem ruchu na PROD; definiuje RPO/RTO dla danych użytkowników, które są kluczowe dla bezpieczeństwa wdrożeń opisanych w niniejszym ADR.
 - **ADR-024 — Strategia Migracji (Expand and Contract):** Zasada Migracji Destrukcyjnych opisana w punkcie 3 jest rozszerzeniem wzorca Expand and Contract zdefiniowanego w ADR-024.

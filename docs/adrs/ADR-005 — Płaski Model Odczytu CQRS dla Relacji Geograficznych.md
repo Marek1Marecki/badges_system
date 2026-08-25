@@ -88,4 +88,5 @@ Zrewidować w przypadku implementacji interaktywnych map wielowarstwowych w apli
 ---
 
 ## Relacje (Related)
+- **C4 Diagram:** docs/architecture/components.puml
 - **ADR-002 — Typy geometryczne PostGIS jako transport infrastrukturalny, nie value objects domeny:** Tabela odczytu nie przechowuje duplikatów samej geometrii, odwołuje się do niej jedynie relacyjnie, pozostawiając źródło prawdy geometrycznej w infrastrukturze.

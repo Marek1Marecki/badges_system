@@ -1,6 +1,6 @@
 # ADR-026 — PostgreSQL Volume Layout (PostgreSQL 18+)
 
-> **Status:** `proposed`
+> **Status:** `accepted`
 > **Data:** 2026-07-19
 > **Autor:** Dominik / AI Architect
 > **Zastępuje:** —

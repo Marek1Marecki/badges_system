@@ -190,6 +190,7 @@ Rewizja wymagana również jeśli backend geometryczny zostanie zmieniony
 ---
 
 ## Relacje (Related)
+- **C4 Diagram:** docs/architecture/components.puml
 - **Kontrakty:** `docs/Manifest/14-domain-purity.md` (Import Linter rule: `domain-purity`)
 - **Implementacja:** `infrastructure/adapters/persistence/region_cache_repo.py` (Opcja B), `application/use_cases/calculate_object_regions.py` (use case bez importów GIS)
 

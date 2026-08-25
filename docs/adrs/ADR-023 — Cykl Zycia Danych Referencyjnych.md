@@ -92,6 +92,7 @@ Dokument podlega rewizji w momencie, gdy:
 W takich sytuacjach należy rozważyć przejście z systemu opartego na plikach na dedykowany system klasy MDM (Master Data Management) lub zewnętrzny rejestr referencyjny z natywnym wsparciem dla rozproszonej współpracy i wersjonowania danych.
 
 ## Relacje (Related)
+- **C4 Diagram:** docs/architecture/components.puml
 - **ADR-008 — Bitemporalność Obiektów Turystycznych (Cykl Życia i Soft Delete):** Zasada Soft Delete / Tombstone Pattern gwarantująca historyczną integralność logów zdobywców.
 - **ADR-020 — Architektura Wdrożeń (Deployment & SRE):** Cykl życia danych referencyjnych implementuje zasady niemutowalności snapshotów i izolacji środowisk zdefiniowane w ADR-020.
 - **ADR-022 — Rejestr Wdrożeń (Release Registry):** Snapshot referencyjny może zostać użyty wyłącznie po uprzednim zaewidencjonowaniu go w rejestrze wydań zgodnie z ustaleniami z ADR-022.

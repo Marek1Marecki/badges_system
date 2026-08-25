@@ -80,6 +80,7 @@ Zrewidować, jeśli PTTK wprowadzi regulaminy, w których **poszczególne stopni
 ---
 
 ## Relacje (Related)
+- **C4 Diagram:** docs/architecture/components.puml
 - **ADR-003 — Silnik Reguł Biznesowych:** Zgodnie z tym dokumentem, elastyczne reguły weryfikacyjne w formacie JSONB przypinane są bezpośrednio do historycznej "Wersji", a nie do samej "Odznaki".
 - **ADR-004 — Dwuwarstwowy model zasilania danych z OSM:** Obiekty turystyczne wpinane w relację M2M do Puli Szczytów pochodzą z ustrukturyzowanego "Złotego Katalogu".
 - **Kontrakty:** `docs/Manifest/14-domain-purity.md` (Import Linter rule: `domain-purity`)

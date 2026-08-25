@@ -92,3 +92,4 @@ Dokument poddać rewizji, w przypadku gdy liczba obiektów zasilanych z OSM prze
 ---
 
 ## Relacje (Related)
+- **C4 Diagram:** docs/architecture/containers.puml

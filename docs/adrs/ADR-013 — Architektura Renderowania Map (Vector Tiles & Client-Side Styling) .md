@@ -103,6 +103,7 @@ Dokument poddać rewizji, w sytuacji gdy zapytania kafelkowe w czasie rzeczywist
 ---
 
 ## Relacje (Related)
+- **C4 Diagram:** docs/architecture/components.puml
 - **ADR-005 — Płaski Model Odczytu CQRS:** Narzuca zdenormalizowaną strukturę relacji przestrzennych, stanowiąc optymalne i odciążone źródło zapytań do silnika generującego kafelki MVT.
 - **ADR-010 — Dynamiczne kolorowanie mapy i priorytetyzacja stanów odznak:** Wprowadza zmienne w czasie kolory (`PeakColor`), które zmuszają system do separacji warstwy cache'owanego MVT od dynamicznej warstwy GeoJSON.
 - **ADR-011 — Filtrowanie przestrzenne na żądanie (BBox):** Określa przestrzenny mechanizm selekcji obiektów (BBox), który stanowi wejście dla dynamicznej warstwy GeoJSON, komplementarnej wobec MVT.
