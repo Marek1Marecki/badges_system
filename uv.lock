@@ -238,7 +238,7 @@ dev = [
     { name = "pytest-playwright", specifier = ">=0.8.0" },
     { name = "pyvis", specifier = ">=0.3.2" },
     { name = "radon", specifier = ">=6.0.1" },
-    { name = "ruff", specifier = ">=0.15.10" },
+    { name = "ruff", specifier = ">=0.16.3" },
     { name = "semgrep", specifier = ">=1.172.0" },
     { name = "types-python-dateutil", specifier = ">=2.9.0.20260716" },
     { name = "wily", specifier = ">=1.12.2" },
