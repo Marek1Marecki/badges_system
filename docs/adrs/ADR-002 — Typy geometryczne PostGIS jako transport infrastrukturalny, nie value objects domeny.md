@@ -189,10 +189,7 @@ Rewizja wymagana również jeśli backend geometryczny zostanie zmieniony
 
 ---
 
-## Referencje
+## Relacje (Related)
+- **Kontrakty:** `docs/Manifest/14-domain-purity.md` (Import Linter rule: `domain-purity`)
+- **Implementacja:** `infrastructure/adapters/persistence/region_cache_repo.py` (Opcja B), `application/use_cases/calculate_object_regions.py` (use case bez importów GIS)
 
-- `14-domain-purity.md` — kontrakt czystości domeny, zakaz importów zewnętrznych
-- `infrastructure/adapters/persistence/region_cache_repo.py` — implementacja Opcji B
-- `application/use_cases/calculate_object_regions.py` — use case bez importów GIS
-- Evans, Eric. *Domain-Driven Design* (2003) — rozdział o Value Objects:
-  VO ma sens gdy enkapsuluje logikę domenową, nie tylko dane

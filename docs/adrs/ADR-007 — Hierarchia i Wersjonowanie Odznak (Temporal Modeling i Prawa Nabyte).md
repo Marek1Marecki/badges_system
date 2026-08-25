@@ -79,6 +79,8 @@ Zrewidować, jeśli PTTK wprowadzi regulaminy, w których **poszczególne stopni
 
 ---
 
-## Referencje
-- **ADR-003 — Silnik Reguł Biznesowych:** Zgodnie z tym dokumentem, elastyczne reguły weryfikacyjne w formacie JSONB (np. limity czasu, minimalny wiek) przypinane są bezpośrednio do historycznej "Wersji", a nie do samej "Odznaki", uzupełniając czasową izolację wymogów.
-- **ADR-004 — Dwuwarstwowy model zasilania danych z OSM:** Obiekty turystyczne wpinane w relację M2M do Puli Szczytów pochodzą z ustrukturyzowanego "Złotego Katalogu", gwarantując, że wersje historyczne odznak korzystają ze stabilnych i zwalidowanych węzłów przestrzennych.
+## Relacje (Related)
+- **ADR-003 — Silnik Reguł Biznesowych:** Zgodnie z tym dokumentem, elastyczne reguły weryfikacyjne w formacie JSONB przypinane są bezpośrednio do historycznej "Wersji", a nie do samej "Odznaki".
+- **ADR-004 — Dwuwarstwowy model zasilania danych z OSM:** Obiekty turystyczne wpinane w relację M2M do Puli Szczytów pochodzą z ustrukturyzowanego "Złotego Katalogu".
+- **Kontrakty:** `docs/Manifest/14-domain-purity.md` (Import Linter rule: `domain-purity`)
+

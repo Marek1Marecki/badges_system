@@ -76,8 +76,9 @@ Dokument poddać rewizji, jeśli w Fazie C (System Użytkownika) weryfikacja tys
 
 ---
 
-## Referencje
-
-- **ADR-003 — Silnik Reguł Biznesowych:** Czysta Domena będzie musiała wchłonąć bitemporalność obiektu jako absolutny priorytet przed ewaluacją jakichkolwiek innych reguł zdefiniowanych w tym ADR.
-- **ADR-004 — Dwuwarstwowy model zasilania danych z OSM:** Pobieranie i parsowanie tagu `start_date` z Data Lake odbywa się zgodnie z zasadami izolacji wprowadzonymi w tym dokumencie.
-- **ADR-007 — Hierarchia i Wersjonowanie Odznak:** Ustanawia "Prawa Nabytych" dla Odznak, podczas gdy niniejszy ADR (008) zapewnia "Prawa Nabyte" na poziomie pojedynczych, fizycznych Obiektów.
+## Relacje (Related)
+- **C4 Diagram:** `docs/architecture/components.puml`
+- **ADR-003 — Silnik Reguł Biznesowych:** Czysta Domena wchłania bitemporalność obiektu jako absolutny priorytet przed ewaluacją reguł.
+- **ADR-004 — Dwuwarstwowy model zasilania danych z OSM:** Pobieranie tagu `start_date` z Data Lake zgodnie z zasadami izolacji.
+- **ADR-007 — Hierarchia i Wersjonowanie Odznak:** Ustanawia "Prawa Nabytych" dla Odznak, podczas gdy ADR-008 zapewnia "Prawa Nabyte" na poziomie pojedynczych, fizycznych Obiektów.
+- **Dług (Debt):** DŁUG-010 — brak strategii archiwizacji starych danych bitemporalnych

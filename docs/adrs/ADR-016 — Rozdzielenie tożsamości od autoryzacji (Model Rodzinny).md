@@ -68,4 +68,11 @@ Podejście to wymagało głębokiej refaktoryzacji, wymiany `user_id` na `profil
 - [x] Zmiana w API wszystkich kluczy wejściowych z `user_id` na `profile_id`.
 - [x] Dodanie Endpointu i Widgetu HTMX do przełączania profilu w locie (Dropdown Menu).
 - [x] Sygnał Django automatycznie tworzący pierwszy, darmowy profil po pierwszym uwierzytelnieniu przez Google OAuth.
+
+---
+
+## Relacje (Related)
+- **C4 Diagram:** `docs/architecture/containers.puml`
+- **Kontrakty:** `docs/Manifest/14-domain-purity.md` (Import Linter rule: `domain-purity`)
+- **Dług (Debt):** DŁUG-002 — świadome naruszenie czystości architektury w `apps/` z powodu Django ORM
 ```

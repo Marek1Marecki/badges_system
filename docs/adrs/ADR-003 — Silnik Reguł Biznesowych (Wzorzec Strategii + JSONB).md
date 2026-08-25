@@ -105,7 +105,8 @@ Zrewidować, jeśli złożoność reguł osiągnie moment, w którym PTTK zechce
 
 ---
 
-## Referencje
-
-- `14-domain-purity.md` — kontrakt czystości domeny (zakaz importów zewnętrznych, wymuszający własną hydrację).
-- **ADR-002 — Geometria jako transport infrastrukturalny.** To decyzja komplementarna: ADR-002 ustala, że "geometria zostaje w infrastrukturze", a ADR-003 gwarantuje, że "czyste reguły biznesowe zostają w domenie", ostatecznie definiując szczelną granicę między tymi dwoma światami w projekcie.
+## Relacje (Related)
+- **C4 Diagram:** `docs/architecture/components.puml`
+- **Kontrakty:** `docs/Manifest/14-domain-purity.md` (Import Linter rule: `domain-purity`)
+- **Dług (Debt):** DŁUG-005 — brak walidacji schematu JSONB w runtime na poziomie bazy danych
+- **ADR-002 — Geometria jako transport infrastrukturalny:** Decyzja komplementarna: ADR-002 ustala, że "geometria zostaje w infrastrukturze", a ADR-003 gwarantuje, że "czyste reguły biznesowe zostają w domenie".

@@ -94,7 +94,10 @@ Gdy system wyjdzie poza obszar zarządzania i kurateli danych (Panel Admina), a 
 
 ---
 
-## Referencje
+## Relacje (Related)
+- **C4 Diagram:** `docs/architecture/context.puml`, `docs/architecture/containers.puml`
+- **Kontrakty:** `docs/Manifest/14-domain-purity.md` (Import Linter rule: `domain-purity`)
+- **Dług (Debt):** DŁUG-002 — świadome naruszenie czystości architektury w `apps/` z powodu Django ORM
 
-- **ADR-002 — Typy geometryczne PostGIS jako transport infrastrukturalny.** Jest to bezpośrednia tarcza obronna, która mitiguje negatywne skutki niniejszej decyzji (ADR-001) powstrzymując typy obiektów systemowych GDAL/GEOS przed wciekaniem do czystej logiki systemu.
+
 - Architektura Heksagonalna (Ports and Adapters).

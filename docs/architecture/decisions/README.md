@@ -69,15 +69,17 @@
 
 ### Tworzenie nowego ADR
 
-1. Skopiuj szablon: `docs/adrs/ADR-NNN — Tytuł.md`
-2. Uzupełnij wszystkie sekcje: Kontekst, Opcje rozważane, Decyzja, Konsekwencje, Działania wymagane, Warunek rewizji
+1. Skopiuj szablon: `docs/adrs/ADR-TEMPLATE.md`
+2. Uzupełnij wszystkie sekcje: Kontekst, Opcje rozważane, Decyzja, Konsekwencje, Warunek rewizji, Relacje
 3. Numeruj sekwencyjnie: ADR-027, ADR-028, ...
 4. Umieść w `docs/adrs/`
+5. Zaktualizuj indeks w tym pliku
 
 ### Aktualizacja ADR
 
 - Zmiana statusu: `accepted` → `superseded` + wypełnij pole `Zastąpiony przez`
 - Dodaj wpis w `## Historia zmian` na dole dokumentu
+- Zaktualizuj sekcję `## Relacje` jeśli powiązania się zmieniły
 
 ### Relacje
 
