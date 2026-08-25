@@ -163,6 +163,7 @@ dependencies = [
     { name = "python-dateutil" },
     { name = "redis" },
     { name = "requests" },
+    { name = "sqlparse" },
     { name = "whitenoise" },
 ]
 
@@ -219,6 +220,7 @@ requires-dist = [
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "redis", specifier = ">=8.1.0" },
     { name = "requests", specifier = ">=2.34.2" },
+    { name = "sqlparse", specifier = ">=0.6.0" },
     { name = "whitenoise", specifier = ">=6.12.0" },
 ]
 
