@@ -30,7 +30,7 @@ help:
 	@echo "  arch-docs    - generowanie diagramów PlantUML (C4)"
 	@echo "  api-docs     - generowanie dokumentacji API (pdoc)"
 	@echo "  adr-init     - inicjalizacja katalogu ADR-ów (adr-tools)"
-	@echo "  adr          - tworzenie nowego ADR (adr new 'Tytuł')"
+	@echo "  adr          - tworzenie nowego ADR (make adr TITLE='Tytuł')"
 	@echo "  check        - lokalne CI: format --check + lint + type-check + test + audit + complexity-check + security-audit"
 	@echo "  clean        - usuwa cache, artefakty"
 	@echo "  security-audit - semgrep + osv-scanner"
@@ -125,7 +125,7 @@ api-docs:
 
 
 adr:
-	uv run adr new ""
+	uv run python scripts/new_adr.py $(TITLE)
 
 adr-init:
 	uv run adr init docs/adrs
