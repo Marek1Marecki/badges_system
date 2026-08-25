@@ -4,12 +4,48 @@
 
 Utrzymywanie niskiej złożoności i wysokiej utrzymywalności kodu poprzez ciągłe pomiary i enforcement architektonicznych metryk.
 
+## Architecture Governance Model
+
+                    ARCHITECTURE GOVERNANCE
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+        ▼                    ▼                    ▼
+    ENFORCEMENT          DISCOVERY             QUALITY
+        │                    │                    │
+        ▼                    ▼                    ▼
+ Import Linter             pydeps               Radon
+                          pyreverse              Xenon
+                          Graphviz                wily
+        │                    │                    │
+        ▼                    ▼                    ▼
+   architectural         actual structure      complexity
+      rules                                      trends
+        │                    │                    │
+        └────────────────────┼────────────────────┘
+                             ▼
+                     Architecture Evidence
+                             │
+                             ▼
+                       CI / Artifacts
+                             │
+                             ▼
+                    Architecture Documentation
+
+### Poziomy agregacji metryk
+
+| Poziom | Przykład | Uwagi |
+|--------|----------|-------|
+| Function / method | `PoiScoringService.recalculate_and_cache_for_profile` | Najdokładniejszy poziom |
+| Module | `application/services/poi_scoring_service.py` | Xenon operuje na tym poziomie |
+| Project | cały projekt | Używane do average complexity |
+
 ## Narzędzia
 
 | Narzędzie | Rola | Skanuje |
 |-----------|------|---------|
 | **Radon** | Measurement | Cyclomatic Complexity, Maintainability Index, LOC |
-| **Xenon** | Enforcement | Complexity thresholds |
+| **Xenon** | Enforcement | Complexity thresholds per module |
 | **wily** | Trend Analysis | Complexity trends over git history |
 
 ## Thresholds
@@ -43,9 +79,20 @@ max-average = A
 max-modules = 10
 ```
 
-- **max-absolute = B**: żaden plik nie może mieć complexity > B
-- **max-average = A**: średnia complexity projektu ≤ A
-- **max-modules = 10**: max 10 plików powyżej B
+| Parametr | Znaczenie | Uwagi |
+|----------|-----------|-------|
+| `max-absolute = B` | Żaden plik nie może mieć complexity > B | Operuje na poziomie modułu |
+| `max-average = A` | Średnia complexity projektu ≤ A | Operuje na poziomie projektu |
+| `max-modules = 10` | Max 10 plików powyżej B | Limit wyjątków |
+
+### Uwaga do semantyki
+
+Radon i Xenon operują na **poziomie modułu** (plik), ale wewnątrz modułu liczą complexity **funkcji/metod**. Dlatego:
+
+- "plik ma complexity B" — to **uproszczenie** mówiące o średniej/module
+- "metoda X ma complexity D" — to **dokładna** informacja z Radon CC
+
+W dokumentacji i komunikacji zawsze rozróżniaj te poziomy.
 
 ## Reguły decyzyjne
 
@@ -64,21 +111,35 @@ max-modules = 10
 - C → D: **wymaga refactoringu PRZED merge**
 - D → F: **blokuje merge**
 
+### No Regression Policy
+
+Nowy lub zmieniany kod nie może pogarszać baseline'u bez uzasadnienia.
+
+- Jeśli existing function ma complexity C, zmiana nie może zwiększyć jej do D bez aprobaty
+- Jeśli existing moduł ma MI B, zmiana nie może zmniejszyć go do C bez aprobaty
+- Aprobata wymaga dokumentacji w PR description
+
 ## Wyjątki
+
+Wyjątki muszą być **semantyczne**, nie techniczne. Każdy wyjątek wymaga uzasadnienia biznesowego/architektonicznego.
 
 ### Skrypty narzędziowe
 
-Pliki w `scripts/` mogą mieć wyższy MI niż kod produkcyjny, ponieważ naturalnie zawierają więcej zagnieżdżeń.
+**Plik:** `scripts/audit_contracts.py`
 
-**Dopuszczalne wartości dla `scripts/`:**
+**Uzasadnienie:** Narzędzie statycznej analizy, którego zwiększona complexity wynika z liczby obsługiwanych reguł i wzorców AST. Nie stanowi części runtime application architecture.
+
+**Dopuszczalne wartości:**
 - MI ≤ C
 - Complexity ≤ C
 
 ### Widoki Django
 
-Pliki w `apps/*/views.py` często mają wyższą complexity z powodu obsługi wielu przypadków w jednym miejscu.
+**Pliki:** `apps/*/views.py`
 
-**Dopuszczalne wartości dla `apps/*/views.py`:**
+**Uzasadnienie:** Delivery layer obsługuje HTTP request lifecycle, który naturalnie obejmuje authentication, permissions, validation, use case invocation i response serialization. Większa liczba rozgałęzień jest oczekiwana.
+
+**Dopuszczalne wartości:**
 - Complexity ≤ C
 - MI ≤ C
 
@@ -116,6 +177,27 @@ Uruchamiane w CI przy każdym push do `main`:
 **Artifacts:**
 - `complexity-trend.txt` — przechowywane 30 dni
 
+### Kolejność w CI
+
+```
+security-audit
+    ↓
+audit contracts
+    ↓
+complexity-check
+    ↓
+complexity-trend
+    ↓
+architecture diagrams
+```
+
+Semantyka:
+1. SECURITY
+2. ARCHITECTURE
+3. QUALITY
+4. OBSERVABILITY
+5. DOCUMENTATION
+
 ## Monitoring
 
 ### Co tydzień
@@ -132,8 +214,49 @@ Porównuj wyniki z poprzednim tygodniem.
 2. Porównaj trendy z poprzednim miesiącem
 3. Zaktualizuj `docs/architecture-metrics-trends.md`
 
+### Interpretacja trendów
+
+| Wzorzec | Znaczenie | Akcja |
+|---------|-----------|-------|
+| `domain` CC rośnie | Logika biznesowa staje się bardziej skomplikowana | Rozważ refactoring domain services |
+| `application` CC rośnie | Use cases stają się bardziej skomplikowane | Sprawdź czy nie przekraczają C |
+| `infrastructure` CC rośnie | Adaptery/repozytoria stają się bardziej skomplikowane | Sprawdź czy nie przekraczają C |
+| `apps` CC rośnie | Delivery layer staje się bardziej skomplikowany | Sprawdź czy nie przekraczają C |
+| `scripts` CC rośnie | Narzędzia stają się bardziej skomplikowane | Akceptowalne do C |
+
+## Plan migracji wily
+
+### Obecny stan: filesystem archiver
+
+```makefile
+complexity-trend:
+	uv run wily build $(PY_DIRS) -n 20 -a filesystem
+```
+
+Używamy `filesystem` archivera, ponieważ repository może być nieczyste. To rozwiązanie developmentowe / przejściowe.
+
+### Docelowy stan: git archiver
+
+```makefile
+complexity-trend:
+	uv run wily build $(PY_DIRS) -n 20
+```
+
+Wymagania:
+1. CI checkout musi mieć pełną historię (nie shallow)
+2. Repozytorium musi być w czystym stanie przed build
+3. `wily` buduje historię z ostatnich N commitów
+
+### Kryteria przejścia
+
+- CI jest stabilne przez co najmniej 4 tygodnie
+- Wszyscy developezy znają model Architecture Governance
+- `make complexity-trend` działa bezbłędnie przez 4 tygodnie
+
 ## Historia zmian
 
 | Data | Zmiana |
 |------|--------|
 | 2026-08-25 | Wdrożenie Radon + Xenon + wily |
+| 2026-08-25 | Dodano politykę no regression i wyjątki semantyczne |
+| 2026-08-25 | Dodano plan migracji wily na git archiver |
