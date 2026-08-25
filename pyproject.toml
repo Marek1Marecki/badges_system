@@ -59,6 +59,8 @@ dev = [
     "xenon>=0.9.3",
     "wily>=1.12.2",
     "pdoc>=15.0",
+    "docformatter>=1.7.8",
+    "pyment>=0.3.3",
 ]
 
 [tool.pytest.ini_options]
@@ -126,6 +128,12 @@ convention = "google"
 domain_paths = ["domain"]
 application_paths = ["application"]
 bootstrap_paths = ["bootstrap"]
+
+[tool.docformatter]
+wrap-summaries = 120
+wrap-descriptions = 120
+style = "sphinx"
+non-cap = ["django", "celery", "redis", "postgis", "uv", "api", "c4", "dto", "url", "id", "uuid"]
 
 [tool.uv]
 constraint-dependencies = [

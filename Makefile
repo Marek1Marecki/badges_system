@@ -9,12 +9,15 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-generate doc-check check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock
 
 help:
 	@echo "CORE targets:"
 	@echo "  setup        - instalacja zależności i pre-commit"
 	@echo "  format       - formatowanie kodu (ruff)"
+	@echo "  doc-format    - formatowanie docstringow (docformatter)"
+	@echo "  doc-generate - generowanie szablonow docstringow (pyment) - wymaga uzupelnienia opisow"
+	@echo "  doc-check    - sprawdzanie formatowania docstringow (docformatter --check)"
 	@echo "  lint         - linting kodu"
 	@echo "  type-check   - mypy + lint-imports"
 	@echo "  test         - szybkie testy jednostkowe"
@@ -39,6 +42,15 @@ setup:
 
 format:
 	uv run ruff format $(PY_DIRS)
+
+doc-format:
+	uv run docformatter --in-place --wrap-summaries 120 --wrap-descriptions 120 --style sphinx --recursive $(PY_DIRS)
+
+doc-generate:
+	uv run pyment -i auto -o google -w $(PY_DIRS)
+
+doc-check:
+	uv run docformatter --check --wrap-summaries 120 --wrap-descriptions 120 --style sphinx --recursive $(PY_DIRS)
 
 lint:
 	uv run ruff check $(PY_DIRS)
