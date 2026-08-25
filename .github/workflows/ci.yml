@@ -68,7 +68,7 @@ jobs:
           python-version: "3.14"
 
       - name: Instalacja zależności (z grupy DEV)
-        run: uv sync --frozen --group dev --python 3.14
+        run: uv sync --frozen --no-cache --group dev --python 3.14
       - name: Weryfikacja formatowania kodu (Ruff Format)
         run: uv run ruff format --check domain application infrastructure apps bootstrap scripts
 
@@ -89,6 +89,17 @@ jobs:
 
       - name: Analiza Złożoności (Radon + Xenon)
         run: make complexity-check
+
+      - name: Analiza Trendów Złożoności (wily)
+        run: make complexity-trend | tee complexity-trend.txt
+
+      - name: Upload raportu trendów złożoności
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: complexity-trend
+          path: complexity-trend.txt
+          retention-days: 30
 
       - name: Generowanie diagramów architektury (pydeps + pyreverse)
         run: make graph-modules graph-classes
@@ -155,7 +166,7 @@ jobs:
           python-version: "3.14"
 
       - name: Instalacja zależności (z grupy DEV)
-        run: uv sync --frozen --group dev --python 3.14
+        run: uv sync --frozen --no-cache --group dev --python 3.14
 
       - name: Generowanie testowych środowisk i kluczy asymetrycznych
         # Generowanie super-bezpiecznego, kryptograficznego klucza bez naruszania logów w Gicie
@@ -363,7 +374,7 @@ jobs:
           python-version: "3.14"
 
       - name: Instalacja zależności (z grupy DEV)
-        run: uv sync --frozen --group dev --python 3.14
+        run: uv sync --frozen --no-cache --group dev --python 3.14
 
       - name: Generowanie testowych środowisk i kluczy asymetrycznych
         run: |
