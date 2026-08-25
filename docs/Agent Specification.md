@@ -265,14 +265,14 @@ ARCHITEKTURA
 
 ### AGENT-ARCHITECTURE-OBSERVABILITY — Ciągła Analiza i Wizualizacja
 
-Projekt implementuje zautomatyzowany rygor Obserwowalności Architektury (Architecture Observability), w którym dokumentacja jest nierozerwalnie związana z kodem (Docs as Code).
-1. **Separacja Obowiązków Analitycznych:**
-   - **Egzekwowanie (Enforcement):** Narzędzie `Import Linter` pełni rolę bramki Gatingu (Fitness Function). Przerwanie kontraktu (np. `apps` importujące `infrastructure`) blokuje potok CI.
-   - **Odkrywanie (Discovery):** Narzędzia `pydeps` i `pyreverse` pełnią rolę informacyjną. Generują one grafy zależności (modułów i struktur obiektowych).
-2. **Generowanie Artefaktów (CI/CD):**
-   Wszelkie skrypty generujące diagramy architektoniczne (wskazane w `Makefile` jako cele `graph-modules` i `graph-classes`) są podpięte pod zautomatyzowany potok GitHub Actions. Wygenerowane pliki wideo/graficzne (`.svg` / `.png`) eksportowane są jako stałe, 30-dniowe artefakty wdrożeniowe.
-3. **Zasada Nienaruszalności Narzędzi Dev:**
-   Kategorycznie zakazuje się usuwania pakietów `pydeps`, `pylint` (dla pyreverse) oraz `graphviz` z pliku `pyproject.toml` (grupa `dev`). Są one fundamentem auto-dokumentacji systemu.
+Projekt implementuje zautomatyzowany rygor Obserwowalności Architektury (Architecture Governance) oparty na 4 filarach:
+1. **Enforcement:** `Import Linter` blokuje łamanie granic warstw (Czysta Architektura).
+2. **Discovery:** `pydeps` i `pyreverse` zrzucają rzeczywisty stan kodu w postaci grafów.
+3. **Quality:** `Xenon` i `Radon` egzekwują limity złożoności cyklomatycznej.
+4. **Documentation (C4 Model):** `PlantUML` i `pdoc` generują dokumentację intencyjną.
+
+**Zasada Aktualizacji Modelu C4 (Designed Architecture):**
+Za każdym razem, gdy Agent Architektoniczny projektuje nowy zewnętrzny system (C1), nowy kontener (C2 - np. podpięcie Kafki lub nowej bazy) lub nowy komponent w warstwie Aplikacji (C3 - np. nowy Serwis Domenowy), ma bezwzględny obowiązek zaktualizowania odpowiadających im plików `.puml` w katalogu `docs/architecture/`. Zabrania się modyfikowania kodu bez odzwierciedlenia zmian w definicji PlantUML, aby uniknąć rozjazdu między architekturą zamierzoną a faktyczną.
 
 ---
 

@@ -266,6 +266,11 @@ leaflet_data/
 # Pliki generowane przez Pillow (obrazy)
 .pil/
 
+# Wygenerowana dokumentacja API (pdoc)
+docs/api/
+# Wygenerowane diagramy architektury (PNG z PlantUML)
+docs/architecture/*.png
+
 # =============================================================================
 # UWAGA: Ten plik jest kompletnym .gitignore dla projektu badges-system
 # Zawiera wszystkie wzorce potrzebne dla Django, PostgreSQL, Redis, Celery,
