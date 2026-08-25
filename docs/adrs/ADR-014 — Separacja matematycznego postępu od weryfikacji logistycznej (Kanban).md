@@ -52,3 +52,5 @@ Czysta Domena stwierdza fakt `COMPLETED` i zapisuje go w tabeli progresu. To odb
 ### Działania wymagane (Zrealizowane)
 - [x] Odrzucenie agregatu `VerificationRequest`. Pola logistyczne trafiają do `UserBadgeProgress`.
 - [x] Dopisanie zakazu mieszania statusów (S-03) do `INVARIANTS.md`.
+
+## Relacje (Related)

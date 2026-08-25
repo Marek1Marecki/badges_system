@@ -72,6 +72,5 @@ Gdy więcej niż 30% odznak w systemie zacznie korzystać z weryfikacji opartej 
 
 ---
 
-## Referencje
-- **ADR-009 — Weryfikacja wejść jako operacje na zbiorach.** Niniejszy dokument sankcjonuje celowe i strukturalnie odizolowane odstępstwo od bazowego założenia ADR-009 w zakresie pominięcia zamkniętej listy M2M `pool_peaks`.
-- `INVARIANTS.md` — Reguła R-01 (zachowana) oraz nowa reguła R-03.
+## Relacje (Related)
+- **ADR-009 — Weryfikacja wejść jako operacje na zbiorach:** Niniejszy dokument sankcjonuje celowe i strukturalnie odizolowane odstępstwo od bazowego założenia ADR-009 w zakresie pominięcia zamkniętej listy M2M `pool_peaks`.

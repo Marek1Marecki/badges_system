@@ -89,5 +89,6 @@ Gdy baza obiektów urośnie do dziesiątek tysięcy punktów per region, a czas 
 
 ---
 
-## Referencje
+## Relacje (Related)
+- **Dług (Debt):** Ryzyko cyklicznego grafu w relacji `parent_object` — brak zabezpieczenia na poziomie bazy danych (constraintów) przed zapętleniem się rodziców; wymaga walidacji w warstwie aplikacji. Dług operacyjny: Administrator musi regularnie przeglądać Skrzynkę Odbiorczą.
 - **ADR-005 — Płaski Model Odczytu CQRS:** Decyzja komplementarna, zdejmująca z głównej pętli żądań HTTP kosztowne obliczenia przestrzenne.

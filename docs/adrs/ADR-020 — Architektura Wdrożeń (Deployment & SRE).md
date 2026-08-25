@@ -130,3 +130,7 @@ Każde środowisko musi być możliwe do odtworzenia wyłącznie z trzech artefa
 Dokument wymaga uzupełnienia o **ADR-021 (Strategia Backupów i Disaster Recovery)** na 14 dni przed oficjalnym otwarciem ruchu dla turystów na serwerze produkcyjnym. Backup operacyjny obejmuje wyłącznie dane użytkowników. Dane referencyjne nie wymagają backupu operacyjnego bazy danych, ponieważ ich źródłem prawdy są niemutowalne snapshoty — wymagają natomiast ochrony integralności i dostępności repozytorium artefaktów oraz zachowania pełnej historii wersji, co jest przedmiotem odrębnego ustalenia poza niniejszym ADR. Przed wykonaniem migracji na PROD zawsze wykonywany jest backup bazy danych użytkowników.
 
 Rewizja niniejszego dokumentu jest również wymagana w przypadku: wprowadzenia piątego środowiska wdrożeniowego, zmiany dostawcy sekretów/konfiguracji, odkrycia przypadku, w którym proces odtwarzania danych referencyjnych przestaje być idempotentny, lub zmiany technologii przechowywania artefaktów referencyjnych.
+
+## Relacje (Related)
+- **ADR-021 — Strategia Backupów i Disaster Recovery:** Dokument wymagany do uzupełnienia przed otwarciem ruchu na PROD; definiuje RPO/RTO dla danych użytkowników, które są kluczowe dla bezpieczeństwa wdrożeń opisanych w niniejszym ADR.
+- **ADR-024 — Strategia Migracji (Expand and Contract):** Zasada Migracji Destrukcyjnych opisana w punkcie 3 jest rozszerzeniem wzorca Expand and Contract zdefiniowanego w ADR-024.

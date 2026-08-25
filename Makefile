@@ -10,7 +10,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs adr-init adr doc-format doc-check check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock
 
 help:
 	@echo "CORE targets:"
@@ -29,6 +29,8 @@ help:
 	@echo "  graph-all    - wszystkie diagramy architektury"
 	@echo "  arch-docs    - generowanie diagramów PlantUML (C4)"
 	@echo "  api-docs     - generowanie dokumentacji API (pdoc)"
+	@echo "  adr-init     - inicjalizacja katalogu ADR-ów (adr-tools)"
+	@echo "  adr          - tworzenie nowego ADR (adr new 'Tytuł')"
 	@echo "  check        - lokalne CI: format --check + lint + type-check + test + audit + complexity-check + security-audit"
 	@echo "  clean        - usuwa cache, artefakty"
 	@echo "  security-audit - semgrep + osv-scanner"
@@ -120,6 +122,13 @@ arch-docs:
 api-docs:
 	mkdir -p docs/api
 	uv run pdoc --output-dir docs/api domain application
+
+
+adr:
+	uv run adr new ""
+
+adr-init:
+	uv run adr init docs/adrs
 
 
 complexity-trend:

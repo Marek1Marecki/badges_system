@@ -75,6 +75,6 @@ Gdy natężenie ruchu (setki żądań na sekundę od turystów ruszających palc
 
 ---
 
-## Referencje
+## Relacje (Related)
 - **ADR-005 — Płaski Model Odczytu CQRS:** Kluczowy pre-filtr zdejmujący obciążenie z zapytań przestrzennych BBox.
-- **ADR-010 — Dynamiczne kolorowanie mapy:** Wprowadza zależność usługi `BadgeEligibilityService` jako ostatecznego decydenta na dociętym przez BBox zbiorze.
+- **ADR-010 — Dynamiczne kolorowanie mapy i priorytetyzacja stanów odznak:** Wprowadza zależność usługi `BadgeEligibilityService` jako ostatecznego decydenta na dociętym przez BBox zbiorze.

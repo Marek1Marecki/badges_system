@@ -95,3 +95,7 @@ Wdrażamy rygorystyczną strategię migracji bazującą na wzorcu **Expand and C
 ## Warunek rewizji
 
 Strategia ta zakłada środowisko wysokiej dostępności (HA - High Availability). Podlega rewizji w przypadku, gdy zespół utrzymaniowy uzyska zgodę biznesową na regularne, awaryjne okna serwisowe (Maintenance Windows), podczas których ruch z zewnątrz (B2C) jest całkowicie odcinany. Zamknięty ruch eliminuje potrzebę utrzymywania zgodności dwóch wersji kodu równolegle na tym samym schemacie, dopuszczając klasyczny proces jednoczesnych, destrukcyjnych migracji bazy i wdrożenia nowej wersji.
+
+## Relacje (Related)
+- **Dług (Debt):** Utrzymanie tzw. długu przejściowego w kodzie Pythona przez kilka tygodni/miesięcy pomiędzy fazą Expand a Contract.
+- **ADR-020 — Architektura Wdrożeń (Deployment & SRE):** Strategia migracji implementuje Zasadę Migracji Destrukcyjnych i wymóg wstecznej kompatybilności schematu zdefiniowany w ADR-020.

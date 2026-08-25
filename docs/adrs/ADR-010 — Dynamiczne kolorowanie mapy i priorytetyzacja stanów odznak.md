@@ -64,3 +64,5 @@ Izolujemy aplikacje klienckie od skomplikowanych zmian w regulaminach. `BadgeEli
 ### Działania wymagane
 - [ ] Utworzenie `BadgeEligibilityService` w katalogu `application/services/`.
 - [ ] Oprogramowanie inwalidacji cache w Redis przy zapisie logu wejścia.
+
+## Relacje (Related)

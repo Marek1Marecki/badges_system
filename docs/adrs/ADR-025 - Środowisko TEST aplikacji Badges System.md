@@ -47,4 +47,7 @@ Aby zapewnić stabilność danych na środowiskach zachowujących stan (DEV, PRE
    Wolumen danych PostgreSQL we wszystkich środowiskach jest montowany wyżej w hierarchii folderów:
    ```yaml
    volumes:
-     - postgis_data:/var/lib/postgresql
+      - postgis_data:/var/lib/postgresql
+
+## Relacje (Related)
+- **ADR-020 — Architektura Wdrożeń (Deployment & SRE):** Środowisko TEST implementuje zasadę izolacji środowisk i efemeryczności zdefiniowaną w ADR-020.

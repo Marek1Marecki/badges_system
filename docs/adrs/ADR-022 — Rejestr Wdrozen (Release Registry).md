@@ -105,3 +105,6 @@ Release Registry stanowi jedyne autorytatywne źródło prawdy określające, kt
 ## Warunek rewizji
 
 Dokument podlega rewizji w przypadku migracji infrastruktury na systemy orkiestracji takie jak Kubernetes (gdzie funkcję Release Registry mogą wprost przejąć mechanizmy Helm, ArgoCD, lub Custom Resource Definitions) albo wdrożenia zaawansowanych rejestrów artefaktów (np. wbudowanych w GitLab CI/CD). Rewizja jest również wymagana w przypadku wprowadzenia podpisywania artefaktów w łańcuchu dostaw oprogramowania (Software Supply Chain Security, np. Sigstore/Cosign lub GPG), umożliwiającego kryptograficzną weryfikację autentyczności zatwierdzonych kombinacji przed ich wdrożeniem, co będzie wymagało rozszerzenia modelu Release Registry.
+
+## Relacje (Related)
+- **ADR-020 — Architektura Wdrożeń (Deployment & SRE):** Rejestr Wdrożeń implementuje wymóg Version Matrix i artefaktu audytowego zdefiniowany w ADR-020, blokując wdrożenie niezatwierdzonych kombinacji artefaktów.

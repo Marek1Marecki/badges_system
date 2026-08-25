@@ -68,8 +68,7 @@ Zrewidować, jeśli PTTK wprowadzi odznaki, w których reguły zaliczania są *d
 
 ---
 
-## Referencje
-
+## Relacje (Related)
 - **ADR-003 — Silnik Reguł Biznesowych:** Implementacja reguł takich jak `MandatoryObjectsRule` czy `GroupedAlternativesRule` jest bezpośrednim wynikiem przyjęcia matematyki zbiorów (Set Math) zdefiniowanej w niniejszym ADR.
 - **ADR-005 — Płaski Model Odczytu CQRS:** To właśnie zdenormalizowane tabele zdefiniowane w ADR-005 pozwalają administratorowi na szybkie odfiltrowanie tysięcy szczytów geograficznych na etapie *Setup Phase*, co zdejmuje z domeny konieczność posiadania wiedzy o przestrzeni i umożliwia działanie *Pool-based Set Verification*.
-- **ADR-012 — Weryfikacja celów otwartych geograficznie.** Oficjalnie zdefiniowany i hermetycznie odizolowany wyjątek od reguły "sztywnego załącznika M2M", pozwalający Domenie ewaluować szerokie regiony geograficzne bez bezpośredniego łamania dogmatu operacji na zbiorach.
+- **ADR-012 — Weryfikacja celów otwartych geograficznie:** Oficjalnie zdefiniowany i hermetycznie odizolowany wyjątek od reguły "sztywnego załącznika M2M", pozwalający Domenie ewaluować szerokie regiony geograficzne bez bezpośredniego łamania dogmatu operacji na zbiorach.

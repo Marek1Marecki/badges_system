@@ -91,5 +91,4 @@ Dokument poddać rewizji, w przypadku gdy liczba obiektów zasilanych z OSM prze
 
 ---
 
-## Referencje
-- Kontrakt konfiguracyjny z infrastrukturą: Wykorzystanie asynchronicznego Skanera OSM (Celery Beat) minimalizuje ryzyko przekroczenia limitów API serwerów Overpass.
+## Relacje (Related)

@@ -171,3 +171,6 @@ zastosowanie, (c) wprowadzeniu analogicznego mechanizmu dla PRE-PROD/PROD
 procedury `dev-backup`-przed-upgrade na `release-database.sh` dla
 środowisk wdrożeniowych wymaga osobnej decyzji, potencjalnie uzupełnienia
 tego dokumentu).
+
+## Relacje (Related)
+- **ADR-024 — Strategia Migracji (Expand and Contract):** Zmiana punktu montażowania wolumenu PostgreSQL wymaga jednorazowej, kontrolowanej migracji (backup + zmiana konfiguracji + restore), zgodnie z zasadami niezgodnych wstecz zmian z ADR-024.

@@ -92,3 +92,6 @@ Strategia zakłada na tym etapie skalę bazy i ruch sieciowy, dla których jedno
 - Zadeklarowany czas odtworzenia (RTO) zostanie przekroczony podczas testu DR Drill.
 - Pojawi się wymóg biznesowy odzyskiwania bazy do konkretnego momentu w czasie (PITR - Point-in-Time Recovery).
 - Wolumen fizyczny danych i geometrii PostGIS uniemożliwi i/lub zbytnio spowolni wykonywanie codziennych zrzutów `pg_dump`, wymuszając przejście na rozwiązania typu `pgBackRest` i `WAL Archiving` lub migrację na środowisko chmurowe Managed Database.
+
+## Relacje (Related)
+- **ADR-020 — Architektura Wdrożeń (Deployment & SRE):** Zgodnie z wymogami ADR-020, strategia backupów definiuje RPO/RTO i procedury Disaster Recovery, które są wymagane przed wpuszczeniem ruchu na PROD.

@@ -29,7 +29,10 @@ Jaki model matematyczny przyjąć dla oceny potencjału szczytów i jak zaprojek
    Ranking nie jest liczony w locie (On-Demand) przy każdym ruchu mapą. Wyniki są buforowane w Redis. Zamiast zasobożernego, codziennego przeliczania wszystkich turystów, wdrożono unieważnianie cache'u oparte na zdarzeniach (Event-Driven). Klucz Redis dla danego turysty jest niszczony (co wymusza przeliczenie przy najbliższym odczycie) WYŁĄCZNIE gdy wystąpi jedno ze zdarzeń psujących stan:
    - Zdarzenia Użytkownika: Dodanie wejścia na szczyt, zmiana subskrypcji odznak.
    - Zdarzenia Czasowe: Dzień urodzin turysty (wpływ na `MinAge/MaxAgeRule`), otwarcie/zamknięcie predefiniowanych okien sezonowych lub jubileuszowych.
-   - Zdarzenia Administracyjne: Zmiana flagi `is_active` obiektu w bazie, modyfikacja puli odznaki.
+    - Zdarzenia Administracyjne: Zmiana flagi `is_active` obiektu w bazie, modyfikacja puli odznaki.
+
+## Relacje (Related)
+
 
 ---
 

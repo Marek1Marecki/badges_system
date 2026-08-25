@@ -87,6 +87,5 @@ Zrewidować w przypadku implementacji interaktywnych map wielowarstwowych w apli
 
 ---
 
-## Referencje
-- Architektura Command Query Responsibility Segregation (CQRS).
-- **ADR-002** (Tabela odczytu nie przechowuje duplikatów samej geometrii, odwołuje się do niej jedynie relacyjnie, pozostawiając źródło prawdy geometrycznej w infrastrukturze).
+## Relacje (Related)
+- **ADR-002 — Typy geometryczne PostGIS jako transport infrastrukturalny, nie value objects domeny:** Tabela odczytu nie przechowuje duplikatów samej geometrii, odwołuje się do niej jedynie relacyjnie, pozostawiając źródło prawdy geometrycznej w infrastrukturze.
