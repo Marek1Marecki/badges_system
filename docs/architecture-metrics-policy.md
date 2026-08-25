@@ -6,47 +6,65 @@ Utrzymywanie niskiej złożoności i wysokiej utrzymywalności kodu poprzez cią
 
 ## Architecture Governance Model
 
-                    ARCHITECTURE GOVERNANCE
-                             │
-        ┌────────────────────┼────────────────────┐
-        │                    │                    │
-        ▼                    ▼                    ▼
-    ENFORCEMENT          DISCOVERY             QUALITY
-        │                    │                    │
-        ▼                    ▼                    ▼
- Import Linter             pydeps               Radon
-                          pyreverse              Xenon
-                          Graphviz                wily
-        │                    │                    │
-        ▼                    ▼                    ▼
-   architectural         actual structure      complexity
-      rules                                      trends
-        │                    │                    │
-        └────────────────────┼────────────────────┘
-                             ▼
-                     Architecture Evidence
-                             │
-                             ▼
-                       CI / Artifacts
-                             │
-                             ▼
-                    Architecture Documentation
+                         ARCHITECTURE GOVERNANCE
+                                  │
+           ┌────────────────────┼────────────────────┐
+           │                    │                    │
+           ▼                    ▼                    ▼
+       ENFORCEMENT          DISCOVERY             QUALITY
+           │                    │                    │
+           ▼                    ▼                    ▼
+    Import Linter             pydeps               Radon
+                              pyreverse              Xenon
+                              Graphviz                wily
+           │                    │                    │
+           ▼                    ▼                    ▼
+      architectural         actual structure      complexity
+         rules                                      trends
+           │                    │                    │
+           └────────────────────┼────────────────────┘
+                                ▼
+                        Architecture Evidence
+                                │
+                                ▼
+                  Architecture Documentation & Visualization
+                                │
+                                ▼
+                         Designed Architecture
+                         (C4 / PlantUML / Structurizr)
 
-### Poziomy agregacji metryk
+### Grupy i ich pytania
 
-| Poziom | Przykład | Uwagi |
-|--------|----------|-------|
-| Function / method | `PoiScoringService.recalculate_and_cache_for_profile` | Najdokładniejszy poziom |
-| Module | `application/services/poi_scoring_service.py` | Xenon operuje na tym poziomie |
-| Project | cały projekt | Używane do average complexity |
+| Grupa | Pytanie | Narzędzia |
+|-------|---------|-----------|
+| 1. Architecture Enforcement | Czy architektura przestrzega reguł? | Import Linter |
+| 2. Dependency Discovery | Jak rzeczywiście wyglądają zależności? | pydeps, pyreverse, Graphviz |
+| 3. Architecture Quality / Metrics | Jak złożona i podatna na degradację jest architektura? | Radon, Xenon, wily |
+| 4. Architecture Documentation / Visualization | Jak architekturę zrozumieć i zakomunikować? | C4, PlantUML, Structurizr, Sphinx/pdoc |
+
+### Rozróżnienie: Designed vs Generated
+
+| Typ | Odpowiada na pytanie | Narzędzia | Przykład |
+|-----|---------------------|-----------|---------|
+| **Designed Architecture** | Jak system powinien być zorganizowany? | C4, PlantUML, Structurizr | `docs/architecture/context.puml` |
+| **Generated Architecture** | Jak kod faktycznie wygląda? | pydeps, pyreverse, Graphviz | `docs/architecture/dependencies-pydeps.svg` |
+
+Porównywanie tych dwóch widoków to sedno Architecture Governance.
 
 ## Narzędzia
 
-| Narzędzie | Rola | Skanuje |
-|-----------|------|---------|
-| **Radon** | Measurement | Cyclomatic Complexity, Maintainability Index, LOC |
-| **Xenon** | Enforcement | Complexity thresholds per module |
-| **wily** | Trend Analysis | Complexity trends over git history |
+| Narzędzie | Rola | Grupa |
+|-----------|------|-------|
+| **Import Linter** | Enforcement | 1. Architecture Enforcement |
+| **pydeps** | Dependency visualization | 2. Dependency Discovery |
+| **pyreverse** | Class diagrams | 2. Dependency Discovery |
+| **Graphviz** | Graph rendering | 2. Dependency Discovery |
+| **Radon** | Measurement | 3. Architecture Quality / Metrics |
+| **Xenon** | Enforcement | 3. Architecture Quality / Metrics |
+| **wily** | Trend Analysis | 3. Architecture Quality / Metrics |
+| **PlantUML** | Architecture diagrams | 4. Architecture Documentation / Visualization |
+| **Structurizr** | C4 modeling | 4. Architecture Documentation / Visualization |
+| **Sphinx/pdoc** | Technical documentation | 4. Architecture Documentation / Visualization |
 
 ## Thresholds
 
@@ -177,6 +195,19 @@ Uruchamiane w CI przy każdym push do `main`:
 **Artifacts:**
 - `complexity-trend.txt` — przechowywane 30 dni
 
+### Krok 3: Architecture diagrams
+
+Uruchamiane w CI przy każdym push do `main`:
+
+```yaml
+- name: Generowanie diagramów architektury (pydeps + pyreverse)
+  run: make graph-modules graph-classes
+```
+
+**Artifacts:**
+- `docs/architecture/dependencies-pydeps.svg`
+- `docs/architecture/classes-*.png`
+
 ### Kolejność w CI
 
 ```
@@ -253,6 +284,14 @@ Wymagania:
 - Wszyscy developezy znają model Architecture Governance
 - `make complexity-trend` działa bezbłędnie przez 4 tygodnie
 
+## Architecture Documentation
+
+Szczegóły dotyczące dokumentacji i wizualizacji architektury znajdują się w:
+
+- **`docs/architecture-documentation.md`** — polityka dokumentacji architektury
+- **`docs/architecture-metrics-baseline.md`** — baseline metryk
+- **`docs/architecture-metrics-trends.md`** — trendy miesięczne
+
 ## Historia zmian
 
 | Data | Zmiana |
@@ -260,3 +299,4 @@ Wymagania:
 | 2026-08-25 | Wdrożenie Radon + Xenon + wily |
 | 2026-08-25 | Dodano politykę no regression i wyjątki semantyczne |
 | 2026-08-25 | Dodano plan migracji wily na git archiver |
+| 2026-08-25 | Dodano grupę 4: Architecture Documentation & Visualization |

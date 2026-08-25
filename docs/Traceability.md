@@ -54,6 +54,7 @@
 |:---|:---|:---|:---|:---|:---:|
 | **Snapshot Referencyjny** | Single Source of Truth w Repozytorium Gita | `export_reference_data.py`, `manifest.json` | Deterministyczne odtwarzanie środowiska za pomocą `restore_reference_data.py`. |
 | **Idempotencja DataOps** | Ochrona przed duplikacją na PROD | Zapisano w `TEST_STRATEGY.md` | Test `test_restore_reference_data_is_idempotent` weryfikujący podwójny przebieg. |
+| **Architecture Quality & Complexity** | Zapobieganie Erozji Architektury i długowi technologicznemu | `Radon`, `Xenon`, `wily` | Twarda bramka (Gating) w CI/CD odrzucająca funkcje o zbyt wysokiej złożoności cyklomatycznej (Max = B). Comiesięczny raport trendów z artefaktów GitHub Actions. |
 
 ---
 **Podsumowanie pokrycia:** Wymagania z Fazy C posiadają 100% powiązanie z fizycznymi plikami testowymi dla warstw logiki.

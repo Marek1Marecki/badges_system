@@ -82,6 +82,10 @@ Ten dokument to zbiór **instrukcji briefingowych** — per obszar, per typ zada
 Jeśli widok Django (`views.py`) pobiera obiekty powiązane (np. odznaki dla danego szczytu) celem wyświetlenia ich w szablonie, 
 - **bezwzględnie zakazuje się** spłaszczania ich do list samych stringów (np. samych nazw). Widok musi zawsze konstruować słowniki zawierające klucze identyfikacyjne wymagane do routingu (np. `[{"code": obj.code, "name": obj.name}]`). Umożliwia to szabronom HTML budowanie pełnoprawnej sieci linków (Hyperlinking) bez konieczności kosztownych zapytań o ID w samym szablonie.
 
+- **Reguła Złożoności Cyklomatycznej (Cyclomatic Complexity Gate):** Twój kod jest statycznie analizowany przez narzędzia `Radon` i `Xenon` w potoku CI/CD. Projekt posiada twardy limit złożoności na poziomie `B` dla uśrednionego pliku.
+  - **Kategoryczny zakaz:** Tworzenia funkcji i metod typu "God Method" z głębokimi zagnieżdżeniami (np. kilkustopniowe `if-else`, wielokrotne pętle `for` wewnątrz `try-except`). Jeśli napiszesz taką funkcję, Xenon zablokuje wdrożenie (Fail-Fast).
+  - **Wymóg:** Używaj wczesnych wyjść (Early Returns), Guard Clauses, rozbijaj złożoną logikę na mniejsze, prywatne funkcje pomocnicze, lub korzystaj ze struktur polimorficznych (Słowniki/Wzorzec Strategii) zamiast łańcuchów `if-elif`.
+
 ---
 
 ### AGENT-API-CONTRACT — Implementacja REST API dla Klientów
