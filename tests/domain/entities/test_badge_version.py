@@ -24,7 +24,10 @@ def _tiers(req: int) -> list[BadgeTierDomain]:
 
 
 class TestBadgeVersionDomain:
+    """Testy agregatu BadgeVersionDomain."""
+
     def test_evaluate_success_with_valid_ascents(self, ctx: VerificationContext) -> None:
+        """Weryfikuje sukces gdy wszystkie wejścia poprawne."""
         domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1, 2]), tiers=_tiers(2))
         ascents = [Ascent(peak_id=1, ascent_date=date.today()), Ascent(peak_id=2, ascent_date=date.today())]
 
@@ -35,6 +38,7 @@ class TestBadgeVersionDomain:
         assert result.tiers[0].status == "COMPLETED"
 
     def test_evaluate_fails_with_insufficient_peaks(self, ctx: VerificationContext) -> None:
+        """Weryfikuje niepowodzenie przy zbyt małej liczbie wejść."""
         domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1, 2]), tiers=_tiers(2))
         ascents = [Ascent(peak_id=1, ascent_date=date.today())]
 
@@ -44,6 +48,7 @@ class TestBadgeVersionDomain:
         assert result.status == "IN_PROGRESS"
 
     def test_evaluate_ignores_peaks_outside_pool(self, ctx: VerificationContext) -> None:
+        """Ignoruje szczyty spoza puli."""
         domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1, 2]), tiers=_tiers(2))
         ascents = [Ascent(peak_id=1, ascent_date=date.today()), Ascent(peak_id=3, ascent_date=date.today())]
 
@@ -53,6 +58,7 @@ class TestBadgeVersionDomain:
         assert result.valid_ascents_count == 1
 
     def test_evaluate_with_multiple_rule_errors(self, ctx: VerificationContext) -> None:
+        """Weryfikuje zachowanie przy wielu błędach reguł."""
         rule1, rule2 = MagicMock(), MagicMock()
         rule1.validate.return_value = ["Błąd 1"]
         rule2.validate.return_value = ["Błąd 2"]
@@ -69,6 +75,7 @@ class TestBadgeVersionDomain:
         assert result.errors == []  # errors are not returned in current implementation
 
     def test_evaluate_with_empty_ascents_list(self, ctx: VerificationContext) -> None:
+        """Weryfikuje pusta listę wejść."""
         domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1]), tiers=_tiers(1))
 
         result = domain.evaluate([], ctx)
@@ -77,6 +84,7 @@ class TestBadgeVersionDomain:
         assert result.status == "NOT_STARTED"
 
     def test_evaluate_with_duplicate_peaks(self, ctx: VerificationContext) -> None:
+        """Ignoruje duplikaty szczyców."""
         domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1]), tiers=_tiers(2))
         ascents = [Ascent(peak_id=1, ascent_date=date.today()), Ascent(peak_id=1, ascent_date=date.today())]
 

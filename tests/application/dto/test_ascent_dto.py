@@ -9,6 +9,7 @@ from application.dto.ascent_dto import AscentDTO, AscentInputDTO
 
 
 def test_ascent_dto_to_domain() -> None:
+    """Test konwersji AscentDTO na obiekt domenowy."""
     dto = AscentDTO(peak_id=1, ascent_date=date(2024, 1, 1), region_ids=frozenset([10, 20]))
     domain_obj = dto.to_domain()
     assert domain_obj.peak_id == 1
@@ -17,6 +18,7 @@ def test_ascent_dto_to_domain() -> None:
 
 
 def test_ascent_input_dto_to_domain() -> None:
+    """Test konwersji AscentInputDTO na obiekt domenowy."""
     dto = AscentInputDTO(peak_id=1, ascent_date=date(2024, 1, 1))
     domain_obj = dto.to_domain()
     assert domain_obj.peak_id == 1
@@ -24,5 +26,6 @@ def test_ascent_input_dto_to_domain() -> None:
 
 
 def test_invalid_peak_id() -> None:
+    """Test odrzucenia nieprawidłowego peak_id."""
     with pytest.raises(ValidationError):
         AscentInputDTO(peak_id=0, ascent_date=date(2024, 1, 1))

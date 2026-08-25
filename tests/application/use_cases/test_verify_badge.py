@@ -15,10 +15,12 @@ from tests.fakes.clock import FakeClock
 
 class TestEvaluateBadgeProgressQuery:
     def test_init_with_repositories(self) -> None:
+        """Test inicjalizacji EvaluateBadgeProgressQuery z repozytoriami."""
         uc = EvaluateBadgeProgressQuery(MagicMock(), MagicMock(), MagicMock(), MagicMock(), FakeClock())
         assert uc._clock is not None
 
     def test_execute_raises_when_no_progress(self) -> None:
+        """Test podniesienia błędu przy braku postępu."""
         progress_repo = MagicMock()
         progress_repo.get_progress.return_value = None
         uc = EvaluateBadgeProgressQuery(progress_repo, MagicMock(), MagicMock(), MagicMock(), FakeClock())
@@ -43,6 +45,7 @@ class TestEvaluateBadgeProgressQuery:
             uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
 
     def test_execute_evaluates_domain_successfully(self) -> None:
+        """Test pomyślnej ewaluacji domenowej postępu odznaki."""
         progress_repo = MagicMock()
         progress = MagicMock()
         progress.version_id = 99

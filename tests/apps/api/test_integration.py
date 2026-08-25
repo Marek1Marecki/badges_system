@@ -95,7 +95,10 @@ def use_cases():
 
 
 class TestAscentLogView:
+    """Testy endpointu logowania wędrówek."""
+
     def test_created_returns_201_with_ascent_id(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 201 z identyfikatorem wejścia po poprawnym zalogowaniu wędrówki."""
         from apps.api.views import AscentLogView
 
         use_cases["log_ascent"].execute.return_value = 77
@@ -131,6 +134,7 @@ class TestAscentLogView:
         assert call_kwargs.kwargs["profile_id"] == 1
 
     def test_conflict_error_returns_409_rfc7807(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 409 w formacie RFC 7807 przy konflikcie duplikatu wejścia."""
         from application.exceptions import ConflictError
         from apps.api.views import AscentLogView
 
@@ -152,6 +156,7 @@ class TestAscentLogView:
         assert "request_id" in data
 
     def test_bitemporal_error_returns_422(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 422 przy nieprawidłowym czasie bitemporalnym."""
         from application.exceptions import BitemporalTimeError
         from apps.api.views import AscentLogView
 
@@ -172,7 +177,10 @@ class TestAscentLogView:
 
 
 class TestBadgeSubscribeView:
+    """Testy endpointu subskrypcji odznak."""
+
     def test_subscribe_returns_201_with_progress_id(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 201 z identyfikatorem postępu po subskrypcji odznaki."""
         from apps.api.views import BadgeSubscribeView
 
         use_cases["start_badge_progress"].execute.return_value = 99
@@ -186,6 +194,7 @@ class TestBadgeSubscribeView:
         assert json.loads(response.content)["progress_id"] == 99
 
     def test_subscribe_calls_use_case_with_correct_args(self, factory, mock_user, use_cases) -> None:
+        """Wywołuje use case subskrypcji z poprawnymi argumentami."""
         from apps.api.views import BadgeSubscribeView
 
         use_cases["start_badge_progress"].execute.return_value = 1
@@ -204,7 +213,10 @@ class TestBadgeSubscribeView:
 
 
 class TestBadgeProgressView:
+    """Testy endpointu postępu odznaki."""
+
     def test_progress_200_returns_evaluation_result(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 200 z wynikiem ewaluacji postępu odznaki."""
         from apps.api.views import BadgeProgressView
 
         use_cases["evaluate_badge_progress"].execute.return_value = {
@@ -223,6 +235,7 @@ class TestBadgeProgressView:
         assert json.loads(response.content)["valid_ascents_count"] == 12
 
     def test_not_subscribed_returns_404_rfc7807(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 404 gdy użytkownik nie jest subskrybentem odznaki."""
         from application.exceptions import ResourceNotFoundError
         from apps.api.views import BadgeProgressView
 
@@ -245,7 +258,10 @@ class TestBadgeProgressView:
 
 
 class TestBadgeLogisticsView:
+    """Testy endpointu logistyki odznaki."""
+
     def test_patch_returns_200_on_success(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 200 po pomyślnej aktualizacji statusu logistycznego."""
         from apps.api.views import BadgeLogisticsView
 
         use_cases["advance_logistic_status"].execute.return_value = None
@@ -263,6 +279,7 @@ class TestBadgeLogisticsView:
         assert json.loads(response.content)["status"] == "UPDATED"
 
     def test_patch_conflict_returns_409(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 409 przy niedozwolonym przejściu statusu logistycznego."""
         from application.exceptions import ConflictError
         from apps.api.views import BadgeLogisticsView
 
@@ -288,7 +305,10 @@ class TestBadgeLogisticsView:
 
 
 class TestMapObjectsView:
+    """Testy endpointu mapy obiektów turystycznych."""
+
     def test_returns_geojson_for_valid_bbox(self, factory, mock_user, use_cases) -> None:
+        """Zwraca GeoJSON dla poprawnego bounding box."""
         from apps.api.views import MapObjectsView
 
         use_cases["explore_map"].execute.return_value = {"type": "FeatureCollection", "features": []}
@@ -301,6 +321,7 @@ class TestMapObjectsView:
         assert response.status_code == 200
 
     def test_returns_422_for_missing_bbox(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 422 gdy brakuje wymaganego parametru bbox."""
         from apps.api.views import MapObjectsView
 
         request = factory.get("/api/v1/map/objects/")
@@ -319,7 +340,10 @@ class TestMapObjectsView:
 
 
 class TestVectorTileView:
+    """Testy endpointu kafelków wektorowych."""
+
     def test_returns_tile_data(self, factory, use_cases) -> None:
+        """Zwraca dane kafelka wektorowego."""
         from apps.api.views import VectorTileView
 
         use_cases["get_mvt_tile"] = MagicMock()
@@ -332,6 +356,7 @@ class TestVectorTileView:
         assert response.status_code == 200
 
     def test_returns_204_for_empty_tile(self, factory, use_cases) -> None:
+        """Zwraca 204 gdy kafelek wektorowy jest pusty."""
         from apps.api.views import VectorTileView
 
         use_cases["get_mvt_tile"] = MagicMock()
@@ -350,7 +375,10 @@ class TestVectorTileView:
 
 
 class TestProfileSettingsView:
+    """Testy endpointu ustawień profilu."""
+
     def test_updates_profile_settings(self, factory, mock_user, use_cases) -> None:
+        """Aktualizuje ustawienia profilu użytkownika."""
         from apps.api.views import ProfileSettingsView
         from apps.tourists.models import TouristProfile
 
@@ -374,6 +402,7 @@ class TestProfileSettingsView:
             mock_profile.save.assert_called_once()
 
     def test_clears_birth_date_on_empty_string(self, factory, mock_user, use_cases) -> None:
+        """Czyści datę urodzenia przy pustym ciągu znaków."""
         from apps.api.views import ProfileSettingsView
         from apps.tourists.models import TouristProfile
 
@@ -400,7 +429,10 @@ class TestProfileSettingsView:
 
 
 class TestBadgeUnsubscribeView:
+    """Testy endpointu wypisywania z odznak."""
+
     def test_unsubscribe_returns_200(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 200 po pomyślnym wypisaniu z odznaki."""
         from apps.api.views import BadgeSubscribeView
 
         use_cases["unsubscribe_badge"] = MagicMock()
@@ -414,6 +446,7 @@ class TestBadgeUnsubscribeView:
         use_cases["unsubscribe_badge"].execute.assert_called_once_with(profile_id=1, badge_code="KGP")
 
     def test_unsubscribe_handles_conflict_error(self, factory, mock_user, use_cases) -> None:
+        """Obsługuje konflikt podczas wypisywania z odznaki."""
         from application.exceptions import ConflictError
         from apps.api.views import BadgeSubscribeView
 
@@ -436,7 +469,10 @@ class TestBadgeUnsubscribeView:
 
 
 class TestGpxAnalyzeView:
+    """Testy endpointu analizy plików GPX."""
+
     def test_requires_authentication(self, factory, use_cases) -> None:
+        """Wymaga autoryzacji użytkownika."""
         from apps.api.views import GpxAnalyzeView
 
         request = factory.post("/api/v1/gpx/analyze/")
@@ -450,6 +486,7 @@ class TestGpxAnalyzeView:
         assert "request_id" in data
 
     def test_returns_422_when_no_file(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 422 gdy nie przesłano pliku GPX."""
         from apps.api.views import GpxAnalyzeView
 
         request = factory.post("/api/v1/gpx/analyze/")
@@ -462,6 +499,7 @@ class TestGpxAnalyzeView:
         assert "request_id" in data
 
     def test_returns_422_when_file_too_large(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 422 gdy plik GPX przekracza limit rozmiaru."""
         from django.core.files.uploadedfile import SimpleUploadedFile
 
         from apps.api.views import GpxAnalyzeView
@@ -485,7 +523,10 @@ class TestGpxAnalyzeView:
 
 
 class TestBulkAscentLogView:
+    """Testy endpointu masowego logowania wędrówek."""
+
     def test_requires_authentication(self, factory, use_cases) -> None:
+        """Wymaga autoryzacji użytkownika."""
         from apps.api.views import BulkAscentLogView
 
         request = factory.post("/api/v1/ascents/bulk/")
@@ -499,6 +540,7 @@ class TestBulkAscentLogView:
         assert "request_id" in data
 
     def test_returns_422_for_invalid_json(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 422 przy nieprawidłowym JSON w żądaniu."""
         from apps.api.views import BulkAscentLogView
 
         request = factory.post("/api/v1/ascents/bulk/", data="not json", content_type="application/json")
@@ -511,6 +553,7 @@ class TestBulkAscentLogView:
         assert "request_id" in data
 
     def test_returns_422_for_non_list_body(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 422 gdy ciało żądania nie jest listą."""
         from apps.api.views import BulkAscentLogView
 
         request = factory.post(
@@ -531,7 +574,10 @@ class TestBulkAscentLogView:
 
 
 class TestProfileUpgradeView:
+    """Testy endpointu podwyższenia profilu do PRO."""
+
     def test_requires_authentication(self, factory, use_cases) -> None:
+        """Wymaga autoryzacji użytkownika."""
         from apps.api.views import ProfileUpgradeView
 
         request = factory.post("/api/v1/profiles/1/upgrade/")
@@ -545,6 +591,7 @@ class TestProfileUpgradeView:
         assert "request_id" in data
 
     def test_upgrades_profile_to_pro(self, factory, mock_user, use_cases) -> None:
+        """Podwyższa profil użytkownika do planu PRO."""
         from apps.api.views import ProfileUpgradeView
         from apps.tourists.models import TouristProfile
 
@@ -563,6 +610,7 @@ class TestProfileUpgradeView:
             mock_profile.save.assert_called_once()
 
     def test_returns_404_when_profile_not_found(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 404 gdy profil nie istnieje."""
         from django.http import Http404
 
         from apps.api.views import ProfileUpgradeView
@@ -584,7 +632,10 @@ class TestProfileUpgradeView:
 
 
 class TestErrorHandling:
+    """Testy obsługi błędów API."""
+
     def test_vector_tile_handles_application_exception(self, factory, use_cases) -> None:
+        """Obsługuje ApplicationException w widoku kafelków wektorowych."""
         from application.exceptions import UseCaseError
         from apps.api.views import VectorTileView
 
@@ -600,6 +651,7 @@ class TestErrorHandling:
         assert "request_id" in data
 
     def test_map_objects_handles_invalid_bbox_format(self, factory, mock_user, use_cases) -> None:
+        """Obsługuje nieprawidłowy format parametru bbox."""
         from apps.api.views import MapObjectsView
 
         request = factory.get("/api/v1/map/objects/?bbox=invalid,format")
@@ -612,6 +664,7 @@ class TestErrorHandling:
         assert "request_id" in data
 
     def test_map_objects_passes_optional_params(self, factory, mock_user, use_cases) -> None:
+        """Przekazuje opcjonalne parametry do use case explore_map."""
         from apps.api.views import MapObjectsView
 
         use_cases["explore_map"].execute.return_value = {"type": "FeatureCollection", "features": []}
@@ -631,6 +684,7 @@ class TestErrorHandling:
         assert call_args.args[0].region_id == 5
 
     def test_map_objects_handles_dto_validation_error(self, factory, mock_user, use_cases) -> None:
+        """Obsługuje błąd walidacji DTO dla mapy obiektów."""
         from apps.api.views import MapObjectsView
 
         request = factory.get("/api/v1/map/objects/?bbox=10,20,30,40&region_id=invalid")
@@ -643,6 +697,7 @@ class TestErrorHandling:
         assert "request_id" in data
 
     def test_map_objects_requires_authentication(self, factory, use_cases) -> None:
+        """Zwraca 401 gdy użytkownik nie jest zalogowany."""
         from apps.api.views import MapObjectsView
 
         request = factory.get("/api/v1/map/objects/?bbox=10,20,30,40")
@@ -662,7 +717,10 @@ class TestErrorHandling:
 
 
 class TestNearbyObjectsView:
+    """Testy endpointu nearby obiektów turystycznych."""
+
     def test_returns_empty_features_when_no_geom(self, factory, use_cases) -> None:
+        """Zwraca pustą listę obiektów gdy brak geometrii."""
         from apps.api.views import NearbyObjectsView
         from apps.badges.models import TouristObject
 
@@ -680,6 +738,7 @@ class TestNearbyObjectsView:
             assert data["features"] == []
 
     def test_returns_features_with_colors_for_authenticated_user(self, factory, use_cases) -> None:
+        """Zwraca obiekty z kolorami dla zalogowanego użytkownika."""
         from django.contrib.gis.geos import Point
 
         from apps.api.views import NearbyObjectsView
@@ -714,7 +773,10 @@ class TestNearbyObjectsView:
 
 
 class TestProfileSettingsViewAdditional:
+    """Dodatkowe testy ustawień profilu."""
+
     def test_returns_404_when_profile_not_owned(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 404 gdy profil nie należy do użytkownika."""
         from django.http import Http404
 
         from apps.api.views import ProfileSettingsView
@@ -734,6 +796,7 @@ class TestProfileSettingsViewAdditional:
             assert "request_id" in data
 
     def test_handles_validation_error(self, factory, mock_user, use_cases) -> None:
+        """Obsługuje błąd walidacji danych profilu."""
         from apps.api.views import ProfileSettingsView
         from apps.tourists.models import TouristProfile
 
@@ -761,7 +824,10 @@ class TestProfileSettingsViewAdditional:
 
 
 class TestBadgeProgressViewAdditional:
+    """Dodatkowe testy postępu odznaki."""
+
     def test_handles_dto_validation_error(self, factory, mock_user, use_cases) -> None:
+        """Obsługuje błąd walidacji DTO."""
         from apps.api.views import BadgeProgressView
 
         request = factory.get("/api/v1/badges/KGP/progress/?cycle=invalid")
@@ -774,6 +840,7 @@ class TestBadgeProgressViewAdditional:
         assert "request_id" in data
 
     def test_requires_authentication(self, factory, use_cases) -> None:
+        """Wymaga autoryzacji użytkownika."""
         from apps.api.views import BadgeProgressView
 
         request = factory.get("/api/v1/badges/KGP/progress/")
@@ -793,7 +860,10 @@ class TestBadgeProgressViewAdditional:
 
 
 class TestBadgeLogisticsViewAdditional:
+    """Dodatkowe testy logistyki odznaki."""
+
     def test_requires_authentication(self, factory, use_cases) -> None:
+        """Wymaga autoryzacji użytkownika."""
         from apps.api.views import BadgeLogisticsView
 
         request = factory.patch(
@@ -811,6 +881,7 @@ class TestBadgeLogisticsViewAdditional:
         assert "request_id" in data
 
     def test_handles_invalid_json(self, factory, mock_user, use_cases) -> None:
+        """Obsługuje nieprawidłowy JSON w żądaniu."""
         from apps.api.views import BadgeLogisticsView
 
         request = factory.patch(
@@ -827,6 +898,7 @@ class TestBadgeLogisticsViewAdditional:
         assert "request_id" in data
 
     def test_handles_dto_validation_error(self, factory, mock_user, use_cases) -> None:
+        """Obsługuje błąd walidacji DTO."""
         from apps.api.views import BadgeLogisticsView
 
         request = factory.patch(
@@ -843,6 +915,7 @@ class TestBadgeLogisticsViewAdditional:
         assert "request_id" in data
 
     def test_returns_404_when_progress_not_owned(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 404 gdy postęp odznaki nie należy do profilu."""
         from application.exceptions import ResourceNotFoundError
         from apps.api.views import BadgeLogisticsView
 
@@ -870,7 +943,10 @@ class TestBadgeLogisticsViewAdditional:
 
 
 class TestAscentLogViewAdditional:
+    """Dodatkowe testy logowania wędrówek."""
+
     def test_handles_dto_validation_error(self, factory, mock_user, use_cases) -> None:
+        """Obsługuje błąd walidacji DTO."""
         from apps.api.views import AscentLogView
 
         request = factory.post(
@@ -887,6 +963,7 @@ class TestAscentLogViewAdditional:
         assert "request_id" in data
 
     def test_handles_missing_peak_id(self, factory, mock_user, use_cases) -> None:
+        """Obsługuje brak wymaganego parametru peak_id."""
         from apps.api.views import AscentLogView
 
         request = factory.post(
@@ -909,7 +986,10 @@ class TestAscentLogViewAdditional:
 
 
 class TestBadgeSubscribeViewAdditional:
+    """Dodatkowe testy subskrypcji odznak."""
+
     def test_requires_authentication(self, factory, use_cases) -> None:
+        """Wymaga autoryzacji użytkownika."""
         from apps.api.views import BadgeSubscribeView
 
         request = factory.post("/api/v1/badges/KGP/subscribe/")
@@ -923,6 +1003,7 @@ class TestBadgeSubscribeViewAdditional:
         assert "request_id" in data
 
     def test_handles_use_case_error(self, factory, mock_user, use_cases) -> None:
+        """Obsługuje błąd use case podczas subskrypcji odznaki."""
         from application.exceptions import UseCaseError
         from apps.api.views import BadgeSubscribeView
 
@@ -944,7 +1025,10 @@ class TestBadgeSubscribeViewAdditional:
 
 
 class TestVectorTileViewAdditional:
+    """Dodatkowe testy kafelków wektorowych."""
+
     def test_returns_204_when_no_tile_data(self, factory, use_cases) -> None:
+        """Zwraca 204 gdy brak danych kafelka."""
         from apps.api.views import VectorTileView
 
         use_cases["get_mvt_tile"] = MagicMock()
@@ -957,6 +1041,7 @@ class TestVectorTileViewAdditional:
         assert response.status_code == 204
 
     def test_sets_cache_headers(self, factory, use_cases) -> None:
+        """Ustawia nagłówki cache dla kafelków wektorowych."""
         from apps.api.views import VectorTileView
 
         use_cases["get_mvt_tile"] = MagicMock()
@@ -977,7 +1062,10 @@ class TestVectorTileViewAdditional:
 
 
 class TestBulkAscentLogViewAdditional:
+    """Dodatkowe testy masowego logowania wędrówek."""
+
     def test_handles_dto_validation_error(self, factory, mock_user, use_cases) -> None:
+        """Obsługuje błąd walidacji DTO."""
         from apps.api.views import BulkAscentLogView
 
         request = factory.post(
@@ -994,6 +1082,7 @@ class TestBulkAscentLogViewAdditional:
         assert "request_id" in data
 
     def test_skips_cache_when_no_ascents_saved(self, factory, mock_user, use_cases) -> None:
+        """Pomija cache gdy nie zapisano żadnych wejść wędrówek."""
         from apps.api.views import BulkAscentLogView
 
         use_cases["bulk_log_ascents"] = MagicMock()

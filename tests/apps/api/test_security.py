@@ -63,6 +63,7 @@ class TestProblemDetailDoesNotLeakStackTrace:
     """Werytuje, że _problem_detail nie ujawnia śladu stosu."""
 
     def test_response_does_not_contain_traceback_keywords(self, request_with_id):
+        """Odpowiedź nie zawiera słów kluczowych śladu stosu."""
         response = _problem_detail(
             request_with_id,
             error_type="internal-error",
@@ -78,6 +79,7 @@ class TestProblemDetailDoesNotLeakStackTrace:
         assert "line " not in data["detail"]
 
     def test_response_contains_request_id(self, request_with_id):
+        """Odpowiedź zawiera identyfikator żądania."""
         response = _problem_detail(
             request_with_id,
             error_type="internal-error",
@@ -187,6 +189,7 @@ class TestValidationErrorDoesNotLeakParserDetails:
     """Werytuje, że błędy parsowania JSON/ValueError nie ujawniają szczegółów."""
 
     def test_json_decode_error_returns_safe_message(self, factory, mock_user):
+        """Błąd dekodowania JSON zwraca bezpieczną wiadomość."""
         request = factory.post(
             "/api/v1/ascents/",
             data="nieprawidłowy json",
@@ -212,6 +215,7 @@ class TestValidationErrorDoesNotLeakParserDetails:
         )
 
     def test_value_error_does_not_leak_internal_details(self, factory, mock_user):
+        """ValueError nie ujawnia szczegółów wewnętrznych."""
         request = factory.post(
             "/api/v1/ascents/",
             data=json.dumps({"peak_id": "not_a_number"}),
@@ -241,6 +245,7 @@ class TestMapObjectsViewValidation:
     """Werytuje, że MapObjectsView nie ujawnia szczegółów wyjątków walidacji."""
 
     def test_invalid_region_id_returns_safe_422(self, factory, mock_user):
+        """Nieprawidłowy region_id zwraca bezpieczny błąd 422."""
         request = factory.get(
             "/api/v1/map/objects?bbox=1.0,2.0,3.0,4.0&region_id=abc",
         )
@@ -258,6 +263,7 @@ class TestMapObjectsViewValidation:
         assert "ValueError" not in data["detail"]
 
     def test_invalid_pydantic_dto_returns_safe_422(self, factory, mock_user):
+        """Nieprawidłowy DTO zwraca bezpieczny błąd 422."""
         request = factory.get(
             "/api/v1/map/objects?bbox=1.0,2.0,3.0,4.0",
         )
@@ -276,6 +282,7 @@ class TestMapObjectsViewValidation:
         assert "ValueError" not in data["detail"]
 
     def test_unexpected_exception_is_not_masked_as_422(self, factory, mock_user):
+        """Nieoczekiwany wyjątek nie jest maskowany jako 422."""
         request = factory.get(
             "/api/v1/map/objects?bbox=1.0,2.0,3.0,4.0",
         )
@@ -293,6 +300,7 @@ class TestBadgeLogisticsViewValidation:
     """Werytuje, że BadgeLogisticsView nie ujawnia szczegółów wyjątków walidacji."""
 
     def test_validation_error_returns_safe_422(self, factory, mock_user):
+        """Błąd walidacji zwraca bezpieczną wiadomość 422."""
         request = factory.patch(
             "/api/v1/progress/1/logistics/",
             data=json.dumps({"logistic_status": "INVALID_STATUS", "status_date": "not-a-date"}),
@@ -312,6 +320,7 @@ class TestBadgeLogisticsViewValidation:
         assert "ValidationError" not in data["detail"]
 
     def test_unexpected_exception_is_not_masked_as_422(self, factory, mock_user):
+        """Nieoczekiwany wyjątek nie jest maskowany jako 422."""
         request = factory.patch(
             "/api/v1/progress/1/logistics/",
             data=json.dumps({"logistic_status": "WAITING_FOR_VERIFICATION", "status_date": str(date.today())}),
@@ -331,6 +340,7 @@ class TestBulkAscentLogViewValidation:
     """Werytuje, że BulkAscentLogView nie ujawnia szczegółów wyjątków walidacji."""
 
     def test_non_list_payload_returns_safe_422(self, factory, mock_user):
+        """Payload nie będący listą zwraca bezpieczny błąd 422."""
         request = factory.post(
             "/api/v1/ascents/bulk/",
             data=json.dumps("not-a-list"),
@@ -350,6 +360,7 @@ class TestBulkAscentLogViewValidation:
         assert "ValueError" not in data["detail"]
 
     def test_invalid_ascent_item_returns_safe_422(self, factory, mock_user):
+        """Nieprawidłowe wejście wędrówki zwraca bezpieczny błąd 422."""
         request = factory.post(
             "/api/v1/ascents/bulk/",
             data=json.dumps([{"peak_id": "not_a_number", "ascent_date": str(date.today())}]),
@@ -369,6 +380,7 @@ class TestBulkAscentLogViewValidation:
         assert "ValidationError" not in data["detail"]
 
     def test_unexpected_exception_is_not_masked_as_422(self, factory, mock_user):
+        """Nieoczekiwany wyjątek nie jest maskowany jako 422."""
         request = factory.post(
             "/api/v1/ascents/bulk/",
             data=json.dumps([{"peak_id": 1, "ascent_date": str(date.today())}]),
@@ -388,6 +400,7 @@ class TestProfileSettingsViewValidation:
     """Werytuje, że ProfileSettingsView nie ujawnia szczegółów wyjątków walidacji."""
 
     def test_validation_error_returns_safe_422(self, factory, mock_user):
+        """Błąd walidacji zwraca bezpieczną wiadomość 422."""
         request = factory.patch(
             "/api/v1/profiles/1/",
             data=json.dumps({"birth_date": "not-a-date"}),
@@ -411,6 +424,7 @@ class TestProfileSettingsViewValidation:
         assert "ValidationError" not in data["detail"]
 
     def test_unexpected_exception_is_not_masked_as_422(self, factory, mock_user):
+        """Nieoczekiwany wyjątek nie jest maskowany jako 422."""
         request = factory.patch(
             "/api/v1/profiles/1/",
             data=json.dumps({"nickname": "test"}),

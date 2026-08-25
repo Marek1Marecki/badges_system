@@ -10,7 +10,10 @@ from tests.fakes.clock import FakeClock
 
 
 class TestFetchOsmDataUseCase:
+    """Testy FetchOsmDataUseCase."""
+
     def test_fetch_success(self) -> None:
+        """Pobiera dane OSM i aktualizuje obiekt."""
         repo = MagicMock()
         clock = FakeClock()
         repo.get_object_for_osm_fetch.return_value = {"id": 1, "osm_id": "node/1"}
@@ -23,6 +26,7 @@ class TestFetchOsmDataUseCase:
         repo.update_object_from_osm.assert_called_once_with(1, "fake_node", {"id": 1, "osm_id": "node/1"})
 
     def test_fetch_not_found(self) -> None:
+        """Rzuca błąd gdy obiekt nie istnieje."""
         repo = MagicMock()
         repo.get_object_for_osm_fetch.return_value = None
         uc = FetchOsmDataUseCase(repo, FakeClock())
@@ -31,6 +35,7 @@ class TestFetchOsmDataUseCase:
             uc.execute(1)
 
     def test_fetch_no_osm_id(self) -> None:
+        """Pomija obiekt bez osm_id."""
         repo = MagicMock()
         repo.get_object_for_osm_fetch.return_value = {"id": 1, "osm_id": None}
         uc = FetchOsmDataUseCase(repo, FakeClock())
@@ -40,7 +45,10 @@ class TestFetchOsmDataUseCase:
 
 
 class TestRunOsmNightWatchmanUseCase:
+    """Testy RunOsmNightWatchmanUseCase."""
+
     def test_watchman_success(self) -> None:
+        """Stróż OSM poprawnie synchronizuje obiekty."""
         repo = MagicMock()
         clock = FakeClock()
         repo.get_objects_for_sync.return_value = [{"id": 1, "osm_id": "node/1", "is_active": True}]
@@ -60,12 +68,14 @@ class TestRunOsmNightWatchmanUseCase:
         repo.update_object_after_sync.assert_called_once()
 
     def test_watchman_no_objects(self) -> None:
+        """Zwraca komunikat gdy brak obiektów do synchronizacji."""
         repo = MagicMock()
         repo.get_objects_for_sync.return_value = []
         uc = RunOsmNightWatchmanUseCase(repo, FakeClock())
         assert "Brak obiektów" in uc.execute()
 
     def test_watchman_ghost_node_detection(self) -> None:
+        """Wykrywa usunięte węzły OSM jako konflikty."""
         repo = MagicMock()
         repo.get_objects_for_sync.return_value = [{"id": 1, "osm_id": "node/1", "is_active": True}]
         # Zwracamy pusty słownik, co oznacza że OSM nie znalazł node/1 (został usunięty)
@@ -80,6 +90,7 @@ class TestRunOsmNightWatchmanUseCase:
         repo.mark_sync_checked.assert_called_once()
 
     def test_watchman_osm_connection_failure(self) -> None:
+        """Cicho obsługuje błąd połączenia z OSM."""
         repo = MagicMock()
         repo.get_objects_for_sync.return_value = [{"id": 1, "osm_id": "node/1", "is_active": True}]
         repo.fetch_multiple_from_osm.return_value = None

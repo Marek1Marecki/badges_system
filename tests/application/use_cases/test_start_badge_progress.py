@@ -28,6 +28,7 @@ class TestStartBadgeProgressUseCase:
     """Testuje logikę zakotwiczania regulaminu (US-C05) i limitów (US-C01c)."""
 
     def test_starts_progress_with_current_date_when_no_ascents(self) -> None:
+        """Używa bieżącej daty gdy brak wcześniejszych wejść."""
         repo = FakeTouristRepository()
         # Zabezpieczenie przed limitem Freemium
         repo.profiles[1] = MagicMock(max_active_badges=10, active_plan="PRO")
@@ -55,6 +56,7 @@ class TestStartBadgeProgressUseCase:
         badge_repo.get_version_id_for_date.assert_called_once_with("KGP", clock.now().date())
 
     def test_starts_progress_with_oldest_ascent_date_grandfathering(self) -> None:
+        """Używa daty najstarszego wejścia (grandfathering)."""
         repo = FakeTouristRepository()
         repo.profiles[1] = MagicMock(max_active_badges=10)
         repo.save_ascent(1, 10, date(2015, 6, 1))
@@ -73,6 +75,7 @@ class TestStartBadgeProgressUseCase:
         assert repo.progresses[progress_id].version_id == 10
 
     def test_raises_error_when_no_version_exists(self) -> None:
+        """Rzuca błąd gdy brak wersji regulaminu."""
         repo = FakeTouristRepository()
         repo.profiles[1] = MagicMock(max_active_badges=10)
 
@@ -87,6 +90,7 @@ class TestStartBadgeProgressUseCase:
             uc.execute(profile_id=1, badge_code="KGP")
 
     def test_raises_error_when_freemium_limit_exceeded(self) -> None:
+        """Rzuca błąd gdy przekroczono limit Freemium."""
         repo = FakeTouristRepository()
         # Turysta ma limit 1 odznaki
         repo.profiles[1] = MagicMock(max_active_badges=1, active_plan="FREE")
@@ -104,6 +108,7 @@ class TestStartBadgeProgressUseCase:
             uc.execute(profile_id=1, badge_code="KGP")
 
     def test_raises_error_when_profile_not_found(self) -> None:
+        """Rzuca błąd gdy profil nie istnieje."""
         repo = FakeTouristRepository()
         badge_repo = MagicMock()
         badge_repo.get_version_id_for_date.return_value = 42

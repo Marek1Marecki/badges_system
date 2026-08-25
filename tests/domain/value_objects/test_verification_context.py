@@ -70,5 +70,5 @@ class TestVerificationContext:
         try:
             ctx.evaluation_time = datetime(2026, 7, 1, tzinfo=UTC)
             assert False, "Should not be able to modify frozen dataclass"
-        except AttributeError, TypeError:
+        except (AttributeError, TypeError):
             pass  # Expected for frozen dataclass

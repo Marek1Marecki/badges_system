@@ -136,6 +136,7 @@ class TestBadgeRepositoryPort:
 
         # Test it can be used in type annotations
         def test_function(repo: BadgeRepositoryPort) -> None:
+            """Funkcja pomocnicza do sprawdzenia type hintów protokołu."""
             pass
 
         assert test_function.__annotations__ is not None

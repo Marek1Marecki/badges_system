@@ -208,6 +208,8 @@ class TestDjangoBadgeRepositoryByHydrationFailFast:
 
 
 class TestTimeLimitRuleBuilder:
+    """Testy budowniczego TimeLimitRule."""
+
     def test_builds_time_limit_rule(self):
         """Buduje regułę limitu czasu."""
         data = {"limit_in_years": 5}
@@ -224,6 +226,8 @@ class TestTimeLimitRuleBuilder:
 
 
 class TestClubJoinRuleBuilder:
+    """Testy budowniczego RequiresClubJoinDateRule."""
+
     def test_builds_club_join_rule(self):
         """Buduje regułę wymogu dołączenia do klubu."""
         rule = _build_club_join_rule({})
@@ -232,6 +236,8 @@ class TestClubJoinRuleBuilder:
 
 
 class TestMinAgeRuleBuilder:
+    """Testy budowniczego MinAgeRule."""
+
     def test_builds_min_age_rule(self):
         """Buduje regułę minimalnego wieku."""
         data = {"min_age": 18}
@@ -248,6 +254,8 @@ class TestMinAgeRuleBuilder:
 
 
 class TestMaxAgeRuleBuilder:
+    """Testy budowniczego MaxAgeRule."""
+
     def test_builds_max_age_rule(self):
         """Buduje regułę maksymalnego wieku."""
         data = {"max_age": 65}
@@ -264,6 +272,8 @@ class TestMaxAgeRuleBuilder:
 
 
 class TestStartDateRuleBuilder:
+    """Testy budowniczego StartDateRule."""
+
     def test_builds_start_date_rule(self):
         """Buduje regułę daty rozpoczęcia."""
         data = {"start_date": "2023-01-01"}
@@ -286,6 +296,8 @@ class TestStartDateRuleBuilder:
 
 
 class TestDateWindowRuleBuilder:
+    """Testy budowniczego DateWindowRule."""
+
     def test_builds_date_window_rule(self):
         """Buduje regułę okna czasowego."""
         data = {"start_date": "2023-01-01", "end_date": "2023-12-31"}
@@ -303,6 +315,8 @@ class TestDateWindowRuleBuilder:
 
 
 class TestMandatoryObjectsRuleBuilder:
+    """Testy budowniczego MandatoryObjectsRule."""
+
     def test_builds_mandatory_objects_rule(self):
         """Buduje regułę obowiązkowych obiektów."""
         data = {"mandatory_peak_ids": [1, 2, 3]}
@@ -319,6 +333,8 @@ class TestMandatoryObjectsRuleBuilder:
 
 
 class TestGroupedAlternativesRuleBuilder:
+    """Testy budowniczego GroupedAlternativesRule."""
+
     def test_builds_grouped_alternatives_rule(self):
         """Buduje regułę pogrupowanych alternatyw."""
         data = {
@@ -343,6 +359,8 @@ class TestGroupedAlternativesRuleBuilder:
 
 
 class TestMultiPoolRuleBuilder:
+    """Testy budowniczego MultiPoolRequirementRule."""
+
     def test_builds_multi_pool_rule(self):
         """Buduje regułę wielokrotnych pul."""
         data = {
@@ -373,6 +391,8 @@ class TestMultiPoolRuleBuilder:
 
 
 class TestPrerequisiteBadgeRuleBuilder:
+    """Testy budowniczego PrerequisiteBadgeRule."""
+
     def test_builds_prerequisite_badge_rule(self):
         """Buduje regułę wymogu wstępnego odznaki."""
         data = {"required_badge_code": "KGP"}
@@ -396,6 +416,8 @@ class TestPrerequisiteBadgeRuleBuilder:
 
 
 class TestRegionCountRuleBuilder:
+    """Testy budowniczego RegionCountRule."""
+
     def test_builds_region_count_rule(self):
         """Buduje regułę liczby obiektów w regionie."""
         data = {"region_id": 5, "required_count": 10}
@@ -416,41 +438,51 @@ class TestRuleBuilderUnitFailFast:
     """Jednostkowe testy Fail-Fast dla poszczególnych budowniczych reguł."""
 
     def test_time_limit_rule_raises_on_none_limit(self):
+        """Rzuca błąd gdy brak limit_in_years."""
         with pytest.raises(ValueError, match="limit_in_years"):
             _build_time_limit_rule({})
 
     def test_min_age_rule_raises_on_none_age(self):
+        """Rzuca błąd gdy brak min_age."""
         with pytest.raises(ValueError, match="min_age"):
             _build_min_age_rule({})
 
     def test_max_age_rule_raises_on_none_age(self):
+        """Rzuca błąd gdy brak max_age."""
         with pytest.raises(ValueError, match="max_age"):
             _build_max_age_rule({})
 
     def test_start_date_rule_raises_on_none_date(self):
+        """Rzuca błąd gdy brak start_date."""
         with pytest.raises(ValueError, match="start_date"):
             _build_start_date_rule({})
 
     def test_date_window_rule_raises_on_missing_dates(self):
+        """Rzuca błąd gdy brak dat okna."""
         with pytest.raises(ValueError, match="start_date.*end_date"):
             _build_date_window_rule({})
 
     def test_mandatory_objects_rule_raises_on_missing_ids(self):
+        """Rzuca błąd gdy brak mandatory_peak_ids."""
         with pytest.raises(ValueError, match="mandatory_peak_ids"):
             _build_mandatory_objects_rule({})
 
     def test_grouped_alternatives_rule_raises_on_missing_params(self):
+        """Rzuca błąd gdy brak parametrów alternatyw."""
         with pytest.raises(ValueError, match="min_groups_required.*groups"):
             _build_grouped_alternatives_rule({})
 
     def test_multi_pool_rule_raises_on_missing_pools(self):
+        """Rzuca błąd gdy brak pools."""
         with pytest.raises(ValueError, match="pools"):
             _build_multi_pool_rule({})
 
     def test_prerequisite_badge_rule_raises_on_missing_code(self):
+        """Rzuca błąd gdy brak required_badge_code."""
         with pytest.raises(ValueError, match="required_badge_code"):
             _build_prerequisite_badge_rule({})
 
     def test_region_count_rule_raises_on_missing_params(self):
+        """Rzuca błąd gdy brak region_id lub required_count."""
         with pytest.raises(ValueError, match="region_id.*required_count"):
             _build_region_count_rule({})

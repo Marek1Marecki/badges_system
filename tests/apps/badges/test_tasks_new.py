@@ -29,9 +29,12 @@ def mock_container():
 
 
 class TestFetchOsmDataTask:
+    """Testy zadania pobierania danych OSM."""
+
     @patch("bootstrap.get_container")
     @patch("apps.badges.tasks.calculate_object_regions_task.delay")
     def test_successful_fetch(self, mock_delay, mock_get_container, mock_container):
+        """Pobiera dane OSM i uruchamia zadanie obliczenia regionów."""
         mock_get_container.return_value = mock_container
         mock_container.fetch_osm_data.execute.return_value = "Sukces"
 
@@ -44,6 +47,7 @@ class TestFetchOsmDataTask:
     @patch("bootstrap.get_container")
     @patch("apps.badges.tasks.calculate_object_regions_task.delay")
     def test_use_case_error(self, mock_delay, mock_get_container, mock_container):
+        """Zwraca komunikat o błędzie logiki use case."""
         from application.exceptions import UseCaseError
 
         mock_get_container.return_value = mock_container
@@ -56,6 +60,7 @@ class TestFetchOsmDataTask:
     @patch("bootstrap.get_container")
     @patch("apps.badges.tasks.calculate_object_regions_task.delay")
     def test_osm_adapter_error_triggers_retry(self, mock_delay, mock_get_container, mock_container):
+        """Uruchamia retry przy błędzie adaptera OSM."""
         from infrastructure.adapters.osm_adapter import OsmAdapterError
 
         mock_get_container.return_value = mock_container
@@ -109,8 +114,11 @@ class TestFetchOsmDataTask:
 
 
 class TestScanProximityCandidatesTask:
+    """Testy zadania skanowania kandydatów bliskości."""
+
     @patch("bootstrap.get_container")
     def test_successful_scan(self, mock_get_container, mock_container):
+        """Skanuje kandydatów bliskości i zwraca liczbę wyników."""
         mock_get_container.return_value = mock_container
         mock_container.scan_proximity_candidates.execute.return_value = 5
 
@@ -120,6 +128,7 @@ class TestScanProximityCandidatesTask:
 
     @patch("bootstrap.get_container")
     def test_exception_handling(self, mock_get_container, mock_container):
+        """Podnosi wyjątek przy nieoczekiwanym błędzie use case."""
         mock_get_container.return_value = mock_container
         mock_container.scan_proximity_candidates.execute.side_effect = Exception("Test error")
 
@@ -128,8 +137,11 @@ class TestScanProximityCandidatesTask:
 
 
 class TestRunOsmNightWatchmanTask:
+    """Testy zadania strażnika OSM."""
+
     @patch("bootstrap.get_container")
     def test_successful_run_with_default_batch(self, mock_get_container, mock_container):
+        """Uruchamia strażnika OSM z domyślną wielkością partii."""
         mock_get_container.return_value = mock_container
         mock_container.run_osm_night_watchman.execute.return_value = "Stróż skończył."
 
@@ -140,6 +152,7 @@ class TestRunOsmNightWatchmanTask:
 
     @patch("bootstrap.get_container")
     def test_successful_run_with_custom_batch(self, mock_get_container, mock_container):
+        """Uruchamia strażnika OSM z niestandardową wielkością partii."""
         mock_get_container.return_value = mock_container
 
         result = run_osm_night_watchman_task(batch_size=10)
@@ -148,6 +161,7 @@ class TestRunOsmNightWatchmanTask:
 
     @patch("bootstrap.get_container")
     def test_exception_handling(self, mock_get_container, mock_container):
+        """Podnosi wyjątek przy nieoczekiwanym błędzie use case."""
         mock_get_container.return_value = mock_container
         mock_container.run_osm_night_watchman.execute.side_effect = Exception("Watchman error")
 
@@ -156,8 +170,11 @@ class TestRunOsmNightWatchmanTask:
 
 
 class TestRecalculatePoiScoresTask:
+    """Testy zadania przeliczania scoringu POI."""
+
     @patch("bootstrap.get_container")
     def test_successful_recalculation(self, mock_get_container, mock_container):
+        """Przelicza i cacheuje wyniki scoringu POI dla profilu."""
         mock_get_container.return_value = mock_container
 
         result = recalculate_poi_scores_task(42)
@@ -168,6 +185,7 @@ class TestRecalculatePoiScoresTask:
 
     @patch("bootstrap.get_container")
     def test_unexpected_error_logs_and_raises(self, mock_get_container, mock_container):
+        """Loguje i podnosi nieoczekiwany błąd podczas przeliczania."""
         mock_get_container.return_value = mock_container
         mock_container.poi_scoring_service.recalculate_and_cache_for_profile.side_effect = Exception("Unexpected")
 
@@ -176,8 +194,11 @@ class TestRecalculatePoiScoresTask:
 
 
 class TestFetchBadgeNewsTask:
+    """Testy zadania pobierania nowych odznak."""
+
     @patch("bootstrap.get_container")
     def test_successful_fetch(self, mock_get_container, mock_container):
+        """Pobiera dane OSM i uruchamia zadanie obliczenia regionów."""
         mock_get_container.return_value = mock_container
         mock_container.fetch_badge_news.execute.return_value = 10
 
@@ -188,6 +209,7 @@ class TestFetchBadgeNewsTask:
 
     @patch("bootstrap.get_container")
     def test_exception_handling(self, mock_get_container, mock_container):
+        """Podnosi wyjątek przy nieoczekiwanym błędzie use case."""
         mock_get_container.return_value = mock_container
         mock_container.fetch_badge_news.execute.side_effect = Exception("News error")
 
@@ -196,8 +218,11 @@ class TestFetchBadgeNewsTask:
 
 
 class TestCalculateObjectRegionsTask:
+    """Testy zadania obliczania regionów obiektów."""
+
     @patch("apps.badges.tasks.get_container")
     def test_successful_calculation(self, mock_get_container, mock_container):
+        """Oblicza regiony obiektu turystycznego (CQRS)."""
         mock_get_container.return_value = mock_container
         mock_container.calculate_object_regions.execute.return_value = None
 
@@ -209,6 +234,7 @@ class TestCalculateObjectRegionsTask:
 
     @patch("apps.badges.tasks.get_container")
     def test_exception_handling_triggers_retry(self, mock_get_container, mock_container):
+        """Uruchamia retry przy nieoczekiwanym błędzie podczas obliczania regionów."""
         mock_get_container.return_value = mock_container
         mock_container.calculate_object_regions.execute.side_effect = Exception("CQRS error")
 
@@ -217,8 +243,11 @@ class TestCalculateObjectRegionsTask:
 
 
 class TestBuildTouristRegionGeometryTask:
+    """Testy zadania budowy geometrii regionów."""
+
     @patch("bootstrap.get_container")
     def test_successful_build(self, mock_get_container, mock_container):
+        """Buduje geometrię regionu turystycznego."""
         mock_get_container.return_value = mock_container
         mock_container.build_tourist_region_geometry.execute.return_value = "Zbudowano"
 
@@ -229,6 +258,7 @@ class TestBuildTouristRegionGeometryTask:
 
     @patch("bootstrap.get_container")
     def test_exception_handling(self, mock_get_container, mock_container):
+        """Podnosi wyjątek przy nieoczekiwanym błędzie use case."""
         mock_get_container.return_value = mock_container
         mock_container.build_tourist_region_geometry.execute.side_effect = Exception("Geometry error")
 
@@ -237,6 +267,7 @@ class TestBuildTouristRegionGeometryTask:
 
     @patch("bootstrap.get_container")
     def test_use_case_error_returns_message(self, mock_get_container, mock_container):
+        """Zwraca komunikat o błędzie logiki use case."""
         from application.exceptions import UseCaseError
 
         mock_get_container.return_value = mock_container

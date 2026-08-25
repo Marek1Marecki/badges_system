@@ -16,7 +16,10 @@ from application.use_cases.advance_logistic_status import AdvanceLogisticStatusU
 
 
 class TestAdvanceLogisticStatusUseCase:
+    """Testy AdvanceLogisticStatusUseCase."""
+
     def test_raises_when_progress_not_found(self) -> None:
+        """Rzuca błąd gdy postęp nie istnieje."""
         repo = MagicMock()
         repo.get_progress_by_id.return_value = None
         uc = AdvanceLogisticStatusUseCase(repo)
@@ -25,6 +28,7 @@ class TestAdvanceLogisticStatusUseCase:
             uc.execute(1, 1, "WAITING_FOR_SEND", "2026-01-01")
 
     def test_raises_when_domain_not_completed(self) -> None:
+        """Rzuca błąd gdy domena nie jest zakończona."""
         repo = MagicMock()
         prog = MagicMock(domain_status="IN_PROGRESS")
         repo.get_progress_by_id.return_value = prog
@@ -34,6 +38,7 @@ class TestAdvanceLogisticStatusUseCase:
             uc.execute(1, 1, "WAITING_FOR_SEND", "2026-01-01")
 
     def test_raises_on_invalid_transition(self) -> None:
+        """Rzuca błąd przy nieprawidłowym przejściu statusu."""
         repo = MagicMock()
         prog = MagicMock(domain_status="COMPLETED", logistic_status="WAITING_FOR_VERIFICATION")
         repo.get_progress_by_id.return_value = prog
@@ -44,6 +49,7 @@ class TestAdvanceLogisticStatusUseCase:
             uc.execute(1, 1, "ALBUM", "2026-01-01")
 
     def test_success_transition(self) -> None:
+        """Prawidłowo aktualizuje status logistyczny."""
         repo = MagicMock()
         prog = MagicMock(domain_status="COMPLETED", logistic_status="WAITING_FOR_VERIFICATION", progress_id=42)
         repo.get_progress_by_id.return_value = prog
@@ -60,7 +66,10 @@ from application.use_cases.explore_map import ExploreMapUseCase
 
 
 class TestExploreMapUseCase:
+    """Testy ExploreMapUseCase."""
+
     def test_builds_geojson_successfully(self) -> None:
+        """Buduje GeoJSON z koloryfikacją i wynikami."""
         repo = MagicMock()
         cache = MagicMock()
 
@@ -81,6 +90,7 @@ class TestExploreMapUseCase:
         assert result["features"][0]["properties"]["potential_score"] == 100
 
     def test_defaults_to_gray_when_no_cache(self) -> None:
+        """Domyślnie szary kolor i zerowy wynik gdy brak cache."""
         repo = MagicMock()
         repo.get_objects_in_bbox.return_value = [MagicMock(id=2, name="Test", type="Szczyt", lon=0, lat=0)]
         cache = MagicMock()
@@ -98,7 +108,10 @@ from application.use_cases.get_mvt_tile import GetMvtTileUseCase
 
 
 class TestGetMvtTileUseCase:
+    """Testy GetMvtTileUseCase."""
+
     def test_raises_on_invalid_layer(self) -> None:
+        """Rzuca błąd przy nieznanej warstwie."""
         repo = MagicMock()
         cache = MagicMock()
         uc = GetMvtTileUseCase(repo, cache)
@@ -107,6 +120,7 @@ class TestGetMvtTileUseCase:
             uc.execute("invalid_layer", 0, 0, 0)
 
     def test_success_returns_bytes(self) -> None:
+        """Zwraca skompresowane dane kafelka MVT."""
         import gzip
 
         repo = MagicMock()
@@ -126,7 +140,10 @@ from application.use_cases.fetch_badge_news import FetchBadgeNewsUseCase
 
 
 class TestFetchBadgeNewsUseCase:
+    """Testy FetchBadgeNewsUseCase."""
+
     def test_fail_silently_on_scraper_error(self) -> None:
+        """Cicho obsługuje błąd scrapera."""
         scraper = MagicMock()
         scraper.fetch_news.side_effect = Exception("HTTP 500")
         repo = MagicMock()
@@ -138,12 +155,14 @@ class TestFetchBadgeNewsUseCase:
         repo.save_news_item.assert_not_called()
 
     def test_returns_empty_when_no_items(self) -> None:
+        """Zwraca komunikat gdy brak elementów."""
         scraper = MagicMock()
         scraper.fetch_news.return_value = []
         uc = FetchBadgeNewsUseCase(scraper, MagicMock())
         assert "Nie znaleziono żadnych elementów" in uc.execute()
 
     def test_saves_new_items_successfully(self) -> None:
+        """Zapisuje nowe wpisy, pomija duplikaty."""
         scraper = MagicMock()
         scraper.fetch_news.return_value = ["item1", "item2"]
         repo = MagicMock()

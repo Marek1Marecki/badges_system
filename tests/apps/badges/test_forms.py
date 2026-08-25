@@ -13,11 +13,13 @@ class TestDatalistTextInput:
     """Testy widżetu DatalistTextInput."""
 
     def test_init_with_datalist(self):
+        """Inicjalizuje widget z listą sugestii."""
         datalist = ["Szczyt", "Schronisko", "Jaskinia"]
         widget = DatalistTextInput(datalist)
         assert widget.datalist == datalist
 
     def test_render_generates_correct_html(self):
+        """Generuje poprawny HTML z atrybutami i listą sugestii."""
         datalist = ["Szczyt", "Schronisko"]
         widget = DatalistTextInput(datalist)
         html = widget.render("field_name", "test_value")
@@ -29,6 +31,7 @@ class TestDatalistTextInput:
         assert '<option value="Schronisko">' in html
 
     def test_render_with_none_attrs(self):
+        """Renderuje widget bez dodatkowych atrybutów."""
         datalist = ["Test"]
         widget = DatalistTextInput(datalist)
         html = widget.render("field", None, attrs=None)
@@ -36,6 +39,7 @@ class TestDatalistTextInput:
         assert '<option value="Test">' in html
 
     def test_render_with_existing_attrs(self):
+        """Renderuje widget z istniejącymi atrybutami HTML."""
         datalist = ["Test"]
         widget = DatalistTextInput(datalist)
         html = widget.render("field", "value", attrs={"class": "form-control"})
@@ -47,6 +51,7 @@ class TestTouristObjectAdminForm:
     """Testy formularza TouristObjectAdminForm."""
 
     def test_form_meta_configuration(self):
+        """Konfiguruje formularz dla modelu TouristObject z wymaganymi polami."""
         form = TouristObjectAdminForm()
         assert form._meta.model == TouristObject
         assert "name" in form.fields
@@ -54,11 +59,13 @@ class TestTouristObjectAdminForm:
         assert "osm_id" in form.fields
 
     def test_init_sets_type_field_not_required(self):
+        """Ustawia pole type jako nie wymagane."""
         form = TouristObjectAdminForm()
         assert form.fields["type"].required is False
 
     @patch("apps.badges.forms.TouristObject.objects.values_list")
     def test_init_with_database_types(self, mock_values_list):
+        """Inicjalizuje listę typów z bazy danych."""
         mock_values_list.return_value.distinct.return_value = ["Szczyt", "Schronisko"]
         form = TouristObjectAdminForm()
         widget = form.fields["type"].widget
@@ -69,6 +76,7 @@ class TestTouristObjectAdminForm:
 
     @patch("apps.badges.forms.TouristObject.objects.values_list")
     def test_init_handles_database_exception(self, mock_values_list):
+        """Obsługuje wyjątek bazy podczas ładowania typów."""
         mock_values_list.side_effect = Exception("Database error")
         form = TouristObjectAdminForm()
         widget = form.fields["type"].widget
@@ -77,6 +85,7 @@ class TestTouristObjectAdminForm:
         assert "Schronisko" in widget.datalist
 
     def test_clean_manual_mode_without_name(self):
+        """Wymaga nazwy przy ręcznym dodawaniu obiektu."""
         form = TouristObjectAdminForm(data={"name": "", "geom": Point(0, 0, srid=4326).wkt})
         with patch.object(form, "validate_unique"):
             is_valid = form.is_valid()
@@ -85,6 +94,7 @@ class TestTouristObjectAdminForm:
         assert "Gdy wpisujesz obiekt ręcznie (bez OSM ID), nazwa jest wymagana." in form.errors["name"]
 
     def test_clean_manual_mode_without_geom(self):
+        """Wymaga geometrii przy ręcznym dodawaniu obiektu."""
         form = TouristObjectAdminForm(data={"name": "Test Object", "geom": "", "status": "DRAFT"})
         with patch.object(form, "validate_unique"):
             is_valid = form.is_valid()
@@ -94,6 +104,7 @@ class TestTouristObjectAdminForm:
 
     @patch("apps.badges.forms.TouristObject.objects.values_list")
     def test_clean_manual_mode_with_all_required_fields(self, mock_values_list):
+        """Akceptuje formularz przy wszystkich wymaganych polach."""
         mock_values_list.return_value.distinct.return_value = []
         form = TouristObjectAdminForm(
             data={
@@ -110,6 +121,7 @@ class TestTouristObjectAdminForm:
 
     @patch("apps.badges.forms.messages")
     def test_clean_manual_mode_without_code_shows_message(self, mock_messages):
+        """Wyświetla komunikat przy ręcznym dodawaniu bez kodu."""
         request = RequestFactory().post("/")
         form = TouristObjectAdminForm(data={"name": "Test Object", "geom": Point(0, 0, srid=4326).wkt})
         form.request = request
@@ -119,6 +131,7 @@ class TestTouristObjectAdminForm:
 
     @patch("apps.badges.forms.TouristObject.objects.values_list")
     def test_clean_osm_mode_skips_validation(self, mock_values_list):
+        """Pomija walidację ręczną dla obiektu z OSM ID."""
         mock_values_list.return_value.distinct.return_value = []
         form = TouristObjectAdminForm(data={"osm_id": "node/123", "name": "", "geom": "", "status": "DRAFT"})
         with patch.object(form, "validate_unique"):
@@ -127,6 +140,7 @@ class TestTouristObjectAdminForm:
 
     @patch("apps.badges.forms.TouristObject.objects.values_list")
     def test_clean_without_request_object(self, mock_values_list):
+        """Działa poprawnie bez obiektu request w formularzu."""
         mock_values_list.return_value.distinct.return_value = []
         form = TouristObjectAdminForm(
             data={
@@ -141,6 +155,7 @@ class TestTouristObjectAdminForm:
 
     @patch("apps.badges.forms.TouristObject.objects.values_list")
     def test_clean_editing_existing_object(self, mock_values_list):
+        """Prawidłowo waliduje edycję istniejącego obiektu."""
         mock_values_list.return_value.distinct.return_value = []
         existing_obj = TouristObject(pk=1)
         form = TouristObjectAdminForm(

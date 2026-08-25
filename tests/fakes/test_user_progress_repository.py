@@ -10,6 +10,7 @@ class TestFakeTouristRepository:
     """Testuje wewnętrzną spójność pamięciowego repozytorium."""
 
     def test_tourist_profile_methods(self) -> None:
+        """Test zarządzania profilami turystów."""
         repo = FakeTouristRepository()
 
         assert repo.get_profile(99) is None
@@ -30,6 +31,7 @@ class TestFakeTouristRepository:
         assert profile.active_plan == "PRO"
 
     def test_ascent_log_methods(self) -> None:
+        """Test zarządzania logami wejść na szczyty."""
         repo = FakeTouristRepository()
 
         assert repo.get_object_lifespan(15) == (None, None)
@@ -56,6 +58,7 @@ class TestFakeTouristRepository:
         assert all_ascents[0].peak_id == 15
 
     def test_user_progress_methods(self) -> None:
+        """Test zarządzania postępami odznak."""
         repo = FakeTouristRepository()
 
         assert repo.get_active_progresses(profile_id=1) == []

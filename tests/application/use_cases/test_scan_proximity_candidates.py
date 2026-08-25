@@ -6,6 +6,7 @@ from application.use_cases.scan_proximity_candidates import ScanProximityCandida
 
 
 def test_scan_proximity_candidates_use_case() -> None:
+    """Test wykonania skanera kandydatów bliskości."""
     repo = MagicMock()
     # Zwraca 1 obiekt do przetworzenia z geometrią
     geom_mock = MagicMock()
@@ -26,6 +27,7 @@ def test_scan_proximity_candidates_use_case() -> None:
 
 
 def test_scan_proximity_candidates_skips_empty_geometry() -> None:
+    """Test pomijania obiektów z pustą geometrią."""
     repo = MagicMock()
     repo.get_unprocessed_objects.return_value = [(1, None), (2, MagicMock())]
     repo.find_nearby_objects.return_value = [3]

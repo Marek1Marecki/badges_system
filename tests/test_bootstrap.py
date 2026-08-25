@@ -8,6 +8,7 @@ from bootstrap.container import configure_app, get_container, reset_container
 # configure_app jest teraz aliasem dla build_container, który nie wywołuje configure_logging
 @patch("infrastructure.config.AppSettings")
 def test_configure_app(mock_settings) -> None:
+    """Weryfikuje konfigurację aplikacji."""
     mock_settings.return_value.log_json = True
     mock_settings.return_value.log_level = "DEBUG"
 
@@ -18,6 +19,7 @@ def test_configure_app(mock_settings) -> None:
 
 
 def test_container_singleton() -> None:
+    """Weryfikuje wzorzec Singleton kontenera."""
     # Resetujemy kontener, by mieć czysty stan
     reset_container()
 
@@ -47,6 +49,7 @@ def test_container_singleton() -> None:
 
 
 def test_reset_container() -> None:
+    """Weryfikuje reset kontenera."""
     c1 = get_container()
     reset_container()
     c2 = get_container()
