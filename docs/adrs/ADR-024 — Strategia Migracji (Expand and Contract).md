@@ -1,7 +1,6 @@
 # ADR-024 — Strategia Migracji Bazy Danych (Zero-Downtime & Expand-Contract)
 
-> **ADR Status:** `accepted`  
-> **Implementation Status:** `planned`  
+> **Status:** `accepted`  
 > **Data:** 2026-07-23  
 > **Autor:** Dominik / AI Architect  
 > **Zastępuje:** —  

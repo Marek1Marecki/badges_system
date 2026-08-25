@@ -1,7 +1,7 @@
 # Architecture Debt Register
 
-> **Wersja:** 1.0  
-> **Data:** 2026-08-25  
+> **Wersja:** 1.1  
+> **Data:** 2026-08-26  
 > **Właściciel:** Dominik / AI Architect  
 > **Zasada:** Każdy wpis w rejestrze odnosi się do konkretnego ADR i ma ślad do remediacji.
 
@@ -23,73 +23,71 @@
 
 ## Rejestr długów
 
-### DŁUG-001: Testy infrastruktury persistence mają niskie pokrycie
+### DŁUG-001: Zadania Celery wywołują OSMAdapter bezpośrednio
 
 | Pole | Wartość |
 |------|---------|
-| **Tytuł** | Niskie pokrycie testami adapterów persistence |
-| **Kategoria** | testing |
-| **Powiązany ADR** | ADR-001 (Hexagonal Architecture) |
-| **Wpływ** | Błędy w adapterach mogą zniszczyć dane użytkowników bez wykrycia w CI |
-| **Remediacja** | Dodać testy integracyjne dla `django_tourist_repo.py`, `django_region_cache_repo.py`, `django_region_geometry_repo.py` |
-| **Status** | open |
-
-**Szczegóły:**
-- `django_tourist_repo.py` — 22% coverage (116 statements, 90 missing)
-- `django_region_cache_repo.py` — 20% coverage (71 statements, 57 missing)
-- `django_region_geometry_repo.py` — 22% coverage (27 statements, 21 missing)
-
----
-
-### DŁUG-002: Zależność `apps` od `infrastructure` w niektórych miejscach
-
-| Pole | Wartość |
-|------|---------|
-| **Tytuł** | Delivery layer importuje z infrastructure |
+| **Tytuł** | `apps.badges.tasks` importuje `infrastructure.adapters.osm_adapter` |
 | **Kategoria** | domain |
-| **Powiązany ADR** | ADR-001 (Hexagonal Architecture), ADR-016 (Model Rodzinny) |
-| **Wpływ** | Naruszenie czystości architektury, trudności z testowaniem |
-| **Remediacja** | Przenieść logikę z `apps/badges/models.py` i `apps/tourists/views.py` do `application/` |
+| **Powiązany ADR** | ADR-001 (Hexagonal Architecture), ADR-004 (Dwuwarstwowy model OSM) |
+| **Wpływ** | Naruszenie czystości architektury; zadania Celery nie mogą korzystać z Application Service |
+| **Remediacja** | Przenieść retry logic do Application Service; task pozostaje cienkim wrapperem |
 | **Status** | open |
 
 **Szczegóły:**
-- Import Linter wykrywa violations, ale nie blokuje merge'ów
-- `apps/badges/models.py` zawiera logikę biznesową (`clean()`, walidacje)
-- `apps/tourists/views.py` zawiera logikę przekazywania między warstwami
+- `.importlinter` wyjątek: `apps.badges.tasks -> infrastructure.adapters.osm_adapter`
+- Zadanie `fetch_osm_data` wywołuje `OsmAdapter` bezpośrednio, aby łapać `OsmAdapterError` i uruchamiać retry logic
 
 ---
 
-### DŁUG-003: Hardcoded URL-e Overpass API
+### DŁUG-002: Model Django importuje schemat JSONB
 
 | Pole | Wartość |
 |------|---------|
-| **Tytuł** | Hardcoded endpointy zewnętrznych API |
-| **Kategoria** | infrastructure |
-| **Powiązany ADR** | ADR-004 (Dwuwarstwowy model zasilania danych z OSM) |
-| **Wpływ** | Brak możliwości zmiany endpointu bez zmiany kodu, trudności w testach |
-| **Remediacja** | Przenieść URL-e do `infrastructure/config/` lub zmiennych środowiskowych |
+| **Tytuł** | `apps.badges.models` importuje `infrastructure.schemas.badge_rules_schema` |
+| **Kategoria** | domain |
+| **Powiązany ADR** | ADR-001 (Hexagonal Architecture), ADR-003 (Silnik Reguł Biznesowych) |
+| **Wpływ** | Naruszenie czystości architektury; logika walidacji w modelu Django |
+| **Remediacja** | Przenieść walidację schematu do `admin.py` lub Application Service |
 | **Status** | open |
 
 **Szczegóły:**
-- `infrastructure/adapters/osm_adapter.py:63-67` — hardcoded lista URL-i Overpass
-- `infrastructure/adapters/news_scraper.py` — prawdopodobnie podobny problem
+- `.importlinter` wyjątek: `apps.badges.models -> infrastructure.schemas.badge_rules_schema`
+- `TouristObject.clean()` importuje schemat JSONB do walidacji
 
 ---
 
-### DŁUG-004: Brak abstrakcji na zewnętrzne API OSM
+### DŁUG-003: Context Processor importuje config map layers
 
 | Pole | Wartość |
 |------|---------|
-| **Tytuł** | Bezpośrednie użycie `requests` w adapterze OSM |
+| **Tytuł** | `apps.tourists.context_processors` importuje `infrastructure.config.map_layers` |
 | **Kategoria** | infrastructure |
-| **Powiązany ADR** | ADR-004 (Dwuwarstwowy model zasilania danych z OSM) |
-| **Wpływ** | Trudności z testowaniem, brak możliwości podmiany implementacji HTTP |
-| **Remediacja** | Wprowadzić `HttpClientPort` i `RequestsHttpClientAdapter` |
+| **Powiązany ADR** | ADR-001 (Hexagonal Architecture), ADR-010 (Dynamiczne kolorowanie mapy) |
+| **Wpływ** | Context Processor w Django wstrzykuje warstwy map bezpośrednio do kontekstu szablonów |
+| **Remediacja** | Wydzielić serwis konfiguracyjny zwracający DTO map dla interfejsów (Faza D) |
 | **Status** | open |
 
 **Szczegóły:**
-- `infrastructure/adapters/osm_adapter.py` używa `urllib.request` i `requests` bezpośrednio
-- Brak portu dla HTTP clienta w `application/ports/`
+- `.importlinter` wyjątek: `apps.tourists.context_processors -> infrastructure.config.map_layers`
+- `tourist_profiles()` wczytuje `MapLayersConfig` bezpośrednio z infrastructure
+
+---
+
+### DŁUG-004: Adapter zdarzeń importuje nazwy zadań Celery
+
+| Pole | Wartość |
+|------|---------|
+| **Tytuł** | `infrastructure.adapters.celery_event_publisher` importuje `apps.badges.tasks` |
+| **Kategoria** | infrastructure |
+| **Powiązany ADR** | ADR-001 (Hexagonal Architecture), ADR-003 (Silnik Reguł Biznesowych) |
+| **Wpływ** | Infrastructure importuje z Delivery layer; brak abstrakcji na rejestrację zdarzeń |
+| **Remediacja** | Zastąpić bezpośredni import rejestracją opartą na nazwie ciągu znaków (string-based registry) |
+| **Status** | open |
+
+**Szczegóły:**
+- `.importlinter` wyjątek: `infrastructure.adapters.celery_event_publisher -> apps.badges.tasks`
+- `CeleryEventPublisher` importuje nazwy zadań Celery do rejestracji w endpointie wiadomości
 
 ---
 
@@ -195,22 +193,91 @@
 
 ---
 
+### DŁUG-011: Niskie pokrycie testami adapterów persistence
+
+| Pole | Wartość |
+|------|---------|
+| **Tytuł** | Niskie pokrycie testami adapterów persistence |
+| **Kategoria** | testing |
+| **Powiązany ADR** | ADR-001 (Hexagonal Architecture) |
+| **Wpływ** | Błędy w adapterach mogą zniszczyć dane użytkowników bez wykrycia w CI |
+| **Remediacja** | Dodać testy integracyjne dla `django_tourist_repo.py`, `django_region_cache_repo.py`, `django_region_geometry_repo.py` |
+| **Status** | open |
+
+**Szczegóły:**
+- `django_tourist_repo.py` — 22% coverage (116 statements, 90 missing)
+- `django_region_cache_repo.py` — 20% coverage (71 statements, 57 missing)
+- `django_region_geometry_repo.py` — 22% coverage (27 statements, 21 missing)
+
+---
+
+### DŁUG-012: Zależność `apps` od `infrastructure` w modelach i widokach
+
+| Pole | Wartość |
+|------|---------|
+| **Tytuł** | Delivery layer importuje z infrastructure w modelach i widokach |
+| **Kategoria** | domain |
+| **Powiązany ADR** | ADR-001 (Hexagonal Architecture), ADR-016 (Model Rodzinny) |
+| **Wpływ** | Naruszenie czystości architektury, trudności z testowaniem |
+| **Remediacja** | Przenieść logikę z `apps/badges/models.py` i `apps/tourists/views.py` do `application/` |
+| **Status** | open |
+
+**Szczegóły:**
+- `apps/badges/models.py` zawiera logikę biznesową (`clean()`, walidacje)
+- `apps/tourists/views.py` zawiera logikę przekazywania między warstwami
+
+---
+
+### DŁUG-013: Hardcoded URL-e Overpass API
+
+| Pole | Wartość |
+|------|---------|
+| **Tytuł** | Hardcoded endpointy zewnętrznych API |
+| **Kategoria** | infrastructure |
+| **Powiązany ADR** | ADR-004 (Dwuwarstwowy model zasilania danych z OSM) |
+| **Wpływ** | Brak możliwości zmiany endpointu bez zmiany kodu, trudności w testach |
+| **Remediacja** | Przenieść URL-e do `infrastructure/config/` lub zmiennych środowiskowych |
+| **Status** | open |
+
+**Szczegóły:**
+- `infrastructure/adapters/osm_adapter.py:63-67` — hardcoded lista URL-i Overpass
+- `infrastructure/adapters/news_scraper.py` — prawdopodobnie podobny problem
+
+---
+
+### DŁUG-014: Brak abstrakcji na zewnętrzne API OSM
+
+| Pole | Wartość |
+|------|---------|
+| **Tytuł** | Bezpośrednie użycie `requests` w adapterze OSM |
+| **Kategoria** | infrastructure |
+| **Powiązany ADR** | ADR-004 (Dwuwarstwowy model zasilania danych z OSM) |
+| **Wpływ** | Trudności z testowaniem, brak możliwości podmiany implementacji HTTP |
+| **Remediacja** | Wprowadzić `HttpClientPort` i `RequestsHttpClientAdapter` |
+| **Status** | open |
+
+**Szczegóły:**
+- `infrastructure/adapters/osm_adapter.py` używa `urllib.request` i `requests` bezpośrednio
+- Brak portu dla HTTP clienta w `application/ports/`
+
+---
+
 ## Podsumowanie
 
 | Kategoria | Liczba długów | Status |
 |-----------|---------------|--------|
-| testing | 2 | open |
-| domain | 1 | open |
-| infrastructure | 2 | open |
+| domain | 3 | open |
+| infrastructure | 3 | open |
 | data | 2 | open |
-| performance | 1 | open |
-| security | 1 | open |
+| testing | 2 | open |
 | operational | 1 | open |
+| security | 1 | open |
+| performance | 1 | open |
 
 **Rekomendacja priorytetów:**
-1. **Wysoki:** DŁUG-001 (testy persistence), DŁUG-008 (rate limiting), DŁUG-009 (monitoring)
-2. **Średni:** DŁUG-002 (architektura), DŁUG-004 (HTTP client), DŁUG-006 (indeksy)
-3. **Niski:** DŁUG-003 (hardcoded URLs), DŁUG-005 (walidacja JSONB), DŁUG-007 (E2E), DŁUG-010 (archiwizacja)
+1. **Wysoki:** DŁUG-001 (tasks→osm_adapter), DŁUG-008 (rate limiting), DŁUG-009 (monitoring)
+2. **Średni:** DŁUG-002 (models→schema), DŁUG-004 (event publisher→tasks), DŁUG-006 (indeksy)
+3. **Niski:** DŁUG-003 (context→map_layers), DŁUG-005 (walidacja JSONB), DŁUG-007 (E2E), DŁUG-010 (archiwizacja), DŁUG-011..014 (pokrycie testów, architektura, hardcoded URLs, HTTP client)
 
 ---
 
@@ -218,4 +285,5 @@
 
 | Wersja | Data | Autor | Opis zmiany |
 |--------|------|-------|-------------|
+| 1.1 | 2026-08-26 | Dominik / AI Architect | Zsynchronizowano numerację DŁUG-001..004 z `.importlinter`; przeniesiono poprzednie wpisy na DŁUG-011..014 |
 | 1.0 | 2026-08-25 | Dominik / AI Architect | Utworzenie rejestru długów architektonicznych |

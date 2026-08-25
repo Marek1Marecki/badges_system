@@ -1,4 +1,4 @@
-# ADR-025 — PostgreSQL Volume Layout (PostgreSQL 18+)
+# ADR-026 — PostgreSQL Volume Layout (PostgreSQL 18+)
 
 > **Status:** `proposed`
 > **Data:** 2026-07-19
