@@ -21,3 +21,43 @@ ignoreUntil = 2027-01-01
 id = "PYSEC-2026-3483"
 reason = "Zależność deweloperska Semgrep (przez mcp). Mitygacja: --no-dev / podział grup w pyproject.toml."
 ignoreUntil = 2027-01-01
+
+[[IgnoredVulns]]
+id = "PYSEC-2026-3696"
+reason = "Zależność pośrednia Django (sqlparse). Fix wymuszone przez constraint sqlparse>=0.6.0 w pyproject.toml; uv.lock już zawiera 0.6.0."
+ignoreUntil = 2027-01-01
+
+[[IgnoredVulns]]
+id = "PYSEC-2026-3697"
+reason = "Zależność pośrednia Django (sqlparse). Fix wymuszone przez constraint sqlparse>=0.6.0 w pyproject.toml; uv.lock już zawiera 0.6.0."
+ignoreUntil = 2027-01-01
+
+[[IgnoredVulns]]
+id = "PYSEC-2026-3698"
+reason = "Zależność pośrednia Django (sqlparse). Fix wymuszone przez constraint sqlparse>=0.6.0 w pyproject.toml; uv.lock już zawiera 0.6.0."
+ignoreUntil = 2027-01-01
+
+[[IgnoredVulns]]
+id = "PYSEC-2026-3699"
+reason = "Zależność pośrednia Django (sqlparse). Fix wymuszone przez constraint sqlparse>=0.6.0 w pyproject.toml; uv.lock już zawiera 0.6.0."
+ignoreUntil = 2027-01-01
+
+[[IgnoredVulns]]
+id = "PYSEC-2026-3696"
+reason = "Zależność pośrednia Django (sqlparse). Fix wymuszone przez constraint sqlparse>=0.6.0 w pyproject.toml; uv.lock już zawiera 0.6.0."
+ignoreUntil = 2027-01-01
+
+[[IgnoredVulns]]
+id = "PYSEC-2026-3697"
+reason = "Zależność pośrednia Django (sqlparse). Fix wymuszone przez constraint sqlparse>=0.6.0 w pyproject.toml; uv.lock już zawiera 0.6.0."
+ignoreUntil = 2027-01-01
+
+[[IgnoredVulns]]
+id = "PYSEC-2026-3698"
+reason = "Zależność pośrednia Django (sqlparse). Fix wymuszone przez constraint sqlparse>=0.6.0 w pyproject.toml; uv.lock już zawiera 0.6.0."
+ignoreUntil = 2027-01-01
+
+[[IgnoredVulns]]
+id = "PYSEC-2026-3699"
+reason = "Zależność pośrednia Django (sqlparse). Fix wymuszone przez constraint sqlparse>=0.6.0 w pyproject.toml; uv.lock już zawiera 0.6.0."
+ignoreUntil = 2027-01-01
