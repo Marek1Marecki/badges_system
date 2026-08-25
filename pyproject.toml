@@ -58,6 +58,7 @@ dev = [
     "radon>=6.0.1",
     "xenon>=0.9.3",
     "wily>=1.12.2",
+    "pdoc>=15.0",
 ]
 
 [tool.pytest.ini_options]

@@ -9,7 +9,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock
 
 help:
 	@echo "CORE targets:"
@@ -24,6 +24,8 @@ help:
 	@echo "  graph-modules - graf zaleznosci modulow (pydeps -> SVG)"
 	@echo "  graph-classes - diagramy klas UML (pyreverse -> PNG)"
 	@echo "  graph-all    - wszystkie diagramy architektury"
+	@echo "  arch-docs    - generowanie diagramów PlantUML (C4)"
+	@echo "  api-docs     - generowanie dokumentacji API (pdoc)"
 	@echo "  check        - lokalne CI: format --check + lint + type-check + test + audit + complexity-check + security-audit"
 	@echo "  clean        - usuwa cache, artefakty"
 	@echo "  security-audit - semgrep + osv-scanner"
@@ -102,6 +104,15 @@ graph-classes:
 
 graph-all: graph graph-modules graph-classes
 
+arch-docs:
+	mkdir -p docs/architecture
+	docker run --rm -v "$(CURDIR)/docs/architecture:/data" plantuml/plantuml:latest /data/context.puml /data/containers.puml /data/components.puml
+
+api-docs:
+	mkdir -p docs/api
+	uv run pdoc --output-dir docs/api domain application
+
+
 complexity-trend:
 	uv run wily build $(PY_DIRS) -n 20 -a filesystem
 	@for dir in $(PY_DIRS); do \
@@ -141,6 +152,7 @@ clean:
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "__pycache__" -not -path "./.venv/*" -exec rm -rf {} +
 	rm -rf .coverage htmlcov/ .pytest_cache/ .mypy_cache/ coverage.xml .ruff_cache/ .wily/
+	rm -rf docs/api/
 
 lock:
 	uv lock --exclude-newer "7 days"

@@ -1,0 +1,27 @@
+@startuml components
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+' C3: Components - internal structure of Web App container
+
+LAYOUT_TOP_DOWN()
+
+Container(web_app, "Aplikacja Web Django", "Django 6.x", "Obsługuje żądania HTTP, autoryzację, prezentację danych i API REST.")
+
+Component(delivery, "Delivery Layer", "Django Views / URL routing", "Obsługa HTTP requestów, routing, prezentacja. Zawiera apps/api, apps/badges, apps/tourists.")
+Component(application_services, "Application Layer", "Use Cases + Services", "Orkiestracja przepływów biznesowych. Zawiera use_cases/ i services/.")
+Component(domain_layer, "Domain Layer", "Entities + Rules + Ports", "Logika biznesowa, reguły domenowe, interfejsy portów. Zawiera entities/, rules/, ports/, value_objects/.")
+Component(infrastructure_layer, "Infrastructure Layer", "Adapters + Repositories", "Implementacja portów, integracja z Django ORM, zewnętrznymi API. Zawiera adapters/, persistence/, config/.")
+Component(di_container, "DI Container", "bootstrap/container.py", "Wstrzykiwanie zależności, konfiguracja aplikacji.")
+Component(celery_tasks, "Celery Tasks", "apps/badges/tasks.py", "Zadania asynchroniczne: fetch_osm_data, fetch_badge_news, calculate_neighbors.")
+
+Rel(delivery, application_services, "Wywołuje", "Use Case / Service")
+Rel(delivery, di_container, "Pobiera zależności", "request.app_container")
+Rel(application_services, domain_layer, "Używa portów", "Port interfaces")
+Rel(application_services, infrastructure_layer, "Używa adapterów", "Concrete implementations")
+Rel(infrastructure_layer, domain_layer, "Implementuje porty", "Port interfaces")
+Rel(di_container, application_services, "Konfiguruje", "DI")
+Rel(di_container, infrastructure_layer, "Konfiguruje", "DI")
+Rel(celery_tasks, di_container, "Pobiera use case'y", "get_container()")
+Rel(celery_tasks, application_services, "Wywołuje", "Use Case")
+
+@enduml

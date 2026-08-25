@@ -1,0 +1,36 @@
+@startuml context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+' C1: System Context
+
+LAYOUT_TOP_DOWN()
+
+Person(tourist, "Turysta", "Użytkownik systemu - zdobywa odznaki, loguje podejścia, przegląda obiekty.")
+Person(admin, "Administrator", "Zarządza odznakami, obiektami, referencyjnymi danymi.")
+
+System_Boundary(badges_system, "Badges System") {
+    System(web, "Aplikacja Web Django", "Obsługa HTTP, autoryzacja, prezentacja danych.")
+    System(worker, "Celery Worker", "Zadania asynchroniczne: pobieranie OSM, newsy, obliczenia regionów.")
+    System(beat, "Celery Beat", "Harmonogram zadań okresowych.")
+}
+
+System_Ext(overpass, "Overpass API", "Zewnętrzne API danych geograficznych OpenStreetMap.")
+System_Ext(wikipedia, "Wikipedia API", "Zewnętrzne API do pobierania linków do artykułów Wikipedia.")
+System_Ext(news, "Portale News (PTTK)", "Zewnętrzne źródło newsów o odznakach.")
+System_Ext(db, "PostgreSQL + PostGIS", "Baza danych z rozszerzeniem przestrzennym.")
+System_Ext(redis, "Redis", "Cache i broker wiadomości dla Celery.")
+
+Rel(tourist, web, "Przegląda / loguje podejścia / zarządza profilem", "HTTPS")
+Rel(admin, web, "Zarządza danymi przez panel admina", "HTTPS")
+Rel(web, db, "Odczyt/Zapis danych", "SQL/ORM")
+Rel(web, redis, "Cache sesji i danych", "Redis protocol")
+Rel(web, worker, "Wysyła zadania asynchroniczne", "Celery broker")
+Rel(worker, db, "Odczyt/Zapis danych", "SQL/ORM")
+Rel(worker, redis, "Pobiera/zapisuje wyniki", "Redis protocol")
+Rel(beat, worker, "Planuje zadania okresowe", "Celery beat")
+Rel(beat, db, "Odczyt/Zapis harmonogramu", "SQL/ORM")
+Rel(worker, overpass, "Pobiera dane OSM", "HTTPS/XML")
+Rel(worker, wikipedia, "Pobiera linki do artykułów", "HTTPS/JSON")
+Rel(worker, news, "Pobiera newsy PTTK", "HTTPS/HTML")
+
+@enduml

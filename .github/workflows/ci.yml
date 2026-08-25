@@ -104,6 +104,12 @@ jobs:
       - name: Generowanie diagramów architektury (pydeps + pyreverse)
         run: make graph-modules graph-classes
 
+      - name: Generowanie diagramów C4 (PlantUML)
+        run: make arch-docs
+
+      - name: Generowanie dokumentacji API (pdoc)
+        run: make api-docs
+
       - name: Upload diagramów architektury
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -112,6 +118,14 @@ jobs:
           path: |
             docs/architecture/
             dependencies-pydeps.svg
+          retention-days: 30
+
+      - name: Upload dokumentacji API
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: api-documentation
+          path: docs/api/
           retention-days: 30
 
       - name: Generowanie kluczy na potrzeby testów z bazy w pamięci (Pydantic Bypass)

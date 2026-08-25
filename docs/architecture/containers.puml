@@ -1,0 +1,36 @@
+@startuml containers
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+' C2: Containers
+
+LAYOUT_TOP_DOWN()
+
+Person(tourist, "Turysta", "Użytkownik systemu.")
+Person(admin, "Administrator", "Zarządza danymi systemu.")
+
+System_Boundary(badges_system, "Badges System") {
+    Container(web_app, "Aplikacja Web Django", "Django 6.x + Django REST Framework", "Obsługuje żądania HTTP, autoryzację, prezentację danych i API REST.")
+    Container(worker, "Celery Worker", "Celery + Redis", "Wykonuje zadania asynchroniczne: pobieranie OSM, scrapowanie newsów, obliczenia regionów.")
+    Container(beat, "Celery Beat", "django-celery-beat", "Planuje zadania okresowe: nightly OSM fetch, news scan.")
+    ContainerDb(postgres, "PostgreSQL + PostGIS", "Baza danych", "Przechowuje dane aplikacji, użytkowników, odznak, obiektów turystycznych. PostGIS umożliwia zapytania przestrzenne.")
+    ContainerDb(redis_cache, "Redis", "Cache + Broker", "Cache danych często dostępnych, broker wiadomości dla Celery, przechowywanie sesji.")
+}
+
+System_Ext(overpass_api, "Overpass API", "OpenStreetMap", "Zewnętrzne API do zapytań o dane geograficzne.")
+System_Ext(wikipedia_api, "Wikipedia API", "MediaWiki", "Zewnętrzne API do wyszukiwania artykułów Wikipedia.")
+System_Ext(news_portal, "Portale News (PTTK)", "Web scraping", "Zewnętrzne źródło newsów o odznakach PTTK.")
+
+Rel(tourist, web_app, "Używa przeglądarki / aplikacji mobilnej", "HTTPS/JSON")
+Rel(admin, web_app, "Zarządza danymi przez Django Admin", "HTTPS/HTML")
+Rel(web_app, postgres, "Odczyt/Zapis", "SQLAlchemy/Django ORM")
+Rel(web_app, redis_cache, "Cache + Sesje", "Redis protocol")
+Rel(web_app, worker, "Wysyła zadania asynchroniczne", "AMQP/Celery")
+Rel(worker, postgres, "Odczyt/Zapis", "Django ORM")
+Rel(worker, redis_cache, "Pobiera wyniki / status", "Redis protocol")
+Rel(beat, postgres, "Zapis harmonogramu", "Django ORM")
+Rel(beat, worker, "Wysyła zadania", "AMQP/Celery")
+Rel(worker, overpass_api, "Pobiera dane OSM", "HTTPS/XML")
+Rel(worker, wikipedia_api, "Pobiera linki", "HTTPS/JSON")
+Rel(worker, news_portal, "Scrapuje newsy", "HTTPS/HTML")
+
+@enduml
