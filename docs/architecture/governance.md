@@ -12,28 +12,39 @@
 ```
                     ARCHITECTURE GOVERNANCE
                              │
-        ┌────────────────────┼────────────────────┐
-        │                    │                    │
-        ▼                    ▼                    ▼
-      DECIDE             DOCUMENT             DISCOVER
-       ADR                C4/ADR             pydeps
-        │                    │               pyreverse
-        ▼                    │
-     ENFORCE                 │
- Import Linter               │
- Architecture Tests         │
-        │                    │
-        ▼                    ▼
-      MEASURE ────────────→ EVOLVE
-  Radon / Xenon              wily
-         │
-         ▼
-  INFRASTRUCTURE GOVERNANCE
-  Hadolint / Checkov / Trivy
-         │
-         ▼
-  OPERATIONAL GOVERNANCE
-  Health Checks / Error Handling / Observability
+         ┌────────────────────┼────────────────────┐
+         │                    │                    │
+         ▼                    ▼                    ▼
+       DECIDE             DOCUMENT             DISCOVER
+        ADR                C4/ADR             pydeps
+         │                    │               pyreverse
+         ▼                    │
+      ENFORCE                 │
+  Import Linter               │
+  Architecture Tests         │
+         │                    │
+         ▼                    ▼
+       MEASURE ────────────→ EVOLVE
+   Radon / Xenon              wily
+          │
+          ▼
+   INFRASTRUCTURE GOVERNANCE
+   Hadolint / Checkov / Trivy
+          │
+          ▼
+   OPERATIONAL GOVERNANCE
+   Health Checks / Error Handling / Observability
+          │
+          ▼
+   TOOLING CLASSIFICATION
+          │
+   ┌──────┴──────┐
+   ▼             ▼             ▼
+  GATE       DIAGNOSTIC    EXPERIMENTAL
+   │             │             │
+"must pass"  "tell me why" "let's find out"
+   │             │             │
+make check   manual/sandbox research/learning
 ```
 
 ---
@@ -313,26 +324,25 @@ CI Pipeline (make check)
 
 **Zasada kolejności:**
 - Code Quality → Tests → Architecture Audit → Complexity → Security → Infrastructure
-- `make check` uruchamia wszystkie warstwy sekwencyjnie; brak early-exit między warstwami
+- `make check` uruchamia tylko **Gate** — warstwę blokującą
+- **Diagnostic** jest uruchamiany świadomie przez developera (`make test-random`, `make coverage-diff`, itp.)
+- **Experimental** jest uruchamiany w kontrolowanej sandboxie (`make experimental-*`)
 - FF-015, FF-016, FF-017, FF-019, FF-020 (Operational + Observability Governance) są częścią warstwy Tests (pytest)
 
 ---
 
 ## Blokujące vs Advisory — podsumowanie
 
-### Blokujące (CI fails)
+### 🟢 Gate (CI fails)
 
 | Mechanizm | Gdzie | Co chroni |
 |-----------|-------|-----------|
 | Import Linter | `.importlinter` | Kierunek zależności |
-| Architecture Tests — FF-001 (Dependency Direction) | `test_dependency_direction.py` | Kierunek zależności (komplementarne do Import Lintera) |
 | Architecture Tests — FF-002 (Domain Purity) | `test_domain_purity.py` | Brak Model w domenie |
 | Architecture Tests — FF-003 (Repository Contracts) | `test_repository_contracts.py` | Pełność implementacji portów |
 | Architecture Tests — FF-004 (API DTO Gating) | `test_api_dto_gating.py` | Walidacja wejścia w API |
 | Architecture Tests — FF-005 (DI Container Completeness) | `test_di_container_completeness.py` | Rejestracja UseCase'ów |
 | Architecture Tests — FF-007 (No Primitive Obsession) | `test_no_primitive_obsession.py` | Typy zwracane przez UseCase'y |
-| Architecture Tests — FF-008 (Migration Idempotency) | `test_migration_idempotency.py` | Expand & Contract |
-| Architecture Tests — FF-009 (God Class Prevention) | `test_god_class_prevention.py` | Limit modeli na plik |
 | Architecture Tests — FF-010 (Badge Rule Immutability) | `test_badge_rule_immutability.py` | Frozen dataclass dla reguł |
 | Architecture Tests — FF-015 (Compose Health Checks) | `test_health_checks.py` | Obecność healthcheck |
 | Architecture Tests — FF-016 (API Exception Handling) | `test_exception_handling.py` | Obsługa ApplicationException |
@@ -344,18 +354,32 @@ CI Pipeline (make check)
 | Xenon | `xenon.ini` | Złożoność kodu |
 | Trivy | `security-audit` | CVE HIGH/CRITICAL |
 
-### Advisory (CI passes, ale warto sprawdzić)
+### 🟡 Diagnostic (CI passes, ale warto sprawdzić)
 
 | Mechanizm | Gdzie | Co chroni |
 |-----------|-------|-----------|
+| Architecture Tests — FF-001 (Dependency Direction) | `test_dependency_direction.py` | Kierunek zależności (komplementarne do Import Lintera) |
 | Architecture Tests — FF-006 (DTO Naming Convention) | `test_dto_naming_convention.py` | Konwencja nazewnictwa DTO |
-| Architecture Tests — FF-018 (No Sensitive Data in Logs) | `test_no_sensitive_data_in_logs.py` | Wrażliwe dane w logach |
+| Architecture Tests — FF-008 (Migration Idempotency) | `test_migration_idempotency.py` | Struktura migracji (heurystyka) |
+| Architecture Tests — FF-009 (God Class Prevention) | `test_god_class_prevention.py` | Trend wzrostu modułów (proxy metric) |
+| Architecture Tests — FF-018 (No Sensitive Data in Logs) | `test_no_sensitive_data_in_logs.py` | Wrażliwe dane w logach (heurystyka) |
 | Architecture Tests — FF-022 (Dependency Groups Separation) | `test_dependency_groups_separation.py` | Rozdzielenie dev/test od runtime |
 | Radon | `make complexity-check` | Złożoność — trend over time |
 | wily | `make complexity-trend` | Trend jakości |
 | Hadolint | `make hadolint` | Jakość Dockerfile |
 | Checkov | `make checkov` | Bezpieczeństwo Compose |
 | Docker Bench | `make docker-bench` | Konfiguracja hosta Docker |
+| pytest-randomly | `make test-random` | Wykrywanie zależności między testami |
+| diff-cover | `make coverage-diff` | Coverage nowego kodu |
+| detect-secrets | `make secret-scan` | Secret discovery |
+
+### Advisory (CI passes, informacyjne)
+
+| Mechanizm | Gdzie | Co chroni |
+|-----------|-------|-----------|
+| Architecture Tests — FF-011 (Dockerfile Hygiene) | Hadolint | Standard konstrukcji obrazu |
+| Architecture Tests — FF-012 (Compose Security) | Checkov | Konfiguracja IaC |
+| Architecture Tests — FF-014 (Docker Bench Security) | Docker Bench | Konfiguracja hosta Docker |
 
 ---
 
@@ -396,18 +420,53 @@ Trivy skanuje zależności deweloperskie Semgrep (przez MCP). Wyjątki w `osv-sc
 
 ## Właściciele i odpowiedzialności
 
+### Gate
+
 | Mechanizm | Właściciel | Odpowiedzialność |
 |-----------|-----------|-----------------|
-| ADR | Dominik / AI Architect | Tworzenie i aktualizacja decyzji |
 | Import Linter | Dominik / AI Architect | Konfiguracja i wyjątki |
-| Architecture Tests | Dominik / AI Architect | Dodawanie nowych fitness functions |
+| Architecture Tests — Blocking FF | Dominik / AI Architect | Dodawanie nowych fitness functions |
 | Xenon | Dominik / AI Architect | Ustawianie limitów złożoności |
-| Hadolint | Dominik / AI Architect | Baseline i wyjątki |
-| Checkov | Dominik / AI Architect | Konfiguracja i skany Compose |
 | Trivy | Dominik / AI Architect | Ignore list i tolerancja CVE |
-| Docker Bench | Placeholder | Aktualizacja po znalezieniu successor'a |
 | Health Checks | Dominik / AI Architect | Utrzymanie healthcheck w Compose |
 | API Exception Handling | Dominik / AI Architect | Utrzymanie obsługi ApplicationException w widokach |
+| Request ID Contract | Dominik / AI Architect | Utrzymanie middleware request_id |
+| Lockfile Integrity | Dominik / AI Architect | Utrzymanie uv.lock w sync |
+| Fitness Function Registry | Dominik / AI Architect | Kompletność dokumentacji FF |
+
+### Diagnostic
+
+| Mechanizm | Właściciel | Odpowiedzialność |
+|-----------|-----------|-----------------|
+| Radon | Dominik / AI Architect | Utrzymanie limitów złożoności |
+| wily | Dominik / AI Architect | Trend analysis |
+| Hadolint | Dominik / AI Architect | Baseline i wyjątki |
+| Checkov | Dominik / AI Architect | Konfiguracja i skany Compose |
+| pytest-randomly | Dominik / AI Architect | Wykrywanie zależności między testami |
+| diff-cover | Dominik / AI Architect | Coverage nowego kodu |
+| detect-secrets | Dominik / AI Architect | Secret discovery baseline |
+| Architecture Tests — Diagnostic FF | Dominik / AI Architect | Utrzymanie heurystyk i smell detectorów |
+
+### Experimental
+
+| Mechanizm | Właściciel | Odpowiedzialność |
+|-----------|-----------|-----------------|
+| mutmut | Dominik / AI Architect | Mutation testing experiments |
+| Schemathesis | Dominik / AI Architect | API fuzzing experiments |
+| Testcontainers | Dominik / AI Architect | Real DB w testach experiments |
+| axe-playwright | Dominik / AI Architect | Accessibility experiments |
+| k6 | Dominik / AI Architect | Load testing experiments |
+| OWASP ZAP | Dominik / AI Architect | DAST experiments |
+
+### Advisory
+
+| Mechanizm | Właściciel | Odpowiedzialność |
+|-----------|-----------|-----------------|
+| Docker Bench | Placeholder | Aktualizacja po znalezieniu successor'a |
+| DTO Naming Convention | Dominik / AI Architect | Utrzymanie konwencji |
+| Migration Idempotency | Dominik / AI Architect | Heurystyka struktury migracji |
+| God Class Prevention | Dominik / AI Architect | Trend analiza rozmiaru modułów |
+| Sensitive Data in Logs | Dominik / AI Architect | Heurystyka wykrywania sekretów |
 
 ---
 

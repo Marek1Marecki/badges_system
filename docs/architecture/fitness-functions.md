@@ -39,7 +39,7 @@ Domain purity violated:
 domain/foo.py imports django.db.models
 ```
 
-> **Uwaga:** Test `test_dependency_direction.py` jest komplementarny do Import Lintera. Import Linter jest źródłem prawdy dla kierunku zależności; test dostarcza diagnostykę w formacie pytest. Nie powinno się traktować ich jako niezależnych, równorzędnych mechanizmów.
+> **Uwaga:** Test `test_dependency_direction.py` jest komplementarny do Import Lintera. Import Linter jest źródłem prawdy dla kierunku zależności; test dostarcza diagnostykę w formacie pytest. Nie powinno się traktować ich jako niezależnych, równorzędnych mechanizmów. Status: **Diagnostic**.
 
 ---
 
@@ -143,6 +143,8 @@ Test wybucha, jeśli use case deklaruje w typie zwracanym `dict`, `Any` lub `lis
 **Opis:**
 Test egzekwuje zasadę Expand & Contract: migracja nie może zawierać zarówno `AddField` jak i `RemoveField`. Automatycznie zwalnia dewelopera z ręcznej weryfikacji kroków wdrożeniowych.
 
+> **Uwaga:** Test jest heurystyką, a nie invariantem architektonicznym. Django migration może legalnie zawierać różne operacje DDL, jeśli jest to świadomie zaprojektowana migracja. Rzeczywisty kontrakt to: "deployment nie może powodować downtime / breaking schema change". Status: **Diagnostic**.
+
 ---
 
 ### FF-009: God Class Prevention
@@ -157,7 +159,7 @@ Test egzekwuje zasadę Expand & Contract: migracja nie może zawierać zarówno 
 **Opis:**
 Test wymusza dekompozycję modułów. Przeciwdziała powstawaniu plików takich jak `apps/badges/models.py` (obecnie 19 modeli, w tym klasy abstrakcyjne). Próg 20 gwarantuje, że obecny stan jest akceptowany, ale kolejne znacząco powiększające się moduły zostaną wykryte.
 
-> **Uwaga:** Test korzysta z AST do wykrywania klas dziedziczących po typie kończącym się na `Model` (w tym `models.Model`, `gis_models.Model`, `RegionBaseModel`). Poprzednia implementacja używała dopasowania ciągu znaków `(Model)`, które nie wykrywało `models.Model` ani `gis_models.Model` — test był nie funkcjonalny. Po naprawie próg został podniesiony z 8 do 20, aby odzwierciedlać rzeczywisty stan projektu.
+> **Uwaga:** Test korzysta z AST do wykrywania klas dziedziczących po typie kończącym się na `Model` (w tym `models.Model`, `gis_models.Model`, `RegionBaseModel`). Liczba modeli w pliku jest proxy metric, a nie rzeczywistym invariantem architektonicznym. 5 klas może tworzyć potężnego God Object, a 20 może być akceptowalnych. Test służy jako trend/smell detector, a nie blocking rule. Status: **Diagnostic**.
 
 ---
 
@@ -179,15 +181,15 @@ Test gwarantuje brak zjawiska State Mutilation podczas współbieżnego oceniani
 
 | ID | Fitness Function | Mechanizm | Chroni | Powiązanie | Status |
 |----|------------------|-----------|--------|------------|--------|
-| FF-001 | Dependency Direction | Import Linter + pytest | kierunek zależności | ADR-001 | Blocking |
+| FF-001 | Dependency Direction | Import Linter + pytest | kierunek zależności | ADR-001 | **Diagnostic** |
 | FF-002 | Domain Purity | pytest | Clean Domain | ADR-001 | Blocking |
 | FF-003 | Repository Contracts | pytest | Ports & Adapters | ADR-001, ADR-002 | Blocking |
 | FF-004 | API DTO Gating | pytest | API boundary | ADR-016 | Blocking |
 | FF-005 | DI Container Completeness | pytest | Composition Root | ADR-001 | Blocking |
 | FF-006 | DTO Naming Convention | pytest | konwencja | — | Advisory |
 | FF-007 | No Primitive Obsession | pytest | application boundary | AUDYT-124 | Blocking |
-| FF-008 | Migration Idempotency | pytest | Expand & Contract | ADR-024 | Blocking |
-| FF-009 | God Class Prevention | pytest | modularność | — | Blocking |
+| FF-008 | Migration Idempotency | pytest | Expand & Contract | ADR-024 | **Diagnostic** |
+| FF-009 | God Class Prevention | pytest | modularność | — | **Diagnostic** |
 | FF-010 | Badge Rule Immutability | pytest | domain invariants | ADR-003 | Blocking |
 | FF-011 | Dockerfile Hygiene | Hadolint | standard konstrukcji obrazu | ADR-020 | Advisory |
 | FF-012 | Compose Security | Checkov | konfiguracja IaC | ADR-020 | Advisory |
