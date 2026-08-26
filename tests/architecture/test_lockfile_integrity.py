@@ -1,5 +1,6 @@
 """Testy architektury: lockfile musi być obecny i śledzony przez Git."""
 
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -15,6 +16,8 @@ def test_uv_lock_exists() -> None:
 
 def test_uv_lock_is_tracked_by_git() -> None:
     """uv.lock musi być śledzony przez Git."""
+    if shutil.which("git") is None:
+        pytest.skip("git nie jest dostępny w tym środowisku")
     result = subprocess.run(
         ["git", "ls-files", "--error-unmatch", str(LOCKFILE)],
         capture_output=True,
