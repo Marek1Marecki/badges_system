@@ -180,6 +180,10 @@ Test gwarantuje brak zjawiska State Mutilation podczas współbieżnego oceniani
 | FF-008 | Migration Idempotency | pytest | Expand & Contract | ADR-024 |
 | FF-009 | God Class Prevention | pytest | modularność | — |
 | FF-010 | Badge Rule Immutability | pytest | domain invariants | ADR-003 |
+| FF-011 | Dockerfile Hygiene | Hadolint | standard konstrukcji obrazu | ADR-020 |
+| FF-012 | Compose Security | Checkov | konfiguracja IaC | ADR-020 |
+| FF-013 | Image Vulnerability Scanning | Trivy | CVE w obrazie | ADR-020 |
+| FF-014 | Docker Bench Security | Docker Bench | konfiguracja hosta Docker | ADR-020 |
 
 ---
 
@@ -192,6 +196,7 @@ Ta grupa pilnuje architektury poza kodem Pythona — kontenery, Compose, obrazy,
 | FF-011 | Dockerfile Hygiene | Hadolint | standard konstrukcji obrazu | ADR-020 |
 | FF-012 | Compose Security | Checkov | konfiguracja IaC | ADR-020 |
 | FF-013 | Image Vulnerability Scanning | Trivy | CVE w obrazie | ADR-020 |
+| FF-014 | Docker Bench Security | Docker Bench | konfiguracja hosta Docker | ADR-020 |
 
 ### FF-011: Dockerfile Hygiene
 
@@ -240,6 +245,30 @@ Trivy skanuje obraz kontenerowy pod kątem:
 - Podatności w zależnościach Python
 - Sekretów w obrazie
 - SBOM (Software Bill of Materials)
+
+---
+
+### FF-014: Docker Bench Security
+
+| Pole | Wartość |
+|------|---------|
+| **Nazwa** | Docker Bench Security |
+| **Mechanizm** | Docker Bench (`make docker-bench`, na żądanie) |
+| **Chroni** | Konfigurację środowiska Docker hosta — demon, sieć, uprawnienia, logging |
+| **Powiązanie** | ADR-020 (Deployment & DataOps) |
+
+**Opis:**
+Docker Bench to audyt oparty na CIS Docker Benchmark. W przeciwieństwie do Hadolint/Checkov (analizują IaC w repo), Docker Bench sprawdza rzeczywistą konfigurację demona Dockera na hoście.
+
+> **Uwaga:** Projekt upstream `docker/docker-bench` został zarchiwizowany. Target `make docker-bench` pozostawiono jako placeholder na przyszły audyt hosta Docker — jeśli pojawi się aktywny successor, zaktualizuj komendę w Makefile.
+
+Używa się go **na żądanie**, w zaufanych środowiskach (lokalnie), nigdy automatycznie w CI:
+
+```bash
+make docker-bench
+```
+
+Wymaga dostępu do `/var/run/docker.sock` hosta.
 
 ---
 

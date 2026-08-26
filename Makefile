@@ -10,7 +10,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock
 
 help:
 	@echo "CORE targets:"
@@ -32,6 +32,10 @@ help:
 	@echo "  check        - lokalne CI: format --check + lint + type-check + test + audit + complexity-check + security-audit + infra-check"
 	@echo "  clean        - usuwa cache, artefakty"
 	@echo "  security-audit - semgrep + osv-scanner + trivy"
+	@echo "  hadolint     - skanowanie Dockerfile (Hadolint)"
+	@echo "  checkov      - skanowanie Compose (Checkov)"
+	@echo "  infra-check  - hadolint + checkov"
+	@echo "  docker-bench - audyt konfiguracji Dockera (CIS Docker Bench, na żądanie)"
 	@echo "  complexity-check - radon + xenon (complexity + maintainability metrics)"
 	@echo "  complexity-trend - wily (complexity trends over git history)"
 	@echo "  lock           - regeneruje uv.lock z 7-dniowym cooldownem zależności"
@@ -158,6 +162,15 @@ checkov:
 	checkov -f compose.yml -f compose.prod.yml -f compose.test.yml -f compose.e2e.yml -f compose.preprod.yml -f compose.override.yml --framework yaml --compact
 
 infra-check: hadolint checkov
+
+docker-bench:
+	@echo "=== ROZPOCZYNANIE AUDYTU DOCKER BENCH ==="
+	@echo "Uwaga: ten audyt wymaga dostępu do docker.sock hosta i analizuje konfigurację demona Dockera."
+	@echo "Uruchom tylko na środowiskach zaufanych (lokalnie, nie w CI)."
+	@echo ""
+	@echo "Docker Bench: projekt upstream (docker/docker-bench) został zarchiwizowany."
+	@echo "Celowo pozostawiono ten target jako placeholder na przyszły audyt hosta Docker."
+	@echo "Jeśli pojawi się aktywny successor, zaktualizuj komendę w tym miejscu."
 
 check:
 	uv run ruff format --check $(PY_DIRS)
