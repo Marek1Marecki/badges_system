@@ -1,9 +1,9 @@
 # Supply Chain & Dependency Governance
 
-> **Wersja:** 1.0  
+> **Wersja:** 1.1  
 > **Data:** 2026-08-26  
 > **Właściciel:** Dominik / AI Architect  
-> **Zasada:** Ten dokument definiuje kontrakty i polityki dotyczące łańcucha dostaw oprogramowania. Nie instaluje dodatkowych narzędzi — wykorzystuje istniejące mechanizmy (uv.lock, pyproject.toml, Trivy, OSV-Scanner).
+> **Zasada:** Ten dokument definiuje kontrakty i polityki dotyczące łańcucha dostaw oprogramowania. Wykorzystuje istniejące mechanizmy (uv.lock, pyproject.toml, Dependabot, Trivy, OSV-Scanner, Syft).
 
 ---
 
@@ -18,23 +18,25 @@
 | Dependency groups | `[dependency-groups]` w `pyproject.toml` | Rozdzielenie runtime / test / dev |
 | Vulnerability scanning | Trivy, OSV-Scanner, Semgrep | Wykrywanie CVE i sekretów |
 | Lockfile validation | `uv lock --check` (pre-commit) | Weryfikacja spójności `uv.lock` z `pyproject.toml` |
+| Automated dependency updates | Dependabot (`.github/dependabot.yml`) | Automatyczne PR dla `uv`, GitHub Actions, Docker |
+| SBOM | Syft (`.github/workflows/ci.yml`) | Generowanie CycloneDX dla obrazu testowego |
+| Runtime vs dev separation | FF-022 (`test_dependency_groups_separation.py`) | Weryfikacja, że narzędzia dev/test nie trafiają do runtime |
 
 ### Poziom 2 — Warto rozważyć (przy zbliżaniu się do TEST/PROD)
 
 | Mechanizm | Cel | Status |
 |-----------|-----|--------|
-| SBOM (Software Bill of Materials) | Pełny inwentarz artefaktu produkcyjnego | Planned |
 | Dependency inventory | Dokumentacja bezpośrednich zależności i ich uzasadnienia | Planned |
-| Runtime vs dev separation audit | Weryfikacja, że narzędzia dev nie trafiają do PROD | Planned |
-| Dependency update policy | Formalny proces aktualizacji zależności | Planned |
+| Dependency update policy | Formalny proces aktualizacji zależności | Zaimplementowany w polityce lockfile |
 
 ### Poziom 3 — Przyszłość (po wdrożeniu TEST/PROD)
 
 | Mechanizm | Cel | Status |
 |-----------|-----|--------|
-| Renovate / Dependabot | Automatyczne PR dla aktualizacji | Future |
 | SLSA / Build provenance | Udowodnienie pochodzenia artefaktu | Future |
 | Cosign / Image signing | Weryfikacja podpisu obrazu w PROD | Future |
+
+**Uwaga:** Renovate nie jest planowany. Dependabot jest używany jako narzędzie do automatycznych aktualizacji zależności. Renovate oferuje więcej możliwości (grouping, automerge), ale wymaga dodatkowej złożoności i nie ma oficjalnego wsparcia dla `uv`/`pyproject.toml` z `[dependency-groups]`. Dla obecnego projektu Dependabot jest wystarczający.
 
 ---
 
@@ -66,8 +68,8 @@ RELEASE (commit + push)
 
 **Zakazane:**
 - `uv sync --upgrade` bez konsultacji
-- Automatyczne aktualizacje przez Dependabot/Renovate (przed wdrożeniem TEST/PROD)
 - Ręczna edycja `uv.lock`
+- Wyłączanie Dependabota lub modyfikacja jego konfiguracji bez zgody maintainera
 
 ---
 
@@ -99,17 +101,28 @@ SBOM odpowiada na pytanie: **co dokładnie znajduje się w naszym artefakcie pro
 
 ### Wymagania
 
-1. **SBOM generowany dla każdego buildu PROD** — artefakt JSON/XML zawierający pełny inwentarz zależności.
-2. **Format: CycloneDX lub SPDX** — standard branżowy, czytelny przez maszyny i ludzi.
+1. **SBOM generowany dla każdego buildu** — artefakt CycloneDX JSON zawierający pełny inwentarz zależności obrazu.
+2. **Format: CycloneDX** — standard branżowy, czytelny przez maszyny i ludzi.
 3. **Publikowany jako artefakt CI** — dostępny do audytu bez budowania obrazu.
-4. **Weryfikowalny** — powinno być możliwe sprawdzenie, czy obraz PROD odpowiada SBOM.
+4. **Weryfikowalny** — pipeline weryfikuje, że w SBOM nie ma zabronionych zależności (np. `mcp`).
 
-### Implementacja (przy zbliżaniu się do TEST/PROD)
+### Implementacja
+
+SBOM jest generowany w CI dla każdego buildu obrazu testowego:
 
 ```bash
-# Generowanie SBOM przez Trivy (już zainstalowany)
-trivy image --format cyclonedx --output sbom.json badges-system:latest
+# Generowanie SBOM przez Syft (CycloneDX)
+docker run --rm \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v "$(pwd)":/work -w /work \
+  anchore/syft:latest \
+  packages docker:badges-system:${{ github.sha }} \
+  -o cyclonedx-json=sbom.cdx.json
 ```
+
+**Weryfikacja w CI:**
+- Sprawdzenie, czy SBOM nie zawiera zabronionych zależności (np. `mcp`)
+- Upload SBOM jako artefakt GitHub Actions (retention 30 dni)
 
 ---
 
@@ -122,8 +135,27 @@ Lockfile gwarantuje stabilność, ale nie rozwiązuje problemu **przestarzałych
 ### Wymagania
 
 1. **Codzienne skanowanie OSV-Scanner** — wykrywa przestarzałe zależności z exploitami.
-2. **Cotygodniowy przegląd** — deweloper sprawdza dostępne aktualizacje dla głównych zależności (Django, psycopg, celery).
-3. **Priorytetyzacja** — CVE HIGH/CRITICAL wymagają natychmiastowej aktualizacji; MEDIUM/LOW — planowania w następnym sprincie.
+2. **Cotygodniowe PR z Dependabotem** — automatyzuje aktualizacje dla `uv`, GitHub Actions, Docker.
+3. **Cooldown 7 dni** — Dependabot nie tworzy kolejnych PR szybciej niż co 7 dni, aby uniknąć flooda.
+4. **Priorytetyzacja** — CVE HIGH/CRITICAL wymagają natychmiastowej aktualizacji; MEDIUM/LOW — planowania w następnym sprincie.
+
+### Proces aktualizacji zależności
+
+```
+LOCK (bieżący stan: uv.lock)
+    ↓
+MONITOR (Trivy / OSV-Scanner / Dependabot wykrywa CVE lub dostępną aktualizację)
+    ↓
+REVIEW (deweloper ocenia wpływ, Dependabot tworzy PR)
+    ↓
+TEST (uv lock + make check)
+    ↓
+RELEASE (merge PR)
+```
+
+**Zakazane:**
+- `uv sync --upgrade` bez konsultacji
+- Ręczna edycja `uv.lock`
 
 ---
 
@@ -138,6 +170,8 @@ Udowodnić, skąd pochodzi konkretny artefakt produkcyjny.
 1. **SLSA build provenance** — każdy build generuje attestation określający: commit SHA, workflow, inputs, outputs.
 2. **Cosign image signing** — obrazy PROD są podpisane kluczem prywatnym.
 3. **Weryfikacja w PROD** — środowisko produkcyjne uruchamia tylko obrazy z ważnym podpisem.
+
+**Uwaga:** Dependabot jest używany jako narzędzie do automatycznych aktualizacji zależności. Renovate nie jest planowany — Dependabot oferuje wystarczające możliwości dla tego projektu i ma natywne wsparcie dla `uv`, GitHub Actions i Docker.
 
 ---
 

@@ -207,10 +207,14 @@
 5. TEST — `uv lock` + `make check`
 6. RELEASE — commit + push
 
+**Zaimplementowane:**
+- Dependabot — automatyczne PR dla `uv`, GitHub Actions, Docker (`.github/dependabot.yml`)
+- SBOM — generowanie CycloneDX przez Syft w CI (`.github/workflows/ci.yml`)
+
 **Przyszłe wdrożenia (po zbliżeniu się do TEST/PROD):**
-- SBOM — generowanie CycloneDX/SPDX przez Trivy jako artefakt CI
-- Renovate/Dependabot — automatyczne PR dla aktualizacji (po wdrożeniu TEST/PROD)
 - SLSA/Cosign — build provenance i image signing (po wdrożeniu PROD)
+
+**Uwaga:** Renovate nie jest planowany. Dependabot jest używany jako narzędzie do automatycznych aktualizacji zależności.
 
 ---
 
