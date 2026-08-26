@@ -182,6 +182,36 @@
 - Loki — agregacja logów (po zniknięciu wartości `docker compose logs`)
 - OpenTelemetry — distributed tracing (po zrozumieniu Prometheusa)
 
+### SUPPLY CHAIN GOVERNANCE — Kontrakty łańcucha dostaw
+
+| Mechanizm | Plik/Konfiguracja | Cel | Charakter | Blokuje CI? |
+|-----------|-------------------|-----|----------|-------------|
+| Lockfile Integrity | `tests/architecture/test_lockfile_integrity.py` + pre-commit `uv lock --check` | `uv.lock` jest committed i śledzony | **Blocking** | ✅ Tak |
+| Dependency Groups Separation | `tests/architecture/test_dependency_groups_separation.py` | Narzędzia dev/test nie mieszają się z runtime | Advisory | ❌ Nie |
+
+**Lockfile Integrity:**
+- `uv.lock` istnieje i jest śledzony przez Git
+- Pre-commit hook `uv lock --check` gwarantuje synchronizację z `pyproject.toml`
+- Test: `test_lockfile_integrity.py`
+
+**Dependency Groups Separation:**
+- Zależności z `[dependency-groups.dev]` i `[dependency-groups.test]` nie pojawiają się w runtime `dependencies`
+- CI używa `uv sync --group test --no-dev` dla testów i `uv sync --no-dev` dla PROD
+- Test: `test_dependency_groups_separation.py`
+
+**Polityka aktualizacji zależności:**
+1. LOCK — bieżący stan (`uv.lock` gwarantuje reproducible builds)
+2. MONITOR — Trivy/OSV-Scanner wykrywa CVE
+3. REVIEW — deweloper ocenia wpływ
+4. UPDATE — świadoma aktualizacja w `pyproject.toml`
+5. TEST — `uv lock` + `make check`
+6. RELEASE — commit + push
+
+**Przyszłe wdrożenia (po zbliżeniu się do TEST/PROD):**
+- SBOM — generowanie CycloneDX/SPDX przez Trivy jako artefakt CI
+- Renovate/Dependabot — automatyczne PR dla aktualizacji (po wdrożeniu TEST/PROD)
+- SLSA/Cosign — build provenance i image signing (po wdrożeniu PROD)
+
 ---
 
 ## Kolejność w CI
@@ -196,7 +226,7 @@ CI Pipeline (make check)
 │   └── lint-imports (Import Linter)
 │
 ├── 2. Tests
-│   └── pytest (jednostkowe + architektura FF-001..FF-020)
+│   └── pytest (jednostkowe + architektura FF-001..FF-022)
 │
 ├── 3. Architecture Audit
 │   └── audit_contracts.py (graf zależności)
@@ -243,6 +273,7 @@ CI Pipeline (make check)
 | Architecture Tests — FF-017 (Request ID Contract) | `test_request_id_contract.py` | Korelacja żądań |
 | Architecture Tests — FF-019 (Structured Error Context) | `test_structured_error_context.py` | RFC 7807 + request_id |
 | Architecture Tests — FF-020 (Health Check Semantics) | `test_health_checks.py` | Semantyka healthcheck |
+| Architecture Tests — FF-021 (Lockfile Integrity) | `test_lockfile_integrity.py` | `uv.lock` jest committed i śledzony |
 | Xenon | `xenon.ini` | Złożoność kodu |
 | Trivy | `security-audit` | CVE HIGH/CRITICAL |
 
@@ -252,6 +283,7 @@ CI Pipeline (make check)
 |-----------|-------|-----------|
 | Architecture Tests — FF-006 (DTO Naming Convention) | `test_dto_naming_convention.py` | Konwencja nazewnictwa DTO |
 | Architecture Tests — FF-018 (No Sensitive Data in Logs) | `test_no_sensitive_data_in_logs.py` | Wrażliwe dane w logach |
+| Architecture Tests — FF-022 (Dependency Groups Separation) | `test_dependency_groups_separation.py` | Rozdzielenie dev/test od runtime |
 | Radon | `make complexity-check` | Złożoność — trend over time |
 | wily | `make complexity-trend` | Trend jakości |
 | Hadolint | `make hadolint` | Jakość Dockerfile |

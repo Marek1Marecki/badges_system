@@ -197,6 +197,8 @@ Test gwarantuje brak zjawiska State Mutilation podczas współbieżnego oceniani
 | FF-018 | No Sensitive Data in Logs | pytest | brak wrażliwych danych w logach | — | Advisory |
 | FF-019 | Structured Error Context | pytest | RFC 7807 + request_id | — | Blocking |
 | FF-020 | Health Check Semantics | pytest | semantyka healthcheck | ADR-020 | Blocking |
+| FF-021 | Lockfile Integrity | pytest | `uv.lock` jest committed i śledzony | — | Blocking |
+| FF-022 | Dependency Groups Separation | pytest | narzędzia dev/test nie mieszają się z runtime | — | Advisory |
 
 ---
 
@@ -451,9 +453,46 @@ FF-015 weryfikuje obecność `healthcheck`. FF-020 weryfikuje jego semantykę: e
        Health Checks   Error Handling   Observability
            │                │                │
            ▼                ▼                ▼
-        Compose           API Views       Logging / Metrics
-       healthcheck       Exception        (future)
+         Compose           API Views       Logging / Metrics
+        healthcheck       Exception        (future)
 ```
+
+---
+
+## Grupa 11: Supply Chain & Dependency Governance
+
+Ta grupa pilnuje kontroli nad łańcuchem dostaw oprogramowania — od lockfile po przyszłe SBOM i provenance. Nie dodaje nowych narzędzi; definiuje kontrakty, które wykorzystują już istniejące mechanizmy (`uv.lock`, `pyproject.toml`, Trivy, OSV-Scanner).
+
+| ID | Nazwa | Mechanizm | Chroni | Powiązanie | Status |
+|----|-------|-----------|--------|------------|--------|
+| FF-021 | Lockfile Integrity | pytest | `uv.lock` jest committed i śledzony | — | Blocking |
+| FF-022 | Dependency Groups Separation | pytest | narzędzia dev/test nie mieszają się z runtime | — | Advisory |
+
+### FF-021: Lockfile Integrity
+
+| Pole | Wartość |
+|------|---------|
+| **Nazwa** | Lockfile Integrity |
+| **Mechanizm** | `tests/architecture/test_lockfile_integrity.py` + pre-commit `uv lock --check` |
+| **Chroni** | Reproducible builds — wszystkie środowiska używają tej samej wersji zależności |
+| **Powiązanie** | — |
+
+**Opis:**
+Test weryfikuje, że `uv.lock` istnieje i jest śledzony przez Git. Pre-commit hook `uv lock --check` gwarantuje, że lockfile jest zsynchronizowany z `pyproject.toml`.
+
+### FF-022: Dependency Groups Separation
+
+| Pole | Wartość |
+|------|---------|
+| **Nazwa** | Dependency Groups Separation |
+| **Mechanizm** | `tests/architecture/test_dependency_groups_separation.py` |
+| **Chroni** | Rozdzielenie zależności runtime od dev/test — zero dev leakage |
+| **Powiązanie** | — |
+
+**Opis:**
+Test weryfikuje, że zależności z `[dependency-groups.dev]` i `[dependency-groups.test]` nie pojawiają się w głównej liście `dependencies` w `pyproject.toml`. Zapewnia, że narzędzia deweloperskie (ruff, mypy, semgrep, radon, xenon) nie trafiają do obrazu produkcyjnego.
+
+> **Polityka:** CI używa `uv sync --group test --no-dev` dla testów i `uv sync --no-dev` dla PROD. Narzędzia analizy bezpieczeństwa (Semgrep, Radon, Xenon) są w `dev`, ale CI instaluje je jawnie w osobnym stage'ie.
 
 ---
 
