@@ -230,7 +230,7 @@ CI Pipeline (make check)
 │   └── lint-imports (Import Linter)
 │
 ├── 2. Tests
-│   └── pytest (jednostkowe + architektura FF-001..FF-022)
+│   └── pytest (jednostkowe + architektura FF-001..FF-023)
 │
 ├── 3. Architecture Audit
 │   └── audit_contracts.py (graf zależności)
@@ -278,6 +278,7 @@ CI Pipeline (make check)
 | Architecture Tests — FF-019 (Structured Error Context) | `test_structured_error_context.py` | RFC 7807 + request_id |
 | Architecture Tests — FF-020 (Health Check Semantics) | `test_health_checks.py` | Semantyka healthcheck |
 | Architecture Tests — FF-021 (Lockfile Integrity) | `test_lockfile_integrity.py` | `uv.lock` jest committed i śledzony |
+| Architecture Tests — FF-023 (Fitness Function Registry Completeness) | `test_fitness_function_registry.py` | Wszystkie FF mają wpis w rejestrze |
 | Xenon | `xenon.ini` | Złożoność kodu |
 | Trivy | `security-audit` | CVE HIGH/CRITICAL |
 

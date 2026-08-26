@@ -201,6 +201,7 @@ Test gwarantuje brak zjawiska State Mutilation podczas współbieżnego oceniani
 | FF-020 | Health Check Semantics | pytest | semantyka healthcheck | ADR-020 | Blocking |
 | FF-021 | Lockfile Integrity | pytest | `uv.lock` jest committed i śledzony | — | Blocking |
 | FF-022 | Dependency Groups Separation | pytest | narzędzia dev/test nie mieszają się z runtime | — | Advisory |
+| FF-023 | Fitness Function Registry Completeness | pytest | wszystkie FF mają wpis w rejestrze i wymagane pola | — | Blocking |
 
 ---
 
@@ -495,6 +496,55 @@ Test weryfikuje, że `uv.lock` istnieje i jest śledzony przez Git. Pre-commit h
 Test weryfikuje, że zależności z `[dependency-groups.dev]` i `[dependency-groups.test]` nie pojawiają się w głównej liście `dependencies` w `pyproject.toml`. Zapewnia, że narzędzia deweloperskie (ruff, mypy, semgrep, radon, xenon) nie trafiają do obrazu produkcyjnego.
 
 > **Polityka:** CI używa `uv sync --group test --no-dev` dla testów i `uv sync --no-dev` dla PROD. Narzędzia analizy bezpieczeństwa (Semgrep, Radon, Xenon) są w `dev`, ale CI instaluje je jawnie w osobnym stage'ie.
+
+---
+
+## Fitness Function Quality Policy
+
+Każda nowa lub modyfikowana fitness function musi przejść kontrolę jakości, aby uniknąć fałszywego poczucia bezpieczeństwa.
+
+### Wymagania minimalne
+
+Każda FF w rejestrze musi mieć zdefiniowane:
+
+| Pole | Opis |
+|------|------|
+| **Invariant** | Co dokładnie chroni — sformułowanie behawioralne, nie techniczne. |
+| **Detection mechanism** | AST / runtime / static analysis / filesystem / composite. |
+| **False-positive analysis** | Jakie legalne przypadki mogą być błędnie wykryte? |
+| **False-negative analysis** | Jakie naruszenia mogą zostać przeoczone? |
+| **Blocking / Advisory** | Czy łamanie reguły blokuje CI? |
+| **Owner** | Osoba/moduł odpowiedzialny za utrzymanie FF. |
+| **Rationale** | Dlaczego ta reguła istnieje — powiązanie z ADR, AUDYT lub doświadczeniem. |
+
+### Zasady projektowania FF
+
+1. **Preferuj semantykę nad tekstem** — zamiast `grep "session"` używaj AST do wykrywania `session_id`/`session_token`/`session_key`.
+2. **Preferuj strukturę kodu nad ciągiem znaków** — zamiast dopasowania `(Model)` używaj AST do wykrywania dziedziczenia po typie kończącym się na `Model`.
+3. **Ratchet, nie target** — próg FF powinien gwarantować, że sytuacja nie się pogarsza, nawet jeśli obecny stan nie jest idealny.
+4. **Testuj mechanizm, nie tylko kod** — dla złożonych FF dodaj przynajmniej jedną kontrolę, że test wykrywa naruszenie (przypadek negatywny).
+5. **Dokumentuj wyjątki** — jeśli FF ma wyjątki, wymień je explicite z uzasadnieniem.
+
+### Metryki governance
+
+| Metryka | Cel |
+|---------|-----|
+| Liczba FF bez dokumentacji | 0 |
+| Liczba FF bez false-positive analysis | 0 |
+| Liczba FF bez false-negative analysis | 0 (Advisory mogą mieć opisane ryzyko) |
+| Liczba FF bez testu negatywnego | 0 dla Blocking FF |
+
+#### FF-023: Fitness Function Registry Completeness
+
+| Pole | Wartość |
+|------|---------|
+| **Nazwa** | Fitness Function Registry Completeness |
+| **Mechanizm** | `tests/architecture/test_fitness_function_registry.py` |
+| **Chroni** | Wszystkie FF mają wpis w rejestrze i wymagane pola dokumentacyjne |
+| **Powiązanie** | — |
+
+**Opis:**
+Test weryfikuje, że każda FF wymieniona w `governance.md` ma odpowiadający wpis w `fitness-functions.md` z wymaganymi polami: Nazwa, Mechanizm, Chroni, Powiązanie, Opis. Gwarantuje, że rejestr FF nie ulega rozjeźdzeniu z rzeczywistym stanem governance.
 
 ---
 
