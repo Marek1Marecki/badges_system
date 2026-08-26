@@ -739,8 +739,11 @@ class ProfileSettingsView(View):
         if dto.preferred_base_map:
             profile.preferred_base_map = dto.preferred_base_map
 
-        profile.save(update_fields=["nickname", "birth_date", "preferred_base_map"])
-        return JsonResponse({"status": "UPDATED"}, status=200)
+        try:
+            profile.save(update_fields=["nickname", "birth_date", "preferred_base_map"])
+            return JsonResponse({"status": "UPDATED"}, status=200)
+        except ApplicationException as exc:
+            return _handle_application_exception(request, exc)
 
 
 class ProfileUpgradeView(View):
@@ -779,12 +782,12 @@ class ProfileUpgradeView(View):
                 detail="Brak dostępu do profilu.",
             )
 
-        profile.active_plan = "PRO"
-        profile.save(update_fields=["active_plan"])
+        try:
+            profile.active_plan = "PRO"
+            profile.save(update_fields=["active_plan"])
 
-        # Opcjonalne przeliczenie map w tle. Ponieważ to atrapa API i operacja jest
-        # autocommited z ORM Django bez otwierania długiej transakcji, robimy to natychmiast:
+            recalculate_poi_scores_task.delay(profile_id)
 
-        recalculate_poi_scores_task.delay(profile_id)
-
-        return JsonResponse({"status": "UPGRADED"}, status=200)
+            return JsonResponse({"status": "UPGRADED"}, status=200)
+        except ApplicationException as exc:
+            return _handle_application_exception(request, exc)

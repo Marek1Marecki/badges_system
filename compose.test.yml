@@ -59,6 +59,12 @@ services:
       redis:
         condition: service_healthy
     command: uv run celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    healthcheck:
+      test: ["CMD", "celery", "-A", "config", "inspect", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   web:
     # UWAGA — realny incydent w tym projekcie: bez jawnej, unikalnej nazwy
@@ -102,6 +108,12 @@ services:
       redis:
         condition: service_healthy
     # Brak `volumes:` z kodem hosta — kod jest zamrożony w obrazie 'testing'.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 # KRYTYCZNE — bez tej sekcji TEST dziedziczyłby SZTYWNE nazwy wolumenów
 # (`badges_system_postgis_data`/`badges_system_redis_data`) zadeklarowane

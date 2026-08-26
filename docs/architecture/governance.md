@@ -25,11 +25,15 @@
         │                    │
         ▼                    ▼
       MEASURE ────────────→ EVOLVE
- Radon / Xenon              wily
-        │
-        ▼
- INFRASTRUCTURE GOVERNANCE
- Hadolint / Checkov / Trivy
+  Radon / Xenon              wily
+         │
+         ▼
+  INFRASTRUCTURE GOVERNANCE
+  Hadolint / Checkov / Trivy
+         │
+         ▼
+  OPERATIONAL GOVERNANCE
+  Health Checks / Error Handling / Observability
 ```
 
 ---
@@ -120,6 +124,24 @@
 
 ---
 
+### OPERATIONAL GOVERNANCE — Runtime & Observability
+
+| Mechanizm | Plik/Konfiguracja | Cel | Charakter | Blokuje CI? |
+|-----------|-------------------|-----|----------|-------------|
+| Health Checks | `tests/architecture/test_health_checks.py` | Wszystkie services mają `healthcheck` | **Blocking** | ✅ Tak |
+| API Exception Handling | `tests/architecture/test_exception_handling.py` | Widoki łapią `ApplicationException` | **Blocking** | ✅ Tak |
+
+**Health Checks:**
+- Każdy service w `compose*.yml` musi mieć `healthcheck`
+- Wyjątki: `db`, `redis` (mają healthcheck w `compose.yml`)
+- Test: `test_all_application_services_have_healthcheck`
+
+**API Exception Handling:**
+- Każda metoda `post`/`patch` w `apps/api/views.py` musi łapać `ApplicationException`
+- Test: `test_api_views_handle_application_exception`
+
+---
+
 ## Kolejność w CI
 
 ```
@@ -137,7 +159,7 @@ CI Pipeline
 │
 ├── 3. Architecture Governance
 │   ├── Import Linter
-│   └── Architecture Tests (FF-001..FF-014)
+│   └── Architecture Tests (FF-001..FF-016)
 │
 ├── 4. Complexity / Quality
 │   ├── Radon
@@ -147,14 +169,18 @@ CI Pipeline
 │   ├── Hadolint
 │   └── Checkov
 │
-└── 6. Security / Supply Chain
+├── 6. Operational Governance
+│   ├── Health Checks
+│   └── API Exception Handling
+│
+└── 7. Security / Supply Chain
     ├── Semgrep
     ├── OSV-Scanner
     └── Trivy (HIGH/CRITICAL)
 ```
 
 **Zasada kolejności:**
-- Code Quality → Tests → Architecture → Complexity → Infrastructure → Security
+- Code Quality → Tests → Architecture → Complexity → Infrastructure → Operational → Security
 - Każda warstwa zależy od poprzedniej
 - Jeśli warstwa 1 nie przejdzie, nie uruchamia się warstwa 2
 
@@ -170,6 +196,8 @@ CI Pipeline
 | Architecture Tests | `tests/architecture/` | Reguły architektoniczne |
 | Xenon | `xenon.ini` | Złożoność kodu |
 | Trivy | `security-audit` | CVE HIGH/CRITICAL |
+| Health Checks | `test_health_checks.py` | Healthcheck w Compose |
+| API Exception Handling | `test_exception_handling.py` | Obsługa ApplicationException |
 
 ### Advisory (CI passes, ale warto sprawdzić)
 
@@ -230,6 +258,8 @@ Trivy skanuje zależności deweloperskie Semgrep (przez MCP). Wyjątki w `osv-sc
 | Checkov | Dominik / AI Architect | Konfiguracja i skany Compose |
 | Trivy | Dominik / AI Architect | Ignore list i tolerancja CVE |
 | Docker Bench | Placeholder | Aktualizacja po znalezieniu successor'a |
+| Health Checks | Dominik / AI Architect | Utrzymanie healthcheck w Compose |
+| API Exception Handling | Dominik / AI Architect | Utrzymanie obsługi ApplicationException w widokach |
 
 ---
 

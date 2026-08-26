@@ -185,6 +185,8 @@ Test gwarantuje brak zjawiska State Mutilation podczas współbieżnego oceniani
 | FF-012 | Compose Security | Checkov | konfiguracja IaC | ADR-020 |
 | FF-013 | Image Vulnerability Scanning | Trivy | CVE w obrazie | ADR-020 |
 | FF-014 | Docker Bench Security | Docker Bench | konfiguracja hosta Docker | ADR-020 |
+| FF-015 | Compose Health Checks | pytest | healthcheck w Compose | ADR-020 |
+| FF-016 | API Exception Handling | pytest | obsługa ApplicationException | — |
 
 ---
 
@@ -198,6 +200,8 @@ Ta grupa pilnuje architektury poza kodem Pythona — kontenery, Compose, obrazy,
 | FF-012 | Compose Security | Checkov | konfiguracja IaC | ADR-020 |
 | FF-013 | Image Vulnerability Scanning | Trivy | CVE w obrazie | ADR-020 |
 | FF-014 | Docker Bench Security | Docker Bench | konfiguracja hosta Docker | ADR-020 |
+| FF-015 | Compose Health Checks | pytest | healthcheck w Compose | ADR-020 |
+| FF-016 | API Exception Handling | pytest | obsługa ApplicationException | — |
 
 ### FF-011: Dockerfile Hygiene
 
@@ -273,6 +277,41 @@ Wymaga dostępu do `/var/run/docker.sock` hosta.
 
 ---
 
+## Grupa 9: Operational / Runtime Governance
+
+Ta grupa pilnuje architektury runtime — health checks, error handling, observability.
+
+| ID | Nazwa | Mechanizm | Chroni | Powiązanie |
+|----|-------|-----------|--------|------------|
+| FF-015 | Compose Health Checks | pytest | Wszystkie services mają healthcheck | ADR-020 |
+| FF-016 | API Exception Handling | pytest | Widoki łapią ApplicationException | — |
+
+### FF-015: Compose Health Checks
+
+| Pole | Wartość |
+|------|---------|
+| **Nazwa** | Compose Health Checks |
+| **Mechanizm** | `tests/architecture/test_health_checks.py` |
+| **Chroni** | Wszystkie kontenery aplikacyjne mają `healthcheck` w Compose |
+| **Powiązanie** | ADR-020 (Deployment & DataOps) |
+
+**Opis:**
+Test weryfikuje, że każdy service w `compose*.yml` (poza `db` i `redis`) definiuje `healthcheck`. Gwarantuje to, że Docker może wykryć niezdrowe kontenery i zrestartować je automatycznie.
+
+### FF-016: API Exception Handling
+
+| Pole | Wartość |
+|------|---------|
+| **Nazwa** | API Exception Handling |
+| **Mechanizm** | `tests/architecture/test_exception_handling.py` |
+| **Chroni** | Wszystkie widoki modyfikujące stan łapią `ApplicationException` |
+| **Powiązanie** | — |
+
+**Opis:**
+Test sprawdza, że każda metoda `post`/`patch` w `apps/api/views.py` ma `except ApplicationException`. Zapewnia spójną obsługę błędów biznesowych i zapobiega wyciekowi stacktrace'ów do klienta.
+
+---
+
 ## Cykl Governance
 
 ```
@@ -305,25 +344,36 @@ Wymaga dostępu do `/var/run/docker.sock` hosta.
                     │    EVOLVE     │
                     └───────────────┘
 
-                DISCOVER
-                   ↑
-             pydeps/pyreverse
+                 DISCOVER
+                    ↑
+              pydeps/pyreverse
 
-                 INFRASTRUCTURE GOVERNANCE
-                           │
-          ┌────────────────┼────────────────┐
-          │                │                │
-          ▼                ▼                ▼
-      Checkov           Hadolint          Trivy
-          │                │                │
-          ▼                ▼                ▼
-       Compose         Dockerfile       Image/SBOM
+                  INFRASTRUCTURE GOVERNANCE
+                            │
+           ┌────────────────┼────────────────┐
+           │                │                │
+           ▼                ▼                ▼
+       Checkov           Hadolint          Trivy
+           │                │                │
+           ▼                ▼                ▼
+        Compose         Dockerfile       Image/SBOM
        / IaC                              / CVE
-          │                │                │
-          └────────────────┼────────────────┘
-                           │
-                           ▼
-                    CI SECURITY GATE
+           │                │                │
+           └────────────────┼────────────────┘
+                            │
+                            ▼
+                     CI SECURITY GATE
+
+                  OPERATIONAL GOVERNANCE
+                            │
+           ┌────────────────┼────────────────┐
+           │                │                │
+           ▼                ▼                ▼
+       Health Checks   Error Handling   Observability
+           │                │                │
+           ▼                ▼                ▼
+        Compose           API Views       Logging / Metrics
+       healthcheck       Exception        (future)
 ```
 
 ---

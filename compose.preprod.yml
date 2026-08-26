@@ -140,6 +140,12 @@ services:
     security_opt:
       - no-new-privileges:true
     # Brak `volumes:` z kodem hosta — obraz jest niemutowalny.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   celery_worker:
     image: ${IMAGE_NAME:?}:${IMAGE_TAG:?}
@@ -160,6 +166,12 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "celery", "-A", "config", "inspect", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   celery_beat:
     # BRAKOWAŁO tego serwisu w poprzedniej wersji pliku — PRE-PROD ma być
@@ -184,6 +196,12 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "celery", "-A", "config", "inspect", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   # KRYTYCZNE — bez tej sekcji PRE-PROD dziedziczyłby DOSŁOWNIE TE SAME
