@@ -15,7 +15,9 @@ SENSITIVE_KEYWORDS = {
     "authorization",
     "credentials",
     "private_key",
-    "session",
+    "session_id",
+    "session_token",
+    "session_key",
 }
 
 

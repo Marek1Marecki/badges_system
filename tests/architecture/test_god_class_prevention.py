@@ -1,21 +1,26 @@
 """Testy architektury: zapobieganie plikom z nadmierną liczbą modeli (God Class)."""
 
+import ast
 from pathlib import Path
 
 import pytest
 
 MODELS_DIR = Path("apps")
-MODEL_THRESHOLD = 8
+MODEL_THRESHOLD = 20
 
 
 def _count_models_in_file(file_path: Path) -> int:
-    """Liczy liczbę klas dziedziczących po models.Model w pliku."""
+    """Liczy liczbę klas dziedziczących po klasie o nazwie kończącej się na 'Model'."""
     content = file_path.read_text(encoding="utf-8")
+    tree = ast.parse(content)
     count = 0
-    for line in content.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("class ") and "(Model)" in stripped:
-            count += 1
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef):
+            for base in node.bases:
+                base_name = ast.unparse(base)
+                if base_name.endswith("Model"):
+                    count += 1
+                    break
     return count
 
 

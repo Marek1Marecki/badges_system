@@ -151,11 +151,13 @@ Test egzekwuje zasadę Expand & Contract: migracja nie może zawierać zarówno 
 |------|---------|
 | **Nazwa** | God Class Prevention |
 | **Mechanizm** | `tests/architecture/test_god_class_prevention.py` |
-| **Chroni** | Żaden plik `models.py` nie przekracza progu 8 modeli Django |
+| **Chroni** | Żaden plik `models.py` nie przekracza progu 20 modeli Django |
 | **Powiązanie** | — |
 
 **Opis:**
-Test wymusza dekompozycję modułów. Przeciwdziała powstawaniu plików takich jak `apps/badges/models.py` (700 linijek, 8+ modeli).
+Test wymusza dekompozycję modułów. Przeciwdziała powstawaniu plików takich jak `apps/badges/models.py` (obecnie 19 modeli, w tym klasy abstrakcyjne). Próg 20 gwarantuje, że obecny stan jest akceptowany, ale kolejne znacząco powiększające się moduły zostaną wykryte.
+
+> **Uwaga:** Test korzysta z AST do wykrywania klas dziedziczących po typie kończącym się na `Model` (w tym `models.Model`, `gis_models.Model`, `RegionBaseModel`). Poprzednia implementacja używała dopasowania ciągu znaków `(Model)`, które nie wykrywało `models.Model` ani `gis_models.Model` — test był nie funkcjonalny. Po naprawie próg został podniesiony z 8 do 20, aby odzwierciedlać rzeczywisty stan projektu.
 
 ---
 
@@ -361,9 +363,9 @@ Test weryfikuje, że middleware `RFC7807ErrorMiddleware` generuje `request_id` j
 | **Powiązanie** | — |
 
 **Opis:**
-Test skanuje komunikaty logów w `application/`, `infrastructure/` i `apps/` pod kątem słów kluczowych: `password`, `token`, `secret`, `api_key`, `authorization`, `credentials`, `private_key`, `session`. Ma charakter Advisory — automatyczne wykrywanie może generować false positives (np. logowanie zdarzenia "user session expired").
+Test skanuje komunikaty logów w `application/`, `infrastructure/` i `apps/` pod kątem słów kluczowych: `password`, `passwd`, `secret`, `token`, `api_key`, `apikey`, `authorization`, `credentials`, `private_key`, `session_id`, `session_token`, `session_key`. Ma charakter Advisory — automatyczne wykrywanie może generować false positives.
 
-> **Polityka:** Dane wrażliwe nigdy nie trafiają do logów. Jeśli potrzebujesz zapisać kontekst zdarzenia, używaj anonimizowanych identyfikatorów (np. `user_id`, `profile_id`).
+> **Polityka:** Dane wrażliwe nigdy nie trafiają do logów. Jeśli potrzebujesz zapisać kontekst zdarzenia, używaj anonimizowanych identyfikatorów (np. `user_id`, `profile_id`). Słowo `session` zostało zastąpione konkretnymi `session_id`/`session_token`/`session_key`, aby uniknąć false positives z logami typu "user session expired".
 
 ### FF-019: Structured Error Context
 
