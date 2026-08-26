@@ -4,6 +4,7 @@
 > **Data:** 2026-08-26  
 > **Właściciel:** Dominik / AI Architect  
 > **Zasada:** Każdy wpis w rejestrze odnosi się do konkretnego ADR i ma ślad do remediacji.
+> **Master index:** [`governance.md`](governance.md) zawiera pełny przegląd wszystkich wyjątków i uzasadnień.
 
 ---
 

@@ -22,6 +22,8 @@
 
 ## Architecture Governance
 
+> **Master index:** [`governance.md`](governance.md) — pełny przegląd wszystkich mechanizmów governance, ich charakteru blocking/advisory, wyjątków, i kolejności w CI.
+
 Diagramy są generowane automatycznie w CI jako artefakty (`architecture-diagrams`). Każdy build dostarcza snapshot architektury:
 
 ```

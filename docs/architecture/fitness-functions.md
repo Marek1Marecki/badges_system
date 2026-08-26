@@ -4,6 +4,7 @@
 > **Data:** 2026-08-26  
 > **Właściciel:** Dominik / AI Architect  
 > **Zasada:** Każda reguła architektoniczna z `tests/architecture/` ma tu swój wpis. Test nie jest tylko testem — jest formalnie zidentyfikowaną fitness function.
+> **Master index:** [`docs/architecture/governance.md`](governance.md) zawiera pełny przegląd wszystkich mechanizmów governance, ich charakteru blocking/advisory, i kolejności w CI.
 
 ---
 
