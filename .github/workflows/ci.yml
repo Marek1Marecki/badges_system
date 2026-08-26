@@ -133,6 +133,7 @@ jobs:
           cp .env.example .env
           echo "DJANGO_SECRET_KEY=$(openssl rand -hex 32)" > .env.test
           echo "DJANGO_DEBUG=False" >> .env.test
+          echo "APP_ENV=test" >> .env.test
           echo "LOG_LEVEL=DEBUG" >> .env.test
 
       - name: Testy Jednostkowe (Unit Tests)
@@ -195,6 +196,7 @@ jobs:
           echo "IMAGE_TAG=${{ github.sha }}" >> .env
           echo "DJANGO_SECRET_KEY=tajny_klucz_do_testow_ci" > .env.test
           echo "DJANGO_DEBUG=False" >> .env.test
+          echo "APP_ENV=test" >> .env.test
           echo "POSTGRES_HOST=db" >> .env.test
           echo "LOG_LEVEL=DEBUG" >> .env.test
 
