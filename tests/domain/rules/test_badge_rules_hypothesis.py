@@ -1029,11 +1029,14 @@ class TestAscentListInvariantsHypothesis:
 
         earliest = min(a.ascent_date for a in ascents)
         latest = max(a.ascent_date for a in ascents)
-        span_days = (latest - earliest).days
-        limit_days = limit_in_years * 365
 
         rule = TimeLimitRule(limit_in_years=limit_in_years)
-        if span_days <= limit_days:
+        try:
+            deadline = earliest.replace(year=earliest.year + limit_in_years)
+        except ValueError:
+            deadline = earliest.replace(year=earliest.year + limit_in_years, month=2, day=28)
+
+        if latest <= deadline:
             assert rule.validate(ascents, ctx) == []
         else:
             assert len(rule.validate(ascents, ctx)) >= 1
