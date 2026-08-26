@@ -372,6 +372,7 @@ CI Pipeline (make check)
 | pytest-randomly | `make test-random` | Wykrywanie zależności między testami |
 | diff-cover | `make coverage-diff` | Coverage nowego kodu |
 | detect-secrets | `make secret-scan` | Secret discovery |
+| detect-secrets | `make secret-scan` | Secret discovery |
 
 ### Advisory (CI passes, informacyjne)
 
@@ -444,6 +445,7 @@ Trivy skanuje zależności deweloperskie Semgrep (przez MCP). Wyjątki w `osv-sc
 | Checkov | Dominik / AI Architect | Konfiguracja i skany Compose |
 | pytest-randomly | Dominik / AI Architect | Wykrywanie zależności między testami |
 | diff-cover | Dominik / AI Architect | Coverage nowego kodu |
+| detect-secrets | Dominik / AI Architect | Secret discovery baseline |
 | detect-secrets | Dominik / AI Architect | Secret discovery baseline |
 | Architecture Tests — Diagnostic FF | Dominik / AI Architect | Utrzymanie heurystyk i smell detectorów |
 
