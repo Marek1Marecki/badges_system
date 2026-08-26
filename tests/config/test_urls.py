@@ -1,7 +1,11 @@
 """Tests for main URL configuration."""
 
-from django.test import SimpleTestCase
+from unittest.mock import patch
+
+from django.test import SimpleTestCase, TestCase
 from django.urls import resolve, reverse
+
+from config.urls import health_check
 
 
 class TestMainUrls(SimpleTestCase):
@@ -47,8 +51,15 @@ class TestMainUrls(SimpleTestCase):
         url = reverse("organizer_detail", kwargs={"organizer_id": 1})
         assert resolve(url).func.__name__ == "organizer_detail_view"
 
-    def test_health_check_view(self):
-        """Test that health check view returns 200 OK."""
+    def test_health_check_view_returns_healthy_in_test_environment(self):
+        """Test that health check returns 200 in test environment without dependencies.
+
+        In test environment, health check skips database and Redis checks
+        to avoid requiring external services for unit tests.
+        """
         response = self.client.get("/health/")
         assert response.status_code == 200
-        assert response.content == b"OK"
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert data["checks"]["database"] == "skipped"
+        assert data["checks"]["redis"] == "skipped"

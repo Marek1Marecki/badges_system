@@ -58,8 +58,9 @@ class RFC7807ErrorMiddleware:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> Any:
-        # Wstrzykiwanie unikalnego ID żądania dla traceability (Loki/Kibana)
-        request.request_id = f"req_{uuid.uuid4().hex[:8]}"  # type: ignore[attr-defined]
+        # Propagacja request_id: preferuj X-Request-ID z zewnątrz, w przeciwnym razie wygeneruj nowy.
+        request_id = request.headers.get("X-Request-ID") or f"req_{uuid.uuid4().hex[:8]}"  # type: ignore[attr-defined]
+        request.request_id = request_id  # type: ignore[attr-defined]
 
         # Loguru kontekst owija całe żądanie
         with logger.contextualize(request_id=request.request_id):  # type: ignore[attr-defined]

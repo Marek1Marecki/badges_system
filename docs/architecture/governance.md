@@ -76,7 +76,8 @@
 | Mechanizm | Plik/Konfiguracja | Cel | Charakter | Blokuje CI? |
 |-----------|-------------------|-----|----------|-------------|
 | Import Linter | `.importlinter` | Kierunek zależności między warstwami | **Blocking** | ✅ Tak |
-| Architecture Tests | `tests/architecture/` | Fitness functions (FF-001..FF-014) | **Blocking** | ✅ Tak |
+| Architecture Tests — FF-001..FF-005, FF-007..FF-010, FF-015..FF-016 | `tests/architecture/` | Fitness functions (architectural invariants) | **Blocking** | ✅ Tak |
+| Architecture Tests — FF-006 (DTO Naming Convention) | `tests/architecture/` | Konwencja stylistyczna | Advisory | ❌ Nie |
 
 **Import Linter — wyjątki:**
 
@@ -86,6 +87,10 @@
 | `apps.badges.models -> infrastructure.schemas.badge_rules_schema` | Walidacja JSONB w modelu Django | DŁUG-002 |
 | `apps.tourists.context_processors -> infrastructure.config.map_layers` | Context Processor wstrzykuje warstwy map | DŁUG-003 |
 | `infrastructure.adapters.celery_event_publisher -> apps.badges.tasks` | Adapter zdarzeń importuje nazwy zadań Celery | DŁUG-004 |
+
+**Import Linter a testy architektury:**
+- `test_dependency_direction.py` (FF-001) jest komplementarny do Import Lintera — test dostarcza diagnostykę w pytest, ale Import Linter jest źródłem prawdy.
+- `test_domain_purity.py` (FF-002) nie powtarza już sprawdzania importów (to obowiązek Import Lintera `domain-purity`). Test chroni tylko invariant behawioralny: brak dziedziczenia po `Model` w warstwie domenowej, który Import Linter nie może wykryć.
 
 ---
 
@@ -140,49 +145,80 @@
 - Każda metoda `post`/`patch` w `apps/api/views.py` musi łapać `ApplicationException`
 - Test: `test_api_views_handle_application_exception`
 
+### OBSERVABILITY GOVERNANCE — Kontrakty przed wdrożeniem
+
+| Mechanizm | Plik/Konfiguracja | Cel | Charakter | Blokuje CI? |
+|-----------|-------------------|-----|----------|-------------|
+| Request ID Contract | `tests/architecture/test_request_id_contract.py` | Korelacja żądań | **Blocking** | ✅ Tak |
+| No Sensitive Data in Logs | `tests/architecture/test_no_sensitive_data_in_logs.py` | Brak wrażliwych danych w logach | Advisory | ❌ Nie |
+| Structured Error Context | `tests/architecture/test_structured_error_context.py` | RFC 7807 + request_id | **Blocking** | ✅ Tak |
+| Health Check Semantics | `tests/architecture/test_health_checks.py` | Semantyka healthcheck | **Blocking** | ✅ Tak (TEST/PROD) |
+
+**Request ID Contract:**
+- Middleware generuje `request_id` jeśli brak `X-Request-ID`; honoruje nagłówek jeśli obecny
+- `request_id` jest wstrzykiwany do obiektu `request` i do kontekstu Loguru
+- Test: `test_request_id_contract.py`
+
+**No Sensitive Data in Logs:**
+- Logi nie mogą zawierać haseł, tokenów, sekretów, kluczy API
+- Test skanuje komunikaty pod kątem słów kluczowych
+- Status Advisory z powodu możliwości false positives
+- Test: `test_no_sensitive_data_in_logs.py`
+
+**Structured Error Context:**
+- Wszystkie `except ApplicationException` w API używają `_handle_application_exception` lub `_problem_detail`
+- Oba helpery wstrzykują `request_id` do odpowiedzi RFC 7807
+- Test: `test_structured_error_context.py`
+
+**Health Check Semantics:**
+- Endpoint `/health/` sprawdza DB (`SELECT 1`) i Redis (`cache.set`/`cache.get`)
+- Jeśli zależność niedostępna — zwraca `503 Service Unavailable`
+- W `APP_ENV=test` pomija sprawdzanie zależności (testy jednostkowe bez DB/Redis)
+- Test: `test_health_checks.py` + `test_urls.py`
+
+**Przyszłe wdrożenia (nie teraz):**
+- Sentry — error tracking (po pojawieniu się użytkowników produkcyjnych)
+- Prometheus + Grafana — metryki i dashboardy (po potrzebie capacity planning)
+- Loki — agregacja logów (po zniknięciu wartości `docker compose logs`)
+- OpenTelemetry — distributed tracing (po zrozumieniu Prometheusa)
+
 ---
 
 ## Kolejność w CI
 
 ```
-CI Pipeline
+CI Pipeline (make check)
 │
 ├── 1. Code Quality
 │   ├── Ruff format --check
 │   ├── Ruff lint
 │   ├── mypy
-│   └── lint-imports
+│   └── lint-imports (Import Linter)
 │
 ├── 2. Tests
-│   ├── pytest (jednostkowe)
-│   └── pytest (architektura)
+│   └── pytest (jednostkowe + architektura FF-001..FF-020)
 │
-├── 3. Architecture Governance
-│   ├── Import Linter
-│   └── Architecture Tests (FF-001..FF-016)
+├── 3. Architecture Audit
+│   └── audit_contracts.py (graf zależności)
 │
 ├── 4. Complexity / Quality
 │   ├── Radon
 │   └── Xenon
 │
-├── 5. Infrastructure Governance
-│   ├── Hadolint
-│   └── Checkov
+├── 5. Security / Supply Chain
+│   ├── Semgrep
+│   ├── OSV-Scanner
+│   └── Trivy (HIGH/CRITICAL)
 │
-├── 6. Operational Governance
-│   ├── Health Checks
-│   └── API Exception Handling
-│
-└── 7. Security / Supply Chain
-    ├── Semgrep
-    ├── OSV-Scanner
-    └── Trivy (HIGH/CRITICAL)
+└── 6. Infrastructure Governance
+    ├── Hadolint
+    └── Checkov
 ```
 
 **Zasada kolejności:**
-- Code Quality → Tests → Architecture → Complexity → Infrastructure → Operational → Security
-- Każda warstwa zależy od poprzedniej
-- Jeśli warstwa 1 nie przejdzie, nie uruchamia się warstwa 2
+- Code Quality → Tests → Architecture Audit → Complexity → Security → Infrastructure
+- `make check` uruchamia wszystkie warstwy sekwencyjnie; brak early-exit między warstwami
+- FF-015, FF-016, FF-017, FF-019, FF-020 (Operational + Observability Governance) są częścią warstwy Tests (pytest)
 
 ---
 
@@ -193,16 +229,29 @@ CI Pipeline
 | Mechanizm | Gdzie | Co chroni |
 |-----------|-------|-----------|
 | Import Linter | `.importlinter` | Kierunek zależności |
-| Architecture Tests | `tests/architecture/` | Reguły architektoniczne |
+| Architecture Tests — FF-001 (Dependency Direction) | `test_dependency_direction.py` | Kierunek zależności (komplementarne do Import Lintera) |
+| Architecture Tests — FF-002 (Domain Purity) | `test_domain_purity.py` | Brak Model w domenie |
+| Architecture Tests — FF-003 (Repository Contracts) | `test_repository_contracts.py` | Pełność implementacji portów |
+| Architecture Tests — FF-004 (API DTO Gating) | `test_api_dto_gating.py` | Walidacja wejścia w API |
+| Architecture Tests — FF-005 (DI Container Completeness) | `test_di_container_completeness.py` | Rejestracja UseCase'ów |
+| Architecture Tests — FF-007 (No Primitive Obsession) | `test_no_primitive_obsession.py` | Typy zwracane przez UseCase'y |
+| Architecture Tests — FF-008 (Migration Idempotency) | `test_migration_idempotency.py` | Expand & Contract |
+| Architecture Tests — FF-009 (God Class Prevention) | `test_god_class_prevention.py` | Limit modeli na plik |
+| Architecture Tests — FF-010 (Badge Rule Immutability) | `test_badge_rule_immutability.py` | Frozen dataclass dla reguł |
+| Architecture Tests — FF-015 (Compose Health Checks) | `test_health_checks.py` | Obecność healthcheck |
+| Architecture Tests — FF-016 (API Exception Handling) | `test_exception_handling.py` | Obsługa ApplicationException |
+| Architecture Tests — FF-017 (Request ID Contract) | `test_request_id_contract.py` | Korelacja żądań |
+| Architecture Tests — FF-019 (Structured Error Context) | `test_structured_error_context.py` | RFC 7807 + request_id |
+| Architecture Tests — FF-020 (Health Check Semantics) | `test_health_checks.py` | Semantyka healthcheck |
 | Xenon | `xenon.ini` | Złożoność kodu |
 | Trivy | `security-audit` | CVE HIGH/CRITICAL |
-| Health Checks | `test_health_checks.py` | Healthcheck w Compose |
-| API Exception Handling | `test_exception_handling.py` | Obsługa ApplicationException |
 
 ### Advisory (CI passes, ale warto sprawdzić)
 
 | Mechanizm | Gdzie | Co chroni |
 |-----------|-------|-----------|
+| Architecture Tests — FF-006 (DTO Naming Convention) | `test_dto_naming_convention.py` | Konwencja nazewnictwa DTO |
+| Architecture Tests — FF-018 (No Sensitive Data in Logs) | `test_no_sensitive_data_in_logs.py` | Wrażliwe dane w logach |
 | Radon | `make complexity-check` | Złożoność — trend over time |
 | wily | `make complexity-trend` | Trend jakości |
 | Hadolint | `make hadolint` | Jakość Dockerfile |

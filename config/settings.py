@@ -17,6 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ==========================================
 SECRET_KEY = app_settings_config.secret_key
 DEBUG = app_settings_config.debug
+APP_ENV = app_settings_config.app_env
 
 # Twarde hosty potrzebne do działania Dockera (Healthcheck i ruch lokalny wewnątrz kontenera)
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"]

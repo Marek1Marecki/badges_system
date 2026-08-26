@@ -39,6 +39,8 @@ Domain purity violated:
 domain/foo.py imports django.db.models
 ```
 
+> **Uwaga:** Test `test_dependency_direction.py` jest komplementarny do Import Lintera. Import Linter jest źródłem prawdy dla kierunku zależności; test dostarcza diagnostykę w formacie pytest. Nie powinno się traktować ich jako niezależnych, równorzędnych mechanizmów.
+
 ---
 
 ### FF-002: Domain Purity
@@ -47,11 +49,13 @@ domain/foo.py imports django.db.models
 |------|---------|
 | **Nazwa** | Domain Purity |
 | **Mechanizm** | `tests/architecture/test_domain_purity.py` |
-| **Chroni** | Czystość warstwy domenowej — brak importów z application, infrastructure, apps, Django ORM, env |
+| **Chroni** | Czystość warstwy domenowej — brak modeli Django ORM i zależności od frameworków |
 | **Powiązanie** | ADR-001 (Hexagonal Architecture) |
 
 **Opis:**
-Test weryfikuje, że żaden plik w `domain/` nie importuje z zewnętrznych warstw ani frameworków. Import Linter współpracuje z tym testem, ale test daje lepszą diagnostykę w `pytest`.
+Test weryfikuje, że żaden plik w `domain/` nie dziedziczy po `django.db.models.Model`. Import Linter współpracuje z tym testem przez kontrakt `domain-purity`, który blokuje importy frameworków i innych warstw. Test koncentruje się na invariantie behawioralnym (brak Model w domenie), który Import Linter nie może wykryć.
+
+> **Uwaga:** Test nie powtarza już sprawdzania importów — to jest obowiązek Import Lintera (`domain-purity`). Test chroni tylko invariant, który Import Linter nie obejmuje: brak dziedziczenia po `Model` w warstwie domenowej.
 
 ---
 
@@ -108,6 +112,8 @@ Test zabezpiecza przed sytuacją: dodano `NewBadgeUseCase`, zapomniano zarejestr
 
 **Opis:**
 Test akceptuje istniejące legacy DTO (np. `TouristProfileDTO`), ale wymusza konwencję na nowych klasach. Redukuje dług poznawczy przy onbordu.
+
+> **Uwaga:** To jest reguła stylistyczna / konwencja, a nie invariant architektoniczny. Status: **Advisory**. Nie powinna blokować CI — służy spójności zespołu, a nie bezpieczeństwu systemu.
 
 ---
 
@@ -169,24 +175,28 @@ Test gwarantuje brak zjawiska State Mutilation podczas współbieżnego oceniani
 
 ## Podsumowanie
 
-| ID | Fitness Function | Mechanizm | Chroni | Powiązanie |
-|----|------------------|-----------|--------|------------|
-| FF-001 | Dependency Direction | Import Linter + pytest | kierunek zależności | ADR-001 |
-| FF-002 | Domain Purity | pytest | Clean Domain | ADR-001 |
-| FF-003 | Repository Contracts | pytest | Ports & Adapters | ADR-001, ADR-002 |
-| FF-004 | API DTO Gating | pytest | API boundary | ADR-016 |
-| FF-005 | DI Container Completeness | pytest | Composition Root | ADR-001 |
-| FF-006 | DTO Naming Convention | pytest | konwencja | — |
-| FF-007 | No Primitive Obsession | pytest | application boundary | AUDYT-124 |
-| FF-008 | Migration Idempotency | pytest | Expand & Contract | ADR-024 |
-| FF-009 | God Class Prevention | pytest | modularność | — |
-| FF-010 | Badge Rule Immutability | pytest | domain invariants | ADR-003 |
-| FF-011 | Dockerfile Hygiene | Hadolint | standard konstrukcji obrazu | ADR-020 |
-| FF-012 | Compose Security | Checkov | konfiguracja IaC | ADR-020 |
-| FF-013 | Image Vulnerability Scanning | Trivy | CVE w obrazie | ADR-020 |
-| FF-014 | Docker Bench Security | Docker Bench | konfiguracja hosta Docker | ADR-020 |
-| FF-015 | Compose Health Checks | pytest | healthcheck w Compose | ADR-020 |
-| FF-016 | API Exception Handling | pytest | obsługa ApplicationException | — |
+| ID | Fitness Function | Mechanizm | Chroni | Powiązanie | Status |
+|----|------------------|-----------|--------|------------|--------|
+| FF-001 | Dependency Direction | Import Linter + pytest | kierunek zależności | ADR-001 | Blocking |
+| FF-002 | Domain Purity | pytest | Clean Domain | ADR-001 | Blocking |
+| FF-003 | Repository Contracts | pytest | Ports & Adapters | ADR-001, ADR-002 | Blocking |
+| FF-004 | API DTO Gating | pytest | API boundary | ADR-016 | Blocking |
+| FF-005 | DI Container Completeness | pytest | Composition Root | ADR-001 | Blocking |
+| FF-006 | DTO Naming Convention | pytest | konwencja | — | Advisory |
+| FF-007 | No Primitive Obsession | pytest | application boundary | AUDYT-124 | Blocking |
+| FF-008 | Migration Idempotency | pytest | Expand & Contract | ADR-024 | Blocking |
+| FF-009 | God Class Prevention | pytest | modularność | — | Blocking |
+| FF-010 | Badge Rule Immutability | pytest | domain invariants | ADR-003 | Blocking |
+| FF-011 | Dockerfile Hygiene | Hadolint | standard konstrukcji obrazu | ADR-020 | Advisory |
+| FF-012 | Compose Security | Checkov | konfiguracja IaC | ADR-020 | Advisory |
+| FF-013 | Image Vulnerability Scanning | Trivy | CVE w obrazie | ADR-020 | Blocking |
+| FF-014 | Docker Bench Security | Docker Bench | konfiguracja hosta Docker | ADR-020 | Advisory |
+| FF-015 | Compose Health Checks | pytest | healthcheck w Compose | ADR-020 | Blocking |
+| FF-016 | API Exception Handling | pytest | obsługa ApplicationException | — | Blocking |
+| FF-017 | Request ID Contract | pytest | korelacja żądań | — | Blocking |
+| FF-018 | No Sensitive Data in Logs | pytest | brak wrażliwych danych w logach | — | Advisory |
+| FF-019 | Structured Error Context | pytest | RFC 7807 + request_id | — | Blocking |
+| FF-020 | Health Check Semantics | pytest | semantyka healthcheck | ADR-020 | Blocking |
 
 ---
 
@@ -194,12 +204,12 @@ Test gwarantuje brak zjawiska State Mutilation podczas współbieżnego oceniani
 
 Ta grupa pilnuje architektury poza kodem Pythona — kontenery, Compose, obrazy, sekrety, uprawnienia.
 
-| ID | Nazwa | Mechanizm | Chroni | Powiązanie |
-|----|-------|-----------|--------|------------|
-| FF-011 | Dockerfile Hygiene | Hadolint | standard konstrukcji obrazu | ADR-020 |
-| FF-012 | Compose Security | Checkov | konfiguracja IaC | ADR-020 |
-| FF-013 | Image Vulnerability Scanning | Trivy | CVE w obrazie | ADR-020 |
-| FF-014 | Docker Bench Security | Docker Bench | konfiguracja hosta Docker | ADR-020 |
+| ID | Nazwa | Mechanizm | Chroni | Powiązanie | Status |
+|----|-------|-----------|--------|------------|--------|
+| FF-011 | Dockerfile Hygiene | Hadolint | standard konstrukcji obrazu | ADR-020 | Advisory |
+| FF-012 | Compose Security | Checkov | konfiguracja IaC | ADR-020 | Advisory |
+| FF-013 | Image Vulnerability Scanning | Trivy | CVE w obrazie kontenerowym | ADR-020 | Blocking |
+| FF-014 | Docker Bench Security | Docker Bench | konfiguracja hosta Docker | ADR-020 | Advisory |
 | FF-015 | Compose Health Checks | pytest | healthcheck w Compose | ADR-020 |
 | FF-016 | API Exception Handling | pytest | obsługa ApplicationException | — |
 
@@ -281,10 +291,12 @@ Wymaga dostępu do `/var/run/docker.sock` hosta.
 
 Ta grupa pilnuje architektury runtime — health checks, error handling, observability.
 
-| ID | Nazwa | Mechanizm | Chroni | Powiązanie |
-|----|-------|-----------|--------|------------|
-| FF-015 | Compose Health Checks | pytest | Wszystkie services mają healthcheck | ADR-020 |
-| FF-016 | API Exception Handling | pytest | Widoki łapią ApplicationException | — |
+| ID | Nazwa | Mechanizm | Chroni | Powiązanie | Status |
+|----|-------|-----------|--------|------------|--------|
+| FF-015 | Compose Health Checks | pytest | Wszystkie services mają healthcheck | ADR-020 | Blocking |
+| FF-016 | API Exception Handling | pytest | Widoki łapią ApplicationException | — | Blocking |
+
+> **Uwaga FF-015:** Test weryfikuje obecność `healthcheck`, ale nie jego jakość. Healthcheck typu `curl localhost:8000` potwierdza tylko, że proces HTTP odpowiada, nie że aplikacja może obsługiwać ruch. Polityka: healthcheck musi sprawdzać rzeczywistą zdolność komponentu do pełnienia swojej funkcji (readiness/liveness), a nie wyłącznie istnienie procesu. Gdy projekt przejdzie do TEST/PROD, rozważyć rozszerzenie testu o weryfikację znaczenia healthcheck.
 
 ### FF-015: Compose Health Checks
 
@@ -309,6 +321,73 @@ Test weryfikuje, że każdy service w `compose*.yml` (poza `db` i `redis`) defin
 
 **Opis:**
 Test sprawdza, że każda metoda `post`/`patch` w `apps/api/views.py` ma `except ApplicationException`. Zapewnia spójną obsługę błędów biznesowych i zapobiega wyciekowi stacktrace'ów do klienta.
+
+---
+
+## Grupa 10: Observability Governance
+
+Ta grupa pilnuje gotowości aplikacji do przyszłego wdrożenia observability — request_id, strukturalne logowanie, semantyka health check. Nie instaluje narzędzi zewnętrznych; definiuje kontrakty, które później umożliwią integrację z Sentry, Prometheus, Loki lub OpenTelemetry bez przebudowy architektury.
+
+| ID | Nazwa | Mechanizm | Chroni | Powiązanie | Status |
+|----|-------|-----------|--------|------------|--------|
+| FF-017 | Request ID Contract | pytest | korelacja żądań | — | Blocking |
+| FF-018 | No Sensitive Data in Logs | pytest | brak wrażliwych danych w logach | — | Advisory |
+| FF-019 | Structured Error Context | pytest | RFC 7807 + request_id | — | Blocking |
+| FF-020 | Health Check Semantics | pytest | semantyka healthcheck | ADR-020 | Blocking |
+
+### FF-017: Request ID Contract
+
+| Pole | Wartość |
+|------|---------|
+| **Nazwa** | Request ID Contract |
+| **Mechanizm** | `tests/architecture/test_request_id_contract.py` |
+| **Chroni** | Każde żądanie HTTP ma unikalny `request_id` propagowany do logów i odpowiedzi |
+| **Powiązanie** | — |
+
+**Opis:**
+Test weryfikuje, że middleware `RFC7807ErrorMiddleware` generuje `request_id` jeśli brak nagłówka `X-Request-ID`, a jeśli nagłówek jest obecny — honoruje go (korelacja między systemami). `request_id` jest wstrzykiwany do obiektu `request` i do kontekstu Loguru, więc wszystkie logi podczas żądania automatycznie go dziedziczą.
+
+> **Polityka:** W produkcji `X-Request-ID` powinien być ustawiany przez reverse proxy (Caddy/Nginx). Jeśli nagłówek jest brakujący lub fałszywy, middleware generuje własny identyfikator. Nigdy nie zwracamy `request_id` z zewnątrz bez walidacji.
+
+### FF-018: No Sensitive Data in Logs
+
+| Pole | Wartość |
+|------|---------|
+| **Nazwa** | No Sensitive Data in Logs |
+| **Mechanizm** | `tests/architecture/test_no_sensitive_data_in_logs.py` |
+| **Chroni** | Zakaz logowania haseł, tokenów, sekretów i innych wrażliwych danych |
+| **Powiązanie** | — |
+
+**Opis:**
+Test skanuje komunikaty logów w `application/`, `infrastructure/` i `apps/` pod kątem słów kluczowych: `password`, `token`, `secret`, `api_key`, `authorization`, `credentials`, `private_key`, `session`. Ma charakter Advisory — automatyczne wykrywanie może generować false positives (np. logowanie zdarzenia "user session expired").
+
+> **Polityka:** Dane wrażliwe nigdy nie trafiają do logów. Jeśli potrzebujesz zapisać kontekst zdarzenia, używaj anonimizowanych identyfikatorów (np. `user_id`, `profile_id`).
+
+### FF-019: Structured Error Context
+
+| Pole | Wartość |
+|------|---------|
+| **Nazwa** | Structured Error Context |
+| **Mechanizm** | `tests/architecture/test_structured_error_context.py` |
+| **Chroni** | Wszystkie błędy API mają kontekst: `request_id`, typ wyjątku, status HTTP |
+| **Powiązanie** | — |
+
+**Opis:**
+Test weryfikuje, że każda metoda `post`/`patch` w `apps/api/views.py`, która łapie `ApplicationException`, używa `_handle_application_exception` lub `_problem_detail`. Oba helpery wstrzykują `request_id` do odpowiedzi RFC 7807, co pozwala na korelację między logami a odpowiedziami API.
+
+### FF-020: Health Check Semantics
+
+| Pole | Wartość |
+|------|---------|
+| **Nazwa** | Health Check Semantics |
+| **Mechanizm** | `tests/architecture/test_health_checks.py` |
+| **Chroni** | Healthcheck w Compose sprawdza rzeczywiste zależności (DB, Redis), a nie tylko proces |
+| **Powiązanie** | ADR-020 (Deployment & DataOps) |
+
+**Opis:**
+FF-015 weryfikuje obecność `healthcheck`. FF-020 weryfikuje jego semantykę: endpoint `/health/` sprawdza połączenie z bazą danych (`SELECT 1`) i Redisem (`cache.set`/`cache.get`). Jeśli któraś zależność jest niedostępna, endpoint zwraca `503 Service Unavailable`. W środowisku testowym (`APP_ENV=test`) healthcheck pomija sprawdzanie zależności, aby nie wymagać uruchomionego PostgreSQL/Redis dla testów jednostkowych.
+
+> **Uwaga:** W produkcji `APP_ENV=production` healthcheck jest pełny. W testach jednostkowych (`SimpleTestCase`) nie ma dostępu do DB, więc pomijane są sprawdzania — to nie jest luką, a świadomym wyjątkiem umożliwiającym uruchamianie testów bez infrastruktury.
 
 ---
 

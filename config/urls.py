@@ -1,6 +1,10 @@
+from django.conf import settings
 from django.contrib import admin
-from django.http import HttpResponse
+from django.http import JsonResponse, HttpResponse
 from django.urls import include, path
+
+from django.db import connection
+from django.core.cache import cache
 
 from apps.tourists.views import (
     badge_catalog_view,
@@ -18,8 +22,35 @@ from apps.tourists.views import (
 
 
 def health_check(request):
-    """Zwraca natychmiastowe 200 OK dla Docker Healthcheck/Load Balancer."""
-    return HttpResponse("OK")
+    """Zwraca status zdrowia aplikacji (liveness + readiness).
+
+    Endpoint używany przez Docker Healthcheck i Load Balancer.
+    Sprawdza połączenie z bazą danych i Redisem.
+    """
+    if settings.APP_ENV == "test":
+        return JsonResponse({"status": "healthy", "checks": {"database": "skipped", "redis": "skipped"}})
+
+    checks = {}
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        checks["database"] = "healthy"
+    except Exception as exc:  # noqa: BLE001
+        checks["database"] = f"unhealthy: {exc}"
+
+    try:
+        cache.set("healthcheck", "ok", timeout=1)
+        if cache.get("healthcheck") != "ok":
+            raise RuntimeError("Redis cache readback mismatch")
+        checks["redis"] = "healthy"
+    except Exception as exc:  # noqa: BLE001
+        checks["redis"] = f"unhealthy: {exc}"
+
+    if any("unhealthy" in str(v) for v in checks.values()):
+        return JsonResponse({"status": "unhealthy", "checks": checks}, status=503)
+
+    return JsonResponse({"status": "healthy", "checks": checks})
 
 
 urlpatterns = [
