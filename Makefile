@@ -10,7 +10,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff secret-scan
 
 help:
 	@echo "CORE targets:"
@@ -41,6 +41,7 @@ help:
 	@echo "  lock           - regeneruje uv.lock z 7-dniowym cooldownem zależności"
 	@echo "  test-random    - testy z losową kolejnością (pytest-randomly, diagnostyka)"
 	@echo "  coverage-diff  - coverage tylko dla zmienionego kodu (diff-cover, diagnostyka)"
+	@echo "  secret-scan    - skanowanie sekretów w repo (detect-secrets, diagnostyka)"
 
 setup:
 	uv sync --group dev
@@ -83,6 +84,9 @@ audit:
 
 secrets-check:
 	uv run python scripts/check_secrets.py
+
+secret-scan:
+	uv run detect-secrets scan --baseline .secrets.baseline
 
 graph:
 	uv run python scripts/audit_contracts.py

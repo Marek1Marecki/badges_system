@@ -63,6 +63,7 @@ dev = [
     "docformatter>=1.7.8",
     "pyment>=0.3.3",
     "diff-cover>=9.2",
+    "detect-secrets>=1.5",
 ]
 
 [tool.pytest.ini_options]

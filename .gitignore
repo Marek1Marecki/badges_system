@@ -244,6 +244,9 @@ yarn-error.log*
 .jenkins/
 .gitlab-ci.yml
 
+# Trivy raporty (artefakty CI, nie commitujemy)
+trivy-report-*.json
+
 # Pliki tymczasowe systemu budowania
 .tmp/
 .temp/
