@@ -10,7 +10,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random
 
 help:
 	@echo "CORE targets:"
@@ -39,6 +39,7 @@ help:
 	@echo "  complexity-check - radon + xenon (complexity + maintainability metrics)"
 	@echo "  complexity-trend - wily (complexity trends over git history)"
 	@echo "  lock           - regeneruje uv.lock z 7-dniowym cooldownem zależności"
+	@echo "  test-random    - testy z losową kolejnością (pytest-randomly, diagnostyka)"
 
 setup:
 	uv sync --group dev
@@ -63,6 +64,9 @@ type-check:
 test:
 	ENV_FILE=.env.test uv run pytest -m "not integration"
 	#uv run pytest $(TEST_DIRS) -m "not integration and not ml"
+
+test-random:
+	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) -m "not integration and not e2e"
 
 test-all:
 	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) --create-db --nomigrations \

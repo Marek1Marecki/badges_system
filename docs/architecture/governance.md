@@ -38,6 +38,68 @@
 
 ---
 
+## Klasyfikacja toolingu: Gate / Diagnostic / Experimental
+
+Każde narzędzie w projekcie jest przydzielone do jednej z trzech kategorii:
+
+```
+                    GOVERNANCE
+                         │
+          ┌──────────────┼──────────────┐
+          ▼              ▼              ▼
+        GATE         DIAGNOSTIC     EXPERIMENTAL
+          │              │              │
+     "must pass"    "tell me why"   "let's find out"
+          │              │              │
+     CI blocking    CI/manual       sandbox/manual
+```
+
+### GATE
+
+Narzędzia, które **muszą przejść** w każdym przebiegu CI. Ich łamanie blokuje merge/PR.
+
+| Mechanizm | Plik/Konfiguracja | Cel |
+|-----------|-------------------|-----|
+| Import Linter | `.importlinter` | Kierunek zależności |
+| Architecture Tests — Blocking FF | `tests/architecture/` | Fitness functions |
+| Xenon | `xenon.ini` | Złożoność kodu |
+| Trivy | `security-audit` | CVE HIGH/CRITICAL |
+| Ruff / mypy / lint-imports | `make check` | Code quality |
+
+### DIAGNOSTIC
+
+Narzędzia, które **dostarczają informacji**, ale nie blokują CI. Uruchamiane świadomie przez developera.
+
+| Mechanizm | Plik/Konfiguracja | Cel | Uruchomienie |
+|-----------|-------------------|-----|--------------|
+| pytest-randomly | `make test-random` | Wykrywanie zależności między testami | Manual/CI advisory |
+| Radon | `make complexity-check` | Złożoność — trend over time | Manual |
+| wily | `make complexity-trend` | Trend jakości | Manual |
+| diff-cover | `make coverage-diff` | Coverage nowego kodu | Manual |
+| Gitleaks | `make secret-scan` | Secret discovery | Manual |
+| pydeps/pyreverse | `make graph-*` | Dependency graph | Manual |
+| pytest-timings | `make test-timings` | Analiza czasu testów | Manual |
+
+### EXPERIMENTAL
+
+Narzędzia w **kontrolowanej eksperymentacji**. Można je uruchamiać świadomie, ale nie są częścią standardowego CI.
+
+| Mechanizm | Plik/Konfiguracja | Cel |
+|-----------|-------------------|-----|
+| mutmut | `make mutation-test` | Jakość testów (mutation score) |
+| Schemathesis | `make experimental-schemathesis` | API fuzzing |
+| Testcontainers | `make experimental-testcontainers` | Real PostgreSQL/Redis w testach |
+| axe-playwright | `make experimental-axe` | Accessibility |
+| k6 | `make experimental-k6` | Load testing |
+| OWASP ZAP | `make experimental-zap` | DAST |
+
+**Zasady:**
+- Experimental nie blokuje CI
+- Po eksperymencie decyzja: wdrożenie do Diagnostic, przeniesienie do Gate, lub usunięcie
+- Każde narzędzie Experimental musi mieć clear exit criteria
+
+---
+
 ## Mechanizmy governance
 
 ### DECIDE — Architecture Decision Records
