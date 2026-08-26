@@ -10,7 +10,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff
 
 help:
 	@echo "CORE targets:"
@@ -40,6 +40,7 @@ help:
 	@echo "  complexity-trend - wily (complexity trends over git history)"
 	@echo "  lock           - regeneruje uv.lock z 7-dniowym cooldownem zależności"
 	@echo "  test-random    - testy z losową kolejnością (pytest-randomly, diagnostyka)"
+	@echo "  coverage-diff  - coverage tylko dla zmienionego kodu (diff-cover, diagnostyka)"
 
 setup:
 	uv sync --group dev
@@ -67,6 +68,10 @@ test:
 
 test-random:
 	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) -m "not integration and not e2e"
+
+coverage-diff:
+	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) -m "not integration and not e2e" --cov --cov-report=term-missing --cov-report=xml:coverage.xml --cov-report=html:htmlcov
+	uv run diff-cover coverage.xml --compare-branch=origin/main --format html:diff-cover-report.html
 
 test-all:
 	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) --create-db --nomigrations \
