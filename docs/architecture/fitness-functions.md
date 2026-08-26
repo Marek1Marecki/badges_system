@@ -183,6 +183,66 @@ Test gwarantuje brak zjawiska State Mutilation podczas współbieżnego oceniani
 
 ---
 
+## Grupa 8: Infrastructure / Runtime Architecture & Security Governance
+
+Ta grupa pilnuje architektury poza kodem Pythona — kontenery, Compose, obrazy, sekrety, uprawnienia.
+
+| ID | Nazwa | Mechanizm | Chroni | Powiązanie |
+|----|-------|-----------|--------|------------|
+| FF-011 | Dockerfile Hygiene | Hadolint | standard konstrukcji obrazu | ADR-020 |
+| FF-012 | Compose Security | Checkov | konfiguracja IaC | ADR-020 |
+| FF-013 | Image Vulnerability Scanning | Trivy | CVE w obrazie | ADR-020 |
+
+### FF-011: Dockerfile Hygiene
+
+| Pole | Wartość |
+|------|---------|
+| **Nazwa** | Dockerfile Hygiene |
+| **Mechanizm** | Hadolint (`make hadolint`) |
+| **Chroni** | Standard konstrukcji obrazu, best practices Dockerfile |
+| **Powiązanie** | ADR-020 (Deployment & DataOps) |
+
+**Opis:**
+Hadolint sprawdza Dockerfile pod kątem:
+- Pinowania wersji obrazów bazowych
+- Pinowania wersji pakietów APT
+- Poprawnej konstrukcji warstw
+- Ustawień użytkownika
+
+### FF-012: Compose Security
+
+| Pole | Wartość |
+|------|---------|
+| **Nazwa** | Compose Security |
+| **Mechanizm** | Checkov (`make checkov`) |
+| **Chroni** | Konfigurację IaC — Compose files pod kątem bezpieczeństwa |
+| **Powiązanie** | ADR-020 (Deployment & DataOps) |
+
+**Opis:**
+Checkov skanuje compose.yml i środowiskowe override'y pod kątem:
+- Uruchamiania kontenerów jako root
+- Braku ograniczeń capabilities
+- Niebezpiecznych ustawień sieci
+- Braku healthcheck
+
+### FF-013: Image Vulnerability Scanning
+
+| Pole | Wartość |
+|------|---------|
+| **Nazwa** | Image Vulnerability Scanning |
+| **Mechanizm** | Trivy (`make security-audit`) |
+| **Chroni** | CVE w obrazie kontenerowym, zależnościach OS i Python |
+| **Powiązanie** | ADR-020 (Deployment & DataOps) |
+
+**Opis:**
+Trivy skanuje obraz kontenerowy pod kątem:
+- Podatności w pakietach OS
+- Podatności w zależnościach Python
+- Sekretów w obrazie
+- SBOM (Software Bill of Materials)
+
+---
+
 ## Cykl Governance
 
 ```
@@ -218,6 +278,22 @@ Test gwarantuje brak zjawiska State Mutilation podczas współbieżnego oceniani
                 DISCOVER
                    ↑
              pydeps/pyreverse
+
+                 INFRASTRUCTURE GOVERNANCE
+                           │
+          ┌────────────────┼────────────────┐
+          │                │                │
+          ▼                ▼                ▼
+      Checkov           Hadolint          Trivy
+          │                │                │
+          ▼                ▼                ▼
+       Compose         Dockerfile       Image/SBOM
+       / IaC                              / CVE
+          │                │                │
+          └────────────────┼────────────────┘
+                           │
+                           ▼
+                    CI SECURITY GATE
 ```
 
 ---

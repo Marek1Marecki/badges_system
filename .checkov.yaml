@@ -1,0 +1,17 @@
+---
+# Checkov configuration for badges-system project
+# https://www.checkov.io/
+
+# Framework-specific settings
+framework:
+  - dockerfile
+  - docker_compose
+
+# Skip specific checks that don't apply to our architecture
+skip-check:
+  - CKV_DOCKER_1  # Pin image versions - already done via ARGs in multi-stage build
+  - DL3006  # Always tag image versions - warnings only for our multi-stage setup
+  - DL3008  # Pin apt packages - warnings only, packages change frequently
+
+# Compact output
+compact: true

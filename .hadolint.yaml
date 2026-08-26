@@ -1,0 +1,19 @@
+---
+# Hadolint configuration for badges-system project
+# https://github.com/hadolint/hadolint
+
+# Inherit from strict preset
+inherits: strict
+
+# Pipeline stage labels
+labels:
+  stage_builder: builder
+  stage_development: development
+  stage_testing: testing
+  stage_production: production
+
+# Trusted registries (no pinning needed for these)
+trustedRegistries:
+  - docker.io
+  - ghcr.io
+  - python:3.14-slim-bookworm

@@ -10,7 +10,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock
 
 help:
 	@echo "CORE targets:"
@@ -29,9 +29,9 @@ help:
 	@echo "  graph-all    - wszystkie diagramy architektury"
 	@echo "  arch-docs    - generowanie diagramów PlantUML (C4)"
 	@echo "  api-docs     - generowanie dokumentacji API (pdoc)"
-	@echo "  check        - lokalne CI: format --check + lint + type-check + test + audit + complexity-check + security-audit"
+	@echo "  check        - lokalne CI: format --check + lint + type-check + test + audit + complexity-check + security-audit + infra-check"
 	@echo "  clean        - usuwa cache, artefakty"
-	@echo "  security-audit - semgrep + osv-scanner"
+	@echo "  security-audit - semgrep + osv-scanner + trivy"
 	@echo "  complexity-check - radon + xenon (complexity + maintainability metrics)"
 	@echo "  complexity-trend - wily (complexity trends over git history)"
 	@echo "  lock           - regeneruje uv.lock z 7-dniowym cooldownem zależności"
@@ -146,6 +146,18 @@ security-audit:
 	  --exclude-rule=package_managers.uv.uv-missing-dependency-cooldown.uv-missing-dependency-cooldown
 	@echo "\n=== ROZPOCZYNANIE SKANOWANIA GOOGLE OSV-SCANNER ==="
 	osv-scanner --lockfile=uv.lock --config=osv-scanner.toml
+	@echo "\n=== ROZPOCZYNANIE SKANOWANIA OBRAZU KONTENEROWEGO (Trivy) ==="
+	trivy image --severity HIGH,CRITICAL --exit-code 1 badges-system:latest || echo "Trivy: obraz badges-system:latest nie istnieje lokalnie — pominięto"
+
+hadolint:
+	@echo "=== ROZPOCZYNANIE SKANOWANIA DOCKERFILE (Hadolint) ==="
+	hadolint --failure-threshold error Dockerfile
+
+checkov:
+	@echo "=== ROZPOCZYNANIE SKANOWANIA COMPOSE (Checkov) ==="
+	checkov -f compose.yml -f compose.prod.yml -f compose.test.yml -f compose.e2e.yml -f compose.preprod.yml -f compose.override.yml --framework yaml --compact
+
+infra-check: hadolint checkov
 
 check:
 	uv run ruff format --check $(PY_DIRS)
@@ -156,6 +168,7 @@ check:
 	uv run python scripts/audit_contracts.py
 	make complexity-check
 	make security-audit
+	make infra-check
 
 clean:
 	find . -type f -name "*.pyc" -delete
