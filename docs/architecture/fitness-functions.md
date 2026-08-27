@@ -606,8 +606,96 @@ Test weryfikuje, że każda FF wymieniona w `governance.md` ma odpowiadający wp
 
 ---
 
+## FF Inventory Review
+
+Audyt wszystkich 23 FF według sześciu pytań:
+
+| FF | Co chroni? | Dlaczego? | Jak? (mechanizm) | Czym? (tool) | Tier | Co powoduje zmianę tieru? |
+|----|-----------|-----------|------------------|--------------|------|---------------------------|
+| FF-001 | Kierunek zależności: domain ← application ← infrastructure ← apps | Bez kontroli: warstwy wyższe importują z niższych, pęcherzyk zależności, trudny do testowania kod | Import Linter + AST w pytest | Import Linter + `test_dependency_direction.py` | Gate (IL) / Diagnostic (pytest) | Import Linter jest źródłem prawdy; pytest to tylko dodatkowa diagnostyka |
+| FF-002 | Brak Django Model w warstwie domenowej | Bez kontroli: domena zależy od frameworka, trudny do testowania unit | AST w pytest + Import Linter `domain-purity` | pytest + Import Linter | Gate | Import Linter blokuje importy frameworków; test chroni invariant behawioralny (dziedziczenie po Model) |
+| FF-003 | Każdy adapter implementuje wszystkie metody swojego portu | Bez kontroli: dodanie metody do portu bez implementacji → `AttributeError` w runtime | AST w pytest | pytest | Gate | Brak implementacji portu = runtime failure; jasne remediation |
+| FF-004 | Wszystkie widoki POST/PATCH używają DTO Pydantic | Bez kontroli: niezwalidowane dane wejściowe → błędy biznesowe, injection | AST w pytest | pytest | Gate | Bez DTO = brak walidacji; jasne remediation (dodaj DTO) |
+| FF-005 | Wszystkie UseCase’y zarejestrowane w AppContainer | Bez kontroli: dodanie UseCase’u bez rejestracji → `AttributeError` w DI | AST w pytest | pytest | Gate | Brak rejestracji = runtime failure; jasne remediation |
+| FF-006 | Konwencja nazewnictwa DTO: `*InputDTO`, `*RequestDTO`, `*ResponseDTO` | Bez kontroli: niespójne nazwy → wysoki dług poznawczy, trudny onboarding | AST w pytest | pytest | Diagnostic | Konwencja, nie invariant; nie blokuje bezpieczeństwa systemu |
+| FF-007 | UseCase’y nie zwracają `dict`/`Any`/`list[...]` | Bez kontroli: surowe typy → niejawny kontrakt API, trudna walidacja | AST w pytest | pytest | Gate | Łamanie = brak ResponseDTO; jasne remediation |
+| FF-008 | Migracje DDL nie mieszają AddField/RemoveField w jednym pliku | Bez kontroli: breaking schema change w jednym deployment’ie | AST w pytest | pytest | Diagnostic | Heurystyka, nie invariant; świadome migracje mogą łamać regułę |
+| FF-009 | Żaden `models.py` nie przekracza 20 modeli Django | Bez kontroli: God Object → trudny do utrzymania, wysoka coupling | AST w pytest | pytest | Diagnostic | Proxy metric, nie invariant; 5 modeli może być God Object, 20 może być OK |
+| FF-010 | Wszystkie strategie walidacyjne dziedziczą `BadgeRule` i są `frozen=True` | Bez kontroli: State Mutilation przy współbieżnym ocenianiu turystów | AST w pytest | pytest | Gate | Łamanie = race condition; krytyczne dla poprawności biznesowej |
+| FF-011 | Dockerfile zgodny z best practices (pin wersji, warstwy, user) | Bez kontroli: nieprzewidywalne obrazy, security vulnerabilities, duży rozmiar | Hadolint | Hadolint | Diagnostic | Heurystyka jakości; nie blokuje bezpieczeństwa systemu |
+| FF-012 | Compose files nie uruchamiają kontenerów jako root, mają capabilities | Bez kontroli: kontener z uprawnieniami root → security risk | Checkov | Checkov | Diagnostic | Advisory dla current baseline; może awansować jeśli Checkov dostatecznie dojrzeje |
+| FF-013 | Obraz kontenerowy nie ma CVE HIGH/CRITICAL | Bez kontroli: znane exploit’y w produkcji → compromise | Trivy | Trivy | Gate | HIGH/CRITICAL CVE = realne ryzyko; jasne remediation (aktualizacja) |
+| FF-014 | Host Docker spełnia CIS Docker Benchmark | Bez kontroli: nieprawidłowa konfiguracja demona → security risk | Docker Bench | Docker Bench | Diagnostic | Placeholder (upstream zarchiwizowany); może awansować gdy pojawi się aktywny successor |
+| FF-015 | Wszystkie services w compose mają `healthcheck` | Bez kontroli: Docker nie wykrywa niezdrowych kontenerów → downtime | YAML parsing + pytest | pytest | Gate | Brak healthcheck = nieautomatyczny restart; jasne remediation |
+| FF-016 | Wszystkie widoki POST/PATCH łapią `ApplicationException` | Bez kontroli: nieobsłużony wyjątek → 500 z traceback → stack trace exposure | AST w pytest | pytest | Gate | Łamanie = RFC 7807 violation; CodeQL alert #1 uzasadniony |
+| FF-017 | Middleware generuje/honoruje `request_id`, wstrzykuje do request i logów | Bez kontroli: brak korelacji żądań → trudne debugowanie produkcji | AST + runtime w pytest | pytest | Gate | Brak request_id = tracenie śladów żądań; krytyczne dla observability |
+| FF-018 | Logi nie zawierają haseł, tokenów, sekretów | Bez kontroli: wyciek danych wrażliwych w logach → compliance violation | Keyword scanning w pytest | pytest | Diagnostic | Heurystyka z FP; detect-secrets jest lepszym mechanizmem |
+| FF-019 | Wszystkie `except ApplicationException` używają `_handle_application_exception` lub `_problem_detail` | Bez kontroli: niespójne formaty błędów → klient nie może obsłużyć API | AST w pytest | pytest | Gate | Łamanie = RFC 7807 violation; jasne remediation |
+| FF-020 | Endpoint `/health/` sprawdza DB i Redis, zwraca 503 jeśli niedostępne | Bez kontroli: healthcheck zwraca 200 chociaż aplikacja nie działa → load balancer wysyła ruch do broken instance | pytest + urllib | pytest | Gate | Łamanie = downtime bez wykrycia; krytyczne dla readiness |
+| FF-021 | `uv.lock` istnieje, jest śledzony przez Git, zsynchronizowany z pyproject.toml | Bez kontroli: brak reproducible builds → "u mnie działa" problem | pytest + pre-commit hook | pytest + `uv lock --check` | Gate | Łamanie = niespójne wersje zależności; jasne remediation |
+| FF-022 | Zależności dev/test nie mieszają się z runtime `dependencies` | Bez kontroli: narzędzia deweloperskie w obrazie PROD → większy attack surface | AST w pytest | pytest | Diagnostic | Advisory: nie blokuje bezpieczeństwa, ale zwiększa risk profile |
+| FF-023 | Wszystkie FF w governance.md mają wpis w rejestre fitness-functions.md | Bez kontroli: rejestr rozjeżdża się z rzeczywistością → fałszywe poczucie bezpieczeństwa | Markdown parsing w pytest | pytest | Gate | Łamanie = governance drift; FF-023 jest meta-governance |
+
+---
+
+## Uwagi szczególne
+
+**FF-001: Dependency Direction**
+
+Import Linter jest źródłem prawdy dla kierunku zależności. Test `test_dependency_direction.py` dostarcza dodatkową diagnostykę w formacie pytest, ale nie powinien być traktowany jako niezależny mechanizm. Tier dla tego FF zależy od toola:
+- Import Linter → Gate × blocking
+- pytest → Diagnostic × advisory
+
+**FF-002: Domain Purity**
+
+Import Linter egzekwuje `domain-purity` contract (brak importów frameworków). Test chroni invariant behawioralny, który Import Linter nie może wykryć: brak dziedziczenia po `Model` w warstwie domenowej.
+
+**FF-006: DTO Naming Convention**
+
+Konwencja stylistyczna, nie invariant architektoniczny. Status: Diagnostic. Nie powinna blokować CI — służy spójności zespołu, a nie bezpieczeństwu systemu.
+
+**FF-008: Migration Idempotency**
+
+Heurystyka, nie invariant. Django migration może legalnie zawierać różne operacje DDL, jeśli jest to świadomie zaprojektowana migracja. Rzeczywisty kontrakt to: "deployment nie może powodować downtime / breaking schema change".
+
+**FF-009: God Class Prevention**
+
+Proxy metric, nie invariant. Liczba modeli w pliku nie gwarantuje jakości architektury. 5 klas może tworzyć God Object, a 20 może być akceptowalnych. Test służy jako trend/smell detector.
+
+**FF-014: Docker Bench Security**
+
+Placeholder — upstream `docker/docker-bench` został zarchiwizowany. Target pozostawiono na przyszły audyt hosta Docker. Tier: Diagnostic, aż do znalezienia successor'a.
+
+**FF-018: No Sensitive Data in Logs**
+
+Heurystyka z potencjalnymi false positives. Keyword scanning nie jest wystarczająco precyzyjny. detect-secrets jest lepszym mechanizmem do wykrywania sekretów.
+
+---
+
+## Kryteria zmiany tieru
+
+### Awans Experimental → Diagnostic
+- Narzędzie przeżyło co najmniej 1 kwartał w użyciu
+- Wygenerowało wartość (wykryło coś, co inaczej by przegapiono)
+- Ma clear exit criteria i maintenance plan
+
+### Awans Diagnostic → Gate
+- Invariant jest obiektywnie weryfikowalny (nie subiektywny)
+- Ma niski poziom false positives i false negatives
+- Remediation jest jasne i jednoznaczne
+- Łamanie invariant'a oznacza realne ryzyko dla systemu
+
+### Degradacja Gate → Diagnostic
+- Narzędzie generuje częste false positives
+- Invariant jest słaby lub subiektywny
+- Maintenance overhead przekracza wartość
+- Istnieje lepszy sposób wykrywania tego samego problemu
+
+---
+
 ## Historia zmian
 
 | Wersja | Data | Autor | Opis zmiany |
 |--------|------|-------|-------------|
+| 2.0 | 2026-08-27 | Dominik / AI Architect | FF Inventory Review: dodano audyt 23 FF według 6 pytań; konsolidacja tier’ów; rozdzielenie FF od Tools |
 | 1.0 | 2026-08-26 | Dominik / AI Architect | Utworzenie rejestru fitness functions (FF-001..FF-010) |
