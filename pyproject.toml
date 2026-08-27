@@ -64,6 +64,7 @@ dev = [
     "pyment>=0.3.3",
     "diff-cover>=9.2",
     "detect-secrets>=1.5",
+    "pytest-html>=4.2.0",
 ]
 
 [tool.pytest.ini_options]

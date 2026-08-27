@@ -371,6 +371,7 @@ CI Pipeline (make check)
 | Docker Bench | `make docker-bench` | Konfiguracja hosta Docker |
 | pytest-randomly | `make test-random` | Wykrywanie zależności między testami |
 | pytest-timings | `make test-timings` | Analiza czasu testów |
+| pytest-html | `make test-html` | Raport HTML z wyników testów |
 | diff-cover | `make coverage-diff` | Coverage nowego kodu |
 | detect-secrets | `make secret-scan` | Secret discovery |
 | detect-secrets | `make secret-scan` | Secret discovery |
