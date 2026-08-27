@@ -211,12 +211,14 @@ security-audit:
 	  --config "p/owasp-top-ten" \
 	  --config "p/secrets" \
 	  --error --skip-unknown-extensions \
+	  --disable-version-check \
+	  --quiet \
 	  --exclude="tests/*" --exclude=".venv/*" --exclude="node_modules/*" --exclude="staticfiles/*" \
 	  --exclude-rule=package_managers.uv.uv-missing-dependency-cooldown.uv-missing-dependency-cooldown
 	@echo "\n=== ROZPOCZYNANIE SKANOWANIA GOOGLE OSV-SCANNER ==="
 	osv-scanner --lockfile=uv.lock --config=osv-scanner.toml
 	@echo "\n=== ROZPOCZYNANIE SKANOWANIA OBRAZU KONTENEROWEGO (Trivy) ==="
-	trivy image --severity HIGH,CRITICAL --exit-code 1 badges-system:latest || echo "Trivy: obraz badges-system:latest nie istnieje lokalnie — pominięto"
+	trivy image --severity HIGH,CRITICAL --exit-code 1 --skip-version-check badges-system:latest || echo "Trivy: obraz badges-system:latest nie istnieje lokalnie — pominięto"
 
 hadolint:
 	@echo "=== ROZPOCZYNANIE SKANOWANIA DOCKERFILE (Hadolint) ==="
@@ -224,7 +226,7 @@ hadolint:
 
 checkov:
 	@echo "=== ROZPOCZYNANIE SKANOWANIA COMPOSE (Checkov) ==="
-	checkov -f compose.yml -f compose.prod.yml -f compose.test.yml -f compose.e2e.yml -f compose.preprod.yml -f compose.override.yml --framework yaml --compact
+	checkov -f compose.yml -f compose.prod.yml -f compose.test.yml -f compose.e2e.yml -f compose.preprod.yml -f compose.override.yml --framework yaml --compact --quiet
 
 infra-check: hadolint checkov
 
