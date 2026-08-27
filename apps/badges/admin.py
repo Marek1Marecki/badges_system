@@ -66,6 +66,7 @@ class AddToBadgeForm(forms.Form):
     )
 
     def __init__(self, *args, **kwargs):
+        """Inicjalizuje formularz z pustym querysetem wersji odznak."""
         super().__init__(*args, **kwargs)
         # Baza odpytywana JEDYNIE w momencie faktycznego otwarcia okienka przez Admina!
         self.fields["badge_version"].queryset = BadgeVersionModel.objects.select_related("badge").all()
@@ -83,14 +84,14 @@ class ReadOnlyMapAdmin(LeafletGeoAdminMixin, ModelAdmin):
 
 @admin.register(CountryModel)
 class CountryAdmin(ReadOnlyMapAdmin):
-    """"""
+    """Panel administracyjny dla państw."""
 
     list_display = ("name", "code", "order")
 
 
 @admin.register(VoivodeshipModel)
 class VoivodeshipAdmin(ReadOnlyMapAdmin):
-    """"""
+    """Panel administracyjny dla województw."""
 
     list_display = ("name", "code", "country")
     list_filter = ("country",)
@@ -98,21 +99,21 @@ class VoivodeshipAdmin(ReadOnlyMapAdmin):
 
 @admin.register(ProvinceModel)
 class ProvinceAdmin(ReadOnlyMapAdmin):
-    """"""
+    """Panel administracyjny dla prowincji fizykogeograficznych."""
 
     list_display = ("name", "code", "country")
 
 
 @admin.register(SubprovinceModel)
 class SubprovinceAdmin(ReadOnlyMapAdmin):
-    """"""
+    """Panel administracyjny dla podprowincji fizykogeograficznych."""
 
     list_display = ("name", "code", "province")
 
 
 @admin.register(MacroregionModel)
 class MacroregionAdmin(ReadOnlyMapAdmin):
-    """"""
+    """Panel administracyjny dla makroregionów."""
 
     list_display = ("name", "code", "subprovince")
     search_fields = ("name", "code")
@@ -120,14 +121,14 @@ class MacroregionAdmin(ReadOnlyMapAdmin):
 
 @admin.register(MesoregionModel)
 class MesoregionAdmin(ReadOnlyMapAdmin):
-    """"""
+    """Panel administracyjny dla mezoregionów."""
 
     list_display = ("name", "code", "macroregion")
     search_fields = ("name", "code")
 
 
 class ObjectRegionCacheInline(TabularInline):
-    """"""
+    """Inline do przeglądania mapowania obiektu na regiony."""
 
     model = ObjectRegionCache
     extra = 0
@@ -240,10 +241,10 @@ class PendingMappingFilter(admin.SimpleListFilter):
 
 @admin.register(OsmTypeMapping)
 class OsmTypeMappingAdmin(ModelAdmin):
-    """"""
+    """Panel mapowania tagów OSM na typy obiektów."""
 
     list_display = ("osm_key", "osm_value", "target_type", "is_ignored")
-    list_editable = ("target_type", "is_ignored")  # Pozwala wpisywać tekst bezpośrednio na liście!
+    list_editable = ("target_type", "is_ignored")
     list_filter = (PendingMappingFilter, "osm_key")
     search_fields = ("osm_key", "osm_value", "target_type")
 
@@ -518,7 +519,7 @@ class TouristObjectAdmin(LeafletGeoAdminMixin, ModelAdmin):
 
 @admin.register(OrganizerModel)
 class OrganizerAdmin(ModelAdmin):
-    """"""
+    """Panel administracyjny dla organizatorów odznak."""
 
     list_display = ("name", "is_booklet_required", "has_publication_consent", "club_rules_link")
     # Dodano filtr boczny (szybkie szukanie tych bez zgody)
@@ -542,7 +543,7 @@ class BadgeTierInlineFormSet(BaseInlineFormSet):
     """Walidator dla wierszy stopni odznaki (FormSet)."""
 
     def clean(self):
-        """"""
+        """Waliduje wiersze FormSetu stopni odznaki."""
         super().clean()
         # Jeśli formularze mają już inne błędy, nie sprawdzamy dalej
         if any(self.errors):
@@ -770,9 +771,8 @@ class ResolutionDirectionFilter(SimpleListFilter):
 
 @admin.register(ProximityCandidate)
 class ProximityCandidateAdmin(ModelAdmin):
-    """"""
+    """Panel kandydatów na bliskie obiekty turystyczne."""
 
-    # ZMIANA 1: Zamiast "status", używamy nowej metody "get_detailed_status"
     list_display = ("get_obj_a_info", "get_obj_b_info", "distance_meters", "get_detailed_status", "created_at")
 
     # ZMIANA 2: Dodajemy nasz nowy filtr obok standardowego
@@ -933,7 +933,7 @@ class ProximityCandidateAdmin(ModelAdmin):
 
 @admin.register(OsmSyncConflict)
 class OsmSyncConflictAdmin(ModelAdmin):
-    """"""
+    """Panel konfliktów synchronizacji danych OSM."""
 
     list_display = ("tourist_object", "field_name", "old_value", "new_value", "status", "created_at")
     list_filter = ("status", "field_name")
@@ -1003,7 +1003,7 @@ class OsmSyncConflictAdmin(ModelAdmin):
 
 @admin.register(BadgeNewsItem)
 class BadgeNewsItemAdmin(ModelAdmin):
-    """"""
+    """Panel wiadomości związanych z odznakami."""
 
     list_display = ("badge_name", "change_type", "change_date_str", "is_read", "created_at", "source_link")
     list_filter = ("is_read", "change_type")
@@ -1068,34 +1068,36 @@ admin.site.unregister(SolarSchedule)
 # 2. Rejestracja ponowna z dziedziczeniem stylów Unfolda (MRO: ModelAdmin musi być pierwszy)
 @admin.register(PeriodicTask)
 class UnfoldPeriodicTaskAdmin(ModelAdmin, BasePeriodicTaskAdmin):
-    """"""
+    """Panel zadań okresowych Celery z integracją Unfold."""
 
     pass
 
 
 @admin.register(CrontabSchedule)
 class UnfoldCrontabScheduleAdmin(ModelAdmin):
-    """"""
+    """Panel harmonogramów crontab Celery z integracją Unfold."""
 
     pass
 
 
 @admin.register(IntervalSchedule)
 class UnfoldIntervalScheduleAdmin(ModelAdmin):
-    """"""
+    """Panel harmonogramów interwałowych Celery z integracją Unfold."""
 
     pass
 
 
 @admin.register(ClockedSchedule)
 class UnfoldClockedScheduleAdmin(ModelAdmin, BaseClockedScheduleAdmin):
-    """"""
+    """Panel harmonogramów zegarowych Celery z integracją Unfold."""
 
     pass
 
 
 @admin.register(SolarSchedule)
 class UnfoldSolarScheduleAdmin(ModelAdmin):
-    """"""
+    """Panel harmonogramów słonecznych Celery z integracją Unfold."""
+
+    pass
 
     pass

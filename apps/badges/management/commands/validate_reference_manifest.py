@@ -25,7 +25,7 @@ REQUIRED_MANIFEST_FIELDS = {
 
 
 class Command(BaseCommand):
-    """"""
+    """Komenda do walidacji manifestu danych referencyjnych."""
 
     help = (
         "Walidacja Manifestu Snapshotu danych referencyjnych "
@@ -86,7 +86,7 @@ class Command(BaseCommand):
 
     @staticmethod
     def _settings_base_dir() -> str:
-        """"""
+        """Zwraca bazowy katalog ustawień."""
         from django.conf import settings
 
         return str(settings.BASE_DIR)

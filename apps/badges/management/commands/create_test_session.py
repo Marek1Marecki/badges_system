@@ -6,7 +6,7 @@ from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
-    """"""
+    """Komenda do tworzenia sesji testowej."""
 
     help = "Tworzy sesję testową dla podanego użytkownika i zwraca session ID."
 

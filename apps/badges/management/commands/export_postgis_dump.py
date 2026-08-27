@@ -9,7 +9,7 @@ from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
-    """"""
+    """Komenda do eksportu zrzutu PostGIS."""
 
     help = "Tworzy binarny dump PostgreSQL (pg_dump -Fc) z bieżącej bazy referencyjnej."
 

@@ -55,9 +55,11 @@ class RFC7807ErrorMiddleware:
     """Wychwytuje twarde awarie serwera i formatuje je w bezpieczny JSON."""
 
     def __init__(self, get_response: Callable[[HttpRequest], Any]) -> None:
+        """Inicjalizuje middleware obsługi błędów."""
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> Any:
+        """Przetwarza żądanie i obsługuje błędy w formacie RFC 7807."""
         # Propagacja request_id: preferuj X-Request-ID z zewnątrz, w przeciwnym razie wygeneruj nowy.
         request_id = request.headers.get("X-Request-ID") or f"req_{uuid.uuid4().hex[:8]}"  # type: ignore[attr-defined]
         request.request_id = request_id  # type: ignore[attr-defined]

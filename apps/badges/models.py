@@ -23,11 +23,12 @@ class RegionBaseModel(gis_models.Model):
     updated_at = gis_models.DateTimeField(auto_now=True)
 
     class Meta:
-        """"""
+        """Konfiguracja modelu RegionBaseModel."""
 
         abstract = True
 
     def __str__(self) -> str:
+        """Reprezentacja tekstowa regionu: nazwa i kod."""
         return f"{self.name} ({self.code})"
 
 
@@ -37,7 +38,7 @@ class PhysicalRegionMixin(gis_models.Model):
     neighbors = gis_models.ManyToManyField("self", blank=True, verbose_name="Sąsiedzi")
 
     class Meta:
-        """"""
+        """Konfiguracja PhysicalRegionMixin."""
 
         abstract = True
 
@@ -48,7 +49,7 @@ class CountryModel(RegionBaseModel, PhysicalRegionMixin):
     order = gis_models.IntegerField(default=0)
 
     class Meta:
-        """"""
+        """Konfiguracja modelu CountryModel."""
 
         db_table = "odznaki_country"
         verbose_name = "Państwo"
@@ -61,7 +62,7 @@ class VoivodeshipModel(RegionBaseModel, PhysicalRegionMixin):
     country = gis_models.ForeignKey(CountryModel, on_delete=gis_models.CASCADE)
 
     class Meta:
-        """"""
+        """Konfiguracja modelu VoivodeshipModel."""
 
         db_table = "odznaki_voivodeship"
         unique_together = [("country", "code"), ("country", "name")]
@@ -75,7 +76,7 @@ class ProvinceModel(RegionBaseModel, PhysicalRegionMixin):
     country = gis_models.ForeignKey(CountryModel, on_delete=gis_models.CASCADE)
 
     class Meta:
-        """"""
+        """Konfiguracja modelu ProvinceModel."""
 
         db_table = "odznaki_province"
         unique_together = [("country", "code")]
@@ -89,7 +90,7 @@ class SubprovinceModel(RegionBaseModel, PhysicalRegionMixin):
     province = gis_models.ForeignKey(ProvinceModel, on_delete=gis_models.CASCADE)
 
     class Meta:
-        """"""
+        """Konfiguracja modelu SubprovinceModel."""
 
         db_table = "odznaki_subprovince"
         unique_together = [("province", "code")]
@@ -103,7 +104,7 @@ class MacroregionModel(RegionBaseModel, PhysicalRegionMixin):
     subprovince = gis_models.ForeignKey(SubprovinceModel, on_delete=gis_models.CASCADE, null=True, blank=True)
 
     class Meta:
-        """"""
+        """Konfiguracja modelu MacroregionModel."""
 
         db_table = "odznaki_macroregion"
         verbose_name = "Makroregion"
@@ -116,7 +117,7 @@ class MesoregionModel(RegionBaseModel, PhysicalRegionMixin):
     macroregion = gis_models.ForeignKey(MacroregionModel, on_delete=gis_models.CASCADE, null=True, blank=True)
 
     class Meta:
-        """"""
+        """Konfiguracja modelu MesoregionModel."""
 
         db_table = "odznaki_mesoregion"
         verbose_name = "Mezoregion"
@@ -132,7 +133,7 @@ class TouristRegionModel(RegionBaseModel):
     mesoregions = models.ManyToManyField(MesoregionModel, blank=True, verbose_name="Mezoregiony")
 
     class Meta:
-        """"""
+        """Konfiguracja modelu TouristRegionModel."""
 
         db_table = "odznaki_tourist_region"
         verbose_name = "Region Turystyczny"
@@ -187,7 +188,7 @@ class OrganizerModel(models.Model):
         default=False,
         verbose_name="Zgoda na publikację",
         help_text=(
-            "Zaznacz, jeśli masz zgodę organizatora na publikację wizerunku odznak, książeczek i treści regulaminów.",
+            "Zaznacz, jeśli masz zgodę organizatora na publikację wizerunku odznak, książeczek i treści regulaminów."
         ),
     )
 
@@ -195,7 +196,7 @@ class OrganizerModel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """"""
+        """Konfiguracja modelu OrganizerModel."""
 
         db_table = "odznaki_organizer"
         verbose_name = "Organizator"
@@ -203,6 +204,7 @@ class OrganizerModel(models.Model):
         ordering = ["name"]
 
     def __str__(self) -> str:
+        """Reprezentacja tekstowa organizatora."""
         return str(self.name)
 
 
@@ -232,7 +234,7 @@ class OsmTypeMapping(models.Model):
     )
 
     class Meta:
-        """"""
+        """Konfiguracja modelu OsmTypeMapping."""
 
         db_table = "odznaki_osm_type_mapping"
         verbose_name = "Mapowanie Typu OSM"
@@ -241,6 +243,7 @@ class OsmTypeMapping(models.Model):
         ordering = ["is_ignored", "target_type", "osm_key"]
 
     def __str__(self) -> str:
+        """Reprezentacja tekstowa mapowania OSM."""
         status = " (Ignorowany)" if self.is_ignored else ""
         return str(f"{self.osm_key}={self.osm_value} -> {self.target_type or '?'}{status}")
 
@@ -393,7 +396,7 @@ class TouristObject(gis_models.Model):
     updated_at = gis_models.DateTimeField(auto_now=True)
 
     class Meta:
-        """"""
+        """Konfiguracja modelu TouristObject."""
 
         db_table = "odznaki_tourist_object"
         verbose_name = "Obiekt Turystyczny"
@@ -401,6 +404,7 @@ class TouristObject(gis_models.Model):
         ordering = ["name"]
 
     def __str__(self) -> str:
+        """Reprezentacja tekstowa obiektu turystycznego."""
         alt_str = f" ({self.altitude}m)" if self.altitude else ""
         status_str = "" if self.is_active else " [NIE ISTNIEJE]"
         return str(f"{self.name}{alt_str} [{self.type}]{status_str}")
@@ -499,7 +503,7 @@ class ObjectRegionCache(models.Model):
     )
 
     class Meta:
-        """"""
+        """Konfiguracja modelu ObjectRegionCache."""
 
         db_table = "odznaki_object_region_cache"
         # Uniemożliwiamy zduplikowanie przypisania tego samego regionu do obiektu
@@ -511,6 +515,7 @@ class ObjectRegionCache(models.Model):
         ]
 
     def __str__(self) -> str:
+        """Reprezentacja tekstowa cache regionu."""
         dist_str = f" (Bufor {self.distance_meters}m)" if self.distance_meters > 0 else ""
         return f"{self.tourist_object.name} -> {self.region_name} [{self.get_region_level_display()}]{dist_str}"
 
@@ -545,13 +550,14 @@ class BadgeModel(models.Model):
     )
 
     class Meta:
-        """"""
+        """Konfiguracja modelu BadgeModel."""
 
         db_table = "odznaki_badge"
         verbose_name = "Odznaka"
         verbose_name_plural = "Odznaki"
 
     def __str__(self) -> str:
+        """Reprezentacja tekstowa odznaki."""
         return str(self.name)
 
 
@@ -612,13 +618,14 @@ class BadgeVersionModel(models.Model):
     )
 
     class Meta:
-        """"""
+        """Konfiguracja modelu BadgeVersionModel."""
 
         db_table = "odznaki_badge_version"
         verbose_name = "Wersja Regulaminu"
         verbose_name_plural = "Wersje Regulaminów"
 
     def __str__(self) -> str:
+        """Reprezentacja tekstowa wersji odznaki."""
         return f"{self.badge.name} ({self.version_code})"
 
 
@@ -644,7 +651,7 @@ class LevelType(models.TextChoices):
 
 
 class BadgeTierModel(models.Model):
-    """Stopień odznaki (Obserwator postępu).
+    """Stopień odznaki (Obserwator postępu.
 
     To tutaj weryfikujemy wymaganą ilość szczytów z puli.
     """
@@ -681,7 +688,7 @@ class BadgeTierModel(models.Model):
     )
 
     class Meta:
-        """"""
+        """Konfiguracja modelu BadgeTierModel."""
 
         db_table = "odznaki_badge_tier"
         unique_together = ("version", "name")
@@ -694,6 +701,7 @@ class BadgeTierModel(models.Model):
         ]
 
     def __str__(self) -> str:
+        """Reprezentacja tekstowa stopnia odznaki."""
         return f"{self.version} - {self.get_name_display()}"
 
 
@@ -703,7 +711,7 @@ class BadgeTierModel(models.Model):
 
 
 class ProximityStatus(models.TextChoices):
-    """"""
+    """Status kandydata na bliski obiekt."""
 
     PENDING = "PENDING", "Oczekujące na decyzję"
     RESOLVED = "RESOLVED", "Rozwiązane (Połączone)"
@@ -724,7 +732,7 @@ class ProximityCandidate(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        """"""
+        """Konfiguracja modelu ProximityCandidate."""
 
         db_table = "odznaki_proximity_candidate"
         verbose_name = "Kandydat do Klastrowania (Radar)"
@@ -734,6 +742,7 @@ class ProximityCandidate(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
+        """Reprezentacja tekstowa kandydata na bliski obiekt."""
         # Pobieramy również typ dla czytelności (np. "Chryszczata [Szczyt] <-> Chryszczata [Wieża]")
         obj_a_type = self.obj_a.get_type_display() if hasattr(self.obj_a, "get_type_display") else self.obj_a.type
         obj_b_type = self.obj_b.get_type_display() if hasattr(self.obj_b, "get_type_display") else self.obj_b.type
@@ -744,7 +753,7 @@ class ProximityCandidate(models.Model):
 
 
 class SyncConflictStatus(models.TextChoices):
-    """"""
+    """Status konfliktu synchronizacji OSM."""
 
     PENDING = "PENDING", "Oczekujące na decyzję"
     ACCEPTED = "ACCEPTED", "Zaakceptowane (Nadpisane)"
@@ -767,7 +776,7 @@ class OsmSyncConflict(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        """"""
+        """Konfiguracja modelu OsmSyncConflict."""
 
         db_table = "odznaki_osm_sync_conflict"
         verbose_name = "Konflikt Danych OSM"
@@ -775,11 +784,12 @@ class OsmSyncConflict(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
+        """Reprezentacja tekstowa konfliktu synchronizacji."""
         return f"{self.tourist_object.name}: {self.field_name} ({self.old_value} -> {self.new_value})"
 
 
 class NewsChangeType(models.TextChoices):
-    """"""
+    """Typ zmiany w newsie odznaki."""
 
     ADDITION = "ADDITION", "Nowa odznaka"
     CHANGE = "CHANGE", "Zmiana regulaminu"
@@ -797,7 +807,7 @@ class BadgeNewsItem(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        """"""
+        """Konfiguracja modelu BadgeNewsItem."""
 
         db_table = "odznaki_badge_news_item"
         verbose_name = "Aktualność Odznaki"
@@ -807,4 +817,5 @@ class BadgeNewsItem(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self) -> str:
+        """Reprezentacja tekstowa wiadomości odznaki."""
         return f"[{self.get_change_type_display()}] {self.badge_name}"

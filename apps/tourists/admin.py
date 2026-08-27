@@ -138,7 +138,7 @@ admin.site.unregister(Site)
 # Re-register with Unfold's ModelAdmin
 @admin.register(Site)
 class SiteAdmin(ModelAdmin):
-    """"""
+    """Panel administracyjny dla profili turystycznych."""
 
     list_display = ("domain", "name")
     search_fields = ("domain", "name")

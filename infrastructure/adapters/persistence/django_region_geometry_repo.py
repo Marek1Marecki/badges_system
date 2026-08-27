@@ -7,10 +7,10 @@ from apps.badges.models import TouristRegionModel
 
 
 class DjangoTouristRegionGeometryRepository(TouristRegionGeometryRepositoryPort):
-    """"""
+    """Repozytorium geometrii regionów turystycznych."""
 
     def get_regions_without_geometry(self) -> list[int]:
-        """"""
+        """Zwraca regiony turystyczne bez geometrii."""
         return list(TouristRegionModel.objects.filter(shape__isnull=True).values_list("id", flat=True))
 
     def update_region_geometry(self, region_id: int) -> bool:

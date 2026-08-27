@@ -177,12 +177,12 @@ def build_container() -> AppContainer:
 
 
 def get_container() -> AppContainer:
-    """"""
+    """Zwraca instancję kontenera DI (singleton)."""
     return build_container()
 
 
 def reset_container() -> None:
-    """"""
+    """Resetuje stan kontenera DI (głównie dla testów)."""
     global _container_instance
     _container_instance = None
 

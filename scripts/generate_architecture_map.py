@@ -94,7 +94,7 @@ def extract_imports(filepath: Path) -> list[str]:
 
 
 def generate_architecture_map() -> None:
-    """"""
+    """Generuje mapę architektury systemu."""
     print("Skanowanie drzewa plików projektu...")
     project_root = Path(__file__).resolve().parent.parent
 

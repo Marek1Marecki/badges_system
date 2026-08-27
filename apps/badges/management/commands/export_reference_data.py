@@ -17,7 +17,7 @@ from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
-    """"""
+    """Komenda do eksportu danych referencyjnych."""
 
     help = "Eksportuje cały Snapshot systemu PTTK (obiekty, odznaki, regiony) oraz generuje Manifest."
 

@@ -1,3 +1,5 @@
+"""Narzędzie do szacowania kosztów tokenów w modelach LLM."""
+
 import sys
 from pathlib import Path
 

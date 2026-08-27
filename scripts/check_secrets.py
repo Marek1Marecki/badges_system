@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 def check_secrets() -> None:
-    """"""
+    """Skanuje kod w poszukiwaniu potencjalnych sekretów."""
     example_path = Path(".env.example")
     env_path = Path(".env")
 

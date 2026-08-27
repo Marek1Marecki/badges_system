@@ -134,7 +134,7 @@ def top_packages(vulns: list[dict], n: int = 10) -> str:
 
 
 def _next_review() -> str:
-    """"""
+    """Oblicza datę kolejnego przeglądu."""
     today = date.today()
     target = today + timedelta(days=42)
     return target.strftime("%Y-%m-%d")
@@ -299,7 +299,7 @@ def build_backlog(groups: dict[str, list[dict]]) -> str:
 
 
 def main() -> int:
-    """"""
+    """Główna funkcja skryptu aktualizującego backlog bezpieczeństwa."""
     parser = argparse.ArgumentParser(description="Update security-backlog.md from Trivy JSON report")
     parser.add_argument("report", type=Path, help="Path to trivy-report.json")
     parser.add_argument(

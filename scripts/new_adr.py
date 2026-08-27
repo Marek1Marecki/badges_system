@@ -12,6 +12,7 @@ INDEX = Path("docs/architecture/decisions/README.md")
 
 
 def next_adr_number() -> int:
+    """Zwraca numer kolejnego ADR."""
     existing = []
     for f in ADRS_DIR.glob("ADR-*.md"):
         m = re.match(r"ADR-(\d+)", f.name)
@@ -21,6 +22,7 @@ def next_adr_number() -> int:
 
 
 def create_adr(title: str) -> Path:
+    """Tworzy nowy plik ADR z szablonu."""
     number = next_adr_number()
     filename = f"ADR-{number:03d} — {title}.md"
     filepath = ADRS_DIR / filename
@@ -69,6 +71,7 @@ def create_adr(title: str) -> Path:
 
 
 def main() -> None:
+    """Główna funkcja skryptu."""
     if len(sys.argv) < 2:
         print("Usage: make adr TITLE='Your ADR title'")
         sys.exit(1)

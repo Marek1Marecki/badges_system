@@ -61,7 +61,7 @@ BLOCKED = (
 
 
 class Command(BaseCommand):
-    """"""
+    """Komenda do lintowania migracji."""
 
     help = (
         "Statyczna introspekcja plików migracji względem whitelisty "

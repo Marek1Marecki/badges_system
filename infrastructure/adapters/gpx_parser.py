@@ -14,7 +14,7 @@ from infrastructure.exceptions import InfrastructureException
 
 
 class DjangoGpxParser(GpxParserPort):
-    """"""
+    """Parser plików GPX korzystający z biblioteki Django."""
 
     def parse_gpx(self, file_content: bytes) -> tuple[str | None, date | None]:
         """

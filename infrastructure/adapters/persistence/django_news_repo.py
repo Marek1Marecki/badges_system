@@ -5,7 +5,7 @@ from application.ports.news_port import NewsRepositoryPort
 
 
 class DjangoNewsRepository(NewsRepositoryPort):
-    """"""
+    """Repozytorium newsów oparte o Django ORM."""
 
     def save_news_item(self, dto: BadgeNewsDTO) -> bool:
         """

@@ -20,7 +20,7 @@ from apps.badges.models import (
 
 
 class Command(BaseCommand):
-    """"""
+    """Komenda do obliczania sąsiadów regionów."""
 
     help = "Przelicza i zapisuje sąsiadów (z tolerancją 50m) dla wszystkich regionów."
 

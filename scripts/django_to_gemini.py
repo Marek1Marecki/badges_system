@@ -1,3 +1,5 @@
+"""Konwerter kontekstu Django do formatu Gemini."""
+
 import os
 from pathlib import Path
 

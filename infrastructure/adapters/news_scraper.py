@@ -14,12 +14,12 @@ logger = logging.getLogger(__name__)
 
 
 class BeautifulSoupNewsScraper(NewsScraperPort):
-    """"""
+    """Scraper newsów używający BeautifulSoup."""
 
     SOURCE_URL = "https://odznaki.org/zmiany/"
 
     def fetch_news(self) -> list[BadgeNewsDTO]:
-        """"""
+        """Pobiera i parsuje newsy ze strony organizatora."""
         # Zabezpieczenie przed WAF: Udajemy przeglądarkę
         req = urllib.request.Request(self.SOURCE_URL, headers={"User-Agent": "BadgeSystem/1.0"})  # noqa: S310
         try:

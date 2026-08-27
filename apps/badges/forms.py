@@ -10,9 +10,10 @@ from apps.badges.models import TouristObject
 
 # 1. TWORZYMY WIDŻET DATALIST (Dropdown, w którym można pisać własny tekst)
 class DatalistTextInput(UnfoldAdminTextInputWidget):
-    """"""
+    """Widżet pola tekstowego z listą podpowiedzi."""
 
     def __init__(self, datalist, *args, **kwargs):
+        """Inicjalizuje widżet z listą podpowiedzi."""
         super().__init__(*args, **kwargs)
         self.datalist = datalist
 
@@ -56,13 +57,14 @@ class TouristObjectAdminForm(forms.ModelForm):
     """
 
     class Meta:
-        """"""
+        """Metakonfiguracja ModelForm dla TouristObject."""
 
         model = TouristObject
         fields = "__all__"
 
     # 2. PODPINAMY WIDŻET DO POLA 'TYPE' PRZY ŁADOWANIU FORMULARZA
     def __init__(self, *args, **kwargs):
+        """Dostosowuje pole typu jako nieobowiązkowe."""
         super().__init__(*args, **kwargs)
 
         # Wyłączamy wymóg podawania typu w przeglądarce, bo uzupełnimy go z OSM
@@ -84,7 +86,7 @@ class TouristObjectAdminForm(forms.ModelForm):
         self.fields["type"].widget = DatalistTextInput(datalist=all_types)
 
     def clean(self):
-        """"""
+        """Wymusza spójność danych: albo OSM_ID, albo nazwa + geometria."""
         cleaned_data = super().clean()
         osm_id = cleaned_data.get("osm_id")
         code = cleaned_data.get("code")

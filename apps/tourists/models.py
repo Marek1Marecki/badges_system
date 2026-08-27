@@ -49,7 +49,7 @@ class TouristProfile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """"""
+        """Konfiguracja modelu TouristProfile."""
 
         db_table = "tourists_profile"
         verbose_name = "Profil Turysty"
@@ -58,6 +58,7 @@ class TouristProfile(models.Model):
         unique_together = ("user", "nickname")
 
     def __str__(self) -> str:
+        """Reprezentacja tekstowa profilu turystycznego."""
         marker = " [GŁÓWNY]" if self.is_main_profile else ""
         return f"{self.nickname} ({self.user.email}){marker}"
 
@@ -80,7 +81,7 @@ class AscentLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        """"""
+        """Konfiguracja modelu AscentLog."""
 
         db_table = "tourists_ascent_log"
         verbose_name = "Log Wejścia"
@@ -91,11 +92,12 @@ class AscentLog(models.Model):
         ]
 
     def __str__(self) -> str:
+        """Reprezentacja tekstowa zdarzenia wejścia na szczyt."""
         return f"{self.profile.nickname} - {self.peak.name} ({self.ascent_date})"
 
 
 class DomainStatus(models.TextChoices):
-    """"""
+    """Status domeny obiektu turystycznego."""
 
     NOT_STARTED = "NOT_STARTED", "Subskrybowana (Czeka na logi)"
     IN_PROGRESS = "IN_PROGRESS", "W trakcie zdobywania"
@@ -103,7 +105,7 @@ class DomainStatus(models.TextChoices):
 
 
 class LogisticStatus(models.TextChoices):
-    """"""
+    """Status logistyczny obiektu turystycznego."""
 
     WAITING_FOR_SEND = "WAITING_FOR_SEND", "Gotowa do wysyłki (Skompletowana)"
     WAITING_FOR_VERIFICATION = "WAITING_FOR_VERIFICATION", "Wysłana do PTTK (Weryfikacja)"
@@ -136,9 +138,8 @@ class UserBadgeProgress(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """"""
+        """Konfiguracja modelu UserBadgeProgress."""
 
-        db_table = "tourists_badge_progress"
         verbose_name = "Postęp Odznaki (Subskrypcja)"
         verbose_name_plural = "Postępy Odznak"
         # ZMIANA: Zabezpieczenie przed dublowaniem cykli u jednego Profilu
@@ -149,5 +150,6 @@ class UserBadgeProgress(models.Model):
         ]
 
     def __str__(self) -> str:
+        """Reprezentacja tekstowa postępu użytkownika w odznadze."""
         ver = self.version.version_code if self.version else "BRAK (Oczekuje)"
         return f"{self.profile.nickname} | {self.badge.code} [{ver}] (Cykl {self.cycle_number}) | {self.domain_status}"

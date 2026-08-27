@@ -64,7 +64,7 @@ ORM_MODULE_PREFIXES = {"django.db", "peewee", "sqlalchemy"}
 
 @dataclass
 class AuditConfig:
-    """"""
+    """Konfiguracja audytu kontraktów."""
 
     domain_paths: list[pathlib.Path] = field(default_factory=list)
     application_paths: list[pathlib.Path] = field(default_factory=list)
@@ -72,7 +72,7 @@ class AuditConfig:
 
     @classmethod
     def from_pyproject(cls) -> "AuditConfig":
-        """"""
+        """Wczytuje konfigurację z pyproject.toml."""
         pyproject = ROOT / "pyproject.toml"
         config = cls()
 
@@ -141,7 +141,7 @@ def _autodiscover_bootstrap(root: pathlib.Path) -> list[pathlib.Path]:
 
 @dataclass(frozen=True)
 class ImportReference:
-    """"""
+    """Referencja importu w grafie zależności."""
 
     base_module: str
     full_module: str
@@ -221,7 +221,7 @@ def package_parts_for_path(path: pathlib.Path) -> list[str]:
 
 
 def get_local_module_names() -> set[str]:
-    """"""
+    """Zwraca zbiór nazw modułów lokalnych."""
     local_modules: set[str] = set()
     for path in ROOT.iterdir():
         if path.name.startswith(".") or path.name in {"__pycache__", "node_modules"}:
@@ -491,7 +491,7 @@ def collect_import_aliases(tree: ast.Module) -> dict[str, str]:
 
 @dataclass
 class Failure:
-    """"""
+    """Reprezentuje naruszenie kontraktu architektonicznego."""
 
     category: str
     message: str
@@ -500,6 +500,7 @@ class Failure:
     is_type_checking: bool = False
 
     def __str__(self) -> str:
+        """Reprezentacja tekstowa naruszenia."""
         suffix = " [TYPE_CHECKING hidden bypass]" if self.is_type_checking else ""
         relative = self.file.relative_to(ROOT)
         location = f"{relative}:{self.lineno}" if self.lineno is not None else str(relative)

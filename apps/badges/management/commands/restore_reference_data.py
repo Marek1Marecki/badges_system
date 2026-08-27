@@ -10,7 +10,7 @@ from django.db import transaction
 
 
 class Command(BaseCommand):
-    """"""
+    """Komenda do przywracania danych referencyjnych."""
 
     help = "Odtwarza autorytatywny stan systemu PTTK z plików Snapshotu i weryfikuje Manifest."
 
