@@ -372,6 +372,7 @@ CI Pipeline (make check)
 | pytest-randomly | `make test-random` | Wykrywanie zależności między testami |
 | pytest-timings | `make test-timings` | Analiza czasu testów |
 | pytest-html | `make test-html` | Raport HTML z wyników testów |
+| docstr-coverage | `make docstr-coverage` | Sprawdzanie pokrycia docstringami |
 | diff-cover | `make coverage-diff` | Coverage nowego kodu |
 | detect-secrets | `make secret-scan` | Secret discovery |
 | detect-secrets | `make secret-scan` | Secret discovery |
