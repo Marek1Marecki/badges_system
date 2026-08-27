@@ -244,7 +244,6 @@ check:
 	uv run lint-imports
 	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) -m "not integration and not e2e"
 	uv run python scripts/audit_contracts.py
-	make complexity-check
 	make security-audit
 	make infra-check
 

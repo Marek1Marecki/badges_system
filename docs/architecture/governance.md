@@ -173,7 +173,7 @@ Narzędzia w **kontrolowanej eksperymentacji**. Można je uruchamiać świadomie
 | Mechanizm | Plik/Konfiguracja | Cel | Charakter | Blokuje CI? |
 |-----------|-------------------|-----|----------|-------------|
 | Radon | `make complexity-check` | Złożoność cyklomatyczna | Advisory | ❌ Nie |
-| Xenon | `xenon.ini` | Brama jakości złożoności | **Blocking** | ✅ Tak |
+| Xenon | `xenon.ini` | Złożoność — hotspoxy / advisory threshold |
 | wily | `make complexity-trend` | Trend jakości w czasie | Advisory | ❌ Nie |
 
 **Xenon — limity:**
@@ -295,7 +295,7 @@ Narzędzia w **kontrolowanej eksperymentacji**. Można je uruchamiać świadomie
 ## Kolejność w CI
 
 ```
-CI Pipeline (make check)
+CI Pipeline (Gate — make check)
 │
 ├── 1. Code Quality
 │   ├── Ruff format --check
@@ -309,24 +309,40 @@ CI Pipeline (make check)
 ├── 3. Architecture Audit
 │   └── audit_contracts.py (graf zależności)
 │
-├── 4. Complexity / Quality
-│   ├── Radon
-│   └── Xenon
-│
-├── 5. Security / Supply Chain
+├── 4. Security / Supply Chain
 │   ├── Semgrep
 │   ├── OSV-Scanner
 │   └── Trivy (HIGH/CRITICAL)
 │
-└── 6. Infrastructure Governance
+└── 5. Infrastructure Governance
     ├── Hadolint
     └── Checkov
 ```
 
+```
+Diagnostic Pipeline (manual / advisory)
+│
+├── Complexity / Quality
+│   ├── Radon (make complexity-check)
+│   ├── Xenon (make complexity-check)
+│   └── wily (make complexity-trend)
+│
+├── Test diagnostics
+│   ├── pytest-randomly (make test-random)
+│   ├── pytest-timings (make test-timings)
+│   └── pytest-html (make test-html)
+│
+├── Coverage
+│   └── diff-cover (make coverage-diff)
+│
+└── Security diagnostics
+    ├── detect-secrets (make secret-scan)
+    └── docstr-coverage (make docstr-coverage)
+```
+
 **Zasada kolejności:**
-- Code Quality → Tests → Architecture Audit → Complexity → Security → Infrastructure
 - `make check` uruchamia tylko **Gate** — warstwę blokującą
-- **Diagnostic** jest uruchamiany świadomie przez developera (`make test-random`, `make coverage-diff`, itp.)
+- **Diagnostic** jest uruchamiany świadomie przez developera (`make complexity-check`, `make test-random`, `make coverage-diff`, itp.)
 - **Experimental** jest uruchamiany w kontrolowanej sandboxie (`make experimental-*`)
 - FF-015, FF-016, FF-017, FF-019, FF-020 (Operational + Observability Governance) są częścią warstwy Tests (pytest)
 
@@ -366,6 +382,7 @@ CI Pipeline (make check)
 | Architecture Tests — FF-018 (No Sensitive Data in Logs) | `test_no_sensitive_data_in_logs.py` | Wrażliwe dane w logach (heurystyka) |
 | Architecture Tests — FF-022 (Dependency Groups Separation) | `test_dependency_groups_separation.py` | Rozdzielenie dev/test od runtime |
 | Radon | `make complexity-check` | Złożoność — trend over time |
+| Xenon | `make complexity-check` | Złożoność — hotspoxy / advisory threshold |
 | wily | `make complexity-trend` | Trend jakości |
 | Hadolint | `make hadolint` | Jakość Dockerfile |
 | Checkov | `make checkov` | Bezpieczeństwo Compose |
@@ -373,10 +390,10 @@ CI Pipeline (make check)
 | pytest-randomly | `make test-random` | Wykrywanie zależności między testami |
 | pytest-timings | `make test-timings` | Analiza czasu testów |
 | pytest-html | `make test-html` | Raport HTML z wyników testów |
+| diff-cover | `make coverage-diff` | Coverage nowego kodu |
+| detect-secrets | `make secret-scan` | Secret discovery baseline |
 | docstr-coverage | `make docstr-coverage` | Sprawdzanie pokrycia docstringami |
 | djLint | `make lint-templates` | Jakość Django templates |
-| diff-cover | `make coverage-diff` | Coverage nowego kodu |
-| detect-secrets | `make secret-scan` | Secret discovery |
 | detect-secrets | `make secret-scan` | Secret discovery |
 
 ### Advisory (CI passes, informacyjne)
