@@ -205,6 +205,7 @@ jobs:
 
       - name: Skanowanie obrazu produkcyjnego w poszukiwaniu luk CVE (Trivy) — development mode
         run: |
+          mkdir -p "$HOME/.cache/trivy"
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$HOME/.cache/trivy":/root/.cache/trivy \
@@ -273,7 +274,7 @@ jobs:
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$(pwd)":/work -w /work \
             anchore/syft:latest \
-            packages docker:badges-system:${{ github.sha }} \
+            scan docker:badges-system:${{ github.sha }} \
             -o cyclonedx-json=sbom.cdx.json
 
       - name: Weryfikacja SBOM - brak mcp w obrazie testowym
