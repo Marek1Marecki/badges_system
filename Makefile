@@ -10,7 +10,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff secret-scan test-timings test-html docstr-coverage lint-templates experimental-schemathesis experimental-testcontainers experimental-axe experimental-factory-boy experimental-k6 experimental-zap experimental-mutation secret-scan
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff secret-scan test-timings test-html docstr-coverage lint-templates experimental-schemathesis experimental-testcontainers experimental-axe experimental-factory-boy experimental-k6 experimental-zap experimental-mutation experimental-xdist experimental-benchmark secret-scan
 
 help:
 	@echo "CORE targets:"
@@ -51,6 +51,8 @@ help:
 	@echo "  experimental-axe - accessibility (axe-playwright, experimental)"
 	@echo "  experimental-factory-boy - test data architecture (Factory Boy, experimental)"
 	@echo "  experimental-k6 - load testing (k6, experimental)"
+	@echo "  experimental-xdist - rownolegle testy (pytest-xdist, experimental)"
+	@echo "  experimental-benchmark - microbenchmark (pytest-benchmark, experimental)"
 	@echo "  experimental-zap - DAST (OWASP ZAP, experimental)"
 	@echo "  experimental-mutation - mutation testing (mutmut, experimental)"
 
@@ -117,6 +119,12 @@ experimental-zap:
 
 experimental-mutation:
 	uv run mutmut run --paths-to-mutate application/ domain/ --runner "python -m pytest tests/"
+
+experimental-xdist:
+	uv run pytest $(TEST_DIRS) -m "not integration and not e2e" -n auto
+
+experimental-benchmark:
+	uv run pytest $(TEST_DIRS) -m "benchmark" --benchmark-only
 
 test-all:
 	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) --create-db --nomigrations \

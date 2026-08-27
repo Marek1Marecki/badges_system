@@ -464,6 +464,9 @@ Trivy skanuje zależności deweloperskie Semgrep (przez MCP). Wyjątki w `osv-sc
 | axe-playwright | Dominik / AI Architect | Accessibility experiments |
 | k6 | Dominik / AI Architect | Load testing experiments |
 | OWASP ZAP | Dominik / AI Architect | DAST experiments |
+| Factory Boy | Dominik / AI Architect | Test data architecture experiments |
+| pytest-xdist | Dominik / AI Architect | Parallel testing experiments |
+| pytest-benchmark | Dominik / AI Architect | Microbenchmark experiments |
 
 ### Advisory
 
