@@ -1,10 +1,10 @@
 # Architecture Fitness Functions
 
-> **Wersja:** 1.0  
-> **Data:** 2026-08-26  
+> **Wersja:** 2.0  
+> **Data:** 2026-08-27  
 > **Właściciel:** Dominik / AI Architect  
-> **Zasada:** Każda reguła architektoniczna z `tests/architecture/` ma tu swój wpis. Test nie jest tylko testem — jest formalnie zidentyfikowaną fitness function.
-> **Master index:** [`docs/architecture/governance.md`](governance.md) zawiera pełny przegląd wszystkich mechanizmów governance, ich charakteru blocking/advisory, i kolejności w CI.
+> **Zasada:** Każda reguła architektoniczna ma tu swój wpis jako Fitness Function (FF). FF odpowiada na pytanie „co chronimy?”, a tool/mechanizm odpowiada na „jak to sprawdzamy?”. Jeden FF może być realizowany przez wiele tooli, a jeden tool może realizować wiele FF.
+> **Master index:** [`docs/architecture/governance.md`](governance.md) zawiera pełny przegląd toolingu, tier’ów, i mapowanie FF ↔ Tools.
 
 ---
 
@@ -14,10 +14,42 @@
 |------|------|
 | **ID** | Unikalny identyfikator: `FF-NNN` |
 | **Nazwa** | Krótki opis fitness function |
-| **Mechanizm** | Narzędzie egzekwujące regułę |
 | **Chroni** | Co się stanie, jeśli reguła zostanie złamana |
 | **Powiązanie** | ADR lub inny kontekst decyzyjny |
-| **Status** | Poziom egzekwowania: Gate / Diagnostic / Advisory |
+| **Status** | Poziom zaufania: Gate / Diagnostic / Experimental |
+| **Tool** | Narzędzie/tool realizujący tę FF |
+
+---
+
+## Mapowanie FF → Tools
+
+| FF | Tool | Tier | Mode |
+|----|------|------|------|
+| FF-001 | Import Linter | Gate | blocking |
+| FF-001 | pytest | Diagnostic | advisory |
+| FF-002 | Import Linter | Gate | blocking |
+| FF-002 | pytest | Gate | blocking |
+| FF-003 | pytest | Gate | blocking |
+| FF-004 | pytest | Gate | blocking |
+| FF-005 | pytest | Gate | blocking |
+| FF-006 | pytest | Diagnostic | advisory |
+| FF-007 | pytest | Gate | blocking |
+| FF-008 | pytest | Diagnostic | advisory |
+| FF-009 | pytest | Diagnostic | advisory |
+| FF-010 | pytest | Gate | blocking |
+| FF-011 | Hadolint | Diagnostic | advisory |
+| FF-012 | Checkov | Diagnostic | advisory |
+| FF-013 | Trivy | Gate | blocking |
+| FF-014 | Docker Bench | Diagnostic | advisory |
+| FF-015 | pytest | Gate | blocking |
+| FF-016 | pytest | Gate | blocking |
+| FF-017 | pytest | Gate | blocking |
+| FF-018 | pytest | Diagnostic | advisory |
+| FF-019 | pytest | Gate | blocking |
+| FF-020 | pytest | Gate | blocking |
+| FF-021 | pytest | Gate | blocking |
+| FF-022 | pytest | Diagnostic | advisory |
+| FF-023 | pytest | Gate | blocking |
 
 ---
 
@@ -28,7 +60,7 @@
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | Dependency Direction |
-| **Mechanizm** | Import Linter + `tests/architecture/test_dependency_direction.py` |
+| **Tool** | Import Linter + `tests/architecture/test_dependency_direction.py` |
 | **Chroni** | Kierunek zależności między warstwami (domain ← application ← infrastructure ← apps) |
 | **Powiązanie** | ADR-001 (Hexagonal Architecture) |
 | **Status** | Diagnostic |
@@ -50,7 +82,7 @@ domain/foo.py imports django.db.models
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | Domain Purity |
-| **Mechanizm** | `tests/architecture/test_domain_purity.py` |
+| **Tool** | `tests/architecture/test_domain_purity.py` |
 | **Chroni** | Czystość warstwy domenowej — brak modeli Django ORM i zależności od frameworków |
 | **Powiązanie** | ADR-001 (Hexagonal Architecture) |
 | **Status** | Gate |
@@ -67,7 +99,7 @@ Test weryfikuje, że żaden plik w `domain/` nie dziedziczy po `django.db.models
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | Repository Contracts |
-| **Mechanizm** | `tests/architecture/test_repository_contracts.py` |
+| **Tool** | `tests/architecture/test_repository_contracts.py` |
 | **Chroni** | Semantyczny kontrakt: każdy adapter implementuje wszystkie metody swojego portu |
 | **Powiązanie** | ADR-001 (Hexagonal Architecture), ADR-002 (Ports & Adapters) |
 | **Status** | Gate |
@@ -82,7 +114,7 @@ Import Linter sprawdza, czy `application → infrastructure` jest dozwolone. Tes
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | API DTO Gating |
-| **Mechanizm** | `tests/architecture/test_api_dto_gating.py` |
+| **Tool** | `tests/architecture/test_api_dto_gating.py` |
 | **Chroni** | Wszystkie widoki modyfikujące stan (POST/PATCH) używają DTO Pydantic do walidacji |
 | **Powiązanie** | ADR-016 (Rozdzielenie tożsamości od autoryzacji) |
 | **Status** | Gate |
@@ -97,7 +129,7 @@ Test wykrywa widoki, które parsują `request.body` lub JSON bez użycia DTO Pyd
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | DI Container Completeness |
-| **Mechanizm** | `tests/architecture/test_di_container_completeness.py` |
+| **Tool** | `tests/architecture/test_di_container_completeness.py` |
 | **Chroni** | Wszystkie UseCase'y i Serwisy są zarejestrowane w `AppContainer` |
 | **Powiązanie** | ADR-001 (Hexagonal Architecture) |
 | **Status** | Gate |
@@ -112,15 +144,15 @@ Test zabezpiecza przed sytuacją: dodano `NewBadgeUseCase`, zapomniano zarejestr
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | DTO Naming Convention |
-| **Mechanizm** | `tests/architecture/test_dto_naming_convention.py` |
+| **Tool** | `tests/architecture/test_dto_naming_convention.py` |
 | **Chroni** | Konwencja nazewnictwa DTO: nowe klasy kończą się na `InputDTO`, `RequestDTO` lub `ResponseDTO` |
 | **Powiązanie** | — |
-| **Status** | Advisory |
+| **Status** | Diagnostic |
 
 **Opis:**
 Test akceptuje istniejące legacy DTO (np. `TouristProfileDTO`), ale wymusza konwencję na nowych klasach. Redukuje dług poznawczy przy onbordu.
 
-> **Uwaga:** To jest reguła stylistyczna / konwencja, a nie invariant architektoniczny. Status: **Advisory**. Nie powinna blokować CI — służy spójności zespołu, a nie bezpieczeństwu systemu.
+> **Uwaga:** To jest reguła stylistyczna / konwencja, a nie invariant architektoniczny. Status: **Diagnostic**. Nie powinna blokować CI — służy spójności zespołu, a nie bezpieczeństwu systemu.
 
 ---
 
@@ -129,7 +161,7 @@ Test akceptuje istniejące legacy DTO (np. `TouristProfileDTO`), ale wymusza kon
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | No Primitive Obsession |
-| **Mechanizm** | `tests/architecture/test_no_primitive_obsession.py` |
+| **Tool** | `tests/architecture/test_no_primitive_obsession.py` |
 | **Chroni** | Use Case'y nie zwracają surowych `dict` lub `Any` — wymagają dedykowanych DTO |
 | **Powiązanie** | AUDYT-124 |
 | **Status** | Gate |
@@ -144,7 +176,7 @@ Test wybucha, jeśli use case deklaruje w typie zwracanym `dict`, `Any` lub `lis
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | Migration Idempotency (Expand & Contract) |
-| **Mechanizm** | `tests/architecture/test_migration_idempotency.py` |
+| **Tool** | `tests/architecture/test_migration_idempotency.py` |
 | **Chroni** | Migracje DDL nie mieszają operacji ekspansji i kontrakcji w jednym pliku |
 | **Powiązanie** | ADR-024 (Lint Migracji) |
 | **Status** | Diagnostic |
@@ -161,7 +193,7 @@ Test egzekwuje zasadę Expand & Contract: migracja nie może zawierać zarówno 
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | God Class Prevention |
-| **Mechanizm** | `tests/architecture/test_god_class_prevention.py` |
+| **Tool** | `tests/architecture/test_god_class_prevention.py` |
 | **Chroni** | Żaden plik `models.py` nie przekracza progu 20 modeli Django |
 | **Powiązanie** | — |
 | **Status** | Diagnostic |
@@ -178,7 +210,7 @@ Test wymusza dekompozycję modułów. Przeciwdziała powstawaniu plików takich 
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | Badge Rule Immutability |
-| **Mechanizm** | `tests/architecture/test_badge_rule_immutability.py` |
+| **Tool** | `tests/architecture/test_badge_rule_immutability.py` |
 | **Chroni** | Wszystkie reguły biznesowe dziedziczące po `BadgeRule` są `@dataclass(frozen=True)` |
 | **Powiązanie** | ADR-003 (Silnik Reguł Biznesowych) |
 | **Status** | Gate |
@@ -190,30 +222,30 @@ Test gwarantuje brak zjawiska State Mutilation podczas współbieżnego oceniani
 
 ## Podsumowanie
 
-| ID | Fitness Function | Mechanizm | Chroni | Powiązanie | Status |
+| ID | Fitness Function | Tool | Chroni | Powiązanie | Status |
 |----|------------------|-----------|--------|------------|--------|
 | FF-001 | Dependency Direction | Import Linter + pytest | kierunek zależności | ADR-001 | **Diagnostic** |
 | FF-002 | Domain Purity | pytest | Clean Domain | ADR-001 | Blocking |
 | FF-003 | Repository Contracts | pytest | Ports & Adapters | ADR-001, ADR-002 | Blocking |
 | FF-004 | API DTO Gating | pytest | API boundary | ADR-016 | Blocking |
 | FF-005 | DI Container Completeness | pytest | Composition Root | ADR-001 | Blocking |
-| FF-006 | DTO Naming Convention | pytest | konwencja | — | Advisory |
+| FF-006 | DTO Naming Convention | pytest | konwencja | — | Diagnostic |
 | FF-007 | No Primitive Obsession | pytest | application boundary | AUDYT-124 | Blocking |
 | FF-008 | Migration Idempotency | pytest | Expand & Contract | ADR-024 | **Diagnostic** |
 | FF-009 | God Class Prevention | pytest | modularność | — | **Diagnostic** |
 | FF-010 | Badge Rule Immutability | pytest | domain invariants | ADR-003 | Blocking |
-| FF-011 | Dockerfile Hygiene | Hadolint | standard konstrukcji obrazu | ADR-020 | Advisory |
-| FF-012 | Compose Security | Checkov | konfiguracja IaC | ADR-020 | Advisory |
+| FF-011 | Dockerfile Hygiene | Hadolint | standard konstrukcji obrazu | ADR-020 | Diagnostic |
+| FF-012 | Compose Security | Checkov | konfiguracja IaC | ADR-020 | Diagnostic |
 | FF-013 | Image Vulnerability Scanning | Trivy | CVE w obrazie | ADR-020 | Blocking |
-| FF-014 | Docker Bench Security | Docker Bench | konfiguracja hosta Docker | ADR-020 | Advisory |
+| FF-014 | Docker Bench Security | Docker Bench | konfiguracja hosta Docker | ADR-020 | Diagnostic |
 | FF-015 | Compose Health Checks | pytest | healthcheck w Compose | ADR-020 | Blocking |
 | FF-016 | API Exception Handling | pytest | obsługa ApplicationException | — | Blocking |
 | FF-017 | Request ID Contract | pytest | korelacja żądań | — | Blocking |
-| FF-018 | No Sensitive Data in Logs | pytest | brak wrażliwych danych w logach | — | Advisory |
+| FF-018 | No Sensitive Data in Logs | pytest | brak wrażliwych danych w logach | — | Diagnostic |
 | FF-019 | Structured Error Context | pytest | RFC 7807 + request_id | — | Blocking |
 | FF-020 | Health Check Semantics | pytest | semantyka healthcheck | ADR-020 | Blocking |
 | FF-021 | Lockfile Integrity | pytest | `uv.lock` jest committed i śledzony | — | Blocking |
-| FF-022 | Dependency Groups Separation | pytest | narzędzia dev/test nie mieszają się z runtime | — | Advisory |
+| FF-022 | Dependency Groups Separation | pytest | narzędzia dev/test nie mieszają się z runtime | — | Diagnostic |
 | FF-023 | Fitness Function Registry Completeness | pytest | wszystkie FF mają wpis w rejestrze i wymagane pola | — | Blocking |
 
 ---
@@ -222,24 +254,24 @@ Test gwarantuje brak zjawiska State Mutilation podczas współbieżnego oceniani
 
 Ta grupa pilnuje architektury poza kodem Pythona — kontenery, Compose, obrazy, sekrety, uprawnienia.
 
-| ID | Nazwa | Mechanizm | Chroni | Powiązanie | Status |
-|----|-------|-----------|--------|------------|--------|
-| FF-011 | Dockerfile Hygiene | Hadolint | standard konstrukcji obrazu | ADR-020 | Advisory |
-| FF-012 | Compose Security | Checkov | konfiguracja IaC | ADR-020 | Advisory |
+| ID | Nazwa | Tool | Chroni | Powiązanie | Status |
+|----|-------|------|--------|------------|--------|
+| FF-011 | Dockerfile Hygiene | Hadolint | standard konstrukcji obrazu | ADR-020 | Diagnostic |
+| FF-012 | Compose Security | Checkov | konfiguracja IaC | ADR-020 | Diagnostic |
 | FF-013 | Image Vulnerability Scanning | Trivy | CVE w obrazie kontenerowym | ADR-020 | Blocking |
-| FF-014 | Docker Bench Security | Docker Bench | konfiguracja hosta Docker | ADR-020 | Advisory |
-| FF-015 | Compose Health Checks | pytest | healthcheck w Compose | ADR-020 |
-| FF-016 | API Exception Handling | pytest | obsługa ApplicationException | — |
+| FF-014 | Docker Bench Security | Docker Bench | konfiguracja hosta Docker | ADR-020 | Diagnostic |
+| FF-015 | Compose Health Checks | pytest | healthcheck w Compose | ADR-020 | Gate |
+| FF-016 | API Exception Handling | pytest | obsługa ApplicationException | — | Gate |
 
 ### FF-011: Dockerfile Hygiene
 
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | Dockerfile Hygiene |
-| **Mechanizm** | Hadolint (`make hadolint`) |
 | **Chroni** | Standard konstrukcji obrazu, best practices Dockerfile |
 | **Powiązanie** | ADR-020 (Deployment & DataOps) |
-| **Status** | Advisory |
+| **Status** | Diagnostic |
+| **Tool** | Hadolint (`make hadolint`) |
 
 **Opis:**
 Hadolint sprawdza Dockerfile pod kątem:
@@ -253,10 +285,10 @@ Hadolint sprawdza Dockerfile pod kątem:
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | Compose Security |
-| **Mechanizm** | Checkov (`make checkov`) |
 | **Chroni** | Konfigurację IaC — Compose files pod kątem bezpieczeństwa |
 | **Powiązanie** | ADR-020 (Deployment & DataOps) |
-| **Status** | Advisory |
+| **Status** | Diagnostic |
+| **Tool** | Checkov (`make checkov`) |
 
 **Opis:**
 Checkov skanuje compose.yml i środowiskowe override'y pod kątem:
@@ -270,7 +302,7 @@ Checkov skanuje compose.yml i środowiskowe override'y pod kątem:
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | Image Vulnerability Scanning |
-| **Mechanizm** | Trivy (`make security-audit`) |
+| **Tool** | Trivy (`make security-audit`) |
 | **Chroni** | CVE w obrazie kontenerowym, zależnościach OS i Python |
 | **Powiązanie** | ADR-020 (Deployment & DataOps) |
 | **Status** | Gate |
@@ -289,10 +321,10 @@ Trivy skanuje obraz kontenerowy pod kątem:
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | Docker Bench Security |
-| **Mechanizm** | Docker Bench (`make docker-bench`, na żądanie) |
 | **Chroni** | Konfigurację środowiska Docker hosta — demon, sieć, uprawnienia, logging |
 | **Powiązanie** | ADR-020 (Deployment & DataOps) |
-| **Status** | Advisory |
+| **Status** | Diagnostic |
+| **Tool** | Docker Bench (`make docker-bench`, na żądanie) |
 
 **Opis:**
 Docker Bench to audyt oparty na CIS Docker Benchmark. W przeciwieństwie do Hadolint/Checkov (analizują IaC w repo), Docker Bench sprawdza rzeczywistą konfigurację demona Dockera na hoście.
@@ -313,7 +345,7 @@ Wymaga dostępu do `/var/run/docker.sock` hosta.
 
 Ta grupa pilnuje architektury runtime — health checks, error handling, observability.
 
-| ID | Nazwa | Mechanizm | Chroni | Powiązanie | Status |
+| ID | Nazwa | Tool | Chroni | Powiązanie | Status |
 |----|-------|-----------|--------|------------|--------|
 | FF-015 | Compose Health Checks | pytest | Wszystkie services mają healthcheck | ADR-020 | Blocking |
 | FF-016 | API Exception Handling | pytest | Widoki łapią ApplicationException | — | Blocking |
@@ -325,7 +357,7 @@ Ta grupa pilnuje architektury runtime — health checks, error handling, observa
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | Compose Health Checks |
-| **Mechanizm** | `tests/architecture/test_health_checks.py` |
+| **Tool** | `tests/architecture/test_health_checks.py` |
 | **Chroni** | Wszystkie services mają `healthcheck` |
 | **Powiązanie** | ADR-020 (Deployment & DataOps) |
 | **Status** | Gate |
@@ -338,7 +370,7 @@ Test weryfikuje, że każdy service w `compose*.yml` (poza `db` i `redis`) defin
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | API Exception Handling |
-| **Mechanizm** | `tests/architecture/test_exception_handling.py` |
+| **Tool** | `tests/architecture/test_exception_handling.py` |
 | **Chroni** | Widoki łapią `ApplicationException` |
 | **Powiązanie** | — |
 | **Status** | Gate |
@@ -352,19 +384,19 @@ Test sprawdza, że każda metoda `post`/`patch` w `apps/api/views.py` ma `except
 
 Ta grupa pilnuje gotowości aplikacji do przyszłego wdrożenia observability — request_id, strukturalne logowanie, semantyka health check. Nie instaluje narzędzi zewnętrznych; definiuje kontrakty, które później umożliwią integrację z Sentry, Prometheus, Loki lub OpenTelemetry bez przebudowy architektury.
 
-| ID | Nazwa | Mechanizm | Chroni | Powiązanie | Status |
-|----|-------|-----------|--------|------------|--------|
-| FF-017 | Request ID Contract | pytest | korelacja żądań | — | Blocking |
-| FF-018 | No Sensitive Data in Logs | pytest | brak wrażliwych danych w logach | — | Advisory |
-| FF-019 | Structured Error Context | pytest | RFC 7807 + request_id | — | Blocking |
-| FF-020 | Health Check Semantics | pytest | semantyka healthcheck | ADR-020 | Blocking |
+| ID | Nazwa | Tool | Chroni | Powiązanie | Status |
+|----|-------|------|--------|------------|--------|
+| FF-017 | Request ID Contract | pytest | korelacja żądań | — | Gate |
+| FF-018 | No Sensitive Data in Logs | pytest | brak wrażliwych danych w logach | — | Diagnostic |
+| FF-019 | Structured Error Context | pytest | RFC 7807 + request_id | — | Gate |
+| FF-020 | Health Check Semantics | pytest | semantyka healthcheck | ADR-020 | Gate |
 
 ### FF-017: Request ID Contract
 
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | Request ID Contract |
-| **Mechanizm** | `tests/architecture/test_request_id_contract.py` |
+| **Tool** | `tests/architecture/test_request_id_contract.py` |
 | **Chroni** | Korelacja żądań |
 | **Powiązanie** | — |
 | **Status** | Gate |
@@ -379,13 +411,13 @@ Test weryfikuje, że middleware `RFC7807ErrorMiddleware` generuje `request_id` j
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | No Sensitive Data in Logs |
-| **Mechanizm** | `tests/architecture/test_no_sensitive_data_in_logs.py` |
+| **Tool** | `tests/architecture/test_no_sensitive_data_in_logs.py` |
 | **Chroni** | Brak wrażliwych danych w logach |
 | **Powiązanie** | — |
-| **Status** | Advisory |
+| **Status** | Diagnostic |
 
 **Opis:**
-Test skanuje komunikaty logów w `application/`, `infrastructure/` i `apps/` pod kątem słów kluczowych: `password`, `passwd`, `secret`, `token`, `api_key`, `apikey`, `authorization`, `credentials`, `private_key`, `session_id`, `session_token`, `session_key`. Ma charakter Advisory — automatyczne wykrywanie może generować false positives.
+Test skanuje komunikaty logów w `application/`, `infrastructure/` i `apps/` pod kątem słów kluczowych: `password`, `passwd`, `secret`, `token`, `api_key`, `apikey`, `authorization`, `credentials`, `private_key`, `session_id`, `session_token`, `session_key`. Tryb: advisory — automatyczne wykrywanie może generować false positives.
 
 > **Polityka:** Dane wrażliwe nigdy nie trafiają do logów. Jeśli potrzebujesz zapisać kontekst zdarzenia, używaj anonimizowanych identyfikatorów (np. `user_id`, `profile_id`). Słowo `session` zostało zastąpione konkretnymi `session_id`/`session_token`/`session_key`, aby uniknąć false positives z logami typu "user session expired".
 
@@ -394,7 +426,7 @@ Test skanuje komunikaty logów w `application/`, `infrastructure/` i `apps/` pod
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | Structured Error Context |
-| **Mechanizm** | `tests/architecture/test_structured_error_context.py` |
+| **Tool** | `tests/architecture/test_structured_error_context.py` |
 | **Chroni** | RFC 7807 + request_id |
 | **Powiązanie** | — |
 | **Status** | Gate |
@@ -407,7 +439,7 @@ Test weryfikuje, że każda metoda `post`/`patch` w `apps/api/views.py`, która 
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | Health Check Semantics |
-| **Mechanizm** | `tests/architecture/test_health_checks.py` |
+| **Tool** | `tests/architecture/test_health_checks.py` |
 | **Chroni** | Semantyka healthcheck |
 | **Powiązanie** | ADR-020 (Deployment & DataOps) |
 | **Status** | Gate |
@@ -489,17 +521,17 @@ FF-015 weryfikuje obecność `healthcheck`. FF-020 weryfikuje jego semantykę: e
 
 Ta grupa pilnuje kontroli nad łańcuchem dostaw oprogramowania — od lockfile po przyszłe SBOM i provenance. Nie dodaje nowych narzędzi; definiuje kontrakty, które wykorzystują już istniejące mechanizmy (`uv.lock`, `pyproject.toml`, Trivy, OSV-Scanner).
 
-| ID | Nazwa | Mechanizm | Chroni | Powiązanie | Status |
+| ID | Nazwa | Tool | Chroni | Powiązanie | Status |
 |----|-------|-----------|--------|------------|--------|
 | FF-021 | Lockfile Integrity | pytest | `uv.lock` jest committed i śledzony | — | Blocking |
-| FF-022 | Dependency Groups Separation | pytest | narzędzia dev/test nie mieszają się z runtime | — | Advisory |
+| FF-022 | Dependency Groups Separation | pytest | narzędzia dev/test nie mieszają się z runtime | — | Diagnostic |
 
 ### FF-021: Lockfile Integrity
 
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | Lockfile Integrity |
-| **Mechanizm** | `tests/architecture/test_lockfile_integrity.py` + pre-commit `uv lock --check` |
+| **Tool** | `tests/architecture/test_lockfile_integrity.py` + pre-commit `uv lock --check` |
 | **Chroni** | `uv.lock` jest committed i śledzony |
 | **Powiązanie** | — |
 | **Status** | Gate |
@@ -512,10 +544,10 @@ Test weryfikuje, że `uv.lock` istnieje i jest śledzony przez Git. Pre-commit h
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | Dependency Groups Separation |
-| **Mechanizm** | `tests/architecture/test_dependency_groups_separation.py` |
+| **Tool** | `tests/architecture/test_dependency_groups_separation.py` |
 | **Chroni** | Narzędzia dev/test nie mieszają się z runtime |
 | **Powiązanie** | — |
-| **Status** | Advisory |
+| **Status** | Diagnostic |
 
 **Opis:**
 Test weryfikuje, że zależności z `[dependency-groups.dev]` i `[dependency-groups.test]` nie pojawiają się w głównej liście `dependencies` w `pyproject.toml`. Zapewnia, że narzędzia deweloperskie (ruff, mypy, semgrep, radon, xenon) nie trafiają do obrazu produkcyjnego.
@@ -538,7 +570,7 @@ Każda FF w rejestrze musi mieć zdefiniowane:
 | **Detection mechanism** | AST / runtime / static analysis / filesystem / composite. |
 | **False-positive analysis** | Jakie legalne przypadki mogą być błędnie wykryte? |
 | **False-negative analysis** | Jakie naruszenia mogą zostać przeoczone? |
-| **Blocking / Advisory** | Czy łamanie reguły blokuje CI? |
+| **Blocking / Advisory** | Czy łamanie reguły blokuje CI? (blocking / advisory) |
 | **Owner** | Osoba/moduł odpowiedzialny za utrzymanie FF. |
 | **Rationale** | Dlaczego ta reguła istnieje — powiązanie z ADR, AUDYT lub doświadczeniem. |
 
@@ -556,7 +588,7 @@ Każda FF w rejestrze musi mieć zdefiniowane:
 |---------|-----|
 | Liczba FF bez dokumentacji | 0 |
 | Liczba FF bez false-positive analysis | 0 |
-| Liczba FF bez false-negative analysis | 0 (Advisory mogą mieć opisane ryzyko) |
+| Liczba FF bez false-negative analysis | 0 (Diagnostic/Experimental mogą mieć opisane ryzyko) |
 | Liczba FF bez testu negatywnego | 0 dla Blocking FF |
 
 #### FF-023: Fitness Function Registry Completeness
@@ -564,13 +596,13 @@ Każda FF w rejestrze musi mieć zdefiniowane:
 | Pole | Wartość |
 |------|---------|
 | **Nazwa** | Fitness Function Registry Completeness |
-| **Mechanizm** | `tests/architecture/test_fitness_function_registry.py` |
+| **Tool** | `tests/architecture/test_fitness_function_registry.py` |
 | **Chroni** | Wszystkie FF mają wpis w rejestrze i wymagane pola |
 | **Powiązanie** | — |
 | **Status** | Gate |
 
 **Opis:**
-Test weryfikuje, że każda FF wymieniona w `governance.md` ma odpowiadający wpis w `fitness-functions.md` z wymaganymi polami: Nazwa, Mechanizm, Chroni, Powiązanie, Opis. Gwarantuje, że rejestr FF nie ulega rozjeźdzeniu z rzeczywistym stanem governance.
+Test weryfikuje, że każda FF wymieniona w `governance.md` ma odpowiadający wpis w `fitness-functions.md` z wymaganymi polami: Nazwa, Tool, Chroni, Powiązanie, Opis. Gwarantuje, że rejestr FF nie ulega rozjeźdzeniu z rzeczywistym stanem governance.
 
 ---
 

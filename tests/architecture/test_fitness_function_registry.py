@@ -57,7 +57,7 @@ def test_fitness_functions_have_required_fields() -> None:
     content = FITNESS_FUNCTIONS_FILE.read_text(encoding="utf-8")
     required_fields = [
         "**Nazwa**",
-        "**Mechanizm**",
+        "**Tool**",
         "**Chroni**",
         "**Powiązanie**",
         "**Opis:**",

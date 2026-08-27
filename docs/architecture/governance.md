@@ -1,101 +1,116 @@
 # Architecture Governance
 
-> **Wersja:** 1.0  
-> **Data:** 2026-08-26  
+> **Wersja:** 2.0  
+> **Data:** 2026-08-27  
 > **Właściciel:** Dominik / AI Architect  
-> **Zasada:** Ten dokument jest master indexem wszystkich mechanizmów governance w projekcie. Pokazuje co jest blocking, co advisory, gdzie są wyjątki, i jaka jest kolejność w CI.
+> **Zasada:** Ten dokument jest master indexem wszystkich mechanizmów governance w projekcie. Model opiera się na dwóch wymiarach: INVARIANTS (co chronimy) i TOOLS (jak to sprawdzamy). Każde narzędzie ma TIER (Gate/Diagnostic/Experimental) i charakter wykonania (Blocking/Advisory).
 
 ---
 
 ## Przegląd warstw governance
 
 ```
-                    ARCHITECTURE GOVERNANCE
-                             │
-         ┌────────────────────┼────────────────────┐
-         │                    │                    │
-         ▼                    ▼                    ▼
-       DECIDE             DOCUMENT             DISCOVER
-        ADR                C4/ADR             pydeps
-         │                    │               pyreverse
-         ▼                    │
-      ENFORCE                 │
-  Import Linter               │
-  Architecture Tests         │
-         │                    │
-         ▼                    ▼
-       MEASURE ────────────→ EVOLVE
-   Radon / Xenon              wily
-          │
-          ▼
-   INFRASTRUCTURE GOVERNANCE
-   Hadolint / Checkov / Trivy
-          │
-          ▼
-   OPERATIONAL GOVERNANCE
-   Health Checks / Error Handling / Observability
-          │
-          ▼
-   TOOLING CLASSIFICATION
-          │
-   ┌──────┴──────┐
-   ▼             ▼             ▼
-  GATE       DIAGNOSTIC    EXPERIMENTAL
-   │             │             │
-"must pass"  "tell me why" "let's find out"
-   │             │             │
-make check   manual/sandbox research/learning
-```
-
----
-
-## Klasyfikacja toolingu: Gate / Diagnostic / Experimental
-
-Każde narzędzie w projekcie jest przydzielone do jednej z trzech kategorii:
-
-```
-                    GOVERNANCE
+                     GOVERNANCE
                          │
           ┌──────────────┼──────────────┐
           ▼              ▼              ▼
-        GATE         DIAGNOSTIC     EXPERIMENTAL
+       INVARIANTS     TOOLS         META
           │              │              │
-     "must pass"    "tell me why"   "let's find out"
-          │              │              │
-     CI blocking    CI/manual       sandbox/manual
+      FF-001..FF-023  pytest        ADR
+          │          import-linter  Debt Register
+          │          trivy          FF Registry
+          │          radon
+          │          xenon
+          │          hadolint
+          │          checkov
+          │          wily
+          ▼              ▼
+    CO-DESIGN ──────→ EXECUTION
+    (FF ↔ Tool)      Tier × Mode
 ```
 
-### GATE
+**Dwa wymiary:**
+- **INVARIANTS** — `FF-001..FF-023` w `docs/architecture/fitness-functions.md`. Odpowiadają na pytanie: „Jakiego invariant’a chcemy chronić?”
+- **TOOLS** — mechanizmy sprawdzające invariants. Odpowiadają na pytanie: „Czym sprawdzamy ten invariant?”
+- **CO-DESIGN** — jeden tool może realizować wiele FF, jedno FF może być realizowane przez więcej niż jeden tool.
+
+**Trzy poziomy zaufania (TIER):**
+
+```
+                     TIER
+           ┌──────────┼──────────┐
+           ▼          ▼          ▼
+         GATE     DIAGNOSTIC EXPERIMENTAL
+           │          │          │
+      "must pass" "tell me"  "let's find
+                    why"      out"
+```
+
+**Charakter wykonania (MODE):**
+- `blocking` — łamanie blokuje CI/merge
+- `advisory` — łamanie generuje ostrzeżenie, ale nie blokuje; informacja dla developera
+
+**Kombinacje Tier × Mode:**
+- `Gate × blocking` — `make check`
+- `Diagnostic × advisory` — świadomie uruchamiane przez developera
+- `Experimental × advisory` — świadomie uruchamiane w sandboxie
+
+---
+
+## Klasyfikacja toolingu: Tier × Mode
+
+Każde narzędzie ma przypisany **Tier** (poziom zaufania) i **Mode** (charakter wykonania):
+
+```
+                     GOVERNANCE
+                          │
+           ┌──────────────┼──────────────┐
+           ▼              ▼              ▼
+         GATE         DIAGNOSTIC     EXPERIMENTAL
+           │              │              │
+      "must pass"    "tell me why"   "let's find out"
+           │              │              │
+      blocking       advisory        advisory
+```
+
+### GATE × blocking
 
 Narzędzia, które **muszą przejść** w każdym przebiegu CI. Ich łamanie blokuje merge/PR.
 
-| Mechanizm | Plik/Konfiguracja | Cel |
-|-----------|-------------------|-----|
-| Import Linter | `.importlinter` | Kierunek zależności |
-| Architecture Tests — Blocking FF | `tests/architecture/` | Fitness functions |
-| Trivy | `security-audit` | CVE HIGH/CRITICAL |
-| Ruff / mypy / lint-imports | `make check` | Code quality |
+| Tool | Plik/Konfiguracja | Realizuje FF | Tryb |
+|------|-------------------|--------------|------|
+| Import Linter | `.importlinter` | FF-001, FF-002 | blocking |
+| pytest | `tests/architecture/` | FF-003..FF-005, FF-007, FF-010, FF-015..FF-017, FF-019..FF-021, FF-023 | blocking |
+| Trivy | `make security-audit` | FF-013 | blocking (HIGH/CRITICAL) |
+| Ruff / mypy / lint-imports | `make check` | code quality | blocking |
 
-### DIAGNOSTIC
+### DIAGNOSTIC × advisory
 
 Narzędzia, które **dostarczają informacji**, ale nie blokują CI. Uruchamiane świadomie przez developera.
 
-| Mechanizm | Plik/Konfiguracja | Cel | Uruchomienie |
-|-----------|-------------------|-----|--------------|
-| pytest-randomly | `make test-random` | Wykrywanie zależności między testami | Manual/CI advisory |
-| Radon | `make complexity-check` | Złożoność — trend over time | Manual |
-| wily | `make complexity-trend` | Trend jakości | Manual |
-| diff-cover | `make coverage-diff` | Coverage nowego kodu | Manual |
-| Gitleaks | `make secret-scan` | Secret discovery | Manual |
-| pydeps/pyreverse | `make graph-*` | Dependency graph | Manual |
-| pytest-timings | `make test-timings` | Analiza czasu testów | Manual |
+| Tool | Plik/Konfiguracja | Realizuje FF | Tryb |
+|------|-------------------|--------------|------|
+| pytest | `tests/architecture/` | FF-001, FF-006, FF-008, FF-009, FF-018, FF-022 | advisory |
+| Radon | `make complexity-check` | — | advisory |
+| Xenon | `make complexity-check` | — | advisory |
+| wily | `make complexity-trend` | — | advisory |
+| Hadolint | `.hadolint.yaml` | FF-011 | advisory |
+| Checkov | `.checkov.yaml` | FF-012 | advisory |
+| Docker Bench | `make docker-bench` | FF-014 | advisory |
+| pytest-randomly | `make test-random` | — | advisory |
+| pytest-timings | `make test-timings` | — | advisory |
+| pytest-html | `make test-html` | — | advisory |
+| diff-cover | `make coverage-diff` | — | advisory |
+| detect-secrets | `make secret-scan` | — | advisory |
+| docstr-coverage | `make docstr-coverage` | — | advisory |
+| djLint | `make lint-templates` | — | advisory |
 
-### EXPERIMENTAL
+### EXPERIMENTAL × advisory
 
 Narzędzia w **kontrolowanej eksperymentacji**. Można je uruchamiać świadomie, ale nie są częścią standardowego CI.
 
-| Mechanizm | Plik/Konfiguracja | Cel |
-|-----------|-------------------|-----|
+| Tool | Plik/Konfiguracja | Cel |
+|------|-------------------|-----|
 | mutmut | `make experimental-mutation` | Jakość testów (mutation score) |
 | Schemathesis | `make experimental-schemathesis` | API fuzzing |
 | Testcontainers | `make experimental-testcontainers` | Real PostgreSQL/Redis w testach |
@@ -103,10 +118,12 @@ Narzędzia w **kontrolowanej eksperymentacji**. Można je uruchamiać świadomie
 | k6 | `make experimental-k6` | Load testing |
 | OWASP ZAP | `make experimental-zap` | DAST |
 | Factory Boy | `make experimental-factory-boy` | Test data architecture |
+| pytest-xdist | `make experimental-xdist` | Parallel testing |
+| pytest-benchmark | `make experimental-benchmark` | Microbenchmark |
 
 **Zasady:**
 - Experimental nie blokuje CI
-- Po eksperymencie decyzja: wdrożenie do Diagnostic, przeniesienie do Gate, lub usunięcie
+- Po eksperymencie decyzja: awans do Diagnostic, awans do Gate, lub usunięcie
 - Każde narzędzie Experimental musi mieć clear exit criteria
 
 ---
@@ -144,53 +161,86 @@ Narzędzia w **kontrolowanej eksperymentacji**. Można je uruchamiać świadomie
 
 ---
 
-### ENFORCE — Egzekwowanie reguł
+### INVARIANTS — Fitness Functions
 
-| Mechanizm | Plik/Konfiguracja | Cel | Charakter | Blokuje CI? |
-|-----------|-------------------|-----|----------|-------------|
-| Import Linter | `.importlinter` | Kierunek zależności między warstwami | **Blocking** | ✅ Tak |
-| Architecture Tests — FF-001..FF-005, FF-007..FF-010, FF-015..FF-016 | `tests/architecture/` | Fitness functions (architectural invariants) | **Blocking** | ✅ Tak |
-| Architecture Tests — FF-006 (DTO Naming Convention) | `tests/architecture/` | Konwencja stylistyczna | Advisory | ❌ Nie |
+Fitness Functions to zbiór invariant’ów architektonicznych (`FF-001..FF-023`). Każdy FF odpowiada na pytanie: „Jakiego invariant’a chcemy chronić?”
+
+Pełny rejestr: [`docs/architecture/fitness-functions.md`](fitness-functions.md)
+
+**Mapowanie FF → Tools:**
+
+| FF | Invariant | Tool | Tier | Mode |
+|----|-----------|------|------|------|
+| FF-001 | Dependency Direction | Import Linter | Gate | blocking |
+| FF-001 | Dependency Direction | pytest | Diagnostic | advisory |
+| FF-002 | Domain Purity | Import Linter | Gate | blocking |
+| FF-002 | Domain Purity | pytest | Gate | blocking |
+| FF-003 | Repository Contracts | pytest | Gate | blocking |
+| FF-004 | API DTO Gating | pytest | Gate | blocking |
+| FF-005 | DI Container Completeness | pytest | Gate | blocking |
+| FF-006 | DTO Naming Convention | pytest | Diagnostic | advisory |
+| FF-007 | No Primitive Obsession | pytest | Gate | blocking |
+| FF-008 | Migration Idempotency | pytest | Diagnostic | advisory |
+| FF-009 | God Class Prevention | pytest | Diagnostic | advisory |
+| FF-010 | Badge Rule Immutability | pytest | Gate | blocking |
+| FF-011 | Dockerfile Hygiene | Hadolint | Diagnostic | advisory |
+| FF-012 | Compose Security | Checkov | Diagnostic | advisory |
+| FF-013 | Image Vulnerability Scanning | Trivy | Gate | blocking |
+| FF-014 | Docker Bench Security | Docker Bench | Diagnostic | advisory |
+| FF-015 | Compose Health Checks | pytest | Gate | blocking |
+| FF-016 | API Exception Handling | pytest | Gate | blocking |
+| FF-017 | Request ID Contract | pytest | Gate | blocking |
+| FF-018 | No Sensitive Data in Logs | pytest | Diagnostic | advisory |
+| FF-019 | Structured Error Context | pytest | Gate | blocking |
+| FF-020 | Health Check Semantics | pytest | Gate | blocking |
+| FF-021 | Lockfile Integrity | pytest | Gate | blocking |
+| FF-022 | Dependency Groups Separation | pytest | Diagnostic | advisory |
+| FF-023 | Fitness Function Registry Completeness | pytest | Gate | blocking |
+
+**Kluczowe zasady:**
+- Jeden FF może być realizowany przez wiele tooli (np. FF-001 przez Import Linter i pytest)
+- Jeden tool może realizować wiele FF (np. pytest realizuje 20+ FF)
+- Tier jest przypisany do **tool’u**, nie do FF — ten sam FF może mieć różne tier w zależności od toola
+
+### TOOLS — Mechanizmy sprawdzające
+
+| Tool | Tier | Mode | Realizuje FF | Charakter |
+|------|------|------|--------------|----------|
+| Import Linter | Gate | blocking | FF-001, FF-002 | Kierunek zależności |
+| pytest | Gate | blocking | FF-003..FF-005, FF-007, FF-010, FF-015..FF-017, FF-019..FF-021, FF-023 | Architecture Tests |
+| pytest | Diagnostic | advisory | FF-001, FF-006, FF-008, FF-009, FF-018, FF-022 | Architecture Tests |
+| Trivy | Gate | blocking | FF-013 | CVE HIGH/CRITICAL |
+| Ruff / mypy / lint-imports | Gate | blocking | code quality | Code quality |
+| Radon | Diagnostic | advisory | — | Złożoność |
+| Xenon | Diagnostic | advisory | — | Złożoność threshold |
+| wily | Diagnostic | advisory | — | Trend jakości |
+| Hadolint | Diagnostic | advisory | FF-011 | Jakość Dockerfile |
+| Checkov | Diagnostic | advisory | FF-012 | Bezpieczeństwo Compose |
+| Docker Bench | Diagnostic | advisory | FF-014 | Audyt hosta Docker |
+| pytest-randomly | Diagnostic | advisory | — | Test dependencies |
+| pytest-timings | Diagnostic | advisory | — | Test timings |
+| pytest-html | Diagnostic | advisory | — | Test report |
+| diff-cover | Diagnostic | advisory | — | Coverage nowego kodu |
+| detect-secrets | Diagnostic | advisory | — | Secret discovery |
+| docstr-coverage | Diagnostic | advisory | — | Docstring coverage |
+| djLint | Diagnostic | advisory | — | Django templates |
+
+### Wyjątki
 
 **Import Linter — wyjątki:**
 
-| Wyjątek | Uzasadnienie | Powiązanie |
-|---------|--------------|------------|
-| `apps.badges.tasks -> infrastructure.adapters.osm_adapter` | Zadania Celery wywołują OSMAdapter bezpośrednio dla retry logic | DŁUG-001 |
-| `apps.badges.models -> infrastructure.schemas.badge_rules_schema` | Walidacja JSONB w modelu Django | DŁUG-002 |
-| `apps.tourists.context_processors -> infrastructure.config.map_layers` | Context Processor wstrzykuje warstwy map | DŁUG-003 |
-| `infrastructure.adapters.celery_event_publisher -> apps.badges.tasks` | Adapter zdarzeń importuje nazwy zadań Celery | DŁUG-004 |
+| Wyjątek | Uzasadnienie | Powiązanie | Status |
+|---------|--------------|------------|--------|
+| `apps.badges.tasks -> infrastructure.adapters.osm_adapter` | Zadania Celery wywołują OSMAdapter bezpośrednio dla retry logic | DŁUG-001 | Open |
+| `apps.badges.models -> infrastructure.schemas.badge_rules_schema` | Walidacja JSONB w modelu Django | DŁUG-002 | Open |
+| `apps.tourists.context_processors -> infrastructure.config.map_layers` | Context Processor wstrzykuje warstwy map | DŁUG-003 | Open |
+| `infrastructure.adapters.celery_event_publisher -> apps.badges.tasks` | Adapter zdarzeń importuje nazwy zadań Celery | DŁUG-004 | Open |
 
 **Import Linter a testy architektury:**
 - `test_dependency_direction.py` (FF-001) jest komplementarny do Import Lintera — test dostarcza diagnostykę w pytest, ale Import Linter jest źródłem prawdy.
 - `test_domain_purity.py` (FF-002) nie powtarza już sprawdzania importów (to obowiązek Import Lintera `domain-purity`). Test chroni tylko invariant behawioralny: brak dziedziczenia po `Model` w warstwie domenowej, który Import Linter nie może wykryć.
 
----
-
-### MEASURE — Jakość kodu
-
-| Mechanizm | Plik/Konfiguracja | Cel | Charakter | Blokuje CI? |
-|-----------|-------------------|-----|----------|-------------|
-| Radon | `make complexity-check` | Złożoność cyklomatyczna | Advisory | ❌ Nie |
-| Xenon | `xenon.ini` | Złożoność — hotspoxy / advisory threshold |
-| wily | `make complexity-trend` | Trend jakości w czasie | Advisory | ❌ Nie |
-
-**Xenon — limity:**
-- Złożoność cyklomatyczna: B (max 10)
-- Maintainability Index: C (min 20)
-
----
-
-### INFRASTRUCTURE GOVERNANCE — Bezpieczeństwo runtime
-
-| Mechanizm | Plik/Konfiguracja | Cel | Charakter | Blokuje CI? |
-|-----------|-------------------|-----|----------|-------------|
-| Hadolint | `.hadolint.yaml` | Jakość Dockerfile | Advisory | ❌ Nie |
-| Checkov | `.checkov.yaml` | Bezpieczeństwo Compose/IaC | Advisory | ❌ Nie |
-| Trivy | `make security-audit` | CVE w obrazie kontenerowym | **Blocking** | ✅ Tak (HIGH/CRITICAL) |
-| Docker Bench | `make docker-bench` | Audyt hosta Docker | Advisory | ❌ Nie (placeholder) |
-
-**Hadolint — obecny baseline:**
+### Hadolint — baseline
 
 | Ostrzeżenie | Status | Uzasadnienie |
 |-------------|--------|--------------|
@@ -198,96 +248,17 @@ Narzędzia w **kontrolowanej eksperymentacji**. Można je uruchamiać świadomie
 | DL3008 — pin pakietów APT | ⚠️ Non-blocking | Pakiety zmieniają się często; pinowanie w builderze |
 | DL3046 — `useradd` bez `-l` | ⚠️ Non-blocking | Świadome użycie wysokiego UID (10001) dla django_user |
 
-**Polityka:** Sześć obecnych warningów jest zaakceptowanym baselinem. Nowe warningi nie powinny być dodawane bez uzasadnienia.
+**Polityka:** Obecny baseline jest zaakceptowany. Nowe warningi nie powinny być dodawane bez uzasadnienia.
 
----
+### Trivy — wyjątki
 
-### OPERATIONAL GOVERNANCE — Runtime & Observability
+Trivy skanuje zależności deweloperskie Semgrep (przez MCP). Wyjątki w `osv-scanner.toml`:
 
-| Mechanizm | Plik/Konfiguracja | Cel | Charakter | Blokuje CI? |
-|-----------|-------------------|-----|----------|-------------|
-| Health Checks | `tests/architecture/test_health_checks.py` | Wszystkie services mają `healthcheck` | **Blocking** | ✅ Tak |
-| API Exception Handling | `tests/architecture/test_exception_handling.py` | Widoki łapią `ApplicationException` | **Blocking** | ✅ Tak |
+- `PYSEC-2026-3481`..`PYSEC-2026-3483` — zależności deweloperskie Semgrep
+- `PYSEC-2026-3696`..`PYSEC-2026-3699` — zależności deweloperskie
+- `GHSA-prg7-hcfm-mfcr` — zależność deweloperska
 
-**Health Checks:**
-- Każdy service w `compose*.yml` musi mieć `healthcheck`
-- Wyjątki: `db`, `redis` (mają healthcheck w `compose.yml`)
-- Test: `test_all_application_services_have_healthcheck`
-
-**API Exception Handling:**
-- Każda metoda `post`/`patch` w `apps/api/views.py` musi łapać `ApplicationException`
-- Test: `test_api_views_handle_application_exception`
-
-### OBSERVABILITY GOVERNANCE — Kontrakty przed wdrożeniem
-
-| Mechanizm | Plik/Konfiguracja | Cel | Charakter | Blokuje CI? |
-|-----------|-------------------|-----|----------|-------------|
-| Request ID Contract | `tests/architecture/test_request_id_contract.py` | Korelacja żądań | **Blocking** | ✅ Tak |
-| No Sensitive Data in Logs | `tests/architecture/test_no_sensitive_data_in_logs.py` | Brak wrażliwych danych w logach | Advisory | ❌ Nie |
-| Structured Error Context | `tests/architecture/test_structured_error_context.py` | RFC 7807 + request_id | **Blocking** | ✅ Tak |
-| Health Check Semantics | `tests/architecture/test_health_checks.py` | Semantyka healthcheck | **Blocking** | ✅ Tak (TEST/PROD) |
-
-**Request ID Contract:**
-- Middleware generuje `request_id` jeśli brak `X-Request-ID`; honoruje nagłówek jeśli obecny
-- `request_id` jest wstrzykiwany do obiektu `request` i do kontekstu Loguru
-- Test: `test_request_id_contract.py`
-
-**No Sensitive Data in Logs:**
-- Logi nie mogą zawierać haseł, tokenów, sekretów, kluczy API
-- Test skanuje komunikaty pod kątem słów kluczowych
-- Status Advisory z powodu możliwości false positives
-- Test: `test_no_sensitive_data_in_logs.py`
-
-**Structured Error Context:**
-- Wszystkie `except ApplicationException` w API używają `_handle_application_exception` lub `_problem_detail`
-- Oba helpery wstrzykują `request_id` do odpowiedzi RFC 7807
-- Test: `test_structured_error_context.py`
-
-**Health Check Semantics:**
-- Endpoint `/health/` sprawdza DB (`SELECT 1`) i Redis (`cache.set`/`cache.get`)
-- Jeśli zależność niedostępna — zwraca `503 Service Unavailable`
-- W `APP_ENV=test` pomija sprawdzanie zależności (testy jednostkowe bez DB/Redis)
-- Test: `test_health_checks.py` + `test_urls.py`
-
-**Przyszłe wdrożenia (nie teraz):**
-- Sentry — error tracking (po pojawieniu się użytkowników produkcyjnych)
-- Prometheus + Grafana — metryki i dashboardy (po potrzebie capacity planning)
-- Loki — agregacja logów (po zniknięciu wartości `docker compose logs`)
-- OpenTelemetry — distributed tracing (po zrozumieniu Prometheusa)
-
-### SUPPLY CHAIN GOVERNANCE — Kontrakty łańcucha dostaw
-
-| Mechanizm | Plik/Konfiguracja | Cel | Charakter | Blokuje CI? |
-|-----------|-------------------|-----|----------|-------------|
-| Lockfile Integrity | `tests/architecture/test_lockfile_integrity.py` + pre-commit `uv lock --check` | `uv.lock` jest committed i śledzony | **Blocking** | ✅ Tak |
-| Dependency Groups Separation | `tests/architecture/test_dependency_groups_separation.py` | Narzędzia dev/test nie mieszają się z runtime | Advisory | ❌ Nie |
-
-**Lockfile Integrity:**
-- `uv.lock` istnieje i jest śledzony przez Git
-- Pre-commit hook `uv lock --check` gwarantuje synchronizację z `pyproject.toml`
-- Test: `test_lockfile_integrity.py`
-
-**Dependency Groups Separation:**
-- Zależności z `[dependency-groups.dev]` i `[dependency-groups.test]` nie pojawiają się w runtime `dependencies`
-- CI używa `uv sync --group test --no-dev` dla testów i `uv sync --no-dev` dla PROD
-- Test: `test_dependency_groups_separation.py`
-
-**Polityka aktualizacji zależności:**
-1. LOCK — bieżący stan (`uv.lock` gwarantuje reproducible builds)
-2. MONITOR — Trivy/OSV-Scanner wykrywa CVE
-3. REVIEW — deweloper ocenia wpływ
-4. UPDATE — świadoma aktualizacja w `pyproject.toml`
-5. TEST — `uv lock` + `make check`
-6. RELEASE — commit + push
-
-**Zaimplementowane:**
-- Dependabot — automatyczne PR dla `uv`, GitHub Actions, Docker (`.github/dependabot.yml`)
-- SBOM — generowanie CycloneDX przez Syft w CI (`.github/workflows/ci.yml`)
-
-**Przyszłe wdrożenia (po zbliżeniu się do TEST/PROD):**
-- SLSA/Cosign — build provenance i image signing (po wdrożeniu PROD)
-
-**Uwaga:** Renovate nie jest planowany. Dependabot jest używany jako narzędzie do automatycznych aktualizacji zależności.
+**Uzasadnienie:** Mitygacja przez `--no-dev` / podział grup w `pyproject.toml`.
 
 ---
 
@@ -399,64 +370,53 @@ Diagnostic
 **Przykłady:**
 - Xenon: Gate → Diagnostic (złożoność to sygnał, nie blocking rule; Radon + wily już dają pomiar/trend)
 - FF-009 God Class Prevention: Gate → Diagnostic (proxy metric, heurystyka, nie invariant)
-- FF-018 No Sensitive Data in Logs: Gate → Advisory (heurystyka, możliwe FP; detect-secrets jako lepszy mechanizm)
+- FF-018 No Sensitive Data in Logs: Gate → Diagnostic (heurystyka, możliwe FP; detect-secrets jako lepszy mechanizm)
 
 ---
 
-## Blokujące vs Advisory — podsumowanie
+## Podsumowanie: Tier × Mode
 
-### 🟢 Gate (CI fails)
+### 🟢 Gate × blocking (CI fails)
 
-| Mechanizm | Gdzie | Co chroni |
-|-----------|-------|-----------|
-| Import Linter | `.importlinter` | Kierunek zależności |
-| Architecture Tests — FF-002 (Domain Purity) | `test_domain_purity.py` | Brak Model w domenie |
-| Architecture Tests — FF-003 (Repository Contracts) | `test_repository_contracts.py` | Pełność implementacji portów |
-| Architecture Tests — FF-004 (API DTO Gating) | `test_api_dto_gating.py` | Walidacja wejścia w API |
-| Architecture Tests — FF-005 (DI Container Completeness) | `test_di_container_completeness.py` | Rejestracja UseCase'ów |
-| Architecture Tests — FF-007 (No Primitive Obsession) | `test_no_primitive_obsession.py` | Typy zwracane przez UseCase'y |
-| Architecture Tests — FF-010 (Badge Rule Immutability) | `test_badge_rule_immutability.py` | Frozen dataclass dla reguł |
-| Architecture Tests — FF-015 (Compose Health Checks) | `test_health_checks.py` | Obecność healthcheck |
-| Architecture Tests — FF-016 (API Exception Handling) | `test_exception_handling.py` | Obsługa ApplicationException |
-| Architecture Tests — FF-017 (Request ID Contract) | `test_request_id_contract.py` | Korelacja żądań |
-| Architecture Tests — FF-019 (Structured Error Context) | `test_structured_error_context.py` | RFC 7807 + request_id |
-| Architecture Tests — FF-020 (Health Check Semantics) | `test_health_checks.py` | Semantyka healthcheck |
-| Architecture Tests — FF-021 (Lockfile Integrity) | `test_lockfile_integrity.py` | `uv.lock` jest committed i śledzony |
-| Architecture Tests — FF-023 (Fitness Function Registry Completeness) | `test_fitness_function_registry.py` | Wszystkie FF mają wpis w rejestrze |
-| Trivy | `security-audit` | CVE HIGH/CRITICAL |
+| Tool | Realizuje FF | Plik |
+|------|--------------|------|
+| Import Linter | FF-001, FF-002 | `.importlinter` |
+| pytest | FF-002..FF-005, FF-007, FF-010, FF-015..FF-017, FF-019..FF-021, FF-023 | `tests/architecture/` |
+| Trivy | FF-013 | `make security-audit` |
+| Ruff / mypy / lint-imports | code quality | `make check` |
 
-### 🟡 Diagnostic (CI passes, ale warto sprawdzić)
+### 🟡 Diagnostic × advisory (CI passes, ale warto sprawdzić)
 
-| Mechanizm | Gdzie | Co chroni |
-|-----------|-------|-----------|
-| Architecture Tests — FF-001 (Dependency Direction) | `test_dependency_direction.py` | Kierunek zależności (komplementarne do Import Lintera) |
-| Architecture Tests — FF-006 (DTO Naming Convention) | `test_dto_naming_convention.py` | Konwencja nazewnictwa DTO |
-| Architecture Tests — FF-008 (Migration Idempotency) | `test_migration_idempotency.py` | Struktura migracji (heurystyka) |
-| Architecture Tests — FF-009 (God Class Prevention) | `test_god_class_prevention.py` | Trend wzrostu modułów (proxy metric) |
-| Architecture Tests — FF-018 (No Sensitive Data in Logs) | `test_no_sensitive_data_in_logs.py` | Wrażliwe dane w logach (heurystyka) |
-| Architecture Tests — FF-022 (Dependency Groups Separation) | `test_dependency_groups_separation.py` | Rozdzielenie dev/test od runtime |
-| Radon | `make complexity-check` | Złożoność — trend over time |
-| Xenon | `make complexity-check` | Złożoność — hotspoxy / advisory threshold |
-| wily | `make complexity-trend` | Trend jakości |
-| Hadolint | `make hadolint` | Jakość Dockerfile |
-| Checkov | `make checkov` | Bezpieczeństwo Compose |
-| Docker Bench | `make docker-bench` | Konfiguracja hosta Docker |
-| pytest-randomly | `make test-random` | Wykrywanie zależności między testami |
-| pytest-timings | `make test-timings` | Analiza czasu testów |
-| pytest-html | `make test-html` | Raport HTML z wyników testów |
-| diff-cover | `make coverage-diff` | Coverage nowego kodu |
-| detect-secrets | `make secret-scan` | Secret discovery baseline |
-| docstr-coverage | `make docstr-coverage` | Sprawdzanie pokrycia docstringami |
-| djLint | `make lint-templates` | Jakość Django templates |
-| detect-secrets | `make secret-scan` | Secret discovery |
+| Tool | Realizuje FF | Plik |
+|------|--------------|------|
+| pytest | FF-001, FF-006, FF-008, FF-009, FF-018, FF-022 | `tests/architecture/` |
+| Radon | — | `make complexity-check` |
+| Xenon | — | `make complexity-check` |
+| wily | — | `make complexity-trend` |
+| Hadolint | FF-011 | `.hadolint.yaml` |
+| Checkov | FF-012 | `.checkov.yaml` |
+| Docker Bench | FF-014 | `make docker-bench` |
+| pytest-randomly | — | `make test-random` |
+| pytest-timings | — | `make test-timings` |
+| pytest-html | — | `make test-html` |
+| diff-cover | — | `make coverage-diff` |
+| detect-secrets | — | `make secret-scan` |
+| docstr-coverage | — | `make docstr-coverage` |
+| djLint | — | `make lint-templates` |
 
-### Advisory (CI passes, informacyjne)
+### 🔵 Experimental × advisory (świadomie uruchamiane)
 
-| Mechanizm | Gdzie | Co chroni |
-|-----------|-------|-----------|
-| Architecture Tests — FF-011 (Dockerfile Hygiene) | Hadolint | Standard konstrukcji obrazu |
-| Architecture Tests — FF-012 (Compose Security) | Checkov | Konfiguracja IaC |
-| Architecture Tests — FF-014 (Docker Bench Security) | Docker Bench | Konfiguracja hosta Docker |
+| Tool | Cel |
+|------|-----|
+| mutmut | Jakość testów (mutation score) |
+| Schemathesis | API fuzzing |
+| Testcontainers | Real PostgreSQL/Redis w testach |
+| axe-playwright | Accessibility |
+| k6 | Load testing |
+| OWASP ZAP | DAST |
+| Factory Boy | Test data architecture |
+| pytest-xdist | Parallel testing |
+| pytest-benchmark | Microbenchmark |
 
 ---
 
@@ -499,10 +459,10 @@ Trivy skanuje zależności deweloperskie Semgrep (przez MCP). Wyjątki w `osv-sc
 
 ### Gate
 
-| Mechanizm | Właściciel | Odpowiedzialność |
-|-----------|-----------|-----------------|
+| Tool | Właściciel | Odpowiedzialność |
+|------|-----------|-----------------|
 | Import Linter | Dominik / AI Architect | Konfiguracja i wyjątki |
-| Architecture Tests — Blocking FF | Dominik / AI Architect | Dodawanie nowych fitness functions |
+| pytest (Blocking FF) | Dominik / AI Architect | Dodawanie nowych fitness functions |
 | Trivy | Dominik / AI Architect | Ignore list i tolerancja CVE |
 | Health Checks | Dominik / AI Architect | Utrzymanie healthcheck w Compose |
 | API Exception Handling | Dominik / AI Architect | Utrzymanie obsługi ApplicationException w widokach |
@@ -512,23 +472,27 @@ Trivy skanuje zależności deweloperskie Semgrep (przez MCP). Wyjątki w `osv-sc
 
 ### Diagnostic
 
-| Mechanizm | Właściciel | Odpowiedzialność |
-|-----------|-----------|-----------------|
+| Tool | Właściciel | Odpowiedzialność |
+|------|-----------|-----------------|
+| pytest (Diagnostic FF) | Dominik / AI Architect | Utrzymanie heurystyk i smell detectorów |
 | Radon | Dominik / AI Architect | Utrzymanie limitów złożoności |
 | Xenon | Dominik / AI Architect | Advisory threshold dla hotspocy |
 | wily | Dominik / AI Architect | Trend analysis |
 | Hadolint | Dominik / AI Architect | Baseline i wyjątki |
 | Checkov | Dominik / AI Architect | Konfiguracja i skany Compose |
+| Docker Bench | Dominik / AI Architect | Placeholder — aktualizacja po znalezieniu successor'a |
 | pytest-randomly | Dominik / AI Architect | Wykrywanie zależności między testami |
+| pytest-timings | Dominik / AI Architect | Analiza czasu testów |
+| pytest-html | Dominik / AI Architect | Raport HTML |
 | diff-cover | Dominik / AI Architect | Coverage nowego kodu |
 | detect-secrets | Dominik / AI Architect | Secret discovery baseline |
-| detect-secrets | Dominik / AI Architect | Secret discovery baseline |
-| Architecture Tests — Diagnostic FF | Dominik / AI Architect | Utrzymanie heurystyk i smell detectorów |
+| docstr-coverage | Dominik / AI Architect | Sprawdzanie pokrycia docstringami |
+| djLint | Dominik / AI Architect | Jakość Django templates |
 
 ### Experimental
 
-| Mechanizm | Właściciel | Odpowiedzialność |
-|-----------|-----------|-----------------|
+| Tool | Właściciel | Odpowiedzialność |
+|------|-----------|-----------------|
 | mutmut | Dominik / AI Architect | Mutation testing experiments |
 | Schemathesis | Dominik / AI Architect | API fuzzing experiments |
 | Testcontainers | Dominik / AI Architect | Real DB w testach experiments |
@@ -538,16 +502,6 @@ Trivy skanuje zależności deweloperskie Semgrep (przez MCP). Wyjątki w `osv-sc
 | Factory Boy | Dominik / AI Architect | Test data architecture experiments |
 | pytest-xdist | Dominik / AI Architect | Parallel testing experiments |
 | pytest-benchmark | Dominik / AI Architect | Microbenchmark experiments |
-
-### Advisory
-
-| Mechanizm | Właściciel | Odpowiedzialność |
-|-----------|-----------|-----------------|
-| Docker Bench | Placeholder | Aktualizacja po znalezieniu successor'a |
-| DTO Naming Convention | Dominik / AI Architect | Utrzymanie konwencji |
-| Migration Idempotency | Dominik / AI Architect | Heurystyka struktury migracji |
-| God Class Prevention | Dominik / AI Architect | Trend analiza rozmiaru modułów |
-| Sensitive Data in Logs | Dominik / AI Architect | Heurystyka wykrywania sekretów |
 
 ---
 
