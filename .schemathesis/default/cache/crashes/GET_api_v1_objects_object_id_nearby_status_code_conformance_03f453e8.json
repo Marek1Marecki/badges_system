@@ -1,0 +1,82 @@
+{
+  "operation": "GET /api/v1/objects/{object_id}/nearby/",
+  "method": "GET",
+  "path_template": "/api/v1/objects/{object_id}/nearby/",
+  "fingerprint": "03f453e8",
+  "case_id": "pPIm1w",
+  "code_sample": "curl -X GET http://localhost:8005/api/v1/objects/113258768/nearby/",
+  "sequence": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/api/v1/objects/113258768/nearby/",
+      "url_template": "http://localhost:8005/api/v1/objects/{object_id}/nearby/",
+      "headers": {
+        "User-Agent": "schemathesis/4.25.2",
+        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+        "X-Schemathesis-TestCaseId": "pPIm1w"
+      },
+      "response": {
+        "status_code": 500,
+        "headers": {
+          "date": "Thu, 27 Aug 2026 17:29:19 GMT",
+          "server": "WSGIServer/0.2 CPython/3.14.7",
+          "content-type": "application/json",
+          "x-frame-options": "DENY",
+          "content-length": "287",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "origin-when-cross-origin",
+          "cross-origin-opener-policy": "same-origin"
+        },
+        "body": "{\"type\": \"https://api.pttk-badges.pl/errors/internal-error\", \"title\": \"Wewn\\u0119trzny B\\u0142\\u0105d Serwera\", \"status\": 500, \"detail\": \"Wyst\\u0105pi\\u0142 nieoczekiwany problem z przetworzeniem zapytania.\", \"instance\": \"/api/v1/objects/113258768/nearby/\", \"request_id\": \"req_548cfada\"}"
+      },
+      "link": null,
+      "checks": [
+        {
+          "name": "status_code_conformance",
+          "status": "failure",
+          "message": "Undocumented HTTP status code\n\nReceived: 500\nDocumented: 200"
+        }
+      ],
+      "meta": {
+        "generation": {
+          "time": 0.001023554999846965,
+          "mode": "positive"
+        },
+        "components": {
+          "PATH": "positive"
+        },
+        "phase": {
+          "name": "fuzzing",
+          "data": {
+            "type": "FuzzingPhaseData",
+            "description": "Positive test case",
+            "location": null,
+            "parameter": null,
+            "parameter_location": null,
+            "mutations": []
+          }
+        },
+        "pool_draws": [],
+        "pool_misses": [],
+        "semantic_draws": [],
+        "dictionary_draws": [],
+        "constants_draws": [],
+        "raw_containers": {}
+      },
+      "path": "/api/v1/objects/{object_id}/nearby/",
+      "path_parameters": {
+        "object_id": 113258768
+      },
+      "query": {},
+      "case_headers": {},
+      "cookies": {},
+      "case_body": {
+        "encoding": "none"
+      },
+      "media_type": null,
+      "parent_index": null
+    }
+  ]
+}

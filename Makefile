@@ -99,8 +99,27 @@ docstr-coverage:
 lint-templates:
 	uv run djlint apps/ --check --reformat
 
+# ==============================================================================
+# SCHEMATHESIS — Experimental API fuzzing
+# ==============================================================================
+# Baseline: 2026-08-27
+# - 13 operations tested
+# - Server errors: 0
+# - Invalid auth: 0
+# - Known auth limitations: 10 operacji wymaga session cookie
+# - Known method limitations: Schemathesis wysyła QUERY, Django zwraca 403
+#
+# Nie jest celem osiągnięcie 0 failures. Schemathesis służy do eksploracji
+# systemu i wykrywania nieoczekiwanych zachowań. Kluczowa metryka:
+# liczba nieoczekiwanych findingów (server errors, invalid auth), nie suma
+# wszystkich failures.
+#
+# Wynik traktowany diagnostycznie, nie jako binary gate.
+# Szczegóły: docs/experimental-schemathesis-baseline.md
+# ==============================================================================
+
 experimental-schemathesis:
-	uv run schemathesis run http://localhost:8000/api/openapi.json --url=http://localhost:8000
+	uv run schemathesis run http://localhost:8005/api/openapi.json --url=http://localhost:8005
 
 experimental-testcontainers:
 	uv run pytest tests/ -m "integration and testcontainers" -v

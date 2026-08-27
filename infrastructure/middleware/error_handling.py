@@ -11,7 +11,8 @@ import uuid
 from collections.abc import Callable
 from typing import Any
 
-from django.http import HttpRequest, JsonResponse
+from django.core.exceptions import PermissionDenied
+from django.http import Http404, HttpRequest, JsonResponse
 from loguru import logger
 
 
@@ -78,6 +79,12 @@ class RFC7807ErrorMiddleware:
 
         Returns:
         """
+        # Http404 i PermissionDenied są standardowymi wyjątkami Django —
+        # nie są "nieoczekiwanymi awariami serwera", więc pozwalamy
+        # domyślnej obsłudze Django na zwrócenie odpowiednich kodów 404/403.
+        if isinstance(exception, (Http404, PermissionDenied)):
+            return None
+
         # Jeśli tu dotarliśmy, oznacza to, że aplikacja wybuchła w sposób niekontrolowany
         # (np. padła baza, literówka w kodzie). Wyjątki domenowe są łapane w views.py.
 

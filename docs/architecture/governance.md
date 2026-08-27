@@ -7,6 +7,52 @@
 
 ---
 
+## Trójtorowy Model Governance i Tooling Lifecycle
+
+Projekt rygorystycznie rozdziela narzędzia nadzoru na trzy kasty operacyjne (Tiers), aby zapobiec paraliżowi wdrożeniowemu (Alert Fatigue) oraz tzw. *Tool Sprawl*. Każde narzędzie w systemie podlega cyklowi życia (Lifecycle), w którym musi udowodnić swoją wartość (Exit Criteria), zanim awansuje do grupy blokującej.
+
+```text
+                     TOOLING LIFECYCLE
+                             │
+              ┌──────────────┴──────────────┐
+              ▼                             ▼
+       [1. CANDIDATE]                [2. EXPERIMENTAL]
+      Wstępna analiza                Weryfikacja hipotezy
+        narzędzia                     (Sandbox / Manual)
+                                            │
+                                  ┌─────────┴─────────┐
+                             Value Proven        No Value / Slow
+                                  │                   │
+                                  ▼                   ▼
+                           [3. DIAGNOSTIC]         [REMOVE]
+                            Obserwacja i
+                            Analiza trendów
+                            (Non-blocking)
+                                  │
+                          Promote to Gate
+                                  │
+                                  ▼
+                             [4. GATE]
+                            Ochrona systemu
+                              (Blocking)
+```
+
+### Klasyfikacja Operacyjna (Obecny Stan)
+
+| Poziom (Tier) | Cel i Pytanie | Charakter CI | Przykładowe Narzędzia w Projekcie |
+|:---|:---|:---|:---|
+| **GATE** | „Czy wolno zaakceptować zmianę?” | Blocking (Fail-Fast) | Ruff, Mypy, Import Linter, Xenon, Trivy, pytest |
+| **DIAGNOSTIC** | „Co się dzieje z jakością / trendami?” | Advisory (Raportowanie) | Radon, Wily, pydeps, Checkov, Hadolint, pytest-randomly, diff-cover, gitleaks |
+| **EXPERIMENTAL** | „Czy ta technika ma u nas sens operacyjny?” | Manual (Poza głównym CI) | mutmut, Schemathesis, Testcontainers, axe-playwright |
+
+### Zasady Wdrażania Nowych Narzędzi (Exit Criteria)
+
+- Narzędzie przebywające w klasie EXPERIMENTAL posiada jasno zdefiniowaną Hipotezę (np. "Czy axe-playwright wykryje realne błędy WCAG na frontendzie?").
+- Jeśli po okresie testowym hipoteza nie zostanie potwierdzona lub narzut operacyjny przewyższy wartość diagnostyczną, narzędzie musi zostać niezwłocznie usunięte z projektu i odnotowane w archiwum ADR (lub rejestrze długów) jako próba odrzucona.
+- Degradacja z GATE do DIAGNOSTIC jest zjawiskiem naturalnym, jeśli narzędzie zaczyna generować zbyt dużo fałszywych alarmów (False Positives) i spowalnia prędkość dostarczania funkcji.
+
+---
+
 ## Przegląd warstw governance
 
 ```

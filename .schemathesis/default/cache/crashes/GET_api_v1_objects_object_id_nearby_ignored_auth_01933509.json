@@ -1,0 +1,88 @@
+{
+  "operation": "GET /api/v1/objects/{object_id}/nearby/",
+  "method": "GET",
+  "path_template": "/api/v1/objects/{object_id}/nearby/",
+  "fingerprint": "01933509",
+  "case_id": "9nToNN",
+  "code_sample": "curl -X GET -H 'Cookie: [Filtered]' http://localhost:8005/api/v1/objects/1/nearby/",
+  "sequence": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/api/v1/objects/1/nearby/",
+      "url_template": "http://localhost:8005/api/v1/objects/{object_id}/nearby/",
+      "headers": {
+        "User-Agent": "schemathesis/4.25.2",
+        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+        "X-Schemathesis-TestCaseId": "9nToNN",
+        "Cookie": "[Filtered]"
+      },
+      "response": {
+        "status_code": 200,
+        "headers": {
+          "date": "Thu, 27 Aug 2026 17:46:15 GMT",
+          "server": "WSGIServer/0.2 CPython/3.14.7",
+          "content-type": "application/json",
+          "x-frame-options": "DENY",
+          "content-length": "1571",
+          "vary": "Cookie",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "origin-when-cross-origin",
+          "cross-origin-opener-policy": "same-origin",
+          "set-cookie": "[Filtered]"
+        },
+        "body": "{\"type\": \"FeatureCollection\", \"features\": [{\"type\": \"Feature\", \"geometry\": {\"type\": \"Point\", \"coordinates\": [20.0881081, 49.1795756]}, \"properties\": {\"id\": 1, \"name\": \"Rysy\", \"type\": \"Szczyt\", \"peak_color\": \"GRAY\", \"is_center\": true}}, {\"type\": \"Feature\", \"geometry\": {\"type\": \"Point\", \"coordinates\": [20.0735086, 49.19035]}, \"properties\": {\"id\": 968, \"name\": \"Czarny Staw Pod Rysami\", \"type\": \"Krzy\\u017c\", \"peak_color\": \"GRAY\", \"is_center\": false}}, {\"type\": \"Feature\", \"geometry\": {\"type\": \"Point\", \"coordinates\": [20.0762646, 49.1885511]}, \"properties\": {\"id\": 868, \"name\": \"Czarny Staw pod Rysami\", \"type\": \"Staw\", \"peak_color\": \"GRAY\", \"is_center\": false}}, {\"type\": \"Feature\", \"geometry\": {\"type\": \"Point\", \"coordinates\": [20.0651276, 49.1837052]}, \"properties\": {\"id\": 347, \"name\": \"Mi\\u0119guszowiecka Prze\\u0142\\u0119cz pod Ch\\u0142opkiem\", \"type\": \"Prze\\u0142\\u0119cz\", \"peak_color\": \"GRAY\", \"is_center\": false}}, {\"type\": \"Feature\", \"geometry\": {\"type\": \"Point\", \"coordinates\": [20.0884638, 49.1793186]}, \"properties\": {\"id\": 780, \"name\": \"Rysy\", \"type\": \"Szczyt\", \"peak_color\": \"GRAY\", \"is_center\": false}}, {\"type\": \"Feature\", \"geometry\": {\"type\": \"Point\", \"coordinates\": [20.0870276, 49.1746037]}, \"properties\": {\"id\": 808, \"name\": \"Schronisko pod Wag\\u0105\", \"type\": \"Schronisko\", \"peak_color\": \"GRAY\", \"is_center\": false}}, {\"type\": \"Feature\", \"geometry\": {\"type\": \"Point\", \"coordinates\": [20.077144, 49.1718823]}, \"properties\": {\"id\": 830, \"name\": \"Wielki \\u017babi Staw Mi\\u0119guszowiecki\", \"type\": \"Staw\", \"peak_color\": \"GRAY\", \"is_center\": false}}]}"
+      },
+      "link": null,
+      "checks": [
+        {
+          "name": "ignored_auth",
+          "status": "failure",
+          "message": "API accepts invalid authentication\n\nExpected 401, got `200 OK` for `GET /api/v1/objects/{object_id}/nearby/` (generated auth likely invalid)"
+        }
+      ],
+      "meta": {
+        "generation": {
+          "time": 0.0024854500079527497,
+          "mode": "positive"
+        },
+        "components": {
+          "PATH": "positive",
+          "COOKIE": "positive"
+        },
+        "phase": {
+          "name": "fuzzing",
+          "data": {
+            "type": "FuzzingPhaseData",
+            "description": "Positive test case",
+            "location": null,
+            "parameter": null,
+            "parameter_location": null,
+            "mutations": []
+          }
+        },
+        "pool_draws": [],
+        "pool_misses": [],
+        "semantic_draws": [],
+        "dictionary_draws": [],
+        "constants_draws": [],
+        "raw_containers": {}
+      },
+      "path": "/api/v1/objects/{object_id}/nearby/",
+      "path_parameters": {
+        "object_id": 1
+      },
+      "query": {},
+      "case_headers": {},
+      "cookies": {
+        "sessionid": "[Filtered]"
+      },
+      "case_body": {
+        "encoding": "none"
+      },
+      "media_type": null,
+      "parent_index": null
+    }
+  ]
+}

@@ -1,0 +1,492 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Badges System API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8005"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sessionid"
+      }
+    },
+    "schemas": {
+      "AscentInput": {
+        "type": "object",
+        "required": ["peak_id", "ascent_date"],
+        "properties": {
+          "peak_id": {"type": "integer"},
+          "ascent_date": {"type": "string", "format": "date"}
+        }
+      },
+      "AscentResult": {
+        "type": "object",
+        "properties": {
+          "ascent_id": {"type": "integer"},
+          "status": {"type": "string"}
+        }
+      },
+      "BulkAscentResult": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string"}
+        }
+      },
+      "GpxContent": {
+        "type": "object",
+        "required": ["gpx_content"],
+        "properties": {
+          "gpx_content": {"type": "string"}
+        }
+      },
+      "LogisticStatusUpdate": {
+        "type": "object",
+        "required": ["logistic_status"],
+        "properties": {
+          "logistic_status": {"type": "string"}
+        }
+      },
+      "UpgradePlan": {
+        "type": "object",
+        "required": ["plan"],
+        "properties": {
+          "plan": {"type": "string"}
+        }
+      },
+      "ProgressResult": {
+        "type": "object"
+      },
+      "FeatureCollection": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string", "example": "FeatureCollection"},
+          "features": {"type": "array"}
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "sessionCookie": []
+    }
+  ],
+  "paths": {
+    "/api/v1/ascents/": {
+      "post": {
+        "summary": "Log an ascent",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/AscentInput"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ascent logged",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/AscentResult"}
+              }
+            }
+          },
+          "401": {"description": "Unauthorized"},
+          "409": {"description": "Duplicate ascent"},
+          "422": {"description": "Validation error"}
+        }
+      }
+    },
+    "/api/v1/ascents/bulk/": {
+      "post": {
+        "summary": "Bulk log ascents",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {"$ref": "#/components/schemas/AscentInput"}
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ascents logged",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BulkAscentResult"}
+              }
+            }
+          },
+          "401": {"description": "Unauthorized"},
+          "422": {"description": "Validation error"}
+        }
+      }
+    },
+    "/api/v1/gpx/analyze/": {
+      "post": {
+        "summary": "Analyze GPX track",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/GpxContent"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Analysis result",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object"}
+              }
+            }
+          },
+          "401": {"description": "Unauthorized"},
+          "422": {"description": "Validation error"}
+        }
+      }
+    },
+    "/api/v1/badges/{badge_code}/subscribe/": {
+      "post": {
+        "summary": "Subscribe to badge",
+        "parameters": [
+          {
+            "name": "badge_code",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Subscribed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "progress_id": {"type": "integer"},
+                    "status": {"type": "string"}
+                  }
+                }
+              }
+            }
+          },
+          "401": {"description": "Unauthorized"},
+          "404": {"description": "Not found"},
+          "422": {"description": "Validation error"}
+        }
+      },
+      "delete": {
+        "summary": "Unsubscribe from badge",
+        "parameters": [
+          {
+            "name": "badge_code",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unsubscribed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {"type": "string"}
+                  }
+                }
+              }
+            }
+          },
+          "401": {"description": "Unauthorized"},
+          "404": {"description": "Not found"}
+        }
+      }
+    },
+    "/api/v1/badges/{badge_code}/progress/": {
+      "get": {
+        "summary": "Get badge progress",
+        "parameters": [
+          {
+            "name": "badge_code",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          },
+          {
+            "name": "cycle",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "integer", "default": 1}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Progress result",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ProgressResult"}
+              }
+            }
+          },
+          "401": {"description": "Unauthorized"},
+          "404": {"description": "Not found"}
+        }
+      }
+    },
+    "/api/v1/map/objects/": {
+      "get": {
+        "summary": "Get map objects",
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": true,
+            "schema": {"type": "string"}
+          },
+          {
+            "name": "badge_code",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "string"}
+          },
+          {
+            "name": "region_level",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "string"}
+          },
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "integer"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GeoJSON FeatureCollection",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/FeatureCollection"}
+              }
+            }
+          },
+          "401": {"description": "Unauthorized"},
+          "422": {"description": "Validation error"}
+        }
+      }
+    },
+    "/api/v1/progress/{progress_id}/logistics/": {
+      "patch": {
+        "summary": "Update logistics status",
+        "parameters": [
+          {
+            "name": "progress_id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/LogisticStatusUpdate"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {"type": "string"},
+                    "logistic_status": {"type": "string"}
+                  }
+                }
+              }
+            }
+          },
+          "401": {"description": "Unauthorized"},
+          "404": {"description": "Not found"}
+        }
+      }
+    },
+    "/api/v1/tiles/{layer}/{z}/{x}/{y}.pbf": {
+      "get": {
+        "security": [],
+        "summary": "Get vector tile",
+        "parameters": [
+          {
+            "name": "layer",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          },
+          {
+            "name": "z",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"}
+          },
+          {
+            "name": "x",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"}
+          },
+          {
+            "name": "y",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vector tile",
+            "content": {
+              "application/x-protobuf": {
+                "schema": {"type": "string", "format": "binary"}
+              }
+            }
+          },
+          "204": {"description": "No content"},
+          "404": {"description": "Not found"}
+        }
+      }
+    },
+    "/api/v1/objects/{object_id}/nearby/": {
+      "get": {
+        "security": [],
+        "summary": "Find nearby objects",
+        "parameters": [
+          {
+            "name": "object_id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Nearby objects",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/FeatureCollection"}
+              }
+            }
+          },
+          "404": {"description": "Not found"}
+        }
+      }
+    },
+    "/api/v1/profiles/{profile_id}/": {
+      "get": {
+        "summary": "Get profile settings",
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile data",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object"}
+              }
+            }
+          },
+          "401": {"description": "Unauthorized"},
+          "404": {"description": "Not found"}
+        }
+      },
+      "patch": {
+        "summary": "Update profile settings",
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"type": "object"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object"}
+              }
+            }
+          },
+          "401": {"description": "Unauthorized"},
+          "404": {"description": "Not found"}
+        }
+      }
+    },
+    "/api/v1/profiles/{profile_id}/upgrade/": {
+      "post": {
+        "summary": "Upgrade profile plan",
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/UpgradePlan"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Upgrade result",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object"}
+              }
+            }
+          },
+          "401": {"description": "Unauthorized"},
+          "404": {"description": "Not found"}
+        }
+      }
+    }
+  }
+}

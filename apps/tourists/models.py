@@ -140,6 +140,7 @@ class UserBadgeProgress(models.Model):
     class Meta:
         """Konfiguracja modelu UserBadgeProgress."""
 
+        db_table = "tourists_badge_progress"
         verbose_name = "Postęp Odznaki (Subskrypcja)"
         verbose_name_plural = "Postępy Odznak"
         # ZMIANA: Zabezpieczenie przed dublowaniem cykli u jednego Profilu

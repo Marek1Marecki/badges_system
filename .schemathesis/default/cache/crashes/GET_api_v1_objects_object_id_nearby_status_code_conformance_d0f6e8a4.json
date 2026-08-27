@@ -1,0 +1,82 @@
+{
+  "operation": "GET /api/v1/objects/{object_id}/nearby/",
+  "method": "GET",
+  "path_template": "/api/v1/objects/{object_id}/nearby/",
+  "fingerprint": "d0f6e8a4",
+  "case_id": "F7qOCM",
+  "code_sample": "curl -X GET http://localhost:8005/api/v1/objects/141396759358/nearby/",
+  "sequence": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/api/v1/objects/141396759358/nearby/",
+      "url_template": "http://localhost:8005/api/v1/objects/{object_id}/nearby/",
+      "headers": {
+        "User-Agent": "schemathesis/4.25.2",
+        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+        "X-Schemathesis-TestCaseId": "F7qOCM"
+      },
+      "response": {
+        "status_code": 404,
+        "headers": {
+          "date": "Thu, 27 Aug 2026 17:48:36 GMT",
+          "server": "WSGIServer/0.2 CPython/3.14.7",
+          "content-type": "text/html; charset=utf-8",
+          "x-frame-options": "DENY",
+          "content-length": "5447",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "origin-when-cross-origin",
+          "cross-origin-opener-policy": "same-origin"
+        },
+        "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\">\n  <title>Page not found at /api/v1/objects/141396759358/nearby/</title>\n  <meta name=\"robots\" content=\"NONE,NOARCHIVE\">\n  <style>\n    html * { padding:0; margin:0; }\n    body * { padding:10px 20px; }\n    body * * { padding:0; }\n    body { font-family: sans-serif; background:#eee; color:#000; }\n    body > :where(header, main, footer) { border-bottom:1px solid #ddd; }\n    h1 { font-weight:normal; margin-bottom:.4em; }\n    h1 small { font-size:60%; color:#666; font-weight:normal; }\n    table { border:none; border-collapse: collapse; width:100%; }\n    td, th { vertical-align:top; padding:2px 3px; }\n    th { width:12em; text-align:right; color:#666; padding-right:.5em; }\n    #info { background:#f6f6f6; }\n    #info ol { margin: 0.5em 4em; }\n    #info ol li { font-family: monospace; }\n    #summary { background: #ffc; }\n    #explanation { background:#eee; border-bottom: 0px none; }\n    pre.exception_value { font-family: sans-serif; color: #575757; font-size: 1.5em; margin: 10px 0 10px 0; }\n  </style>\n</head>\n<body>\n  <header id=\"summary\">\n    <h1>Page not found <small>(404)</small></h1>\n    <pre class=\"exception_value\">No TouristObject matches the given query.</pre>\n    <table class=\"meta\">\n      <tr>\n        <th scope=\"row\">Request Method:</th>\n        <td>GET</td>\n      </tr>\n      <tr>\n        <th scope=\"row\">Request URL:</th>\n        <td>http://localhost:8005/api/v1/objects/141396759358/nearby/</td>\n      </tr>\n      \n      <tr>\n        <th scope=\"row\">Raised by:</th>\n        <td>apps.api.views.NearbyObjectsView</td>\n      </tr>\n      \n    </table>\n  </header>\n\n  <main id=\"info\">\n    \n      <p>\n      Using the URLconf defined in <code>config.urls</code>,\n      Django tried these URL patterns, in this order:\n      </p>\n      <ol>\n        \n          <li>\n            \n              <code>\n                health/\n                [name='health_check']\n              </code>\n            \n          </li>\n        \n          <li>\n            \n              <code>\n                admin/\n                \n              </code>\n            \n          </li>\n        \n          <li>\n            \n              <code>\n                api/openapi.json\n                [name='openapi_schema']\n              </code>\n            \n          </li>\n        \n          <li>\n            \n              <code>\n                api/\n                \n              </code>\n            \n              <code>\n                v1/ascents/\n                [name='ascents']\n              </code>\n            \n          </li>\n        \n          <li>\n            \n              <code>\n                api/\n                \n              </code>\n            \n              <code>\n                v1/ascents/bulk/\n                [name='ascents_bulk']\n              </code>\n            \n          </li>\n        \n          <li>\n            \n              <code>\n                api/\n                \n              </code>\n            \n              <code>\n                v1/gpx/analyze/\n                [name='gpx_analyze']\n              </code>\n            \n          </li>\n        \n          <li>\n            \n              <code>\n                api/\n                \n              </code>\n            \n              <code>\n                v1/badges/&lt;str:badge_code&gt;/subscribe/\n                [name='badge_subscribe']\n              </code>\n            \n          </li>\n        \n          <li>\n            \n              <code>\n                api/\n                \n              </code>\n            \n              <code>\n                v1/badges/&lt;str:badge_code&gt;/progress/\n                [name='badge_progress']\n              </code>\n            \n          </li>\n        \n          <li>\n            \n              <code>\n                api/\n                \n              </code>\n            \n              <code>\n                v1/map/objects/\n                [name='map_objects']\n              </code>\n            \n          </li>\n        \n          <li>\n            \n              <code>\n                api/\n                \n              </code>\n            \n              <code>\n                v1/progress/&lt;int:progress_id&gt;/logistics/\n                [name='badge_logistics']\n              </code>\n            \n          </li>\n        \n          <li>\n            \n              <code>\n                api/\n                \n              </code>\n            \n              <code>\n                v1/tiles/&lt;str:layer&gt;/&lt;int:z&gt;/&lt;int:x&gt;/&lt;int:y&gt;.pbf\n                [name='vector_tiles']\n              </code>\n            \n          </li>\n        \n          <li>\n            \n              <code>\n                api/\n                \n              </code>\n            \n              <code>\n                v1/objects/&lt;int:object_id&gt;/nearby/\n                [name='nearby_objects']\n              </code>\n            \n          </li>\n        \n      </ol>\n      <p>\n        \n          The current path, <code>api/v1/objects/141396759358/nearby/</code>,\n        \n        matched the last one.\n      </p>\n    \n  </main>\n\n  <footer id=\"explanation\">\n    <p>\n      You\u2019re seeing this error because you have <code>DEBUG = True</code> in\n      your Django settings file. Change that to <code>False</code>, and Django\n      will display a standard 404 page.\n    </p>\n  </footer>\n</body>\n</html>\n"
+      },
+      "link": null,
+      "checks": [
+        {
+          "name": "status_code_conformance",
+          "status": "failure",
+          "message": "Undocumented HTTP status code\n\nReceived: 404\nDocumented: 200"
+        }
+      ],
+      "meta": {
+        "generation": {
+          "time": 0.0024077960406430066,
+          "mode": "positive"
+        },
+        "components": {
+          "PATH": "positive"
+        },
+        "phase": {
+          "name": "fuzzing",
+          "data": {
+            "type": "FuzzingPhaseData",
+            "description": "Positive test case",
+            "location": null,
+            "parameter": null,
+            "parameter_location": null,
+            "mutations": []
+          }
+        },
+        "pool_draws": [],
+        "pool_misses": [],
+        "semantic_draws": [],
+        "dictionary_draws": [],
+        "constants_draws": [],
+        "raw_containers": {}
+      },
+      "path": "/api/v1/objects/{object_id}/nearby/",
+      "path_parameters": {
+        "object_id": 141396759358
+      },
+      "query": {},
+      "case_headers": {},
+      "cookies": {},
+      "case_body": {
+        "encoding": "none"
+      },
+      "media_type": null,
+      "parent_index": null
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "operation": "GET /api/v1/map/objects/",
+  "method": "GET",
+  "path_template": "/api/v1/map/objects/",
+  "fingerprint": "81d29aad",
+  "case_id": "SDikaq",
+  "code_sample": "curl -X GET http://localhost:8005/api/v1/map/objects/",
+  "sequence": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/api/v1/map/objects/",
+      "url_template": "http://localhost:8005/api/v1/map/objects/",
+      "headers": {
+        "User-Agent": "schemathesis/4.25.2",
+        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+        "X-Schemathesis-TestCaseId": "SDikaq"
+      },
+      "response": {
+        "status_code": 401,
+        "headers": {
+          "date": "Thu, 27 Aug 2026 17:48:29 GMT",
+          "server": "WSGIServer/0.2 CPython/3.14.7",
+          "content-type": "application/json",
+          "x-frame-options": "DENY",
+          "content-length": "245",
+          "vary": "Cookie",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "origin-when-cross-origin",
+          "cross-origin-opener-policy": "same-origin"
+        },
+        "body": "{\"type\": \"https://api.pttk-badges.pl/errors/authentication-required\", \"title\": \"Wymagane uwierzytelnienie\", \"status\": 401, \"detail\": \"Zaloguj si\\u0119, aby korzysta\\u0107 z API.\", \"instance\": \"/api/v1/map/objects/\", \"request_id\": \"req_d50de983\"}"
+      },
+      "link": null,
+      "checks": [
+        {
+          "name": "status_code_conformance",
+          "status": "failure",
+          "message": "Undocumented HTTP status code\n\nReceived: 401\nDocumented: 200"
+        }
+      ],
+      "meta": {
+        "generation": {
+          "time": 1.5204015653580427e-05,
+          "mode": "negative"
+        },
+        "components": {
+          "COOKIE": "negative"
+        },
+        "phase": {
+          "name": "coverage",
+          "data": {
+            "type": "CoveragePhaseData",
+            "description": "Missing `sessionid` at cookie",
+            "location": null,
+            "parameter": "sessionid",
+            "parameter_location": "COOKIE",
+            "scenario": "missing_parameter"
+          }
+        },
+        "pool_draws": [],
+        "pool_misses": [],
+        "semantic_draws": [],
+        "dictionary_draws": [],
+        "constants_draws": [],
+        "raw_containers": {
+          "COOKIE": {}
+        }
+      },
+      "path": "/api/v1/map/objects/",
+      "path_parameters": {},
+      "query": {},
+      "case_headers": {},
+      "cookies": {},
+      "case_body": {
+        "encoding": "none"
+      },
+      "media_type": null,
+      "parent_index": null
+    }
+  ]
+}

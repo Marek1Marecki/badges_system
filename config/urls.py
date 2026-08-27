@@ -1,7 +1,8 @@
 from django.conf import settings
 from django.contrib import admin
-from django.http import JsonResponse, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.urls import include, path
+from django.views.decorators.http import require_GET
 
 from django.db import connection
 from django.core.cache import cache
@@ -53,10 +54,20 @@ def health_check(request):
     return JsonResponse({"status": "healthy", "checks": checks})
 
 
+@require_GET
+def openapi_schema(request):
+    """Zwraca statyczny schemat OpenAPI dla Schemathesis."""
+    from pathlib import Path
+
+    schema_path = Path(__file__).resolve().parent / "openapi.json"
+    return HttpResponse(schema_path.read_text(encoding="utf-8"), content_type="application/json")
+
+
 urlpatterns = [
     # --- INFRASTRUKTURA I API ---
     path("health/", health_check, name="health_check"),
     path("admin/", admin.site.urls),
+    path("api/openapi.json", openapi_schema, name="openapi_schema"),
     path("api/", include("apps.api.urls")),
     path("accounts/", include("allauth.urls")),
     # --- WIDOKI HTML TURYSTY (Faza C) ---
@@ -72,3 +83,4 @@ urlpatterns = [
     path("organizer/<int:organizer_id>/", organizer_detail_view, name="organizer_detail"),
     path("region/<str:region_level>/<int:region_id>/", region_detail_view, name="region_detail"),
 ]
+

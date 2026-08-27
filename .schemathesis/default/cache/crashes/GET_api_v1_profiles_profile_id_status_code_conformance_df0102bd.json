@@ -1,0 +1,94 @@
+{
+  "operation": "GET /api/v1/profiles/{profile_id}/",
+  "method": "GET",
+  "path_template": "/api/v1/profiles/{profile_id}/",
+  "fingerprint": "df0102bd",
+  "case_id": "ediWxt",
+  "code_sample": "curl -X GET http://localhost:8005/api/v1/profiles/0/",
+  "sequence": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/api/v1/profiles/0/",
+      "url_template": "http://localhost:8005/api/v1/profiles/{profile_id}/",
+      "headers": {
+        "User-Agent": "schemathesis/4.25.2",
+        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+        "X-Schemathesis-TestCaseId": "ediWxt"
+      },
+      "response": {
+        "status_code": 405,
+        "headers": {
+          "date": "Thu, 27 Aug 2026 18:56:37 GMT",
+          "server": "WSGIServer/0.2 CPython/3.14.7",
+          "content-type": "text/html; charset=utf-8",
+          "allow": "PATCH, OPTIONS",
+          "x-frame-options": "DENY",
+          "content-length": "0",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "origin-when-cross-origin",
+          "cross-origin-opener-policy": "same-origin"
+        },
+        "body": ""
+      },
+      "link": null,
+      "checks": [
+        {
+          "name": "status_code_conformance",
+          "status": "failure",
+          "message": "Undocumented HTTP status code\n\nReceived: 405\nDocumented: 200, 401, 404"
+        }
+      ],
+      "meta": {
+        "generation": {
+          "time": 1.112394966185093e-05,
+          "mode": "negative"
+        },
+        "components": {
+          "PATH": "positive",
+          "COOKIE": "negative"
+        },
+        "phase": {
+          "name": "coverage",
+          "data": {
+            "type": "CoveragePhaseData",
+            "description": "Missing `sessionid` at cookie",
+            "location": null,
+            "parameter": "sessionid",
+            "parameter_location": "COOKIE",
+            "scenario": "missing_parameter"
+          }
+        },
+        "pool_draws": [],
+        "pool_misses": [
+          [
+            "path",
+            "profile_id"
+          ]
+        ],
+        "semantic_draws": [],
+        "dictionary_draws": [],
+        "constants_draws": [],
+        "raw_containers": {
+          "PATH": {
+            "profile_id": 0
+          },
+          "COOKIE": {}
+        }
+      },
+      "path": "/api/v1/profiles/{profile_id}/",
+      "path_parameters": {
+        "profile_id": "0"
+      },
+      "query": {},
+      "case_headers": {},
+      "cookies": {},
+      "case_body": {
+        "encoding": "none"
+      },
+      "media_type": null,
+      "parent_index": null
+    }
+  ]
+}

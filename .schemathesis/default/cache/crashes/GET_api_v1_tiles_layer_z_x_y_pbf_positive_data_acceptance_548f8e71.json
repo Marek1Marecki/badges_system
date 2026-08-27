@@ -1,0 +1,85 @@
+{
+  "operation": "GET /api/v1/tiles/{layer}/{z}/{x}/{y}.pbf",
+  "method": "GET",
+  "path_template": "/api/v1/tiles/{layer}/{z}/{x}/{y}.pbf",
+  "fingerprint": "548f8e71",
+  "case_id": "CHiX3J",
+  "code_sample": "curl -X GET http://localhost:8005/api/v1/tiles/0/1/1/1.pbf",
+  "sequence": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/api/v1/tiles/0/1/1/1.pbf",
+      "url_template": "http://localhost:8005/api/v1/tiles/{layer}/{z}/{x}/{y}.pbf",
+      "headers": {
+        "User-Agent": "schemathesis/4.25.2",
+        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+        "X-Schemathesis-TestCaseId": "CHiX3J"
+      },
+      "response": {
+        "status_code": 422,
+        "headers": {
+          "date": "Thu, 27 Aug 2026 18:56:51 GMT",
+          "server": "WSGIServer/0.2 CPython/3.14.7",
+          "content-type": "application/json",
+          "x-frame-options": "DENY",
+          "content-length": "225",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "origin-when-cross-origin",
+          "cross-origin-opener-policy": "same-origin"
+        },
+        "body": "{\"type\": \"https://api.pttk-badges.pl/errors/validation-failed\", \"title\": \"B\\u0142\\u0105d Walidacji\", \"status\": 422, \"detail\": \"B\\u0142\\u0105d walidacji.\", \"instance\": \"/api/v1/tiles/0/1/1/1.pbf\", \"request_id\": \"req_e83bc53b\"}"
+      },
+      "link": null,
+      "checks": [
+        {
+          "name": "positive_data_acceptance",
+          "status": "failure",
+          "message": "API rejected schema-compliant request\n\nValid data should have been accepted\nExpected: 2xx, 401, 403, 404, 409, 5xx"
+        }
+      ],
+      "meta": {
+        "generation": {
+          "time": 0.003746020025573671,
+          "mode": "positive"
+        },
+        "components": {
+          "PATH": "positive"
+        },
+        "phase": {
+          "name": "fuzzing",
+          "data": {
+            "type": "FuzzingPhaseData",
+            "description": "Positive test case",
+            "location": null,
+            "parameter": null,
+            "parameter_location": null,
+            "mutations": []
+          }
+        },
+        "pool_draws": [],
+        "pool_misses": [],
+        "semantic_draws": [],
+        "dictionary_draws": [],
+        "constants_draws": [],
+        "raw_containers": {}
+      },
+      "path": "/api/v1/tiles/{layer}/{z}/{x}/{y}.pbf",
+      "path_parameters": {
+        "layer": "0",
+        "x": 1,
+        "y": 1,
+        "z": 1
+      },
+      "query": {},
+      "case_headers": {},
+      "cookies": {},
+      "case_body": {
+        "encoding": "none"
+      },
+      "media_type": null,
+      "parent_index": null
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "operation": "GET /api/v1/profiles/{profile_id}/",
+  "method": "GET",
+  "path_template": "/api/v1/profiles/{profile_id}/",
+  "fingerprint": "105c1c8f",
+  "case_id": "PDm4gg",
+  "code_sample": "curl -X GET -H 'Cookie: [Filtered]' http://localhost:8005/api/v1/profiles/1/",
+  "sequence": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8005/api/v1/profiles/1/",
+      "url_template": "http://localhost:8005/api/v1/profiles/{profile_id}/",
+      "headers": {
+        "User-Agent": "schemathesis/4.25.2",
+        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+        "X-Schemathesis-TestCaseId": "PDm4gg",
+        "Cookie": "[Filtered]"
+      },
+      "response": {
+        "status_code": 405,
+        "headers": {
+          "date": "Thu, 27 Aug 2026 18:56:51 GMT",
+          "server": "WSGIServer/0.2 CPython/3.14.7",
+          "content-type": "text/html; charset=utf-8",
+          "allow": "PATCH, OPTIONS",
+          "x-frame-options": "DENY",
+          "content-length": "0",
+          "vary": "Cookie",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "origin-when-cross-origin",
+          "cross-origin-opener-policy": "same-origin",
+          "set-cookie": "[Filtered]"
+        },
+        "body": ""
+      },
+      "link": null,
+      "checks": [
+        {
+          "name": "positive_data_acceptance",
+          "status": "failure",
+          "message": "API rejected schema-compliant request\n\nValid data should have been accepted\nExpected: 2xx, 401, 403, 404, 409, 5xx"
+        }
+      ],
+      "meta": {
+        "generation": {
+          "time": 0.003909498977009207,
+          "mode": "positive"
+        },
+        "components": {
+          "PATH": "positive",
+          "COOKIE": "positive"
+        },
+        "phase": {
+          "name": "fuzzing",
+          "data": {
+            "type": "FuzzingPhaseData",
+            "description": "Positive test case",
+            "location": null,
+            "parameter": null,
+            "parameter_location": null,
+            "mutations": []
+          }
+        },
+        "pool_draws": [],
+        "pool_misses": [],
+        "semantic_draws": [],
+        "dictionary_draws": [],
+        "constants_draws": [],
+        "raw_containers": {}
+      },
+      "path": "/api/v1/profiles/{profile_id}/",
+      "path_parameters": {
+        "profile_id": 1
+      },
+      "query": {},
+      "case_headers": {},
+      "cookies": {
+        "sessionid": "[Filtered]"
+      },
+      "case_body": {
+        "encoding": "none"
+      },
+      "media_type": null,
+      "parent_index": null
+    }
+  ]
+}

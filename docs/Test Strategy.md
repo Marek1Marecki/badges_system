@@ -252,3 +252,45 @@ System wykorzystuje trójfilarowy, automatyczny model zabezpieczeń, który rozd
 
 ### Rola Manifestu SBOM (Software Bill of Materials)
 W potoku CI/CD (`ci.yml`) nie stosuje się osobnych, dedykowanych skanerów do generowania wykazu pakietów w celu ochrony przed zjawiskiem *Tool Sprawl*. Za generowanie pliku `sbom.cdx.json` (w standardzie CycloneDX) odpowiada używany już do skanowania silnik Trivy. Wygenerowany plik stanowi niemutowalny artefakt przypięty do każdego wydania, niezbędny do prowadzenia śledztw po incydentach (Incident Response) oraz audytów SLA, odpowiadając autorytatywnie na pytanie: *"Z jakich dokładnie bibliotek i pakietów OS składał się ten konkretny obraz produkcyjny?"*.
+
+---
+
+## Narzędzia Eksperymentalne (Experimental Tier)
+
+Narzędzia w tym tierze służą do eksploracji systemu i wykrywania nieoczekiwanych zachowań. Nie biorą udziału w `make check`, nie blokują release'ów, a ich wynik interpretowany jest diagnostycznie, a nie jako binary pass/fail.
+
+### Schemathesis — API Fuzzing
+
+**Status:** Experimental  
+**Baseline:** 2026-08-27  
+**Dokumentacja:** `docs/experimental-schemathesis-baseline.md`
+
+Schemathesis uruchamiany przeciwko ręcznie utrzymywanemu kontraktowi OpenAPI
+(`config/openapi.json`). Nie wymaga DRF ani automatycznego generatora schematu.
+
+**Wykorzystanie:**
+- Eksploracja zachowań API przy nieoczekiwanych danych wejściowych
+- Wykrywanie nieobsłużonych wyjątków (HTTP 5xx)
+- Weryfikacja, czy implementacja API jest zgodna z kontraktem
+
+**Ograniczenia:**
+- Ręcznie utrzymywany OpenAPI — wymaga synchronizacji z `urls.py`
+  (weryfikowana przez `tests/architecture/test_api_contract_consistency.py`)
+- Brak automatycznego auth context — 10 operacji wymaga session cookie
+- Niektóre kody odpowiedzi mogą być niepełnie zdokumentowane
+
+**Klasyfikacja findingów:**
+- **Oczekiwane:** auth limitations, unsupported methods
+- **Nieoczekiwane:** server errors (5xx), invalid auth responses
+
+**Metryka sukcesu:** Liczba nieoczekiwanych findingów, nie suma wszystkich failures.
+
+```bash
+make experimental-schemathesis
+```
+
+**Kryterium awansu do Diagnostic:**
+- 100% endpointów API opisanych w OpenAPI
+- Security schemes zdefiniowane dla wszystkich endpointów
+- Wszystkie realne response codes udokumentowane
+- Brak nieoczekiwanych findingów przez co najmniej 3 uruchomienia
