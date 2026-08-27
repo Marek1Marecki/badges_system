@@ -17,6 +17,7 @@
 | **Mechanizm** | Narzędzie egzekwujące regułę |
 | **Chroni** | Co się stanie, jeśli reguła zostanie złamana |
 | **Powiązanie** | ADR lub inny kontekst decyzyjny |
+| **Status** | Poziom egzekwowania: Gate / Diagnostic / Advisory |
 
 ---
 
@@ -30,6 +31,7 @@
 | **Mechanizm** | Import Linter + `tests/architecture/test_dependency_direction.py` |
 | **Chroni** | Kierunek zależności między warstwami (domain ← application ← infrastructure ← apps) |
 | **Powiązanie** | ADR-001 (Hexagonal Architecture) |
+| **Status** | Diagnostic |
 
 **Opis:**
 Import Linter egzekwuje kierunek zależności na poziomie pakietów. Test w `tests/architecture/` daje dodatkowy, domenowy komunikat w standardowym `pytest`:
@@ -51,6 +53,7 @@ domain/foo.py imports django.db.models
 | **Mechanizm** | `tests/architecture/test_domain_purity.py` |
 | **Chroni** | Czystość warstwy domenowej — brak modeli Django ORM i zależności od frameworków |
 | **Powiązanie** | ADR-001 (Hexagonal Architecture) |
+| **Status** | Gate |
 
 **Opis:**
 Test weryfikuje, że żaden plik w `domain/` nie dziedziczy po `django.db.models.Model`. Import Linter współpracuje z tym testem przez kontrakt `domain-purity`, który blokuje importy frameworków i innych warstw. Test koncentruje się na invariantie behawioralnym (brak Model w domenie), który Import Linter nie może wykryć.
@@ -67,6 +70,7 @@ Test weryfikuje, że żaden plik w `domain/` nie dziedziczy po `django.db.models
 | **Mechanizm** | `tests/architecture/test_repository_contracts.py` |
 | **Chroni** | Semantyczny kontrakt: każdy adapter implementuje wszystkie metody swojego portu |
 | **Powiązanie** | ADR-001 (Hexagonal Architecture), ADR-002 (Ports & Adapters) |
+| **Status** | Gate |
 
 **Opis:**
 Import Linter sprawdza, czy `application → infrastructure` jest dozwolone. Test sprawdza, czy `OsmRepository` implementuje `OsmRepositoryPort` i czy nie brakuje żadnych metod. To jest architektoniczny kontrakt behawioralno-strukturalny.
@@ -81,6 +85,7 @@ Import Linter sprawdza, czy `application → infrastructure` jest dozwolone. Tes
 | **Mechanizm** | `tests/architecture/test_api_dto_gating.py` |
 | **Chroni** | Wszystkie widoki modyfikujące stan (POST/PATCH) używają DTO Pydantic do walidacji |
 | **Powiązanie** | ADR-016 (Rozdzielenie tożsamości od autoryzacji) |
+| **Status** | Gate |
 
 **Opis:**
 Test wykrywa widoki, które parsują `request.body` lub JSON bez użycia DTO Pydantic. Zapobiega przetwarzaniu niezwalidowanego wejścia.
@@ -95,6 +100,7 @@ Test wykrywa widoki, które parsują `request.body` lub JSON bez użycia DTO Pyd
 | **Mechanizm** | `tests/architecture/test_di_container_completeness.py` |
 | **Chroni** | Wszystkie UseCase'y i Serwisy są zarejestrowane w `AppContainer` |
 | **Powiązanie** | ADR-001 (Hexagonal Architecture) |
+| **Status** | Gate |
 
 **Opis:**
 Test zabezpiecza przed sytuacją: dodano `NewBadgeUseCase`, zapomniano zarejestrować w `AppContainer`, aplikacja rzuca `AttributeError` w runtime.
@@ -109,6 +115,7 @@ Test zabezpiecza przed sytuacją: dodano `NewBadgeUseCase`, zapomniano zarejestr
 | **Mechanizm** | `tests/architecture/test_dto_naming_convention.py` |
 | **Chroni** | Konwencja nazewnictwa DTO: nowe klasy kończą się na `InputDTO`, `RequestDTO` lub `ResponseDTO` |
 | **Powiązanie** | — |
+| **Status** | Advisory |
 
 **Opis:**
 Test akceptuje istniejące legacy DTO (np. `TouristProfileDTO`), ale wymusza konwencję na nowych klasach. Redukuje dług poznawczy przy onbordu.
@@ -125,6 +132,7 @@ Test akceptuje istniejące legacy DTO (np. `TouristProfileDTO`), ale wymusza kon
 | **Mechanizm** | `tests/architecture/test_no_primitive_obsession.py` |
 | **Chroni** | Use Case'y nie zwracają surowych `dict` lub `Any` — wymagają dedykowanych DTO |
 | **Powiązanie** | AUDYT-124 |
+| **Status** | Gate |
 
 **Opis:**
 Test wybucha, jeśli use case deklaruje w typie zwracanym `dict`, `Any` lub `list[...]`. Wymusza użycie ResponseDTO do komunikacji z API i widokami.
@@ -139,6 +147,7 @@ Test wybucha, jeśli use case deklaruje w typie zwracanym `dict`, `Any` lub `lis
 | **Mechanizm** | `tests/architecture/test_migration_idempotency.py` |
 | **Chroni** | Migracje DDL nie mieszają operacji ekspansji i kontrakcji w jednym pliku |
 | **Powiązanie** | ADR-024 (Lint Migracji) |
+| **Status** | Diagnostic |
 
 **Opis:**
 Test egzekwuje zasadę Expand & Contract: migracja nie może zawierać zarówno `AddField` jak i `RemoveField`. Automatycznie zwalnia dewelopera z ręcznej weryfikacji kroków wdrożeniowych.
@@ -155,6 +164,7 @@ Test egzekwuje zasadę Expand & Contract: migracja nie może zawierać zarówno 
 | **Mechanizm** | `tests/architecture/test_god_class_prevention.py` |
 | **Chroni** | Żaden plik `models.py` nie przekracza progu 20 modeli Django |
 | **Powiązanie** | — |
+| **Status** | Diagnostic |
 
 **Opis:**
 Test wymusza dekompozycję modułów. Przeciwdziała powstawaniu plików takich jak `apps/badges/models.py` (obecnie 19 modeli, w tym klasy abstrakcyjne). Próg 20 gwarantuje, że obecny stan jest akceptowany, ale kolejne znacząco powiększające się moduły zostaną wykryte.
@@ -171,6 +181,7 @@ Test wymusza dekompozycję modułów. Przeciwdziała powstawaniu plików takich 
 | **Mechanizm** | `tests/architecture/test_badge_rule_immutability.py` |
 | **Chroni** | Wszystkie reguły biznesowe dziedziczące po `BadgeRule` są `@dataclass(frozen=True)` |
 | **Powiązanie** | ADR-003 (Silnik Reguł Biznesowych) |
+| **Status** | Gate |
 
 **Opis:**
 Test gwarantuje brak zjawiska State Mutilation podczas współbieżnego oceniania wielu turystów. Wymusza deep immutability na wszystkich strategiach walidacyjnych.
@@ -228,6 +239,7 @@ Ta grupa pilnuje architektury poza kodem Pythona — kontenery, Compose, obrazy,
 | **Mechanizm** | Hadolint (`make hadolint`) |
 | **Chroni** | Standard konstrukcji obrazu, best practices Dockerfile |
 | **Powiązanie** | ADR-020 (Deployment & DataOps) |
+| **Status** | Advisory |
 
 **Opis:**
 Hadolint sprawdza Dockerfile pod kątem:
@@ -244,6 +256,7 @@ Hadolint sprawdza Dockerfile pod kątem:
 | **Mechanizm** | Checkov (`make checkov`) |
 | **Chroni** | Konfigurację IaC — Compose files pod kątem bezpieczeństwa |
 | **Powiązanie** | ADR-020 (Deployment & DataOps) |
+| **Status** | Advisory |
 
 **Opis:**
 Checkov skanuje compose.yml i środowiskowe override'y pod kątem:
@@ -260,6 +273,7 @@ Checkov skanuje compose.yml i środowiskowe override'y pod kątem:
 | **Mechanizm** | Trivy (`make security-audit`) |
 | **Chroni** | CVE w obrazie kontenerowym, zależnościach OS i Python |
 | **Powiązanie** | ADR-020 (Deployment & DataOps) |
+| **Status** | Gate |
 
 **Opis:**
 Trivy skanuje obraz kontenerowy pod kątem:
@@ -278,6 +292,7 @@ Trivy skanuje obraz kontenerowy pod kątem:
 | **Mechanizm** | Docker Bench (`make docker-bench`, na żądanie) |
 | **Chroni** | Konfigurację środowiska Docker hosta — demon, sieć, uprawnienia, logging |
 | **Powiązanie** | ADR-020 (Deployment & DataOps) |
+| **Status** | Advisory |
 
 **Opis:**
 Docker Bench to audyt oparty na CIS Docker Benchmark. W przeciwieństwie do Hadolint/Checkov (analizują IaC w repo), Docker Bench sprawdza rzeczywistą konfigurację demona Dockera na hoście.
@@ -311,8 +326,9 @@ Ta grupa pilnuje architektury runtime — health checks, error handling, observa
 |------|---------|
 | **Nazwa** | Compose Health Checks |
 | **Mechanizm** | `tests/architecture/test_health_checks.py` |
-| **Chroni** | Wszystkie kontenery aplikacyjne mają `healthcheck` w Compose |
+| **Chroni** | Wszystkie services mają `healthcheck` |
 | **Powiązanie** | ADR-020 (Deployment & DataOps) |
+| **Status** | Gate |
 
 **Opis:**
 Test weryfikuje, że każdy service w `compose*.yml` (poza `db` i `redis`) definiuje `healthcheck`. Gwarantuje to, że Docker może wykryć niezdrowe kontenery i zrestartować je automatycznie.
@@ -323,8 +339,9 @@ Test weryfikuje, że każdy service w `compose*.yml` (poza `db` i `redis`) defin
 |------|---------|
 | **Nazwa** | API Exception Handling |
 | **Mechanizm** | `tests/architecture/test_exception_handling.py` |
-| **Chroni** | Wszystkie widoki modyfikujące stan łapią `ApplicationException` |
+| **Chroni** | Widoki łapią `ApplicationException` |
 | **Powiązanie** | — |
+| **Status** | Gate |
 
 **Opis:**
 Test sprawdza, że każda metoda `post`/`patch` w `apps/api/views.py` ma `except ApplicationException`. Zapewnia spójną obsługę błędów biznesowych i zapobiega wyciekowi stacktrace'ów do klienta.
@@ -348,8 +365,9 @@ Ta grupa pilnuje gotowości aplikacji do przyszłego wdrożenia observability �
 |------|---------|
 | **Nazwa** | Request ID Contract |
 | **Mechanizm** | `tests/architecture/test_request_id_contract.py` |
-| **Chroni** | Każde żądanie HTTP ma unikalny `request_id` propagowany do logów i odpowiedzi |
+| **Chroni** | Korelacja żądań |
 | **Powiązanie** | — |
+| **Status** | Gate |
 
 **Opis:**
 Test weryfikuje, że middleware `RFC7807ErrorMiddleware` generuje `request_id` jeśli brak nagłówka `X-Request-ID`, a jeśli nagłówek jest obecny — honoruje go (korelacja między systemami). `request_id` jest wstrzykiwany do obiektu `request` i do kontekstu Loguru, więc wszystkie logi podczas żądania automatycznie go dziedziczą.
@@ -362,8 +380,9 @@ Test weryfikuje, że middleware `RFC7807ErrorMiddleware` generuje `request_id` j
 |------|---------|
 | **Nazwa** | No Sensitive Data in Logs |
 | **Mechanizm** | `tests/architecture/test_no_sensitive_data_in_logs.py` |
-| **Chroni** | Zakaz logowania haseł, tokenów, sekretów i innych wrażliwych danych |
+| **Chroni** | Brak wrażliwych danych w logach |
 | **Powiązanie** | — |
+| **Status** | Advisory |
 
 **Opis:**
 Test skanuje komunikaty logów w `application/`, `infrastructure/` i `apps/` pod kątem słów kluczowych: `password`, `passwd`, `secret`, `token`, `api_key`, `apikey`, `authorization`, `credentials`, `private_key`, `session_id`, `session_token`, `session_key`. Ma charakter Advisory — automatyczne wykrywanie może generować false positives.
@@ -376,8 +395,9 @@ Test skanuje komunikaty logów w `application/`, `infrastructure/` i `apps/` pod
 |------|---------|
 | **Nazwa** | Structured Error Context |
 | **Mechanizm** | `tests/architecture/test_structured_error_context.py` |
-| **Chroni** | Wszystkie błędy API mają kontekst: `request_id`, typ wyjątku, status HTTP |
+| **Chroni** | RFC 7807 + request_id |
 | **Powiązanie** | — |
+| **Status** | Gate |
 
 **Opis:**
 Test weryfikuje, że każda metoda `post`/`patch` w `apps/api/views.py`, która łapie `ApplicationException`, używa `_handle_application_exception` lub `_problem_detail`. Oba helpery wstrzykują `request_id` do odpowiedzi RFC 7807, co pozwala na korelację między logami a odpowiedziami API.
@@ -388,8 +408,9 @@ Test weryfikuje, że każda metoda `post`/`patch` w `apps/api/views.py`, która 
 |------|---------|
 | **Nazwa** | Health Check Semantics |
 | **Mechanizm** | `tests/architecture/test_health_checks.py` |
-| **Chroni** | Healthcheck w Compose sprawdza rzeczywiste zależności (DB, Redis), a nie tylko proces |
+| **Chroni** | Semantyka healthcheck |
 | **Powiązanie** | ADR-020 (Deployment & DataOps) |
+| **Status** | Gate |
 
 **Opis:**
 FF-015 weryfikuje obecność `healthcheck`. FF-020 weryfikuje jego semantykę: endpoint `/health/` sprawdza połączenie z bazą danych (`SELECT 1`) i Redisem (`cache.set`/`cache.get`). Jeśli któraś zależność jest niedostępna, endpoint zwraca `503 Service Unavailable`. W środowisku testowym (`APP_ENV=test`) healthcheck pomija sprawdzanie zależności, aby nie wymagać uruchomionego PostgreSQL/Redis dla testów jednostkowych.
@@ -479,8 +500,9 @@ Ta grupa pilnuje kontroli nad łańcuchem dostaw oprogramowania — od lockfile 
 |------|---------|
 | **Nazwa** | Lockfile Integrity |
 | **Mechanizm** | `tests/architecture/test_lockfile_integrity.py` + pre-commit `uv lock --check` |
-| **Chroni** | Reproducible builds — wszystkie środowiska używają tej samej wersji zależności |
+| **Chroni** | `uv.lock` jest committed i śledzony |
 | **Powiązanie** | — |
+| **Status** | Gate |
 
 **Opis:**
 Test weryfikuje, że `uv.lock` istnieje i jest śledzony przez Git. Pre-commit hook `uv lock --check` gwarantuje, że lockfile jest zsynchronizowany z `pyproject.toml`.
@@ -491,8 +513,9 @@ Test weryfikuje, że `uv.lock` istnieje i jest śledzony przez Git. Pre-commit h
 |------|---------|
 | **Nazwa** | Dependency Groups Separation |
 | **Mechanizm** | `tests/architecture/test_dependency_groups_separation.py` |
-| **Chroni** | Rozdzielenie zależności runtime od dev/test — zero dev leakage |
+| **Chroni** | Narzędzia dev/test nie mieszają się z runtime |
 | **Powiązanie** | — |
+| **Status** | Advisory |
 
 **Opis:**
 Test weryfikuje, że zależności z `[dependency-groups.dev]` i `[dependency-groups.test]` nie pojawiają się w głównej liście `dependencies` w `pyproject.toml`. Zapewnia, że narzędzia deweloperskie (ruff, mypy, semgrep, radon, xenon) nie trafiają do obrazu produkcyjnego.
@@ -542,8 +565,9 @@ Każda FF w rejestrze musi mieć zdefiniowane:
 |------|---------|
 | **Nazwa** | Fitness Function Registry Completeness |
 | **Mechanizm** | `tests/architecture/test_fitness_function_registry.py` |
-| **Chroni** | Wszystkie FF mają wpis w rejestrze i wymagane pola dokumentacyjne |
+| **Chroni** | Wszystkie FF mają wpis w rejestrze i wymagane pola |
 | **Powiązanie** | — |
+| **Status** | Gate |
 
 **Opis:**
 Test weryfikuje, że każda FF wymieniona w `governance.md` ma odpowiadający wpis w `fitness-functions.md` z wymaganymi polami: Nazwa, Mechanizm, Chroni, Powiązanie, Opis. Gwarantuje, że rejestr FF nie ulega rozjeźdzeniu z rzeczywistym stanem governance.

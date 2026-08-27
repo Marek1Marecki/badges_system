@@ -73,7 +73,6 @@ Narzędzia, które **muszą przejść** w każdym przebiegu CI. Ich łamanie blo
 |-----------|-------------------|-----|
 | Import Linter | `.importlinter` | Kierunek zależności |
 | Architecture Tests — Blocking FF | `tests/architecture/` | Fitness functions |
-| Xenon | `xenon.ini` | Złożoność kodu |
 | Trivy | `security-audit` | CVE HIGH/CRITICAL |
 | Ruff / mypy / lint-imports | `make check` | Code quality |
 
@@ -304,7 +303,7 @@ CI Pipeline (Gate — make check)
 │   └── lint-imports (Import Linter)
 │
 ├── 2. Tests
-│   └── pytest (jednostkowe + architektura FF-001..FF-023)
+│   └── pytest (jednostkowe + architektura FF-002..FF-007, FF-010, FF-015..FF-017, FF-019..FF-023)
 │
 ├── 3. Architecture Audit
 │   └── audit_contracts.py (graf zależności)
@@ -327,6 +326,14 @@ Diagnostic Pipeline (manual / advisory)
 │   ├── Xenon (make complexity-check)
 │   └── wily (make complexity-trend)
 │
+├── Architecture Diagnostics
+│   ├── FF-001 Dependency Direction (test_dependency_direction.py)
+│   ├── FF-006 DTO Naming Convention (test_dto_naming_convention.py)
+│   ├── FF-008 Migration Idempotency (test_migration_idempotency.py)
+│   ├── FF-009 God Class Prevention (test_god_class_prevention.py)
+│   ├── FF-018 No Sensitive Data in Logs (test_no_sensitive_data_in_logs.py)
+│   └── FF-022 Dependency Groups Separation (test_dependency_groups_separation.py)
+│
 ├── Test diagnostics
 │   ├── pytest-randomly (make test-random)
 │   ├── pytest-timings (make test-timings)
@@ -345,6 +352,54 @@ Diagnostic Pipeline (manual / advisory)
 - **Diagnostic** jest uruchamiany świadomie przez developera (`make complexity-check`, `make test-random`, `make coverage-diff`, itp.)
 - **Experimental** jest uruchamiany w kontrolowanej sandboxie (`make experimental-*`)
 - FF-015, FF-016, FF-017, FF-019, FF-020 (Operational + Observability Governance) są częścią warstwy Tests (pytest)
+
+---
+
+## Zasady awansu i degradacji
+
+```
+Experimental
+     │
+     │ proven useful
+     ▼
+Diagnostic
+     │
+     │ objective invariant + low FP/FN
+     │ + clear remediation
+     ▼
+Gate
+```
+
+```
+Gate
+  │
+  │ false positives / excessive maintenance /
+  │ weak architectural invariant
+  ▼
+Diagnostic
+```
+
+**Kryteria awansu Experimental → Diagnostic:**
+- Narzędzie przeżyło co najmniej 1 kwartał w użyciu
+- Wygenerowało wartość (wykryło coś, co inaczej by przegapiono)
+- Ma clear exit criteria i maintenance plan
+
+**Kryteria awansu Diagnostic → Gate:**
+- Invariant jest obiektywnie weryfikowalny (nie subiektywny)
+- Ma niski poziom false positives i false negatives
+- Remediation jest jasne i jednoznaczne
+- Łamanie invariant'a oznacza realne ryzyko dla systemu
+
+**Kryteria degradacji Gate → Diagnostic:**
+- Narzędzie generuje częste false positives
+- Invariant jest słaby lub subiektywny
+- Maintenance overhead przekracza wartość
+- Istnieje lepszy sposób wykrywania tego samego problemu
+
+**Przykłady:**
+- Xenon: Gate → Diagnostic (złożoność to sygnał, nie blocking rule; Radon + wily już dają pomiar/trend)
+- FF-009 God Class Prevention: Gate → Diagnostic (proxy metric, heurystyka, nie invariant)
+- FF-018 No Sensitive Data in Logs: Gate → Advisory (heurystyka, możliwe FP; detect-secrets jako lepszy mechanizm)
 
 ---
 
@@ -368,7 +423,6 @@ Diagnostic Pipeline (manual / advisory)
 | Architecture Tests — FF-020 (Health Check Semantics) | `test_health_checks.py` | Semantyka healthcheck |
 | Architecture Tests — FF-021 (Lockfile Integrity) | `test_lockfile_integrity.py` | `uv.lock` jest committed i śledzony |
 | Architecture Tests — FF-023 (Fitness Function Registry Completeness) | `test_fitness_function_registry.py` | Wszystkie FF mają wpis w rejestrze |
-| Xenon | `xenon.ini` | Złożoność kodu |
 | Trivy | `security-audit` | CVE HIGH/CRITICAL |
 
 ### 🟡 Diagnostic (CI passes, ale warto sprawdzić)
@@ -449,7 +503,6 @@ Trivy skanuje zależności deweloperskie Semgrep (przez MCP). Wyjątki w `osv-sc
 |-----------|-----------|-----------------|
 | Import Linter | Dominik / AI Architect | Konfiguracja i wyjątki |
 | Architecture Tests — Blocking FF | Dominik / AI Architect | Dodawanie nowych fitness functions |
-| Xenon | Dominik / AI Architect | Ustawianie limitów złożoności |
 | Trivy | Dominik / AI Architect | Ignore list i tolerancja CVE |
 | Health Checks | Dominik / AI Architect | Utrzymanie healthcheck w Compose |
 | API Exception Handling | Dominik / AI Architect | Utrzymanie obsługi ApplicationException w widokach |
@@ -462,6 +515,7 @@ Trivy skanuje zależności deweloperskie Semgrep (przez MCP). Wyjątki w `osv-sc
 | Mechanizm | Właściciel | Odpowiedzialność |
 |-----------|-----------|-----------------|
 | Radon | Dominik / AI Architect | Utrzymanie limitów złożoności |
+| Xenon | Dominik / AI Architect | Advisory threshold dla hotspocy |
 | wily | Dominik / AI Architect | Trend analysis |
 | Hadolint | Dominik / AI Architect | Baseline i wyjątki |
 | Checkov | Dominik / AI Architect | Konfiguracja i skany Compose |
