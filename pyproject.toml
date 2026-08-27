@@ -68,6 +68,7 @@ dev = [
     "docstr-coverage>=2.3.2",
     "djlint>=1.44.2",
     "schemathesis>=4.25.2",
+    "testcontainers>=4.15.0",
 ]
 
 [tool.pytest.ini_options]
