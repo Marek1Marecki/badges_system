@@ -10,7 +10,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff secret-scan test-timings test-html docstr-coverage secret-scan
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff secret-scan test-timings test-html docstr-coverage lint-templates secret-scan
 
 help:
 	@echo "CORE targets:"
@@ -45,6 +45,7 @@ help:
 	@echo "  test-timings   - analiza czasu testów (pytest --durations, diagnostyka)"
 	@echo "  test-html      - raport HTML z wyników testów (pytest-html, diagnostyka)"
 	@echo "  docstr-coverage - sprawdzanie pokrycia docstringami (diagnostyka)"
+	@echo "  lint-templates - lintowanie szablonow Django (djLint, diagnostyka)"
 
 setup:
 	uv sync --group dev
@@ -85,6 +86,9 @@ test-html:
 
 docstr-coverage:
 	uv run docstr-coverage $(PY_DIRS) --fail-under=80
+
+lint-templates:
+	uv run djlint apps/ --check --format
 
 test-all:
 	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) --create-db --nomigrations \
