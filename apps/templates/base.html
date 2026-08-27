@@ -1,13 +1,11 @@
 {% load static %}
 {% load socialaccount %}
-
 <!DOCTYPE html>
 <html lang="pl">
-<head>
-    <meta charset="UTF-8">
-    <title>PTTK Badges</title>
-
-    <!--
+    <head>
+        <meta charset="UTF-8">
+        <title>PTTK Badges</title>
+        <!--
         BEZPIECZEŃSTWO: Wszystkie zewnętrzne zasoby mają atrybut integrity (SRI).
         Hashe SHA-384 obliczone z oficjalnych paczek npm:
           - htmx.org@1.9.11    (npmjs.org)
@@ -19,125 +17,118 @@
         i serwować jako  static 'css/tailwind.min.css' .
         Na potrzeby developmentu używamy wersjonowanego Play CDN z fixowaną wersją.
     -->
-
-    <!-- MapLibre GL JS — CSS -->
-    <link
-        rel="stylesheet"
-        href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css"
-        integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
-        crossorigin="anonymous"
-    />
-
-    <!--
+        <!-- MapLibre GL JS — CSS -->
+        <link rel="stylesheet"
+              href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css"
+              integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
+              crossorigin="anonymous" />
+        <!--
         Tailwind CSS — DEV ONLY.
         TODO przed produkcją: zastąpić statycznym buildem.
         Patrz komentarz powyżej.
     -->
-    <script src="https://cdn.tailwindcss.com?v=3.4.1"></script>
-
-    <!-- Zabezpieczony kontekst biznesowy z serwera (Zmienne Globalne dla JS) -->
-    <script>
+        <script src="https://cdn.tailwindcss.com?v=3.4.1"></script>
+        <!-- Zabezpieczony kontekst biznesowy z serwera (Zmienne Globalne dla JS) -->
+        <script>
         window.ACTIVE_PROFILE_ID = {{ active_profile.id|default:"null" }};
         window.MAP_PREMIUM_UNLOCKED = {{ map_premium_unlocked|yesno:"true,false" }};
         window.PREFERRED_BASE_MAP = "{{ preferred_base_map|default:'cartodb_positron' }}";
         window.MAP_LAYERS = {{ map_layers_json|safe|default:"[]" }};
-    </script>
-
-</head>
-
-<body class="bg-gray-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden"
-      hx-ext="json-enc"
-      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-
-    <!-- Pasek Nawigacyjny -->
-    <nav class="bg-sky-900 text-white p-4 flex justify-between items-center shadow-md z-10 relative">
-        <div class="flex items-center gap-6">
-            <h1 class="text-xl font-bold tracking-wide">⛰️ PTTK Badges</h1>
-            <!-- Główne Menu -->
-            <div class="hidden md:flex gap-4 ml-4">
-                <a href="{% url 'home' %}" data-testid="nav-dashboard" class="hover:text-sky-300 font-medium transition">Pulpit Mapy</a>
-                <a href="{% url 'ranking' %}" data-testid="nav-ranking" class="hover:text-sky-300 font-medium transition">Ranking Celów</a>
-                <a href="{% url 'catalog' %}" data-testid="nav-catalog" class="hover:text-sky-300 font-medium transition">Katalog Odznak</a>
-                <a href="{% url 'logistics' %}" data-testid="nav-logistics" class="hover:text-sky-300 font-bold transition flex items-center gap-1">
-                    📦 Moja Logistyka
-                </a>
-            </div>
-        </div>
-        <div class="flex items-center gap-4">
-            {% if request.user.is_authenticated %}
-                <!-- DROPDOWN Z PROFILAMI (Konto Rodzinne) -->
-                <div class="relative group">
-                    <button data-testid="btn-profile-dropdown" class="font-medium text-sky-200 hover:text-white transition flex items-center gap-1 focus:outline-none py-2">
-                        Witaj, {{ active_profile.nickname|default:request.user.email }}! <span class="text-[10px]">▼</span>
-                    </button>
-
-                    <!-- Zawartość Menu rozwijanego na Hover -->
-                    <div class="absolute right-0 mt-0 w-56 bg-white border border-gray-200 rounded-lg shadow-xl hidden group-hover:block z-50 overflow-hidden">
-                        <div class="px-4 py-3 bg-slate-50 border-b text-xs font-bold text-gray-500 uppercase tracking-wider">
-                            Przełącz Profil
-                        </div>
-
-                        <div class="max-h-60 overflow-y-auto">
-                            {% for p in user_profiles %}
-                            <a href="{% url 'switch_profile' p.id %}" data-testid="profile-switch-{{ p.id }}" class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-sky-50 transition border-b border-gray-100 {% if p.id == active_profile.id %}bg-sky-50 font-bold border-l-4 border-l-sky-500{% else %}border-l-4 border-l-transparent{% endif %}">
-                                <span class="mr-1">{% if p.is_main_profile %}👑{% else %}👤{% endif %}</span> {{ p.nickname }}
-                            </a>
-                            {% endfor %}
-                        </div>
-
-                        <a href="{% url 'profile' %}" data-testid="nav-profile-settings" class="block px-4 py-3 text-sm text-sky-700 font-bold hover:bg-sky-100 transition bg-slate-50">
-                            ⚙️ Ustawienia Profili
-                        </a>
-                    </div>
+        </script>
+    </head>
+    <body class="bg-gray-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden"
+          hx-ext="json-enc"
+          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        <!-- Pasek Nawigacyjny -->
+        <nav class="bg-sky-900 text-white p-4 flex justify-between items-center shadow-md z-10 relative">
+            <div class="flex items-center gap-6">
+                <h1 class="text-xl font-bold tracking-wide">⛰️ PTTK Badges</h1>
+                <!-- Główne Menu -->
+                <div class="hidden md:flex gap-4 ml-4">
+                    <a href="{% url 'home' %}"
+                       data-testid="nav-dashboard"
+                       class="hover:text-sky-300 font-medium transition">Pulpit Mapy</a>
+                    <a href="{% url 'ranking' %}"
+                       data-testid="nav-ranking"
+                       class="hover:text-sky-300 font-medium transition">Ranking Celów</a>
+                    <a href="{% url 'catalog' %}"
+                       data-testid="nav-catalog"
+                       class="hover:text-sky-300 font-medium transition">Katalog Odznak</a>
+                    <a href="{% url 'logistics' %}"
+                       data-testid="nav-logistics"
+                       class="hover:text-sky-300 font-bold transition flex items-center gap-1">📦 Moja Logistyka</a>
                 </div>
-
-                <a href="{% url 'account_logout' %}" data-testid="btn-logout" class="bg-sky-800 hover:bg-sky-700 px-3 py-1 rounded text-sm transition shadow-sm ml-2">Wyloguj</a>
-            {% else %}
-                <!-- PRZYCISK LOGOWANIA (Zabezpieczony formularz) -->
-                <form action="{% provider_login_url 'google' %}" method="post" class="m-0">
-                    {% csrf_token %}
-                    <button data-testid="btn-login-google" type="submit" class="bg-white text-sky-900 font-bold px-4 py-2 rounded shadow hover:bg-sky-100 transition flex items-center gap-2 text-sm">
-                        <svg class="w-4 h-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                        </svg>
-                        Zaloguj przez Google
-                    </button>
-                </form>
-            {% endif %}
-        </div>
-    </nav>
-
-    <!-- Dynamiczna treść -->
-    <main class="flex-1 flex overflow-hidden">
-        {% block content %}{% endblock %}
-    </main>
-
-    <!--
+            </div>
+            <div class="flex items-center gap-4">
+                {% if request.user.is_authenticated %}
+                    <!-- DROPDOWN Z PROFILAMI (Konto Rodzinne) -->
+                    <div class="relative group">
+                        <button data-testid="btn-profile-dropdown"
+                                class="font-medium text-sky-200 hover:text-white transition flex items-center gap-1 focus:outline-none py-2">
+                            Witaj, {{ active_profile.nickname|default:request.user.email }}! <span class="text-[10px]">▼</span>
+                        </button>
+                        <!-- Zawartość Menu rozwijanego na Hover -->
+                        <div class="absolute right-0 mt-0 w-56 bg-white border border-gray-200 rounded-lg shadow-xl hidden group-hover:block z-50 overflow-hidden">
+                            <div class="px-4 py-3 bg-slate-50 border-b text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                Przełącz Profil
+                            </div>
+                            <div class="max-h-60 overflow-y-auto">
+                                {% for p in user_profiles %}
+                                    <a href="{% url 'switch_profile' p.id %}"
+                                       data-testid="profile-switch-{{ p.id }}"
+                                       class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-sky-50 transition border-b border-gray-100 {% if p.id == active_profile.id %}bg-sky-50 font-bold border-l-4 border-l-sky-500{% else %}border-l-4 border-l-transparent{% endif %}">
+                                        <span class="mr-1">{% if p.is_main_profile %}👑{% else %}👤{% endif %}</span> {{ p.nickname }}
+                                    </a>
+                                {% endfor %}
+                            </div>
+                            <a href="{% url 'profile' %}"
+                               data-testid="nav-profile-settings"
+                               class="block px-4 py-3 text-sm text-sky-700 font-bold hover:bg-sky-100 transition bg-slate-50">
+                                ⚙️ Ustawienia Profili
+                            </a>
+                        </div>
+                    </div>
+                    <a href="{% url 'account_logout' %}"
+                       data-testid="btn-logout"
+                       class="bg-sky-800 hover:bg-sky-700 px-3 py-1 rounded text-sm transition shadow-sm ml-2">Wyloguj</a>
+                {% else %}
+                    <!-- PRZYCISK LOGOWANIA (Zabezpieczony formularz) -->
+                    <form action="{% provider_login_url 'google' %}" method="post" class="m-0">
+                        {% csrf_token %}
+                        <button data-testid="btn-login-google"
+                                type="submit"
+                                class="bg-white text-sky-900 font-bold px-4 py-2 rounded shadow hover:bg-sky-100 transition flex items-center gap-2 text-sm">
+                            <svg class="w-4 h-4"
+                                 viewBox="0 0 24 24"
+                                 xmlns="http://www.w3.org/2000/svg">
+                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                            </svg>
+                            Zaloguj przez Google
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </nav>
+        <!-- Dynamiczna treść -->
+        <main class="flex-1 flex overflow-hidden">
+            {% block content %}{% endblock %}
+        </main>
+        <!--
         Skrypty ładowane na końcu body (optymalizacja renderowania).
     -->
-
-    <!-- HTMX -->
-    <script
-        src="https://unpkg.com/htmx.org@1.9.11/dist/htmx.min.js"
-        integrity="sha384-0gxUXCCR8yv9FM2b+U3FDbsKthCI66oH5IA9fHppQq9DDMHuMauqq1ZHBpJxQ0J0"
-        crossorigin="anonymous"
-    ></script>
-
-    <script
-        src="https://unpkg.com/htmx.org@1.9.11/dist/ext/json-enc.js"
-        integrity="sha384-nRnAvEUI7N/XvvowiMiq7oEI04gOXMCqD3Bidvedw+YNbj7zTQACPlRI3Jt3vYM4"
-        crossorigin="anonymous"
-    ></script>
-
-    <!-- MapLibre GL JS -->
-    <script
-        src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"
-        integrity="sha384-3WUbXI7T+/GIrWP/5MDMjhzLyHQ+0utF3PnJ7ozD7UeN1/bbZ96Hk+Vvd024VYfW"
-        crossorigin="anonymous"
-    ></script>
-
-</body>
+        <!-- HTMX -->
+        <script src="https://unpkg.com/htmx.org@1.9.11/dist/htmx.min.js"
+                integrity="sha384-0gxUXCCR8yv9FM2b+U3FDbsKthCI66oH5IA9fHppQq9DDMHuMauqq1ZHBpJxQ0J0"
+                crossorigin="anonymous"></script>
+        <script src="https://unpkg.com/htmx.org@1.9.11/dist/ext/json-enc.js"
+                integrity="sha384-nRnAvEUI7N/XvvowiMiq7oEI04gOXMCqD3Bidvedw+YNbj7zTQACPlRI3Jt3vYM4"
+                crossorigin="anonymous"></script>
+        <!-- MapLibre GL JS -->
+        <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"
+                integrity="sha384-3WUbXI7T+/GIrWP/5MDMjhzLyHQ+0utF3PnJ7ozD7UeN1/bbZ96Hk+Vvd024VYfW"
+                crossorigin="anonymous"></script>
+    </body>
 </html>

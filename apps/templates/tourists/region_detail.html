@@ -1,131 +1,122 @@
 {% extends "base.html" %}
 {% load static %}
-
 {% block content %}
-<!-- Przekazanie zmiennych do pliku map.js -->
-<script>
+    <!-- Przekazanie zmiennych do pliku map.js -->
+    <script>
     window.REGION_FILTER_LEVEL = "{{ region_level }}";
     window.REGION_FILTER_ID = "{{ region_id }}";
     {% if extent %}
     window.REGION_EXTENT = [{{ extent.0|stringformat:"f" }}, {{ extent.1|stringformat:"f" }}, {{ extent.2|stringformat:"f" }}, {{ extent.3|stringformat:"f" }}];
     {% endif %}
-</script>
-
-<div class="container mx-auto p-6 h-full flex gap-6 overflow-hidden">
-
-    <!-- LEWA KOLUMNA: Detale i Ranking w Regionie -->
-    <div class="w-1/2 bg-white rounded-xl shadow-md border border-gray-200 flex flex-col overflow-y-auto">
-
-        <!-- Nagłówek -->
-        <div class="p-6 border-b bg-teal-800 text-white rounded-t-xl">
-            <p class="text-teal-200 text-xs font-bold uppercase tracking-wider mb-1">{{ region_level }}</p>
-            <h2 class="text-3xl font-extrabold">{{ region.name }}</h2>
-            <p class="mt-2 text-sm text-teal-100">Zarejestrowane obiekty PTTK: <b>{{ total_objects }}</b></p>
-        </div>
-
-        <!-- Nawigacja Geograficzna -->
-        <div class="bg-teal-50 border-b border-teal-100 p-4 text-sm">
-            <h3 class="font-bold text-teal-900 mb-3 flex items-center gap-2">
-                🧭 Nawigacja Terytorialna
-            </h3>
-
-            <div class="flex flex-col gap-3">
-                <!-- W górę -->
-                {% if parent_region %}
-                <div class="flex items-start gap-2">
-                    <span class="text-teal-600 mt-0.5">⬆️</span>
-                    <div>
-                        <span class="text-xs text-teal-600 uppercase block leading-none">Należy do ({{ parent_level|slice:":3" }}):</span>
-                        <a data-testid="link-parent-region" href="{% url 'region_detail' parent_level parent_region.id %}" class="font-bold text-teal-800 hover:underline">
-                            {{ parent_region.name }}
-                        </a>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- W dół (Dzieci) -->
-                {% if children_regions %}
-                <div class="flex items-start gap-2">
-                    <span class="text-teal-600 mt-0.5">⬇️</span>
-                    <div>
-                        <span class="text-xs text-teal-600 uppercase block leading-none">Składa się z ({{ children_level|slice:":3" }}):</span>
-                        <div class="flex flex-wrap gap-1 mt-1">
-                            {% for child in children_regions %}
-                            <a data-testid="link-child-region-{{ child.id }}" href="{% url 'region_detail' children_level child.id %}" class="inline-block bg-white border border-teal-200 text-teal-700 px-2 py-0.5 rounded text-xs hover:bg-teal-600 hover:text-white transition">
-                                {{ child.name }}
-                            </a>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Na boki (Sąsiedzi po granicy z PostGIS) -->
-                {% if neighbors %}
-                <div class="flex items-start gap-2 pt-2 border-t border-teal-200/50 mt-1">
-                    <span class="text-teal-600 mt-0.5">↔️</span>
-                    <div>
-                        <span class="text-xs text-teal-600 uppercase block leading-none">Graniczy z (Sąsiedzi):</span>
-                        <div class="flex flex-wrap gap-1 mt-1">
-                            {% for neighbor in neighbors %}
-                            <a data-testid="link-neighbor-region-{{ neighbor.id }}" href="{% url 'region_detail' region_level neighbor.id %}" class="inline-block bg-white border border-teal-200 text-teal-700 px-2 py-0.5 rounded text-xs hover:bg-teal-600 hover:text-white transition shadow-sm">
-                                {{ neighbor.name }}
-                            </a>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
+    </script>
+    <div class="container mx-auto p-6 h-full flex gap-6 overflow-hidden">
+        <!-- LEWA KOLUMNA: Detale i Ranking w Regionie -->
+        <div class="w-1/2 bg-white rounded-xl shadow-md border border-gray-200 flex flex-col overflow-y-auto">
+            <!-- Nagłówek -->
+            <div class="p-6 border-b bg-teal-800 text-white rounded-t-xl">
+                <p class="text-teal-200 text-xs font-bold uppercase tracking-wider mb-1">{{ region_level }}</p>
+                <h2 class="text-3xl font-extrabold">{{ region.name }}</h2>
+                <p class="mt-2 text-sm text-teal-100">Zarejestrowane obiekty PTTK: <b>{{ total_objects }}</b></p>
             </div>
-        </div>
-
-        <div class="p-0">
-            <div class="px-6 py-4 bg-gray-50 border-b">
-                <h3 class="text-lg font-bold text-slate-800">Najbardziej opłacalne cele w tym regionie (TOP 20)</h3>
+            <!-- Nawigacja Geograficzna -->
+            <div class="bg-teal-50 border-b border-teal-100 p-4 text-sm">
+                <h3 class="font-bold text-teal-900 mb-3 flex items-center gap-2">🧭 Nawigacja Terytorialna</h3>
+                <div class="flex flex-col gap-3">
+                    <!-- W górę -->
+                    {% if parent_region %}
+                        <div class="flex items-start gap-2">
+                            <span class="text-teal-600 mt-0.5">⬆️</span>
+                            <div>
+                                <span class="text-xs text-teal-600 uppercase block leading-none">Należy do ({{ parent_level|slice:":3" }}):</span>
+                                <a data-testid="link-parent-region"
+                                   href="{% url 'region_detail' parent_level parent_region.id %}"
+                                   class="font-bold text-teal-800 hover:underline">{{ parent_region.name }}</a>
+                            </div>
+                        </div>
+                    {% endif %}
+                    <!-- W dół (Dzieci) -->
+                    {% if children_regions %}
+                        <div class="flex items-start gap-2">
+                            <span class="text-teal-600 mt-0.5">⬇️</span>
+                            <div>
+                                <span class="text-xs text-teal-600 uppercase block leading-none">Składa się z ({{ children_level|slice:":3" }}):</span>
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    {% for child in children_regions %}
+                                        <a data-testid="link-child-region-{{ child.id }}"
+                                           href="{% url 'region_detail' children_level child.id %}"
+                                           class="inline-block bg-white border border-teal-200 text-teal-700 px-2 py-0.5 rounded text-xs hover:bg-teal-600 hover:text-white transition">
+                                            {{ child.name }}
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    <!-- Na boki (Sąsiedzi po granicy z PostGIS) -->
+                    {% if neighbors %}
+                        <div class="flex items-start gap-2 pt-2 border-t border-teal-200/50 mt-1">
+                            <span class="text-teal-600 mt-0.5">↔️</span>
+                            <div>
+                                <span class="text-xs text-teal-600 uppercase block leading-none">Graniczy z (Sąsiedzi):</span>
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    {% for neighbor in neighbors %}
+                                        <a data-testid="link-neighbor-region-{{ neighbor.id }}"
+                                           href="{% url 'region_detail' region_level neighbor.id %}"
+                                           class="inline-block bg-white border border-teal-200 text-teal-700 px-2 py-0.5 rounded text-xs hover:bg-teal-600 hover:text-white transition shadow-sm">
+                                            {{ neighbor.name }}
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
-
-            <table class="min-w-full leading-normal">
-                <tbody>
-                    {% for item in top_objects %}
-                    <tr class="hover:bg-teal-50 transition border-b border-gray-100">
-                        <td class="px-5 py-3">
-                            <span class="inline-block bg-teal-100 text-teal-800 font-bold px-2 py-1 rounded-full text-xs">
-                                +{{ item.score }} pkt
-                            </span>
-                        </td>
-                        <td class="px-5 py-3 text-sm font-bold text-gray-800">
-                            <a data-testid="link-region-object-{{ item.id }}" href="{% url 'object_detail' item.id %}" class="hover:text-teal-600 hover:underline">{{ item.name }}</a>
-                        </td>
-                        <td class="px-5 py-3 text-sm">
-                            {% if item.color == 'RED' %}<span class="text-red-600 font-bold text-xs">Idź!</span>
-                            {% elif item.color == 'GREEN' %}<span class="text-green-600 font-bold text-xs">Zdobyty</span>
-                            {% elif item.color == 'BLUE' %}<span class="text-blue-600 font-bold text-xs">Powtórz</span>
-                            {% elif item.color == 'ORANGE' %}<span class="text-orange-500 font-bold text-xs">Zablokowany</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="3" class="px-5 py-8 text-center text-gray-500 text-sm">
-                            Brak aktywnych obiektów w tym regionie, lub nie subskrybujesz odznak z tego terenu.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- PRAWA KOLUMNA: Mapa Regionu -->
-    <div class="w-1/2 bg-gray-200 rounded-xl shadow-inner border border-gray-300 relative overflow-hidden flex flex-col">
-        <div id="map" class="flex-1 w-full h-full"></div>
-    </div>
-
+            <div class="p-0">
+                <div class="px-6 py-4 bg-gray-50 border-b">
+                    <h3 class="text-lg font-bold text-slate-800">Najbardziej opłacalne cele w tym regionie (TOP 20)</h3>
+                </div>
+                <table class="min-w-full leading-normal">
+                    <tbody>
+                        {% for item in top_objects %}
+                            <tr class="hover:bg-teal-50 transition border-b border-gray-100">
+                                <td class="px-5 py-3">
+                                    <span class="inline-block bg-teal-100 text-teal-800 font-bold px-2 py-1 rounded-full text-xs">
+                                        +{{ item.score }} pkt
+                                    </span>
+                                </td>
+                                <td class="px-5 py-3 text-sm font-bold text-gray-800">
+                                    <a data-testid="link-region-object-{{ item.id }}"
+                                       href="{% url 'object_detail' item.id %}"
+                                       class="hover:text-teal-600 hover:underline">{{ item.name }}</a>
+                                </td>
+                                <td class="px-5 py-3 text-sm">
+                                    {% if item.color == 'RED' %}<span class="text-red-600 font-bold text-xs">Idź!</span>
+                        {% elif item.color == 'GREEN' %}<span class="text-green-600 font-bold text-xs">Zdobyty</span>
+                        {% elif item.color == 'BLUE' %}<span class="text-blue-600 font-bold text-xs">Powtórz</span>
+                        {% elif item.color == 'ORANGE' %}<span class="text-orange-500 font-bold text-xs">Zablokowany</span>
+                        {% endif %}
+                    </td>
+                </tr>
+{% empty %}
+    <tr>
+        <td colspan="3" class="px-5 py-8 text-center text-gray-500 text-sm">
+            Brak aktywnych obiektów w tym regionie, lub nie subskrybujesz odznak z tego terenu.
+        </td>
+    </tr>
+{% endfor %}
+</tbody>
+</table>
 </div>
-
+</div>
+<!-- PRAWA KOLUMNA: Mapa Regionu -->
+<div class="w-1/2 bg-gray-200 rounded-xl shadow-inner border border-gray-300 relative overflow-hidden flex flex-col">
+    <div id="map" class="flex-1 w-full h-full"></div>
+</div>
+</div>
 <!-- Kontener na toasty błędów z HTMX (używane w popupach mapy) -->
-<div id="toast-container" data-testid="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
-
+<div id="toast-container"
+     data-testid="toast-container"
+     class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 <script type="module" src="{% static 'js/map/main.js' %}"></script>
-
 {% endblock %}

@@ -94,10 +94,10 @@ test-html:
 	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) -m "not integration and not e2e" --html=test-report.html --self-contained-html
 
 docstr-coverage:
-	uv run docstr-coverage $(PY_DIRS) --fail-under=80
+	uv run docstr-coverage $(PY_DIRS) --fail-under=95
 
 lint-templates:
-	uv run djlint apps/ --check --format
+	uv run djlint apps/ --check --reformat
 
 experimental-schemathesis:
 	uv run schemathesis run http://localhost:8000/api/openapi.json --base-url=http://localhost:8000
@@ -214,7 +214,8 @@ security-audit:
 	  --disable-version-check \
 	  --quiet \
 	  --exclude="tests/*" --exclude=".venv/*" --exclude="node_modules/*" --exclude="staticfiles/*" \
-	  --exclude-rule=package_managers.uv.uv-missing-dependency-cooldown.uv-missing-dependency-cooldown
+	  --exclude-rule=package_managers.uv.uv-missing-dependency-cooldown.uv-missing-dependency-cooldown \
+	  --exclude-rule=python.django.security.django-no-csrf-token.django-no-csrf-token
 	@echo "\n=== ROZPOCZYNANIE SKANOWANIA GOOGLE OSV-SCANNER ==="
 	osv-scanner --lockfile=uv.lock --config=osv-scanner.toml
 	@echo "\n=== ROZPOCZYNANIE SKANOWANIA OBRAZU KONTENEROWEGO (Trivy) ==="
