@@ -52,7 +52,7 @@ def test_logged_in_user_can_navigate_to_catalog_and_subscribe(auth_page: Page):
     expect(auth_page.locator("text=Twoje Odznaki")).to_be_visible()
     expect(auth_page.locator("text=Korona Gór Polskich")).to_be_visible()
     # Dowód na sukces: Widzimy informację o jej stanie w lewym pasku
-    expect(auth_page.locator("text=Subskrybowana")).to_be_visible()
+    expect(auth_page.locator("[data-testid='dashboard-badge-KGP']")).to_contain_text("Subskrybowana")
 
 
 @pytest.mark.e2e
