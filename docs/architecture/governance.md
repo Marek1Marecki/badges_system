@@ -97,7 +97,7 @@ Narzędzia w **kontrolowanej eksperymentacji**. Można je uruchamiać świadomie
 
 | Mechanizm | Plik/Konfiguracja | Cel |
 |-----------|-------------------|-----|
-| mutmut | `make mutation-test` | Jakość testów (mutation score) |
+| mutmut | `make experimental-mutation` | Jakość testów (mutation score) |
 | Schemathesis | `make experimental-schemathesis` | API fuzzing |
 | Testcontainers | `make experimental-testcontainers` | Real PostgreSQL/Redis w testach |
 | axe-playwright | `make experimental-axe` | Accessibility |

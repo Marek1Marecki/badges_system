@@ -10,7 +10,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff secret-scan test-timings test-html docstr-coverage lint-templates secret-scan
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff secret-scan test-timings test-html docstr-coverage lint-templates experimental-schemathesis experimental-testcontainers experimental-axe experimental-k6 experimental-zap experimental-mutation secret-scan
 
 help:
 	@echo "CORE targets:"
@@ -46,6 +46,12 @@ help:
 	@echo "  test-html      - raport HTML z wyników testów (pytest-html, diagnostyka)"
 	@echo "  docstr-coverage - sprawdzanie pokrycia docstringami (diagnostyka)"
 	@echo "  lint-templates - lintowanie szablonow Django (djLint, diagnostyka)"
+	@echo "  experimental-schemathesis - API fuzzing (Schemathesis, experimental)"
+	@echo "  experimental-testcontainers - realne DB w testach (Testcontainers, experimental)"
+	@echo "  experimental-axe - accessibility (axe-playwright, experimental)"
+	@echo "  experimental-k6 - load testing (k6, experimental)"
+	@echo "  experimental-zap - DAST (OWASP ZAP, experimental)"
+	@echo "  experimental-mutation - mutation testing (mutmut, experimental)"
 
 setup:
 	uv sync --group dev
@@ -89,6 +95,24 @@ docstr-coverage:
 
 lint-templates:
 	uv run djlint apps/ --check --format
+
+experimental-schemathesis:
+	uv run schemathesis run http://localhost:8000/api/openapi.json --base-url=http://localhost:8000
+
+experimental-testcontainers:
+	uv run pytest tests/ -m "integration and testcontainers" -v
+
+experimental-axe:
+	uv run playwright test tests/e2e/ --grep "accessibility"
+
+experimental-k6:
+	k6 run scripts/k6/load-test.js
+
+experimental-zap:
+	zap-cli quick-scan --spider -r http://localhost:8000
+
+experimental-mutation:
+	uv run mutmut run --paths-to-mutate application/ domain/ --runner "python -m pytest tests/"
 
 test-all:
 	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) --create-db --nomigrations \

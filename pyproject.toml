@@ -67,6 +67,7 @@ dev = [
     "pytest-html>=4.2.0",
     "docstr-coverage>=2.3.2",
     "djlint>=1.44.2",
+    "schemathesis>=4.25.2",
 ]
 
 [tool.pytest.ini_options]
