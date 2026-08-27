@@ -10,7 +10,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff secret-scan test-timings test-html docstr-coverage lint-templates experimental-schemathesis experimental-testcontainers experimental-axe experimental-k6 experimental-zap experimental-mutation secret-scan
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff secret-scan test-timings test-html docstr-coverage lint-templates experimental-schemathesis experimental-testcontainers experimental-axe experimental-factory-boy experimental-k6 experimental-zap experimental-mutation secret-scan
 
 help:
 	@echo "CORE targets:"
@@ -49,6 +49,7 @@ help:
 	@echo "  experimental-schemathesis - API fuzzing (Schemathesis, experimental)"
 	@echo "  experimental-testcontainers - realne DB w testach (Testcontainers, experimental)"
 	@echo "  experimental-axe - accessibility (axe-playwright, experimental)"
+	@echo "  experimental-factory-boy - test data architecture (Factory Boy, experimental)"
 	@echo "  experimental-k6 - load testing (k6, experimental)"
 	@echo "  experimental-zap - DAST (OWASP ZAP, experimental)"
 	@echo "  experimental-mutation - mutation testing (mutmut, experimental)"
@@ -104,6 +105,9 @@ experimental-testcontainers:
 
 experimental-axe:
 	uv run playwright test tests/e2e/ --grep "accessibility"
+
+experimental-factory-boy:
+	uv run pytest tests/ -k "factory" -v
 
 experimental-k6:
 	k6 run scripts/k6/load-test.js

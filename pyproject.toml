@@ -69,6 +69,7 @@ dev = [
     "djlint>=1.44.2",
     "schemathesis>=4.25.2",
     "testcontainers>=4.15.0",
+    "factory-boy>=3.3.3",
 ]
 
 [tool.pytest.ini_options]

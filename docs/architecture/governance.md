@@ -103,6 +103,7 @@ Narzędzia w **kontrolowanej eksperymentacji**. Można je uruchamiać świadomie
 | axe-playwright | `make experimental-axe` | Accessibility |
 | k6 | `make experimental-k6` | Load testing |
 | OWASP ZAP | `make experimental-zap` | DAST |
+| Factory Boy | `make experimental-factory-boy` | Test data architecture |
 
 **Zasady:**
 - Experimental nie blokuje CI
