@@ -100,7 +100,7 @@ lint-templates:
 	uv run djlint apps/ --check --reformat
 
 experimental-schemathesis:
-	uv run schemathesis run http://localhost:8000/api/openapi.json --base-url=http://localhost:8000
+	uv run schemathesis run http://localhost:8000/api/openapi.json --url=http://localhost:8000
 
 experimental-testcontainers:
 	uv run pytest tests/ -m "integration and testcontainers" -v
