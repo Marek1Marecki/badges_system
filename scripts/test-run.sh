@@ -80,6 +80,16 @@ echo "NIGDY nie mogą to być 'badges_system_postgis_data'/'badges_system_redis_
 docker volume ls --filter "name=${PROJECT}" --format "  {{.Name}}"
 docker volume ls --filter "name=_test_" --format "  {{.Name}}"
 
+echo ""
+echo "=== DIAGNOSTYKA: stan kontenerów i sieci Compose ==="
+"${COMPOSE[@]}" ps || true
+echo ""
+echo "--- Sieci Compose ---"
+"${COMPOSE[@]}" network ls || true
+echo ""
+echo "--- Szczegóły sieci projektu ---"
+"${COMPOSE[@]}" network inspect "${PROJECT}_default" 2>/dev/null || "${COMPOSE[@]}" network inspect "badges_system_test_default" 2>/dev/null || true
+
 if [ "$FULL" = true ]; then
     echo ""
     echo "=== TEST --full: weryfikacja PROCESU WDROŻENIA (nie tylko kodu) ==="
