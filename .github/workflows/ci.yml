@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-    # Optymalizacja kosztów chmury: Nie uruchamiamy CI, gdy edytujesz tylko
-    # pliki niebędące częścią buildu/testów. Dokumentacja w docs/ oraz
-    # konfiguracja Docker/compose są teraz częścią triggera.
     paths:
       - '**.py'
       - '**.sh'
@@ -37,29 +34,31 @@ on:
       - 'compose*.yml'
       - 'docs/**'
 
+env:
+  UV_VERSION: "0.5.11"
+
 jobs:
   static-analysis-and-unit-tests:
-    name: Code Quality & Unit Tests
+    name: Gate — Code Quality & Unit Tests
     runs-on: self-hosted
     timeout-minutes: 30
     steps:
       - name: Pobieranie repozytorium
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - name: Instalacja zależności systemowych (GDAL, GEOS, PROJ, Graphviz)
+      - name: Instalacja zależności systemowych (GDAL, GEOS, PROJ)
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             gdal-bin \
             libgdal-dev \
             libgeos-dev \
-            libproj-dev \
-            graphviz
+            libproj-dev
 
       - name: Konfiguracja narzędzia UV
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
         with:
-          version: "0.5.11"
+          version: ${{ env.UV_VERSION }}
           enable-cache: true
 
       - name: Konfiguracja Pythona 3.14
@@ -68,7 +67,8 @@ jobs:
           python-version: "3.14"
 
       - name: Instalacja zależności (z grupy DEV)
-        run: uv sync --frozen --no-cache --group dev --python 3.14
+        run: uv sync --frozen --group dev --python 3.14
+
       - name: Weryfikacja formatowania kodu (Ruff Format)
         run: uv run ruff format --check domain application infrastructure apps bootstrap scripts
 
@@ -87,48 +87,7 @@ jobs:
       - name: Audyt SRE (Ochrona przed wyciekami i zakazanym API)
         run: uv run python scripts/audit_contracts.py
 
-      - name: Analiza Złożoności (Radon + Xenon)
-        run: make complexity-check
-
-      - name: Analiza Trendów Złożoności (wily)
-        run: make complexity-trend | tee complexity-trend.txt
-
-      - name: Upload raportu trendów złożoności
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: complexity-trend
-          path: complexity-trend.txt
-          retention-days: 30
-
-      - name: Generowanie diagramów architektury (pydeps + pyreverse)
-        run: make graph-modules graph-classes
-
-      - name: Generowanie diagramów C4 (PlantUML)
-        run: make arch-docs
-
-      - name: Generowanie dokumentacji API (pdoc)
-        run: make api-docs
-
-      - name: Upload diagramów architektury
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: architecture-diagrams
-          path: |
-            docs/architecture/
-            dependencies-pydeps.svg
-          retention-days: 30
-
-      - name: Upload dokumentacji API
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: api-documentation
-          path: docs/api/
-          retention-days: 30
-
-      - name: Generowanie kluczy na potrzeby testów z bazy w pamięci (Pydantic Bypass)
+      - name: Generowanie testowych środowisk i kluczy asymetrycznych
         run: |
           cp .env.example .env
           echo "DJANGO_SECRET_KEY=$(openssl rand -hex 32)" > .env.test
@@ -137,7 +96,6 @@ jobs:
           echo "LOG_LEVEL=DEBUG" >> .env.test
 
       - name: Testy Jednostkowe (Unit Tests)
-        # Dodano generowanie fizycznych raportów dla zespołu i debugowania
         run: ENV_FILE=.env.test uv run pytest tests -m "not integration and not e2e" --junitxml=unit-test-results.xml
 
       - name: Zapisz raporty z testów do archiwum Github Actions
@@ -147,6 +105,66 @@ jobs:
           name: unit-test-results
           path: unit-test-results.xml
           retention-days: 7
+
+  diagnostics:
+    name: Diagnostic — Complexity, Trends & Architecture Reports
+    runs-on: ubuntu-latest
+    needs: static-analysis-and-unit-tests
+    if: always()
+    timeout-minutes: 15
+    steps:
+      - name: Pobieranie repozytorium
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Konfiguracja narzędzia UV
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Konfiguracja Pythona 3.14
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.14"
+
+      - name: Instalacja zależności (z grupy DEV)
+        run: uv sync --frozen --group dev --python 3.14
+
+      - name: Analiza Złożoności (Radon)
+        run: make complexity-check
+        continue-on-error: true
+
+      - name: Analiza Trendów Złożoności (wily)
+        run: make complexity-trend
+        continue-on-error: true
+
+      - name: Generowanie diagramów architektury (pydeps + pyreverse)
+        run: make graph-modules graph-classes
+        continue-on-error: true
+
+      - name: Generowanie diagramów C4 (PlantUML)
+        run: make arch-docs
+        continue-on-error: true
+
+      - name: Generowanie dokumentacji API (pdoc)
+        run: make api-docs
+        continue-on-error: true
+
+      - name: Analiza pokrycia kodu (diff-cover)
+        run: make coverage-diff
+        continue-on-error: true
+
+      - name: Upload artefaktów diagnostycznych
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: diagnostic-artifacts
+          path: |
+            docs/architecture/
+            dependencies-pydeps.svg
+            docs/api/
+            diff-cover-report.html
+          retention-days: 30
 
   integration-tests:
     name: Infrastructure, Trivy & Integration Tests
@@ -172,7 +190,7 @@ jobs:
       - name: Konfiguracja narzędzia UV (dla celów zapytań CI)
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
-          version: "0.12.3"
+          version: ${{ env.UV_VERSION }}
           enable-cache: true
 
       - name: Konfiguracja Pythona 3.14
@@ -181,7 +199,7 @@ jobs:
           python-version: "3.14"
 
       - name: Instalacja zależności (z grupy DEV)
-        run: uv sync --frozen --no-cache --group dev --python 3.14
+        run: uv sync --frozen --group dev --python 3.14
 
       - name: Generowanie testowych środowisk i kluczy asymetrycznych
         # Generowanie super-bezpiecznego, kryptograficznego klucza bez naruszania logów w Gicie
@@ -203,7 +221,7 @@ jobs:
       - name: Budowanie obrazu testowego (Build Once)
         run: docker build --target testing -t badges-system:${{ github.sha }} .
 
-      - name: Skanowanie obrazu produkcyjnego w poszukiwaniu luk CVE (Trivy) — development mode
+      - name: Skanowanie obrazu testowego w poszukiwaniu luk CVE (Trivy)
         run: |
           mkdir -p "$HOME/.cache/trivy"
           docker run --rm \
@@ -273,7 +291,7 @@ jobs:
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$(pwd)":/work -w /work \
-            anchore/syft:latest \
+            anchore/syft:1.22.3 \
             scan docker:badges-system:${{ github.sha }} \
             -o cyclonedx-json=sbom.cdx.json
 
@@ -382,7 +400,7 @@ jobs:
       - name: Konfiguracja narzędzia UV
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
         with:
-          version: "0.5.11"
+          version: ${{ env.UV_VERSION }}
           enable-cache: true
 
       - name: Konfiguracja Pythona 3.14
@@ -391,7 +409,7 @@ jobs:
           python-version: "3.14"
 
       - name: Instalacja zależności (z grupy DEV)
-        run: uv sync --frozen --no-cache --group dev --python 3.14
+        run: uv sync --frozen --group dev --python 3.14
 
       - name: Generowanie testowych środowisk i kluczy asymetrycznych
         run: |

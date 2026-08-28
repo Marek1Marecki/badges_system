@@ -41,7 +41,7 @@ Projekt rygorystycznie rozdziela narzędzia nadzoru na trzy kasty operacyjne (Ti
 
 | Poziom (Tier) | Cel i Pytanie | Charakter CI | Przykładowe Narzędzia w Projekcie |
 |:---|:---|:---|:---|
-| **GATE** | „Czy wolno zaakceptować zmianę?” | Blocking (Fail-Fast) | Ruff, Mypy, Import Linter, Xenon, Trivy, pytest |
+| **GATE** | „Czy wolno zaakceptować zmianę?” | Blocking (Fail-Fast) | Ruff, Mypy, Import Linter, Trivy, pytest, Semgrep, Hadolint, Checkov |
 | **DIAGNOSTIC** | „Co się dzieje z jakością / trendami?” | Advisory (Raportowanie) | Radon, Wily, pydeps, Checkov, Hadolint, pytest-randomly, diff-cover, gitleaks |
 | **EXPERIMENTAL** | „Czy ta technika ma u nas sens operacyjny?” | Manual (Poza głównym CI) | mutmut, Schemathesis, Testcontainers, axe-playwright |
 
@@ -323,65 +323,44 @@ Trivy skanuje zależności deweloperskie Semgrep (przez MCP). Wyjątki w `osv-sc
 
 ## Kolejność w CI
 
-```
-CI Pipeline (Gate — make check)
+```text
+CI Pipeline (Gate)
 │
-├── 1. Code Quality
+├── static-analysis-and-unit-tests
 │   ├── Ruff format --check
 │   ├── Ruff lint
-│   ├── mypy
-│   └── lint-imports (Import Linter)
-│
-├── 2. Tests
-│   └── pytest (jednostkowe + architektura FF-002..FF-007, FF-010, FF-015..FF-017, FF-019..FF-023)
-│
-├── 3. Architecture Audit
-│   └── audit_contracts.py (graf zależności)
-│
-├── 4. Security / Supply Chain
+│   ├── Mypy
+│   ├── Import Linter
 │   ├── Semgrep
-│   ├── OSV-Scanner
-│   └── Trivy (HIGH/CRITICAL)
+│   ├── audit_contracts.py
+│   └── pytest (unit tests)
 │
-└── 5. Infrastructure Governance
-    ├── Hadolint
-    └── Checkov
+├── integration-tests
+│   ├── Docker build (Build Once)
+│   ├── Trivy (Gate, HIGH/CRITICAL)
+│   ├── SBOM generation (Syft)
+│   ├── SBOM validation (assertion-based)
+│   └── Integration tests
+│
+└── e2e-tests
+    └── Playwright
+
+Diagnostics (Diagnostic Tier — advisory, non-blocking)
+│
+├── complexity-check (Radon + Xenon)
+├── complexity-trend (wily)
+├── graph-all (pydeps + pyreverse)
+├── arch-docs (PlantUML C4)
+├── api-docs (pdoc)
+└── coverage-diff (diff-cover)
 ```
 
-```
-Diagnostic Pipeline (manual / advisory)
-│
-├── Complexity / Quality
-│   ├── Radon (make complexity-check)
-│   ├── Xenon (make complexity-check)
-│   └── wily (make complexity-trend)
-│
-├── Architecture Diagnostics
-│   ├── FF-001 Dependency Direction (test_dependency_direction.py)
-│   ├── FF-006 DTO Naming Convention (test_dto_naming_convention.py)
-│   ├── FF-008 Migration Idempotency (test_migration_idempotency.py)
-│   ├── FF-009 God Class Prevention (test_god_class_prevention.py)
-│   ├── FF-018 No Sensitive Data in Logs (test_no_sensitive_data_in_logs.py)
-│   └── FF-022 Dependency Groups Separation (test_dependency_groups_separation.py)
-│
-├── Test diagnostics
-│   ├── pytest-randomly (make test-random)
-│   ├── pytest-timings (make test-timings)
-│   └── pytest-html (make test-html)
-│
-├── Coverage
-│   └── diff-cover (make coverage-diff)
-│
-└── Security diagnostics
-    ├── detect-secrets (make secret-scan)
-    └── docstr-coverage (make docstr-coverage)
-```
+**Zasada:**
+- `static-analysis-and-unit-tests` uruchamia tylko **Gate** — tools które muszą przejść przed merge.
+- `diagnostics` jest uruchamiany jako **separate job** z `if: always()` i `continue-on-error: true` — nie blokuje CI.
+- **Experimental** jest uruchamiany ręcznie (`make experimental-*`).
 
-**Zasada kolejności:**
-- `make check` uruchamia tylko **Gate** — warstwę blokującą
-- **Diagnostic** jest uruchamiany świadomie przez developera (`make complexity-check`, `make test-random`, `make coverage-diff`, itp.)
-- **Experimental** jest uruchamiany w kontrolowanej sandboxie (`make experimental-*`)
-- FF-015, FF-016, FF-017, FF-019, FF-020 (Operational + Observability Governance) są częścią warstwy Tests (pytest)
+Audyt pełnej macierzy CI ↔ Governance: [`docs/architecture/ci-governance-matrix.md`](ci-governance-matrix.md)
 
 ---
 

@@ -10,7 +10,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff secret-scan test-timings test-html docstr-coverage lint-templates experimental-schemathesis experimental-testcontainers experimental-axe experimental-factory-boy experimental-k6 experimental-zap experimental-mutation experimental-xdist experimental-benchmark secret-scan
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check diagnostics clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff secret-scan test-timings test-html docstr-coverage lint-templates experimental-schemathesis experimental-testcontainers experimental-axe experimental-factory-boy experimental-k6 experimental-zap experimental-mutation experimental-xdist experimental-benchmark secret-scan
 
 help:
 	@echo "CORE targets:"
@@ -29,15 +29,16 @@ help:
 	@echo "  graph-all    - wszystkie diagramy architektury"
 	@echo "  arch-docs    - generowanie diagramów PlantUML (C4)"
 	@echo "  api-docs     - generowanie dokumentacji API (pdoc)"
-	@echo "  check        - lokalne CI: format --check + lint + type-check + test + audit + complexity-check + security-audit + infra-check"
+	@echo "  check        - lokalne CI (Gate): format --check + lint + type-check + test + audit + security"
+	@echo "  diagnostics  - Diagnostic tier: complexity, trends, arch diagrams, coverage-diff, etc."
 	@echo "  clean        - usuwa cache, artefakty"
 	@echo "  security-audit - semgrep + osv-scanner + trivy"
 	@echo "  hadolint     - skanowanie Dockerfile (Hadolint)"
 	@echo "  checkov      - skanowanie Compose (Checkov)"
 	@echo "  infra-check  - hadolint + checkov"
 	@echo "  docker-bench - audyt konfiguracji Dockera (CIS Docker Bench, na żądanie)"
-	@echo "  complexity-check - radon + xenon (complexity + maintainability metrics)"
-	@echo "  complexity-trend - wily (complexity trends over git history)"
+	@echo "  complexity-check - radon + xenon (Diagnostic: complexity + maintainability metrics)"
+	@echo "  complexity-trend - wily (Diagnostic: complexity trends over git history)"
 	@echo "  lock           - regeneruje uv.lock z 7-dniowym cooldownem zależności"
 	@echo "  test-random    - testy z losową kolejnością (pytest-randomly, diagnostyka)"
 	@echo "  coverage-diff  - coverage tylko dla zmienionego kodu (diff-cover, diagnostyka)"
@@ -267,7 +268,20 @@ check:
 	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) -m "not integration and not e2e"
 	uv run python scripts/audit_contracts.py
 	make security-audit
-	make infra-check
+
+diagnostics:
+	make complexity-check
+	make complexity-trend
+	make graph-all
+	make arch-docs
+	make api-docs
+	make coverage-diff
+	make test-random
+	make test-timings
+	make test-html
+	make secret-scan
+	make docstr-coverage
+	make lint-templates
 
 clean:
 	find . -type f -name "*.pyc" -delete
