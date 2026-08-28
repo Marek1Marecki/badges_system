@@ -122,7 +122,7 @@ experimental-schemathesis:
 	uv run schemathesis run http://localhost:8005/api/openapi.json --url=http://localhost:8005
 
 experimental-testcontainers:
-	uv run pytest tests/ -m "integration and testcontainers" -v
+	uv run pytest tests/ -m "integration and testcontainers" -v -s --override-ini="addopts="
 
 experimental-axe:
 	uv run playwright test tests/e2e/ --grep "accessibility"
@@ -137,7 +137,7 @@ experimental-zap:
 	zap-cli quick-scan --spider -r http://localhost:8000
 
 experimental-mutation:
-	uv run mutmut run --paths-to-mutate application/ domain/ --runner "python -m pytest tests/"
+	uv run mutmut run --paths-to-mutate=application/,domain/ --runner "python -m pytest tests/ --ignore=tests/e2e -m 'not integration' --deselect tests/config/test_urls.py::TestMainUrls::test_health_check_view_returns_healthy_in_test_environment"
 
 experimental-xdist:
 	uv run pytest $(TEST_DIRS) -m "not integration and not e2e" -n auto

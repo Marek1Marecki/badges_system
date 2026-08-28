@@ -29,3 +29,37 @@
 **Priorytet:** `🟢 NISKI`  
 **Diagnoza:** Wyłom zdefiniowany w `.importlinter` (DŁUG-002). Model Django posiada wiedzę o strukturze walidacji formularzy w infrastrukturze.
 **Action Items:** Przenieść powiązanie `django-jsonform` ze schematem z warstwy `models.py` na warstwę wyżej (do definicji `forms.py` lub `admin.py`).
+
+---
+
+### [AUDYT-158] Opracowanie zestawu "Smoke Tests" dla środowiska PRE-PROD/PROD
+
+**Obszar:** `QA / Deployment Validation`  
+**Priorytet:** `🟡 ŚREDNI` (Przed automatyzacją wdrożeń)
+
+**Diagnoza Architekta:**
+Zgodnie z koncepcją opisaną w docs/architecture/preprod-validation.md, testowanie środowiska po wdrożeniu (Deployment Validation) różni się od testów E2E i Integracyjnych. Obecnie nie posiadamy wydzielonego, minimalistycznego zestawu testów, który można by bezpiecznie odpalić na żywym środowisku (PRE-PROD lub PROD) po wykonaniu release.sh, by potwierdzić, że aplikacja "wstała i oddycha".
+
+**Action Items (Do wdrożenia w Fazy SRE/Deploy):**
+
+- [ ] Stworzyć nowy, mały katalog testów, np. `tests/smoke/`.
+- [ ] Napisać w nim 3-5 minimalistycznych testów (np. weryfikacja 200 OK na `/health/`, sprawdzenie ładowania strony głównej, udane logowanie konta testowego, próbny odczyt jednego szczytu z API).
+- [ ] Skonfigurować wywołanie tych testów jako ostatni krok potoku po udanym wdrożeniu środowiska (Post-Deployment Sanity Check).
+
+**Komentarz Architekta:**
+"Smoke Tests" nie testują logiki biznesowej. Odpowiadają na jedno pytanie: "Czy wtyczka jest w gniazdku, a serwer widzi bazę danych?". Ochroni to nas przed sytuacją, w której CI świeci na zielono, ale na produkcji użyliśmy złego hasła w `.env.prod`.
+
+---
+
+### [AUDYT-159] Eksperyment z Hammett jako runnerem dla Mutmuta
+
+**Obszar:** `QA / Tooling`  
+**Priorytet:** `🔵 EKSPERYMENTALNY`
+
+**Diagnoza:**
+Mutmut jest obecnie wolny na pełnym zestawie testów. Istnieje pokusa zastąpienia `pytest` przez `hammett` (szybki klon), ale z uwagi na naszą architekturę (wtyczki `pytest-django`, `hypothesis`), `hammett` może nie obsłużyć naszego środowiska testowego.
+
+**Action Items (Do wdrożenia w module EXPERIMENTAL):**
+- [ ] Przetestować wywołanie `mutmut run` z flagą `--use-coverage` w połączeniu z ograniczeniem ścieżek (`--paths-to-mutate=domain/`), aby radykalnie skrócić czas wykonywania z użyciem standardowego `pytest`.
+- [ ] Przeprowadzić izolowany eksperyment na gałęzi bocznej (Branch): podmienić runner na `hammett` i sprawdzić, czy narzędzie to potrafi poprawnie obsłużyć testy własnościowe (`Hypothesis`). Jeśli tak – zastosować lokalnie. Jeśli nie – odrzucić.
+- [ ] Rozważyć przeniesienie pełnego skanu mutacyjnego do zautomatyzowanego potoku Nocnego (Nightly CI Job) w GitHub Actions.

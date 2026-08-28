@@ -11,6 +11,7 @@ from infrastructure.adapters.persistence.django_map_repo import DjangoMapReposit
 
 @pytest.mark.integration
 @pytest.mark.django_db
+@pytest.mark.testcontainers
 class TestDjangoMapRepository:
     """Testy oparte na prawdziwej bazie danych PostgreSQL z PostGIS."""
 

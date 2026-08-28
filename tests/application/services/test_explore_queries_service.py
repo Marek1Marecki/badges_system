@@ -108,3 +108,91 @@ class TestExploreQueriesService:
         assert len(result.ranking) == 2
         assert result.ranking[0].id in (1, 2)
         assert result.ranking[0].score == 0
+
+    def test_get_region_ranking_uses_correct_cache_key(self, service):
+        """Poprawnie konstruuje klucz cache dla profilu w get_region_ranking."""
+
+        def cache_get_side_effect(key):
+            if key == "map_state:42":
+                return {"scores": {10: 5}}
+            return None
+
+        service._cache.get.side_effect = cache_get_side_effect
+        region_a = MagicMock()
+        region_a.id = 1
+        region_a.name = "Region A"
+        service._query_repo.get_regions_by_level.return_value = [region_a]
+        service._query_repo.get_object_region_cache_for_level.return_value = [
+            MagicMock(region_id=1, tourist_object_id=10),
+        ]
+
+        result = service.get_region_ranking(42, "VOIVODESHIP")
+
+        assert result.ranking[0].score == 5
+
+    def test_get_region_ranking_handles_missing_cache(self, service):
+        """Gdy cache zwraca None, serwis nie przerywa działania."""
+        service._cache.get.return_value = None
+        region_a = MagicMock()
+        region_a.id = 1
+        region_a.name = "Region A"
+        service._query_repo.get_regions_by_level.return_value = [region_a]
+        service._query_repo.get_object_region_cache_for_level.return_value = []
+
+        result = service.get_region_ranking(1, "VOIVODESHIP")
+
+        assert len(result.ranking) == 1
+        assert result.ranking[0].score == 0
+
+    def test_get_region_ranking_calls_cache_get(self, service):
+        """Serwis wywołuje cache.get z poprawnym kluczem w get_region_ranking."""
+        service._cache.get.return_value = {"scores": {}}
+        service._query_repo.get_regions_by_level.return_value = []
+        service._query_repo.get_object_region_cache_for_level.return_value = []
+
+        service.get_region_ranking(42, "MACROREGION")
+
+        service._cache.get.assert_called_once_with("map_state:42")
+
+    def test_get_poi_ranking_uses_correct_cache_key(self, service):
+        """Poprawnie konstruuje klucz cache dla profilu w get_poi_ranking."""
+
+        def cache_get_side_effect(key):
+            if key == "map_state:42":
+                return {"scores": {1: 10}, "colors": {1: "GREEN"}}
+            return None
+
+        service._cache.get.side_effect = cache_get_side_effect
+        service._progress_repo.get_active_progresses.return_value = []
+        service._query_repo.get_points_of_interest_with_relations.return_value = [
+            self._make_peak(1, "P1", "Szczyt", 1000, None),
+        ]
+
+        result = service.get_poi_ranking(42)
+
+        assert result.ranking[0].cluster_score == 10
+
+    def test_get_poi_ranking_handles_missing_cache(self, service):
+        """Gdy cache zwraca None, serwis nie przerywa działania w get_poi_ranking."""
+        service._cache.get.return_value = None
+        service._progress_repo.get_active_progresses.return_value = []
+        service._query_repo.get_points_of_interest_with_relations.return_value = [
+            self._make_peak(1, "P1", "Szczyt", 1000, None),
+        ]
+
+        result = service.get_poi_ranking(1)
+
+        assert len(result.ranking) == 1
+        assert result.ranking[0].cluster_score == 0
+
+    def test_get_poi_ranking_calls_cache_get(self, service):
+        """Serwis wywołuje cache.get z poprawnym kluczem w get_poi_ranking."""
+        service._cache.get.return_value = {}
+        service._progress_repo.get_active_progresses.return_value = []
+        service._query_repo.get_points_of_interest_with_relations.return_value = [
+            self._make_peak(1, "P1", "Szczyt", 1000, None),
+        ]
+
+        service.get_poi_ranking(42)
+
+        service._cache.get.assert_called_once_with("map_state:42")

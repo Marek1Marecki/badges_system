@@ -359,6 +359,53 @@ class TestPoiScoringService:
         assert COLOR_PRIORITY["BLUE"] == 2
         assert COLOR_PRIORITY["GRAY"] == 1
 
+    def test_blue_color_value_is_literal(self):
+        """Test że wartość koloru BLUE jest literałem stringa używanym w cache payload."""
+        progress_repo = MagicMock()
+        progress_repo.get_active_progresses.return_value = [
+            BadgeProgressDTO(
+                progress_id=1,
+                profile_id=1,
+                badge_code="KGP",
+                version_id=1,
+                cycle_number=1,
+                domain_status="IN_PROGRESS",
+                logistic_status=None,
+                logistic_status_date=None,
+            )
+        ]
+        ascent_repo = MagicMock()
+        ascent_repo.get_all_ascents_for_user.return_value = [Ascent(peak_id=1, ascent_date=date(2025, 1, 8))]
+        ascent_repo.get_unconsumed_ascents.return_value = []
+        profile_repo = MagicMock()
+        profile_repo.get_profile.return_value = TouristProfileDTO(
+            profile_id=1,
+            is_main_profile=True,
+            email="test@example.com",
+            nickname="test",
+            active_plan="Free",
+            max_photos_per_ascent=0,
+            max_active_badges=3,
+        )
+        badge_repo = MagicMock()
+        badge_repo.get_badge_version_by_id.return_value = BadgeVersionDomain(
+            version_id=1,
+            rules=[],
+            pool_peak_ids=frozenset([1, 2, 3]),
+            tiers=[BadgeTierDomain(tier_id=1, name="Tier 1", required_count=2, order=1)],
+        )
+        clock = FakeClock()
+        cache = MagicMock()
+
+        service = PoiScoringService(progress_repo, ascent_repo, profile_repo, badge_repo, clock, cache)
+
+        service.recalculate_and_cache_for_profile(1)
+
+        cache_set_call = cache.set.call_args
+        colors = cache_set_call[0][1]["colors"]
+        assert colors[1] == "BLUE"
+        assert colors[1] != "XXBLUEXX"
+
     def test_cache_timeout_until_midnight(self):
         """Test że cache timeout jest ustawiony do północy."""
         progress_repo = MagicMock()

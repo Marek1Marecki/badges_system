@@ -159,7 +159,7 @@ Narzędzia w **kontrolowanej eksperymentacji**. Można je uruchamiać świadomie
 |------|-------------------|-----|
 | mutmut | `make experimental-mutation` | Jakość testów (mutation score) |
 | Schemathesis | `make experimental-schemathesis` | API fuzzing |
-| Testcontainers | `make experimental-testcontainers` | Real PostgreSQL/Redis w testach |
+| Testcontainers | `make experimental-testcontainers` | Izolowane środowisko PostGIS w testach |
 | axe-playwright | `make experimental-axe` | Accessibility |
 | k6 | `make experimental-k6` | Load testing |
 | OWASP ZAP | `make experimental-zap` | DAST |
@@ -171,6 +171,19 @@ Narzędzia w **kontrolowanej eksperymentacji**. Można je uruchamiać świadomie
 - Experimental nie blokuje CI
 - Po eksperymencie decyzja: awans do Diagnostic, awans do Gate, lub usunięcie
 - Każde narzędzie Experimental musi mieć clear exit criteria
+
+### Testcontainers — scope i ograniczenia
+
+Testcontainers służy do izolowanego uruchomienia zależności infrastrukturalnych (obecnie PostgreSQL/PostGIS) w środowisku testowym deweloperskim lub CI. Nie jest przeznaczony do weryfikacji wdrożeń PRE-PROD/PROD.
+
+Różnica względem istniejącego `integration-tests`:
+- `integration-tests` używa Docker Compose z ustalonymi obrazami i wolumenami — to środowisko stabilne, powtarzalne, częścią standardowego CI.
+- Testcontainers tworzy efemeryczny kontener na czas sesji testowej — to narzędzie developerskie do eksperymentów z konfiguracją zależności.
+
+Wnioski:
+- Nie uruchamiać Testcontainers w standardowym CI — istniejące joby `integration-tests` i `e2e-tests` już realizują cel testowania z prawdziwą infrastrukturą.
+- Nie mapować Testcontainers na środowisko `badges_preprod` — to inna kategoria walidacji (deployment/environment validation).
+- Po okresie eksperymentalnym podejmować decyzję: awans do Diagnostic, awans do Gate, lub usunięcie.
 
 ---
 
