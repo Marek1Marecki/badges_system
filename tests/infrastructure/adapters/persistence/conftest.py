@@ -59,34 +59,19 @@ def postgres_container():
     """Udostępnia kontener PostgreSQL/PostGIS dla testów z markerem ``testcontainers``."""
     global _testcontainers_container
     _testcontainers_container = _start_postgres_container()
-    _configure_django_for_testcontainers(_testcontainers_container)
-    call_command("migrate", "--run-syncdb", verbosity=0)
     try:
+        _configure_django_for_testcontainers(_testcontainers_container)
+        call_command("migrate", "--run-syncdb", verbosity=0)
         yield _testcontainers_container
     finally:
         _stop_postgres_container()
 
 
-@pytest.fixture(scope="session")
-def django_db_setup(postgres_container):
-    """Nadpisuje domyślne django_db_setup, używając testcontainers.
-
-    Ten fixture jest wywoływany tylko gdy test wymaga bazy danych Django
-    (przez ``@pytest.mark.django_db``). Dla testów z markerem ``testcontainers``,
-    ``postgres_container`` uruchamia rzeczywisty kontener PostGIS.
-    """
-    _configure_django_for_testcontainers(postgres_container)
-    call_command("migrate", "--run-syncdb", verbosity=0)
-    yield {
-        "default": {
-            "ENGINE": "django.contrib.gis.db.backends.postgis",
-            "NAME": postgres_container.dbname,
-            "USER": postgres_container.username,
-            "PASSWORD": postgres_container.password,
-            "HOST": postgres_container.get_container_host_ip(),
-            "PORT": str(postgres_container.get_exposed_port(5432)),
-        }
-    }
+@pytest.fixture(autouse=True)
+def _use_testcontainers_if_marked(request):
+    """Dla testów z markerem ``testcontainers`` wymusza użycie postgres_container."""
+    if request.node.get_closest_marker("testcontainers"):
+        request.getfixturevalue("postgres_container")
 
 
 @pytest.fixture(scope="session", autouse=True)
