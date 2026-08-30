@@ -46,8 +46,13 @@ jobs:
             }
 
             for (const pr of prs) {
+              if (!pr.head || !pr.head.sha) {
+                console.log(`PR #${pr.number}: no head SHA, skipping.`);
+                continue;
+              }
+
               const { data: combined } = await github.rest.repos.getCombinedStatusForRef({
-                owner, repo, ref: pr.sha,
+                owner, repo, ref: pr.head.sha,
               });
 
               const gateContexts = combined.statuses.filter(s =>
