@@ -4,6 +4,9 @@ on:
   pull_request_target:
     types: [opened, synchronize, ready_for_review, reopened]
     branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "30 */6 * * *" # every 6 hours
 
 permissions:
   contents: write
@@ -12,67 +15,74 @@ permissions:
 
 jobs:
   auto-merge:
-    if: >-
-      github.actor == 'dependabot[bot]'
-      && (
-        contains(github.event.pull_request.labels.*.name, 'version-update:semver-minor')
-        || contains(github.event.pull_request.labels.*.name, 'version-update:semver-patch')
-      )
-
     runs-on: ubuntu-latest
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.pull_request.number }}
-      cancel-in-progress: false
-
     steps:
-      - name: Merge Dependabot PR when CI is green
+      - name: Auto-merge Dependabot PRs
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           script: |
-            const PR_NUMBER = context.payload.pull_request.number;
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: PR_NUMBER,
-            });
+            const { owner, repo } = context.repo;
 
-            console.log(`Checking CI status for PR #${PR_NUMBER} (head: ${pr.head.sha})`);
-
-            let passed = false;
-            for (let attempt = 0; attempt < 20; attempt++) {
-              const { data: combined } = await github.rest.repos.getCombinedStatusForRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: pr.head.sha,
-              });
-
-              if (combined.state === 'success') {
-                passed = true;
-                break;
-              }
-              if (combined.state === 'failure') {
-                console.log('CI failed, skipping merge.');
+            let prs = [];
+            if (context.eventName === 'pull_request_target') {
+              const pr = context.payload.pull_request;
+              if (pr.user.type !== 'Bot' || pr.user.login !== 'dependabot[bot]') {
+                console.log('Not a Dependabot PR, skipping.');
                 return;
               }
-
-              console.log(`Waiting for CI (attempt ${attempt + 1}/20)... state=${combined.state}`);
-              await new Promise(r => setTimeout(r, 60000));
+              prs = [{ number: pr.number, sha: pr.head.sha }];
+            } else {
+              const all = await github.paginate(github.rest.pulls.list, {
+                owner, repo, state: 'open', sort: 'updated',
+              });
+              prs = all.filter(p => p.user.type === 'Bot' && p.user.login === 'dependabot[bot]');
             }
 
-            if (!passed) {
-              console.log('CI did not pass in time.');
+            if (prs.length === 0) {
+              console.log('No open Dependabot PRs to evaluate.');
               return;
             }
 
-            await github.rest.pulls.merge({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: PR_NUMBER,
-              merge_method: 'squash',
-              commit_title: pr.title,
-              commit_message: 'Auto-merged by Dependabot Auto-merge workflow.',
-            });
+            for (const pr of prs) {
+              const { data: combined } = await github.rest.repos.getCombinedStatusForRef({
+                owner, repo, ref: pr.sha,
+              });
 
-            console.log(`Merged PR #${PR_NUMBER}.`);
+              const gateContexts = combined.statuses.filter(s =>
+                s.context.includes('Gate') || s.context.includes('Diagnostic') || s.context.includes('CodeQL')
+              );
+              const gateAllSuccess = gateContexts.every(s => s.state === 'success');
+
+              if (gateContexts.length === 0) {
+                console.log(`PR #${pr.number} (${pr.sha}): no Gate/Diagnostic/CodeQL contexts found, skipping.`);
+                continue;
+              }
+              if (!gateAllSuccess) {
+                console.log(`PR #${pr.number} (${pr.sha}): Gate not green (combined state=${combined.state}), skipping.`);
+                for (const sc of gateContexts) {
+                  console.log(`  ${sc.context}: ${sc.state}`);
+                }
+                continue;
+              }
+
+              console.log(`PR #${pr.number} (${pr.sha}): Gate green, checking if already merged or behind base.`);
+              try {
+                const { data: fresh } = await github.rest.pulls.get({ owner, repo, pull_number: pr.number });
+                if (fresh.mergeable_state === 'dirty' || fresh.mergeable_state === 'behind') {
+                  console.log(`PR #${pr.number}: not mergeable (mergeable_state=${fresh.mergeable_state}), skipping.`);
+                  continue;
+                }
+              } catch (e) {
+                console.log(`PR #${pr.number}: could not re-check mergeability, proceeding: ${e.message}`);
+              }
+
+              await github.rest.pulls.merge({
+                owner, repo, pull_number: pr.number,
+                merge_method: 'squash',
+                commit_title: `chore(deps): auto-merge Dependabot PR #${pr.number}`,
+                commit_message: 'Auto-merged by Dependabot Auto-merge workflow after green CI Gate (Diagnostic + CodeQL).',
+              });
+              console.log(`Merged PR #${pr.number}.`);
+            }
