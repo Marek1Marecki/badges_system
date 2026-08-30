@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >
       github.actor == 'dependabot[bot]'
+    timeout-minutes: 180
 
     steps:
       - name: Merge Dependabot PRs when CI is green
@@ -35,7 +36,7 @@ jobs:
                 console.log('Not a Dependabot PR, skipping.');
                 return;
               }
-              prs = [{ number: pr.number, sha: pr.head.sha }];
+              prs = [{ number: pr.number }];
             } else {
               const all = await github.paginate(github.rest.pulls.list, {
                 owner, repo, state: 'open', sort: 'updated',
@@ -49,18 +50,21 @@ jobs:
             }
 
             for (const pr of prs) {
-              if (!pr.head || !pr.head.sha) {
-                console.log(`PR #${pr.number}: no head SHA, skipping.`);
-                continue;
-              }
-
-              console.log(`Evaluating PR #${pr.number} (${pr.head.sha})`);
-
               let merged = false;
-              for (let attempt = 0; attempt < 20; attempt++) {
+
+              for (let attempt = 0; attempt < 40; attempt++) {
+                const { data: p } = await github.rest.pulls.get({
+                  owner, repo, pull_number: pr.number,
+                });
+
+                if (!p.head || !p.head.sha) {
+                  console.log(`PR #${pr.number}: no head SHA, skipping.`);
+                  break;
+                }
+
                 const checkRuns = await github.paginate(
                   github.rest.repos.listCheckRunsForRef,
-                  { owner, repo, ref: pr.head.sha },
+                  { owner, repo, ref: p.head.sha },
                 );
 
                 const relevant = checkRuns.filter(c =>
@@ -71,8 +75,10 @@ jobs:
 
                 const incomplete = relevant.filter(c => c.status !== 'completed');
                 if (incomplete.length > 0) {
-                  console.log(`  PR #${pr.number}: waiting (${incomplete.length} incomplete): ${incomplete.map(c => `${c.name}:${c.status}`).join(', ')}`);
-                  await new Promise(r => setTimeout(r, 30000));
+                  if (attempt === 0) {
+                    console.log(`  PR #${pr.number}: waiting on ${incomplete.length} check(s): ${incomplete.map(c => `${c.name}:${c.status}`).join(', ')}`);
+                  }
+                  await new Promise(r => setTimeout(r, 45000));
                   continue;
                 }
 
@@ -82,18 +88,46 @@ jobs:
                   break;
                 }
 
-                await github.rest.pulls.merge({
-                  owner, repo, pull_number: pr.number,
-                  merge_method: 'squash',
-                  commit_title: pr.title,
-                  commit_message: 'Auto-merged by Dependabot Auto-merge workflow after green CI Gate (Diagnostic + CodeQL).',
-                });
-                console.log(`  Merged PR #${pr.number}.`);
-                merged = true;
-                break;
+                if (p.mergeable_state === 'dirty' || p.mergeable_state === 'blocked') {
+                  console.log(`  PR #${pr.number}: mergeable_state=${p.mergeable_state}, skipping.`);
+                  break;
+                }
+
+                if (p.mergeable_state === 'behind') {
+                  console.log(`  PR #${pr.number}: behind base (${p.mergeable_state}), requesting update_branch...`);
+                  try {
+                    await github.rest.pulls.updateBranch({ owner, repo, pull_number: pr.number });
+                    console.log(`  PR #${pr.number}: update_branch requested, waiting for new check suite...`);
+                  } catch (e) {
+                    console.log(`  PR #${pr.number}: updateBranch error: ${e.message}`);
+                  }
+                  await new Promise(r => setTimeout(r, 60000));
+                  continue;
+                }
+
+                // mergeable_state is clean / unstable / unknown
+                try {
+                  await github.rest.pulls.merge({
+                    owner, repo, pull_number: pr.number,
+                    merge_method: 'squash',
+                    commit_title: p.title,
+                    commit_message: 'Auto-merged by Dependabot Auto-merge workflow after green CI Gate (Diagnostic + CodeQL).',
+                  });
+                  console.log(`  Merged PR #${pr.number}.`);
+                  merged = true;
+                  break;
+                } catch (e) {
+                  console.log(`  PR #${pr.number}: merge error (status ${e.status}): ${e.message}`);
+                  if (e.status === 409) {
+                    console.log(`  PR #${pr.number}: still not mergeable, retrying...`);
+                    await new Promise(r => setTimeout(r, 30000));
+                    continue;
+                  }
+                  break;
+                }
               }
 
               if (!merged) {
-                console.log(`  Did not merge PR #${pr.number}: CI did not pass within timeout.`);
+                console.log(`  Did not merge PR #${pr.number} this run.`);
               }
             }
