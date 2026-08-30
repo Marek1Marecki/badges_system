@@ -126,7 +126,7 @@ experimental-testcontainers:
 	uv run pytest tests/ -m "integration and testcontainers" -v -s --override-ini="addopts="
 
 experimental-axe:
-	uv run playwright test tests/e2e/ --grep "accessibility"
+	uv run pytest tests/e2e/ -k axe -v
 
 experimental-factory-boy:
 	uv run pytest tests/ -k "factory" -v
