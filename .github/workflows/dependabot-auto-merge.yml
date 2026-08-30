@@ -12,6 +12,7 @@ permissions:
   contents: write
   pull-requests: write
   statuses: read
+  checks: read
 
 jobs:
   auto-merge:
@@ -63,9 +64,10 @@ jobs:
                   break;
                 }
 
-                const { data: checkData } = await github.rest.repos.listCheckRunsForRef({
-                  owner, repo, ref: p.head.sha,
-                });
+                const checkData = await github.request(
+                  'GET /repos/{owner}/{repo}/commits/{ref}/check-runs',
+                  { owner, repo, ref: p.head.sha },
+                );
                 const checkRuns = checkData.check_runs ?? [];
 
                 const relevant = checkRuns.filter(c => {
