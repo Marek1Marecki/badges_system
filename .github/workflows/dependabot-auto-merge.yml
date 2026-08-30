@@ -64,6 +64,14 @@ jobs:
                   break;
                 }
 
+                const { data: files } = await github.rest.pulls.listFiles({
+                  owner, repo, pull_number: pr.number, per_page: 100,
+                });
+                if (files.some(f => f.filename.startsWith('.github/workflows/'))) {
+                  console.log(`  PR #${pr.number}: modifies .github/workflows/, skipping (requires workflows:write permission; merge manually).`);
+                  continue;
+                }
+
                 const checkData = await github.request(
                   'GET /repos/{owner}/{repo}/commits/{ref}/check-runs',
                   { owner, repo, ref: p.head.sha },
