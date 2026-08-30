@@ -69,7 +69,7 @@ jobs:
                 });
                 if (files.some(f => f.filename.startsWith('.github/workflows/'))) {
                   console.log(`  PR #${pr.number}: modifies .github/workflows/, skipping (requires workflows:write permission; merge manually).`);
-                  continue;
+                  break;
                 }
 
                 const checkData = await github.request(
