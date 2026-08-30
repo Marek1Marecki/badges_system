@@ -275,6 +275,9 @@ docs/api/
 # Wygenerowane diagramy architektury (PNG z PlantUML)
 docs/architecture/*.png
 
+# Pliki generowane przez coverage-diff (diff-cover)
+diff-cover-report.html
+
 # =============================================================================
 # UWAGA: Ten plik jest kompletnym .gitignore dla projektu badges-system
 # Zawiera wszystkie wzorce potrzebne dla Django, PostgreSQL, Redis, Celery,
