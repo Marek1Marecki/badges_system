@@ -101,15 +101,15 @@ if [ "$FULL" = true ]; then
     "${COMPOSE[@]}" run --rm web ./scripts/release-application.sh
 
     echo ""
-    echo "=== TEST --full: pełny zestaw testów (bez filtra markerów) ==="
-    # Bez jawnego argumentu `run --rm web` użyłby domyślnego CMD obrazu
-    # (`-m "not integration"`) — w trybie --full chcemy WSZYSTKO, więc
-    # zawsze przekazujemy jawny argument, nawet gdy użytkownik nic nie podał.
-    if [ ${#PYTEST_ARGS[@]} -eq 0 ]; then
-        "${COMPOSE[@]}" run --rm web uv run pytest -v
-    else
-        "${COMPOSE[@]}" run --rm web uv run pytest "${PYTEST_ARGS[@]}"
+    echo "=== TEST --full: pełny zestaw testów ==="
+    # Testcontainers są wykluczane — są markerem Experimental, wymagają
+    # Docker socket (uruchamiają efemeryżne kontenery), co nie jest
+    # dostępne w kontenerze `web` w CI. Uruchamiane ręcznie przez
+    # `make experimental-testcontainers`.
+    if ! printf '%s\n' "${PYTEST_ARGS[@]}" | grep -q '^-m'; then
+        PYTEST_ARGS+=("-m" "not testcontainers")
     fi
+    "${COMPOSE[@]}" run --rm web uv run pytest -v "${PYTEST_ARGS[@]}"
 else
     echo ""
     echo "=== TEST: szybkie testy jednostkowe ==="

@@ -315,7 +315,7 @@ jobs:
         run: docker compose --env-file .env -f compose.yml -f compose.test.yml run --rm web ls -la /app/scripts/
 
       - name: Próba Generalna Środowiska (test-run.sh --full)
-        run: ./scripts/test-run.sh --full --export-pg-dump -m "not e2e"
+        run: ./scripts/test-run.sh --full --export-pg-dump -m "not e2e and not testcontainers"
 
       - name: Zapisanie logów Dockera (zawsze)
         if: always()
