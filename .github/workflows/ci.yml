@@ -130,6 +130,16 @@ jobs:
       - name: Instalacja zależności (z grupy DEV)
         run: uv sync --frozen --group dev --python 3.14
 
+      - name: Instalacja zależności systemowych (GDAL, GEOS, PROJ, Graphviz)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gdal-bin \
+            libgdal-dev \
+            libgeos-dev \
+            libproj-dev \
+            graphviz
+
       - name: Analiza Złożoności (Radon)
         run: make complexity-check
         continue-on-error: true
