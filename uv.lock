@@ -780,14 +780,14 @@ wheels = [
 
 [[package]]
 name = "django-leaflet"
-version = "0.33.0"
+version = "0.34.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/71/35/be356129d89c98c8f4884e946abec7f7d21ddcce159bcde4970e754ea3ab/django_leaflet-0.33.0.tar.gz", hash = "sha256:b51c71e7179eed9961484dfd57b87bd1ece3b1ff7bee4dfb7f4d5702206b2eca", size = 562259, upload-time = "2025-12-01T13:00:41.525Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/00/d5/6834b008016d93b38994ed79d588fa8092368eafbca726384bf5f27f8ba0/django_leaflet-0.34.0.tar.gz", hash = "sha256:8336e72a7bbff0b363054982f02ac1d7a3bcb2b2fa4bca326014dddeaeb7c515", size = 562474, upload-time = "2026-08-17T08:40:23.438Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d5/9b/b323a5ea711961e77e9e362f55ea6d229d75daa6c1eaa37aec3ddaba1017/django_leaflet-0.33.0-py3-none-any.whl", hash = "sha256:bf30526daf7710f9afc35f0221284fe3b0558f3d9f259344ac3b82e23d28ec98", size = 577199, upload-time = "2025-12-01T13:00:39.069Z" },
+    { url = "https://files.pythonhosted.org/packages/87/5f/80737f1508b35c76b45d5e7c190f94664d1abf9789b0ce99526e25fd154b/django_leaflet-0.34.0-py3-none-any.whl", hash = "sha256:367f74c63709c1b466b740e0e7bd50cdc0d76f08cab2d6566af1559818d79cc2", size = 577241, upload-time = "2026-08-17T08:40:21.808Z" },
 ]
 
 [[package]]
