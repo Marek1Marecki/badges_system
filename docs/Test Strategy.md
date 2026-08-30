@@ -13,6 +13,7 @@
 | **Property/Fuzz** | Testowanie krawędzi matematyki domenowej milionami wygenerowanych wariacji danych. | `pytest` + `Hypothesis` | < 10s | Każdy commit (`make check`) |
 | **Unit** | Czysta logika biznesowa, Wzorzec Strategii (Reguły), Invarianty | `pytest` + `Fake` repozytoria | < 5s | Każdy commit (`make check`) |
 | **Integration** | Adaptery bazodanowe (GeoDjango), weryfikacja zapytań HTTP do OSM | `pytest` + `@pytest.mark.django_db` | < 30s | W CI Pipeline (`test-run.sh --full`) |
+| **Testcontainers** | Testy integracyjne z prawdziwą bazą PostGIS uruchomioną w izolowanym kontenerze Docker | `pytest` + `@pytest.mark.testcontainers` | ~18s | Ręcznie (`make experimental-testcontainers`); wykluczone z CI przez `-m "not testcontainers"` |
 | **SecOps (SAST)** | Analiza statyczna na żywym kodzie źródłowym i plikach konfiguracyjnych YAML/JSON. Główna linia obrony dla wycieków haseł i złych wzorców Pythona. | `Semgrep` | < 10s | Każdy commit (`make security-audit`) |
 | **SecOps (SCA)** | Semantyczna analiza przepływu danych i logiki wstrzykiwania kodu (Injection) przed wdrożeniem. | `CodeQL` | ~2 min | Dedykowany potok w chmurze GitHub Actions. |
 | **E2E** | Złożone przepływy GUI turysty | `Playwright` | > 1m | Przed wydaniem na PRE-PROD |
@@ -82,16 +83,28 @@ Minimalny próg globalny dla tego projektu wynosi **80%** (skonfigurowany w `pyp
 
 Logika PostGIS oraz widoków Django wymaga podniesienia środowiska. 
 
+**Standardowe testy integracyjne** (`@pytest.mark.integration` + `@pytest.mark.django_db`) łączą się z bazą danych `db` uruchomioną w ramach `docker compose` (np. przez `test-run.sh --full` lub ręcznie `docker compose up -d db redis`). Te testy NIE wymagają dostępu do Docker socketu od aplikacji testującej — bazują na gotowym serwisie `db`.
+
+**Testy Testcontainers** (`@pytest.mark.testcontainers`, dodatkowo oznaczone `@pytest.mark.integration`) uruchamiają **izolowany** kontener PostGIS (`postgis/postgis:18-3.6-alpine`) bezpośrednio z kodu Pythona testu. Wymagają dostępu do Docker socketu (`/var/run/docker.sock` udostępnionego do kontenera `web`). To są testy **Experimental** — nie są uruchamiane w CI, a jedynie ręcznie przez `make experimental-testcontainers`.
+
 1. **Markery:** Testy integracyjne muszą być zawsze oznaczane dekoratorem:
    ```python
    @pytest.mark.integration
    @pytest.mark.django_db
    def test_region_cache_populated_after_calculate(): ...
    ```
-2. **Wymogi Bazy Danych:** Testy integracyjne uruchamiają wbudowany mechanizm bazy testowej Django, jednak z uwagi na rozszerzenia GeoDjango, wymagają działającej instancji PostGIS. Przed ich uruchomieniem należy upewnić się, że kontenery deweloperskie działają (`docker compose -f docker-compose.dev.yml up -d`).
+   Testy Testcontainers dodatkowo mają marker `@pytest.mark.testcontainers`:
+   ```python
+   @pytest.mark.integration
+   @pytest.mark.django_db
+   @pytest.mark.testcontainers
+   def test_real_postgis_extension_available(): ...
+   ```
+2. **Wymogi Baz Danych:** Testy integracyjne uruchamiają wbudowany mechanizm bazy testowej Django, jednak z uwagi na rozszerzenia GeoDjango, wymagają działającej instancji PostGIS. Przed ich uruchomieniem należy upewnić się, że kontenery deweloperskie działają (`docker compose -f docker-compose.dev.yml up -d`).
 3. **Filtrowanie w CI i Makefile:** 
    - Komenda `make check` uruchamia wyłącznie testy Domeny i Aplikacji (`pytest -m "not integration"`), by gwarantować czas wykonania `< 15s`.
-   - Pełen zbiór testów wraz z integracyjnymi odpalany jest komendą `make test-all` (lub w docelowym pełnym środowisku CI przed mergem).
+   - Pełen zbiór testów włączając integracyjne odpalany jest komendą `make test-all` (lub w docelowym pełnym środowisku CI przed mergem).
+   - Testy Testcontainers są wykluczane z CI poprzez `-m "not testcontainers"` oraz uruchamiane wyłącznie przez `make experimental-testcontainers`.
 
 ---
 
@@ -191,6 +204,13 @@ make check
 # Uruchamia: ruff (format + lint), mypy (strict), import-linter, audit_contracts.py, a na końcu `make test`.
 ```
 
+### 3.5. Testy Testcontainers (Experimental)
+Testy uruchamiające izolowaną bazę PostGIS w Docker. Wymagają dostępu do Docker socketu.
+```bash
+make experimental-testcontainers
+# Uruchamia: pytest -m "integration and testcontainers" -v -s
+```
+
 ### 4. Efemeryczne Środowisko TEST (Bezpieczna, odizolowana piaskownica)
 Stawia własną, pustą bazę, odpala testy w kontenerze `testing` i usuwa ślady (`down -v`).
 ```bash
@@ -258,6 +278,26 @@ W potoku CI/CD (`ci.yml`) nie stosuje się osobnych, dedykowanych skanerów do g
 ## Narzędzia Eksperymentalne (Experimental Tier)
 
 Narzędzia w tym tierze służą do eksploracji systemu i wykrywania nieoczekiwanych zachowań. Nie biorą udziału w `make check`, nie blokują release'ów, a ich wynik interpretowany jest diagnostycznie, a nie jako binary pass/fail.
+
+### Testcontainers — Izolowane Bazy PostGIS
+
+**Status:** Experimental
+**Komenda:** `make experimental-testcontainers`
+
+Testy oznaczone markerem `@pytest.mark.testcontainers` uruchamiają **prawdziwą** bazę PostGIS (`postgis/postgis:18-3.6-alpine`) w efemerycznym kontenerze Docker, tworzonym i niszczone przez bibliotekę `testcontainers`. Dzięki temu można testować realne zachowanie GeoDjango, migracje i rozszerzenia PostGIS bez polegania na współdzielonej instancji `db` z `docker-compose`.
+
+**Wymagania:**
+- Dostęp do Docker socketu (`/var/run/docker.sock` udostępnionego do procesu uruchamiającego testy).
+- Każdy test z markerem `testcontainers` automatycznie uruchamia `postgres_container` fixture (session-scoped), który:
+  1. Stawia kontener PostGIS.
+  2. Nadpisuje `settings.DATABASES["default"]` dla sesji testowej.
+  3. Uruchamia `call_command("migrate", "--run-syncdb")`.
+- Standardowe testy `@pytest.mark.django_db` (bez markera `testcontainers`) używają domyślnego `django_db_setup` z pytest-django i łączą się do `POSTGRES_HOST` (np. `db` z `compose.test.yml`).
+
+**Filtrowanie:**
+- CI wyklucza testy testcontainers poprzez `-m "not testcontainers"` w `test-run.sh --full`.
+- `make check` ich nie uruchamia (są oznaczone `@pytest.mark.integration`).
+- `make experimental-testcontainers` uruchamia je wyłącznie: `pytest -m "integration and testcontainers"`.
 
 ### Schemathesis — API Fuzzing
 
