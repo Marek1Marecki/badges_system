@@ -55,6 +55,9 @@ jobs:
                 owner, repo, ref: pr.head.sha,
               });
 
+              const ctxList = combined.statuses.map(s => `${s.state}:${s.context}`).join(' | ');
+              console.log(`DEBUG PR #${pr.number}: combined.state=${combined.state}, statuses=${combined.statuses.length}, contexts=[${ctxList}]`);
+
               const gateContexts = combined.statuses.filter(s =>
                 s.context.includes('Gate') || s.context.includes('Diagnostic') || s.context.includes('CodeQL')
               );
