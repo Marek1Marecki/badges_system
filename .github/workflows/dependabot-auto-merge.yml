@@ -39,7 +39,7 @@ jobs:
               }
               prs = [{ number: pr.number }];
             } else {
-              const all = await github.paginate(github.rest.pulls.list, {
+                const all = await github.paginate(github.rest.pulls.list, {
                 owner, repo, state: 'open', sort: 'updated',
               });
               prs = all.filter(p => p.user.type === 'Bot' && p.user.login === 'dependabot[bot]');
@@ -63,16 +63,15 @@ jobs:
                   break;
                 }
 
-                const checkRuns = await github.paginate(
-                  github.rest.repos.listCheckRunsForRef,
-                  { owner, repo, ref: p.head.sha },
-                );
+                const { data: checkData } = await github.rest.repos.listCheckRunsForRef({
+                  owner, repo, ref: p.head.sha,
+                });
+                const checkRuns = checkData.check_runs ?? [];
 
-                const relevant = checkRuns.filter(c =>
-                  c.name.includes('Gate') ||
-                  c.name.includes('Diagnostic') ||
-                  c.name.includes('CodeQL'),
-                );
+                const relevant = checkRuns.filter(c => {
+                  if (!c.name) return false;
+                  return c.name.includes('Gate') || c.name.includes('Diagnostic') || c.name.includes('CodeQL');
+                });
 
                 const incomplete = relevant.filter(c => c.status !== 'completed');
                 if (incomplete.length > 0) {
