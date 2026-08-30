@@ -11,6 +11,16 @@ updates:
     open-pull-requests-limit: 10
     cooldown:
       default-days: 7
+    reviewers:
+      - "Marek1Marecki"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    allow:
+      - dependency-type: "all"
+    ignore:
+      - dependency-name: "*"
+        update-type: "major"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -22,6 +32,13 @@ updates:
     open-pull-requests-limit: 5
     cooldown:
       default-days: 7
+    reviewers:
+      - "Marek1Marecki"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    allow:
+      - dependency-type: "all"
 
   - package-ecosystem: "docker"
     directory: "/"
@@ -33,3 +50,10 @@ updates:
     open-pull-requests-limit: 5
     cooldown:
       default-days: 7
+    reviewers:
+      - "Marek1Marecki"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    allow:
+      - dependency-type: "all"

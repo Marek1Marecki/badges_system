@@ -1,0 +1,78 @@
+name: Dependabot Auto-merge
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, ready_for_review, reopened]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  statuses: read
+
+jobs:
+  auto-merge:
+    if: >-
+      github.actor == 'dependabot[bot]'
+      && (
+        contains(github.event.pull_request.labels.*.name, 'version-update:semver-minor')
+        || contains(github.event.pull_request.labels.*.name, 'version-update:semver-patch')
+      )
+
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Merge Dependabot PR when CI is green
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          script: |
+            const PR_NUMBER = context.payload.pull_request.number;
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: PR_NUMBER,
+            });
+
+            console.log(`Checking CI status for PR #${PR_NUMBER} (head: ${pr.head.sha})`);
+
+            let passed = false;
+            for (let attempt = 0; attempt < 20; attempt++) {
+              const { data: combined } = await github.rest.repos.getCombinedStatusForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: pr.head.sha,
+              });
+
+              if (combined.state === 'success') {
+                passed = true;
+                break;
+              }
+              if (combined.state === 'failure') {
+                console.log('CI failed, skipping merge.');
+                return;
+              }
+
+              console.log(`Waiting for CI (attempt ${attempt + 1}/20)... state=${combined.state}`);
+              await new Promise(r => setTimeout(r, 60000));
+            }
+
+            if (!passed) {
+              console.log('CI did not pass in time.');
+              return;
+            }
+
+            await github.rest.pulls.merge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: PR_NUMBER,
+              merge_method: 'squash',
+              commit_title: pr.title,
+              commit_message: 'Auto-merged by Dependabot Auto-merge workflow.',
+            });
+
+            console.log(`Merged PR #${PR_NUMBER}.`);
