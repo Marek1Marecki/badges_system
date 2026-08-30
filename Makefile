@@ -126,7 +126,10 @@ experimental-testcontainers:
 	uv run pytest tests/ -m "integration and testcontainers" -v -s --override-ini="addopts="
 
 experimental-axe:
-	uv run pytest tests/e2e/ -k axe -v --override-ini="addopts="
+	docker compose -f compose.yml -f compose.e2e.yml up -d db web-e2e
+	docker compose -f compose.yml -f compose.e2e.yml run --rm web-e2e python manage.py migrate
+	uv run playwright install chromium
+	EUIE_BASE_URL=http://localhost:8009 uv run pytest tests/e2e/ -k axe -v --override-ini="addopts="
 
 experimental-factory-boy:
 	uv run pytest tests/ -k "factory" -v
