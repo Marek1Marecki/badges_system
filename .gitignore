@@ -69,6 +69,7 @@ local_settings.py
 htmlcov/
 coverage.xml
 .import_linter_cache/
+.mutmut-cache
 .qodo/
 .zenflow/
 .zencoder/

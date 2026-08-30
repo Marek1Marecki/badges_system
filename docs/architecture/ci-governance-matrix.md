@@ -1,7 +1,7 @@
 # CI ↔ Governance Audit Matrix
 
 > Status: Active  
-> Data: 2026-08-28  
+> Data: 2026-08-29
 > Właściciel: Dominik / AI Architect
 
 Ten dokument mapuje każdy krok w `.github/workflows/ci.yml` na odpowiadający mu element w `docs/architecture/governance.md`.
@@ -37,6 +37,7 @@ Każdy krok CI musi mieć jasno przypisany: **Tier** (Gate/Diagnostic/Experiment
 | `integration-tests` | Integration tests | pytest | integration | Gate | blocking | ✅ | ci.yml |
 | `e2e-tests` | Playwright tests | Playwright | scenarios | Gate | blocking | ✅ | ci.yml |
 | — (separate) | CodeQL | CodeQL | security scanning | Gate (Security) | blocking | ✅ | codeql.yml |
+| — (manual) | Mutation testing | mutmut | Test quality | Diagnostic | advisory | ❌ | `make mutation` |
 
 ---
 

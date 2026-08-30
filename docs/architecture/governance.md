@@ -1,7 +1,7 @@
 # Architecture Governance
 
-> **Wersja:** 2.0  
-> **Data:** 2026-08-27  
+> **Wersja:** 2.1  
+> **Data:** 2026-08-29  
 > **Właściciel:** Dominik / AI Architect  
 > **Zasada:** Ten dokument jest master indexem wszystkich mechanizmów governance w projekcie. Model opiera się na dwóch wymiarach: INVARIANTS (co chronimy) i TOOLS (jak to sprawdzamy). Każde narzędzie ma TIER (Gate/Diagnostic/Experimental) i charakter wykonania (Blocking/Advisory).
 
@@ -42,8 +42,8 @@ Projekt rygorystycznie rozdziela narzędzia nadzoru na trzy kasty operacyjne (Ti
 | Poziom (Tier) | Cel i Pytanie | Charakter CI | Przykładowe Narzędzia w Projekcie |
 |:---|:---|:---|:---|
 | **GATE** | „Czy wolno zaakceptować zmianę?” | Blocking (Fail-Fast) | Ruff, Mypy, Import Linter, Trivy, pytest, Semgrep, Hadolint, Checkov |
-| **DIAGNOSTIC** | „Co się dzieje z jakością / trendami?” | Advisory (Raportowanie) | Radon, Wily, pydeps, Checkov, Hadolint, pytest-randomly, diff-cover, gitleaks |
-| **EXPERIMENTAL** | „Czy ta technika ma u nas sens operacyjny?” | Manual (Poza głównym CI) | mutmut, Schemathesis, Testcontainers, axe-playwright |
+| **DIAGNOSTIC** | „Co się dzieje z jakością / trendami?” | Advisory (Raportowanie) | Radon, Wily, pydeps, Checkov, Hadolint, pytest-randomly, diff-cover, gitleaks, mutmut |
+| **EXPERIMENTAL** | „Czy ta technika ma u nas sens operacyjny?” | Manual (Poza głównym CI) | Schemathesis, Testcontainers, axe-playwright |
 
 ### Zasady Wdrażania Nowych Narzędzi (Exit Criteria)
 
@@ -150,6 +150,7 @@ Narzędzia, które **dostarczają informacji**, ale nie blokują CI. Uruchamiane
 | detect-secrets | `make secret-scan` | — | advisory |
 | docstr-coverage | `make docstr-coverage` | — | advisory |
 | djLint | `make lint-templates` | — | advisory |
+| mutmut | `make mutation` | Test quality (mutation score) | advisory |
 
 ### EXPERIMENTAL × advisory
 
@@ -157,7 +158,6 @@ Narzędzia w **kontrolowanej eksperymentacji**. Można je uruchamiać świadomie
 
 | Tool | Plik/Konfiguracja | Cel |
 |------|-------------------|-----|
-| mutmut | `make experimental-mutation` | Jakość testów (mutation score) |
 | Schemathesis | `make experimental-schemathesis` | API fuzzing |
 | Testcontainers | `make experimental-testcontainers` | Izolowane środowisko PostGIS w testach |
 | axe-playwright | `make experimental-axe` | Accessibility |
@@ -355,10 +355,15 @@ Diagnostics (Diagnostic Tier — advisory, non-blocking)
 └── coverage-diff (diff-cover)
 ```
 
+> **Uwaga:** Mutation testing (mutmut) jest w tierze Diagnostic, ale **nie** jest częścią automatycznego jobu `diagnostics` w ci.yml — jest uruchamiany ręcznie jako `make mutation` ze względu na koszt CPU (pełny run trwa godziny).
+>
+> Baseline: [`docs/experimental-mutmut-baseline.md`](../experimental-mutmut-baseline.md)
+
 **Zasada:**
 - `static-analysis-and-unit-tests` uruchamia tylko **Gate** — tools które muszą przejść przed merge.
 - `diagnostics` jest uruchamiany jako **separate job** z `if: always()` i `continue-on-error: true` — nie blokuje CI.
 - **Experimental** jest uruchamiany ręcznie (`make experimental-*`).
+- **Diagnostic ręczne** (mutmut) są uruchamiane ręcznie (`make mutation`) ze względu na koszt.
 
 Audyt pełnej macierzy CI ↔ Governance: [`docs/architecture/ci-governance-matrix.md`](ci-governance-matrix.md)
 
@@ -409,6 +414,7 @@ Diagnostic
 - Xenon: Gate → Diagnostic (złożoność to sygnał, nie blocking rule; Radon + wily już dają pomiar/trend)
 - FF-009 God Class Prevention: Gate → Diagnostic (proxy metric, heurystyka, nie invariant)
 - FF-018 No Sensitive Data in Logs: Gate → Diagnostic (heurystyka, możliwe FP; detect-secrets jako lepszy mechanizm)
+- **mutmut: Experimental → Diagnostic** (zakończony 2026-08-29. Po 3 miesiącach eksperymentu mutmut wykrył 5 realnych luk testowych. Wszystkie zostały naprawione bez zmian w kodzie produkcyjnym. Mutation score: ~96.8% killed. Nie awansowano do Gate ze względu na koszt CPU i subiektywność wyników SUSPICIOUS.)
 
 ---
 
@@ -441,12 +447,12 @@ Diagnostic
 | detect-secrets | — | `make secret-scan` |
 | docstr-coverage | — | `make docstr-coverage` |
 | djLint | — | `make lint-templates` |
+| mutmut | Test quality | `make mutation` |
 
 ### 🔵 Experimental × advisory (świadomie uruchamiane)
 
 | Tool | Cel |
 |------|-----|
-| mutmut | Jakość testów (mutation score) |
 | Schemathesis | API fuzzing |
 | Testcontainers | Real PostgreSQL/Redis w testach |
 | axe-playwright | Accessibility |
@@ -516,6 +522,7 @@ Trivy skanuje zależności deweloperskie Semgrep (przez MCP). Wyjątki w `osv-sc
 | Radon | Dominik / AI Architect | Utrzymanie limitów złożoności |
 | Xenon | Dominik / AI Architect | Advisory threshold dla hotspocy |
 | wily | Dominik / AI Architect | Trend analysis |
+| mutmut | Dominik / AI Architect | Mutation testing — baseline in `docs/experimental-mutmut-baseline.md` |
 | Hadolint | Dominik / AI Architect | Baseline i wyjątki |
 | Checkov | Dominik / AI Architect | Konfiguracja i skany Compose |
 | Docker Bench | Dominik / AI Architect | Placeholder — aktualizacja po znalezieniu successor'a |
@@ -531,7 +538,6 @@ Trivy skanuje zależności deweloperskie Semgrep (przez MCP). Wyjątki w `osv-sc
 
 | Tool | Właściciel | Odpowiedzialność |
 |------|-----------|-----------------|
-| mutmut | Dominik / AI Architect | Mutation testing experiments |
 | Schemathesis | Dominik / AI Architect | API fuzzing experiments |
 | Testcontainers | Dominik / AI Architect | Real DB w testach experiments |
 | axe-playwright | Dominik / AI Architect | Accessibility experiments |
@@ -558,4 +564,5 @@ Trivy skanuje zależności deweloperskie Semgrep (przez MCP). Wyjątki w `osv-sc
 
 | Wersja | Data | Autor | Opis zmiany |
 |--------|------|-------|-------------|
-| 1.0 | 2026-08-26 | Dominik / AI Architect | Utworzenie master indexu governance |
+| 2.0 | 2026-08-27 | Dominik / AI Architect | Utworzenie master indexu governance (CI refactor: Gate/Diagnostic separation, CI↔Governance matrix) |
+| 2.1 | 2026-08-29 | Dominik / AI Architect | mutmut awansowany z Experimental do Diagnostic (w wyniku eksperymentu 2026-08-26→2026-08-29). Baseline w `docs/experimental-mutmut-baseline.md`. |

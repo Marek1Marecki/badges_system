@@ -196,3 +196,18 @@ class TestExploreQueriesService:
         service.get_poi_ranking(42)
 
         service._cache.get.assert_called_once_with("map_state:42")
+
+    def test_get_poi_ranking_reads_colors_from_map_state(self, service):
+        """Serwis odczytuje kolory z klucza 'colors' w map_state."""
+        service._cache.get.return_value = {
+            "scores": {},
+            "colors": {1: "RED"},
+        }
+        service._progress_repo.get_active_progresses.return_value = []
+        service._query_repo.get_points_of_interest_with_relations.return_value = [
+            self._make_peak(1, "P1", "Szczyt", 1000, None),
+        ]
+
+        result = service.get_poi_ranking(1)
+
+        assert result.ranking[0].items[0]["color"] == "RED"

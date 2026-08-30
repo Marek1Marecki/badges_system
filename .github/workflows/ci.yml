@@ -291,7 +291,7 @@ jobs:
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$(pwd)":/work -w /work \
-            anchore/syft:1.22.3 \
+            anchore/syft:v1.51.1 \
             scan docker:badges-system:${{ github.sha }} \
             -o cyclonedx-json=sbom.cdx.json
 

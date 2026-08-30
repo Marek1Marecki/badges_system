@@ -10,7 +10,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check diagnostics clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff secret-scan test-timings test-html docstr-coverage lint-templates experimental-schemathesis experimental-testcontainers experimental-axe experimental-factory-boy experimental-k6 experimental-zap experimental-mutation experimental-xdist experimental-benchmark secret-scan
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check diagnostics clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff secret-scan test-timings test-html docstr-coverage lint-templates experimental-schemathesis experimental-testcontainers experimental-axe experimental-factory-boy experimental-k6 experimental-zap experimental-xdist experimental-benchmark mutation
 
 help:
 	@echo "CORE targets:"
@@ -47,6 +47,7 @@ help:
 	@echo "  test-html      - raport HTML z wyników testów (pytest-html, diagnostyka)"
 	@echo "  docstr-coverage - sprawdzanie pokrycia docstringami (diagnostyka)"
 	@echo "  lint-templates - lintowanie szablonow Django (djLint, diagnostyka)"
+	@echo "  mutation       - mutation testing (mutmut, diagnostic tier)"
 	@echo "  experimental-schemathesis - API fuzzing (Schemathesis, experimental)"
 	@echo "  experimental-testcontainers - realne DB w testach (Testcontainers, experimental)"
 	@echo "  experimental-axe - accessibility (axe-playwright, experimental)"
@@ -55,7 +56,6 @@ help:
 	@echo "  experimental-xdist - rownolegle testy (pytest-xdist, experimental)"
 	@echo "  experimental-benchmark - microbenchmark (pytest-benchmark, experimental)"
 	@echo "  experimental-zap - DAST (OWASP ZAP, experimental)"
-	@echo "  experimental-mutation - mutation testing (mutmut, experimental)"
 
 setup:
 	uv sync --group dev
@@ -136,9 +136,6 @@ experimental-k6:
 
 experimental-zap:
 	zap-cli quick-scan --spider -r http://localhost:8000
-
-experimental-mutation:
-	uv run mutmut run --paths-to-mutate=application/,domain/ --runner "python -m pytest tests/ --ignore=tests/e2e -m 'not integration' --deselect tests/config/test_urls.py::TestMainUrls::test_health_check_view_returns_healthy_in_test_environment"
 
 experimental-xdist:
 	uv run pytest $(TEST_DIRS) -m "not integration and not e2e" -n auto
@@ -283,11 +280,23 @@ diagnostics:
 	make docstr-coverage
 	make lint-templates
 
+mutation:
+	@echo "=== Mutation Testing (mutmut) ==="
+	@echo "Diagnostic tier: runs mutmut on application/ and domain/"
+	@echo "Full run trwa godziny. Wyniki w docs/experimental-mutmut-baseline.md"
+	@echo ""
+	@rm -f .mutmut-cache
+	uv run mutmut run --paths-to-mutate=application/,domain/ --runner "bash -c 'ENV_FILE=.env.test python -m pytest tests/ --ignore=tests/e2e --ignore=tests/domain/test_domain_hypothesis.py -m \"not integration\" --deselect tests/config/test_urls.py::TestMainUrls::test_health_check_view_returns_healthy_in_test_environment --override-ini=\"addopts=\"'" --simple-output --no-progress
+	@echo ""
+	@echo "=== Results ==="
+	uv run mutmut results
+
 clean:
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "__pycache__" -not -path "./.venv/*" -exec rm -rf {} +
 	rm -rf .coverage htmlcov/ .pytest_cache/ .mypy_cache/ coverage.xml .ruff_cache/ .wily/
 	rm -rf docs/api/
+	rm -f .mutmut-cache
 
 lock:
 	uv lock --exclude-newer "7 days"
