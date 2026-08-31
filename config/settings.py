@@ -159,8 +159,17 @@ STATICFILES_DIRS = [
 
 # Ustawienie wymagane przez serwery OpenStreetMap (Tile Usage Policy)
 # Pozwala przeglądarce wysłać nagłówek Referer do obcych serwerów (jak OSM),
-# co odblokowuje kafelki map w Django Adminie.
+# co odbloktowuje kafelki map w Django Adminie.
 SECURE_REFERRER_POLICY = "origin-when-cross-origin"
+
+# Secure Cookie Flags — tylko dla środowiska produkcyjnego
+if APP_ENV == "production":
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
 # ==========================================
 # TINYMCE CONFIGURATION
