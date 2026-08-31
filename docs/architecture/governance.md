@@ -32,10 +32,19 @@ Projekt rygorystycznie rozdziela narzędzia nadzoru na trzy kasty operacyjne (Ti
                           Promote to Gate
                                   │
                                   ▼
-                             [4. GATE]
-                            Ochrona systemu
-                              (Blocking)
-```
+                              [4. GATE]
+                             Ochrona systemu
+                               (Blocking)
+ ```
+
+### Stany Wewnątrz Fazy EXPERIMENTAL (R&D Lifecycle)
+
+Narzędzia znajdujące się w warstwie eksperymentalnej nie są "czarną dziurą". Podlegają one mikro-cyklowi życia:
+1. **Unvalidated:** Narzędzie świeżo dodane do repozytorium. Trwają próby uruchomienia (np. błędy kontenerów, walka z konfiguracją).
+2. **Validated PoC (Proof of Concept):** Narzędzie udowodniło, że działa, wykonuje test end-to-end i nie generuje awarii infrastruktury (np. `Testcontainers`, `Axe-Playwright`, `Hypothesis`). Znalazło co najmniej 1 realny błąd.
+3. **Candidate for Diagnostic:** Po okresie "leżakowania" (np. 1-2 miesiące) i udowodnieniu, że narzędzie nie zgłasza irytujących *False Positives* przy zmianach w kodzie, zespół rozważa przesunięcie go do grupy nienadzorowanej (Diagnostic) w `make check`.
+
+---
 
 ### Klasyfikacja Operacyjna (Obecny Stan)
 
@@ -184,6 +193,32 @@ Wnioski:
 - Nie uruchamiać Testcontainers w standardowym CI — istniejące joby `integration-tests` i `e2e-tests` już realizują cel testowania z prawdziwą infrastrukturą.
 - Nie mapować Testcontainers na środowisko `badges_preprod` — to inna kategoria walidacji (deployment/environment validation).
 - Po okresie eksperymentalnym podejmować decyzję: awans do Diagnostic, awans do Gate, lub usunięcie.
+
+### axe — scope i ograniczenia
+
+axe (accessibility testing) jest narzędziem do automatycznego sprawdzania dostępności WCAG 2 AA na stronach HTML. Uruchamiany jest jako `make experimental-axe` przy użyciu Playwright + axe-core CDN.
+
+- **Obecny zakres:** 7 kluczowych widoków (root, login, 404, dashboard, catalog, ranking, profile)
+- **Wynik PoC (2026-08-31):** 7/7 testów przechodzi
+- **Realne problemy wykryte:** kontrast kolorów (4 naprawy), brak etykiet formularzy (3 pola)
+- **Poziom blocking:** ❌ Experimental — nie blokuje CI
+- **Architektura:** część warstwy E2E (Playwright), a nie osobny job CI
+
+Po zwalidowaniu wartości, axe jest kandydatem na awans do Diagnostic (advisory), a nie Gate.
+
+### k6 — scope i ograniczenia
+
+k6 jest narzędziem do load/performance testingu HTTP. Uruchamiany jest jako `make experimental-k6` przy użyciu skryptu `scripts/k6/load-test.js`.
+
+- **Obecny scenariusz:** 50 VUs, 4 minuty, ramp-up/ramp-down
+- **Testowane endpointy:** `/`, `/health/`, `/accounts/login/`, `/api/openapi.json`
+- **Wynik PoC (2026-08-31):** 0% failed requests, 100% checks, avg 191ms, p95 607ms
+- **Threshold HTTP p95 < 500ms:** ⚠️ przekroczony (607ms) — wynik obserwacyjny, nie regression
+- **Poziom blocking:** ❌ Experimental — nie blokuje CI
+- **Baseline:** p95 ≈ 607ms przy 50 VUs (wartość odniesienia, nie aspiracja)
+- **Ograniczenia:** testuje tylko proste endpointy HTTP, nie obejmuje zapytań GIS/PostGIS, wyszukiwania, rankingów czy ciężkich endpointów API
+
+Po uzyskaniu kilku stabilnych pomiarów, k6 jest kandydatem na awans do Diagnostic jako performance baseline.
 
 ---
 

@@ -18,7 +18,7 @@
             <nav class="-mb-px flex space-x-8">
                 <a data-testid="tab-single-objects"
                    href="{% url 'ranking' %}"
-                   class="whitespace-nowrap pb-4 px-1 border-b-2 border-sky-600 font-bold text-sky-600">
+                   class="whitespace-nowrap pb-4 px-1 border-b-2 border-sky-800 font-bold text-sky-800">
                     Pojedyncze Obiekty
                 </a>
                 <a data-testid="tab-cumulative-regions"
@@ -71,15 +71,15 @@
                                             +{{ item.score }} pkt
                                         </span>
                                     {% else %}
-                                        <span class="inline-block bg-gray-100 text-gray-500 font-bold px-3 py-1 rounded-full text-sm">0 pkt</span>
+                                        <span class="inline-block bg-gray-100 text-gray-700 font-bold px-3 py-1 rounded-full text-sm">0 pkt</span>
                                     {% endif %}
                                 </td>
                                 <td class="px-5 py-4 text-sm font-bold text-gray-800 {% if item.is_child %}pl-10{% endif %}">
                                     {% if item.is_child %}<span class="text-gray-400 mr-1">↳</span>{% endif %}
                                     <a data-testid="link-ranking-object-{{ item.id }}"
                                        href="{% url 'object_detail' item.id %}"
-                                       class="hover:text-sky-600 hover:underline">{{ item.name }}</a>
-                                    <span class="block text-xs text-gray-400 font-normal mt-1 {% if item.is_child %}ml-4{% endif %}">ID: {{ item.id }}</span>
+                                       class="hover:text-sky-700 hover:underline">{{ item.name }}</a>
+                                    <span class="block text-xs text-gray-500 font-normal mt-1 {% if item.is_child %}ml-4{% endif %}">ID: {{ item.id }}</span>
                                 </td>
                                 <td class="px-5 py-4 text-sm text-gray-600 uppercase tracking-wider text-xs">{{ item.type }}</td>
                                 <td class="px-5 py-4 text-sm text-gray-600">
@@ -93,7 +93,7 @@
                                             {% else %}
                                                 <!-- PASTYLKA SZARA (Zwykła) -->
                                                 <a href="{% url 'badge_detail' b.code %}"
-                                                   class="inline-block bg-gray-100 hover:bg-sky-100 text-gray-700 hover:text-sky-700 px-2 py-1 rounded text-xs transition border border-gray-200 shadow-sm">
+                                                   class="inline-block bg-gray-100 hover:bg-sky-100 text-gray-800 hover:text-sky-700 px-2 py-1 rounded text-xs transition border border-gray-200 shadow-sm">
                                                     {{ b.name }}
                                                 </a>
                                             {% endif %}

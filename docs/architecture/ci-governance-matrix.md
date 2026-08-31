@@ -38,6 +38,7 @@ Każdy krok CI musi mieć jasno przypisany: **Tier** (Gate/Diagnostic/Experiment
 | `e2e-tests` | Playwright tests | Playwright | scenarios | Gate | blocking | ✅ | ci.yml |
 | — (separate) | CodeQL | CodeQL | security scanning | Gate (Security) | blocking | ✅ | codeql.yml |
 | — (manual) | Mutation testing | mutmut | Test quality | Diagnostic | advisory | ❌ | `make mutation` |
+| `e2e-tests` | Accessibility (axe) | axe-core via Playwright | WCAG 2 AA | Experimental (validated PoC, candidate for Diagnostic) | advisory | ❌ | `make experimental-axe` |
 
 ---
 
@@ -63,5 +64,120 @@ Dependabot jest **mechanizmem automatyzacji**, nie narzędziem oceny invariantó
 ## Zasady utrzymania matrixu
 
 1. Każda zmiana w `ci.yml`, `codeql.yml` lub `dependabot.yml` musi być odzwierciedlona w tej tabeli.
-2. Nowy krok musi mieć przypisany Tier — jeśli nie wiadomo, domyślnie jest **Diagnostic**.
+2. Nowy krok musi mieć przypisany Tier — jeżeli nie wiadomo, domyślnie jest **Diagnostic**.
+
+---
+
+## axe: Experimental → Candidate for Diagnostic
+
+### Status: Validated PoC
+
+**Data walidacji:** 2026-08-31  
+**Wynik:** 7/7 testów axe przechodzi w pełnym E2E (root, login, 404, dashboard, catalog, ranking, profile)  
+**Realne problemy wykryte i naprawione:**
+- Kontrast kolorów (WCAG 2 AA violations) — 4 naprawy w szablonach
+- Etykiety formularzy (`<label for>` ↔ `id`) — 3 pola w `profile.html`
+
+### Kryteria awansu
+
+| Kryterium | Status | Uwagi |
+|-----------|--------|-------|
+| Działa stabilnie lokalnie | ✅ | `make experimental-axe` |
+| Działa w pełnym E2E | ✅ | przez `scripts/e2e-run.sh` |
+| Wykrywa realne problemy | ✅ | kontrast, label, semantyka |
+| Problemy zostały naprawione | ✅ | potwierdzone przez testy ponowne |
+| Testy obejmują kluczowe widoki | ✅ | root, login, dashboard, catalog, ranking, profile, 404 |
+| False positives pod kontrolą | 🟡 | DO SPRAJDZENIA — przy kolejnych zmianach UI |
+| Polityka severity zdefiniowana | 🟡 | DO ZDEFINIOWANIA — które violations blokują? |
+| Stabilność przy CI pipeline | 🟡 | DO SPRAJDZENIA — axe jako część E2E, nie osobny job |
+
+### Ścieżka awansu
+
+```
+Experimental
+    ↓
+Validated PoC  (obecny stan — 2026-08-31)
+    ↓
+Diagnostic     (po spełnieniu kryteriów, w tym polityce severity)
+    ↓
+Gate           (tylko jeśli accessibility stanie się blocking invariant)
+```
+
+### Decyzja
+
+axe pozostaje **poza standardowym CI** (`ci.yml`) jako `Experimental`. Nie tworzy osobnego joba CI. Jego naturalne miejsce to część warstwy E2E:
+
+```
+              CI
+               │
+    ┌──────────┴──────────┐
+    │                     │
+   GATE                DIAGNOSTIC
+    │                     │
+    │                     ├── complexity
+    │                     ├── architecture
+    │                     └── documentation
+    │
+    └── E2E
+          │
+    ┌─────┴─────┐
+    │           │
+ Playwright   axe
+ functional   accessibility
+```
 3. **Gate × blocking** może dodać maksymalnie 3 sekundy do pipeline'u. Wszystko co wolniej → Diagnostic.
+
+---
+
+## k6: Experimental → Validated PoC → Candidate for Diagnostic
+
+### Status: Validated PoC
+
+**Data walidacji:** 2026-08-31  
+**Wynik:** 50 VUs / 4 min / 0% errors / p95 ~607ms  
+**Baseline:** p95 ≈ 607ms przy 50 VUs (wartość odniesienia, nie aspiracja)
+
+### Scenariusz testowy
+
+- Ramp-up: 10→50 VUs (30s + 1m)
+- Steady state: 50 VUs (1m)
+- Ramp-down: 50→0 VUs (30s)
+- Endpointy: `/`, `/health/`, `/accounts/login/`, `/api/openapi.json`
+
+### Wyniki PoC
+
+| Metryka | Wartość | Status |
+|---------|---------|--------|
+| Iteracje | 2 838 | ✅ |
+| Requesty | 14 190 | ✅ |
+| Checks | 11 352 / 11 352 (100%) | ✅ |
+| Failed requests | 0 (0%) | ✅ |
+| Avg response | 191 ms | ✅ |
+| p95 | 607 ms | ⚠️ (threshold 500ms) |
+| Max | 1 910 ms | ⚠️ |
+| Throughput | 64,8 req/s | ✅ |
+
+### Kryteria awansu
+
+| Kryterium | Status | Uwagi |
+|-----------|--------|-------|
+| Działa stabilnie | ✅ | `make experimental-k6` |
+| 0% failed requests | ✅ | przy 50 VUs |
+| Obserwowany baseline | ✅ | p95 ≈ 607ms (do powtórzenia 5×) |
+| Test obejmuje kluczowe endpointy | 🟡 | tylko proste HTTP, brak GIS/PostGIS |
+| Threshold spełniony | ❌ | p95 > 500ms — to baseline, nie regression |
+| Stabilny w czasie | 🟡 | DO SPRAJDZENIA — 5 powtórzeń |
+| Obecny w standardowym CI | ❌ | Experimental |
+
+### Decyzja
+
+k6 pozostaje **poza standardowym CI** jako Experimental. Threshold `p95 < 500ms` zostaje niezmieniony jako aspiracja. Baseline ~607ms służy jako punkt odniesienia do obserwacji w kolejnych zmianach aplikacji.
+
+Ścieżka awansu:
+```
+Experimental
+    ↓
+Validated PoC  (obecny stan — 2026-08-31)
+    ↓
+Candidate for Diagnostic  (po 5 stabilnych pomiarach)
+```

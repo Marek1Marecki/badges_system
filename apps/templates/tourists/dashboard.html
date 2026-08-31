@@ -17,7 +17,7 @@
             <button data-testid="btn-gpx-upload"
                     onclick="document.getElementById('gpx-file-input').click()"
                     id="gpx-upload-btn"
-                    class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded shadow transition flex justify-center items-center gap-2">
+                    class="w-full bg-sky-700 hover:bg-sky-800 text-white font-bold py-2 px-4 rounded shadow transition flex justify-center items-center gap-2">
                 📂 Wybierz plik ze śladem (.gpx)
             </button>
         </div>
@@ -30,7 +30,7 @@
                     <h3 class="font-semibold text-gray-900">
                         <a data-testid="link-dashboard-badge-{{ progress.badge.code }}"
                            href="{% url 'badge_detail' progress.badge.code %}"
-                           class="hover:text-sky-600 hover:underline">{{ progress.badge.name }}</a>
+                           class="hover:text-sky-700 hover:underline">{{ progress.badge.name }}</a>
                     </h3>
                     <div class="flex justify-between items-center mt-2">
                         <span class="text-xs font-mono px-2 py-1 rounded {% if progress.domain_status == 'COMPLETED' %}bg-green-100 text-green-800 {% elif progress.domain_status == 'IN_PROGRESS' %}bg-blue-100 text-blue-800 {% else %}bg-gray-100 text-gray-800{% endif %}">
@@ -41,12 +41,12 @@
                     <!-- Link do szczegółów odznaki z paskami postępu -->
                     <a data-testid="btn-badge-detail-{{ progress.badge.code }}"
                        href="{% url 'badge_detail' progress.badge.code %}"
-                       class="mt-4 block text-center w-full text-sm bg-sky-600 text-white px-3 py-2 rounded-md hover:bg-sky-700 transition shadow-sm font-medium">
+                       class="mt-4 block text-center w-full text-sm bg-sky-700 text-white px-3 py-2 rounded-md hover:bg-sky-800 transition shadow-sm font-medium">
                         Pokaż szczegóły i postęp
                     </a>
                 </div>
             {% empty %}
-                <div class="text-center p-6 text-gray-400">
+                <div class="text-center p-6 text-gray-500">
                     <p>Nie zbierasz jeszcze żadnych odznak.</p>
                     <p class="text-sm mt-2">Użyj API, by zasubskrybować pierwszą!</p>
                 </div>

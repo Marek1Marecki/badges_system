@@ -10,16 +10,18 @@
                   hx-on::after-request="if(event.detail.successful) { alert('Zapisano zmiany w profilu!'); location.reload(); }"
                   class="space-y-5">
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Konto Google (E-mail)</label>
+                    <label for="input-email" class="block text-sm font-bold text-gray-700 mb-1">Konto Google (E-mail)</label>
                     <input type="text"
+                           id="input-email"
                            data-testid="input-email"
                            value="{{ profile.user.email }}"
                            disabled
                            class="w-full border-gray-300 bg-gray-100 rounded-md shadow-sm p-2.5 border text-gray-500 cursor-not-allowed">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Pseudonim w rankingu</label>
+                    <label for="input-nickname" class="block text-sm font-bold text-gray-700 mb-1">Pseudonim w rankingu</label>
                     <input type="text"
+                           id="input-nickname"
                            data-testid="input-nickname"
                            name="nickname"
                            value="{{ profile.nickname }}"
@@ -27,8 +29,9 @@
                            class="w-full border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 p-2.5 border">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Data urodzenia</label>
+                    <label for="input-birth-date" class="block text-sm font-bold text-gray-700 mb-1">Data urodzenia</label>
                     <input type="date"
+                           id="input-birth-date"
                            data-testid="input-birth-date"
                            name="birth_date"
                            value="{{ profile.birth_date|date:'Y-m-d' }}"

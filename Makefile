@@ -120,25 +120,22 @@ lint-templates:
 # ==============================================================================
 
 experimental-schemathesis:
-	uv run schemathesis run http://localhost:8005/api/openapi.json --url=http://localhost:8005
+	./scripts/schema-run.sh
 
 experimental-testcontainers:
 	uv run pytest tests/ -m "integration and testcontainers" -v -s --override-ini="addopts="
 
 experimental-axe:
-	docker compose -f compose.yml -f compose.e2e.yml up -d db web-e2e
-	docker compose -f compose.yml -f compose.e2e.yml run --rm web-e2e python manage.py migrate
-	uv run playwright install chromium
-	EUIE_BASE_URL=http://localhost:8009 uv run pytest tests/e2e/ -k axe -v --override-ini="addopts="
+	./scripts/e2e-run.sh -k axe -v --override-ini="addopts="
 
 experimental-factory-boy:
 	uv run pytest tests/ -k "factory" -v
 
 experimental-k6:
-	k6 run scripts/k6/load-test.js
+	./scripts/k6-run.sh
 
 experimental-zap:
-	zap-cli quick-scan --spider -r http://localhost:8000
+	./scripts/zap-run.sh
 
 experimental-xdist:
 	uv run pytest $(TEST_DIRS) -m "not integration and not e2e" -n auto

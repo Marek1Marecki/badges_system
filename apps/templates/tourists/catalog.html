@@ -17,7 +17,7 @@
                         <div class="text-sm text-gray-700">
                             <strong>Organizator:</strong>
                             <a href="{% url 'organizer_detail' badge.organizer.id %}"
-                               class="text-sky-600 hover:underline">{{ badge.organizer.name }}</a>
+                               class="text-sky-700 hover:underline">{{ badge.organizer.name }}</a>
                         </div>
                         {% if badge.is_booklet_required %}
                             <div class="mt-3 text-xs bg-amber-100 text-amber-800 inline-block px-2 py-1 rounded">
@@ -37,7 +37,7 @@
                                             <span class="font-medium text-slate-700">{{ peak.name }}</span>{% if not forloop.last %}, {% endif %}
                                         {% endfor %}
                                         {% if badge.current_version.pool_peaks.all|length > 3 %}
-                                            <span class="italic text-slate-400">i {{ badge.current_version.pool_peaks.all|length|add:"-3" }} innych...</span>
+                                            <span class="italic text-slate-600">i {{ badge.current_version.pool_peaks.all|length|add:"-3" }} innych...</span>
                                         {% endif %}
                                     {% else %}
                                         <!-- Ochrona dla Wildcard Rules (ADR-012) -->
@@ -71,14 +71,14 @@
                                     hx-post="/api/v1/badges/{{ badge.code }}/subscribe/"
                                     hx-swap="none"
                                     hx-on::after-request="if(event.detail.successful) window.location.href='{% url 'home' %}'"
-                                    class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded transition shadow-sm">
+                                    class="w-full bg-green-700 hover:bg-green-800 text-white font-medium py-2 rounded transition shadow-sm">
                                 + Zacznij zdobywać
                             </button>
                         {% endif %}
                     </div>
                 </div>
             {% empty %}
-                <div class="col-span-full text-center py-12 text-gray-400">
+                <div class="col-span-full text-center py-12 text-gray-600">
                     <p>Brak odznak w systemie. Administrator musi je najpierw zdefiniować!</p>
                 </div>
             {% endfor %}

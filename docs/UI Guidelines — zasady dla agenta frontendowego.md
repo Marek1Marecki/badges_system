@@ -162,12 +162,13 @@ fetch('/api/v1/ascents', { method: 'POST', body: formData })
 
 ---
 
-## 6. Zasady dostępności (a11y)
+## 6. Zasady dostępności (a11y) i Kontrastu (WCAG)
 
-- Każdy interaktywny element bez widocznego tekstu musi mieć `aria-label`.
-- Przyciski akcji na mapie (np. "Dodaj wejście") muszą być dostępne klawiaturowo.
-- Kolory `PeakColor` nie mogą być jedynym nośnikiem informacji — każdy kolor musi mieć towarzyszącą ikonę lub etykietę tekstową (dostępność dla osób z daltonizmem).
-- Formularz logu wejścia: każde pole musi mieć `<label>` powiązany przez `for`/`id`.
+System jest okresowo skanowany narzędziem `Axe-Playwright`. Każdy kod HTML wprowadzany do aplikacji musi bezwzględnie spełniać następujące wymogi:
+- **Zasada Minimalnego Kontrastu:** Tło elementu interaktywnego i kolor tekstu muszą posiadać wysoki współczynnik kontrastu. W palecie Tailwind CSS zakazuje się używania kombinacji `bg-*-600` z białym tekstem dla mniejszych elementów. Należy domyślnie podbijać ciężar tła do `bg-*-700 text-white` (np. `bg-sky-700`, `bg-green-700`). Teksty pomocnicze (np. opisy, wyciszone ID) muszą mieć przynajmniej `text-gray-500` lub `text-slate-600` (zakaz używania `text-gray-400` na białym tle).
+- **Semantyka Formularzy:** Każde pole wejściowe `<input>` lub `<select>` musi posiadać przypisaną etykietę `<label>`. Przypisanie musi być bezwzględnie, fizycznie powiązane za pomocą atrybutów `for="id_pola"` w labelu oraz `id="id_pola"` w inpucie. 
+- **Atrybuty ARIA:** Każdy interaktywny element bez widocznego tekstu (np. ikona krzyżyka zamykającego modal) musi posiadać twardo wpisany atrybut `aria-label="..."`.
+- **Nawigacja:** Przyciski akcji na mapie oraz w formularzach HTMX muszą być dostępne klawiaturowo (fokusowalne). Kolory (np. wskaźnik `PeakColor`) nie mogą być jedynym nośnikiem informacji – wymusza się stosowanie ikon lub etykiet tekstowych wspierających daltonistów.
 
 ---
 

@@ -32,7 +32,7 @@
             {% for level_code, level_name in levels.items %}
                 <a data-testid="region-level-{{ level_code }}"
                    href="?level={{ level_code }}"
-                   class="px-4 py-2 rounded-full text-sm font-bold transition {% if active_level == level_code %} bg-sky-600 text-white shadow-md {% else %} bg-white border border-gray-300 text-gray-600 hover:bg-sky-50 hover:text-sky-700 {% endif %}">
+                    class="px-4 py-2 rounded-full text-sm font-bold transition {% if active_level == level_code %} bg-sky-700 text-white shadow-md {% else %} bg-white border border-gray-300 text-gray-600 hover:bg-sky-50 hover:text-sky-700 {% endif %}">
                     {{ level_name }}
                 </a>
             {% endfor %}

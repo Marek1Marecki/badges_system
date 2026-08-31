@@ -334,3 +334,35 @@ make experimental-schemathesis
 - Security schemes zdefiniowane dla wszystkich endpointów
 - Wszystkie realne response codes udokumentowane
 - Brak nieoczekiwanych findingów przez co najmniej 3 uruchomienia
+
+### k6 — Load & Performance Testing
+
+**Status:** Experimental → Validated PoC → Candidate for Diagnostic  
+**Komenda:** `make experimental-k6`  
+**Data walidacji:** 2026-08-31  
+
+k6 to narzędzie do testów obciążeniowych HTTP. Testy są uruchamiane lokalnie przeciwko środowisku deweloperskiemu.
+
+**Wynik PoC:**
+- Scenariusz: 50 VUs, 4 minuty (ramp-up + steady + ramp-down)
+- Endpointy: `/`, `/health/`, `/accounts/login/`, `/api/openapi.json`
+- 0% failed requests, 100% checks passed
+- Baseline: p95 ≈ 607ms, avg 191ms, throughput 64.8 req/s
+
+**Kryterium awansu do Diagnostic:**
+- Stabilny baseline potwierdzony co najmniej 5 powtórzonymi pomiarami
+- Test obejmuje kluczowe endpointy aplikacji (w tym zapytania GIS)
+- Threshold i baseline są rozdzielone (aspiracja ≠ obserwacja)
+
+---
+
+## Ostrzeżenie: Środowiska Testowe
+
+> **NIE przeprowadzaj testów obciążeniowych ani destrukcyjnych na środowisku DEV ani PRE-PROD.**
+
+- **DEV** — środowisko deweloperskie z wprowadzonymi danymi referencyjnymi PTTK. Jest jedynym miejscem, gdzie znajdują się szczyty i odznaki. **Nie może być niszczone ani obciążone**.
+- **PRE-PROD** — środowisko stagingowe. Również chronione.
+- **E2E** — efemeryczne środowisko na porcie 8009. Bezpieczne do testów destrukcyjnych. Zawsze sprząta po sobie (`e2e-run.sh` używa `down -v --remove-orphans`).
+- **Test** — efemeryczne środowisko z pustą bazą. Bezpieczne do testów integracyjnych.
+
+Wszystkie testy obciążeniowe (k6), destrukcyjne (ZAP DAST), fuzzujące (Schemathesis) i E2E muszą używać **wyłącznie** efemerycznych środowisk (E2E/Test), nigdy DEV ani PRE-PROD.
