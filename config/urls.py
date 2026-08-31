@@ -4,6 +4,8 @@ from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.urls import include, path
 from django.views.decorators.http import require_GET
 
+import logging
+
 from django.db import connection
 from django.core.cache import cache
 
@@ -20,6 +22,8 @@ from apps.tourists.views import (
     region_ranking_view,
     switch_profile_view,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def health_check(request):
@@ -38,7 +42,8 @@ def health_check(request):
             cursor.execute("SELECT 1")
         checks["database"] = "healthy"
     except Exception as exc:  # noqa: BLE001
-        checks["database"] = f"unhealthy: {exc}"
+        logger.error("Database health check failed", exc_info=True)
+        checks["database"] = "unhealthy"
 
     try:
         cache.set("healthcheck", "ok", timeout=1)
@@ -46,7 +51,8 @@ def health_check(request):
             raise RuntimeError("Redis cache readback mismatch")
         checks["redis"] = "healthy"
     except Exception as exc:  # noqa: BLE001
-        checks["redis"] = f"unhealthy: {exc}"
+        logger.error("Redis health check failed", exc_info=True)
+        checks["redis"] = "unhealthy"
 
     if any("unhealthy" in str(v) for v in checks.values()):
         return JsonResponse({"status": "unhealthy", "checks": checks}, status=503)

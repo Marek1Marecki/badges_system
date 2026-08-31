@@ -202,6 +202,13 @@ W pliku `config/settings.py` adres ten jest rozbijany na czynniki pierwsze za po
    - Obraz produkcyjny (cel `production`) nie może pod żadnym pozorem zawierać narzędzi deweloperskich. Wymaga on flagi `--no-dev` podczas synchronizacji `uv`. Co więcej, na końcu budowy należy wykonać hardening obrazu poprzez wymuszenie usunięcia menedżerów pakietów: `RUN pip uninstall -y pip setuptools wheel || true`.
    - Obraz testowy w potoku CI/CD (cel `testing`) nie może zawierać pełnej puli deweloperskiej (np. skanerów SAST `semgrep`), aby uniknąć fałszywych alarmów (False Positives) w bramkach bezpieczeństwa Trivy. Do środowiska testowego instalujemy *wyłącznie* pakiety testowe za pomocą dyrektywy: `uv sync --frozen --group test --no-dev`. Wszystkie pakiety analityczne i lintery muszą przebywać wyłącznie w wydzielonej podgrupie `[dependency-groups.dev]` w pliku `pyproject.toml`.
 
+2. **Niezmienniki Skryptów Eksperymentalnych (Experimental Wrappers Invariants):**
+   Każdy skrypt w katalogu `scripts/` służący do uruchamiania narzędzi diagnostycznych, inwazyjnych lub obciążeniowych (np. `k6-run.sh`, `zap-run.sh`, `schema-run.sh`) MUSI bezwzględnie implementować 4 zasady izolacji:
+   - **Własne środowisko:** Zawsze podnosi efemeryczne środowisko `E2E` z użyciem `compose.test.yml` i `compose.e2e.yml`.
+   - **Izolacja sieciowa:** Nigdy nie kieruje ruchu na porty `DEV` (8005) ani `PRE-PROD` (8000). Używa dedykowanego portu dla eksperymentów (np. 8009).
+   - **Gwarantowany Cleanup:** Posiada zadeklarowany mechanizm sprzątania odporny na awarie (np. `trap cleanup EXIT`, gdzie `cleanup` wywołuje `docker compose down -v --remove-orphans`).
+   - **Unikalny Namespace:** Gwarantuje brak przejęcia istniejącego środowiska poprzez dynamicznie generowaną zmienną projektu (np. `PROJECT="ci-$(date +%s)-$$"`).
+
 **Zakazane:**
 - Umieszczanie narzędzi deweloperskich w głównych zależnościach obrazu produkcyjnego.
 

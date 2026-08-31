@@ -129,7 +129,7 @@ experimental-axe:
 	./scripts/e2e-run.sh -k axe -v --override-ini="addopts="
 
 experimental-factory-boy:
-	uv run pytest tests/ -k "factory" -v
+	ENV_FILE=.env uv run pytest tests/test_factories.py -v --override-ini="addopts="
 
 experimental-k6:
 	./scripts/k6-run.sh
@@ -141,7 +141,7 @@ experimental-xdist:
 	uv run pytest $(TEST_DIRS) -m "not integration and not e2e" -n auto
 
 experimental-benchmark:
-	uv run pytest $(TEST_DIRS) -m "benchmark" --benchmark-only
+	uv run pytest $(TEST_DIRS) -m "benchmark" --benchmark-only --override-ini="addopts="
 
 test-all:
 	ENV_FILE=.env.test uv run pytest $(TEST_DIRS) --create-db --nomigrations \

@@ -17,12 +17,14 @@ set -euo pipefail
 
 PROJECT="zap-$(date +%s)-$$"
 COMPOSE=(docker compose -p "${PROJECT}" -f compose.yml -f compose.test.yml -f compose.e2e.yml)
+ZAP_VOLUME=""
 
 cleanup() {
     local exit_code=$?
     echo ""
     echo "=== Sprzątanie środowiska ZAP (projekt: ${PROJECT}) ==="
     "${COMPOSE[@]}" down -v --remove-orphans 2>/dev/null || true
+    rm -rf "${ZAP_VOLUME:-}" 2>/dev/null || true
     exit $exit_code
 }
 trap cleanup EXIT
@@ -64,20 +66,27 @@ echo "=== ZAP: uruchamianie skanowania DAST ==="
 echo "Pobieranie obrazu securecodebox/zap..."
 docker pull securecodebox/zap:latest 2>&1 | tail -2
 
-ZAP_ARGS="-cmd -quickurl http://host.docker.internal:8009 -quickout /tmp/zap_report.xml"
+# Używamy --network host dla dostępu do localhost:8009 (Linux fallback)
+# /zap/ to katalog roboczy obrazu; montujemy go aby odczytać wynik
+ZAP_VOLUME=$(mktemp -d)
+ZAP_ARGS="-cmd -quickurl http://localhost:8009 -quickout /zap/out/zap_report.xml"
 if [ $# -gt 0 ]; then
     ZAP_ARGS="$ZAP_ARGS $*"
 fi
 
-docker run --rm --add-host=host.docker.internal:host-gateway securecodebox/zap:latest \
-    zap.sh $ZAP_ARGS 2>&1
+docker run --rm --network host -v "${ZAP_VOLUME}:/zap/out" securecodebox/zap:latest \
+    /zap/zap.sh $ZAP_ARGS 2>&1
 
-if [ -f /tmp/zap_report.xml ]; then
+ZAP_REPORT="${ZAP_VOLUME}/zap_report.xml"
+if [ -f "${ZAP_REPORT}" ]; then
     echo ""
     echo "=== ZAP: wyniki skanowania ==="
-    cat /tmp/zap_report.xml 2>/dev/null || true
-    rm -f /tmp/zap_report.xml
+    cat "${ZAP_REPORT}" 2>/dev/null || true
+else
+    echo ""
+    echo "=== ZAP: brak pliku wynikowego ==="
 fi
+rm -rf "${ZAP_VOLUME}"
 
 echo ""
 echo "=== ZAP zakończony pomyślnie ==="

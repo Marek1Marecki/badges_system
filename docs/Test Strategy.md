@@ -47,7 +47,19 @@ System wykorzystuje dwie równoległe ścieżki weryfikacji (Quality Pipeline i 
 | Ścieżka | Cel i Środowisko | Mechanika i Wymogi |
 |---------|------------------|--------------------|
 | **Quality Pipeline** | Szybka weryfikacja kodu (Lintery, Mypy, Import-Linter) oraz testów Jednostkowych, Integracyjnych i E2E. | Uruchamiana na self-hosted runnerze. Czysty Python z pakietami w grupie `dev`. **Wymagane pokrycie 80% (`fail-under`).** Testy E2E wyłączają coverage przez `--override-ini="addopts="`. |
-| **Security Pipeline** | Skanowanie statyczne przepłyfu danych (Semgrep) oraz semantyczna analiza kodu (CodeQL). | Uruchamiana równolegle na self-hosted runnerze. CodeQL używa zestawu zapytań `security-extended`. Dodatkowo skan cykliczny uruchamiany jest co poniedziałek o 02:30 (`schedule`). Wyniki trafiają do **Code scanning alerts** w GitHub Security Dashboard. |
+| **Security Pipeline** | Skanowanie statyczne przepłyfu danych (Semgrep) oraz semantyczna analiza kodu (CodeQL). | Uruchamiana równolegle na self-hosted runnerze. CodeQL używa zestawu zapytań `security-extended`. Dodatkowo skan cykliczny uruchamiany jest co poniedziałek o 02:30 (`schedule`). Wyniki trafiają do **Code scanning alerts** in GitHub Security Dashboard. |
+
+---
+
+## Semantyka Markerów Testowych (Test Taxonomy)
+
+System rygorystycznie egzekwuje podział testów za pomocą markerów (`@pytest.mark.*`). Złamanie tej semantyki doprowadzi do awarii narzędzi równoległych (np. `pytest-xdist`) lub zanieczyszczenia środowiska.
+
+| Marker | Kategoria | Definicja Architektoniczna |
+|:---|:---|:---|
+| *(Brak)* | **Unit Tests** | Testy uruchamiane domyślnie. W 100% odcięte od bazy danych, sieci i frameworka Django. Testują Czystą Domenę, logikę i obiekty Pydantic. Mogą być uruchamiane współbieżnie (xdist). |
+| `@pytest.mark.integration` | **Integration** | Wymagają podniesionej infrastruktury (prawdziwy PostgreSQL, Redis). Testują Adaptery, repozytoria oraz operacje generowania danych (`Factory Boy`). Do tych testów bezwzględnie należy dołączać marker `@pytest.mark.django_db`. |
+| `@pytest.mark.e2e` | **End-to-End** | Testy przeglądarkowe (Playwright). Wymagają pełnego środowiska HTTP, załadowanego "Złotego Standardu Danych" i omijają wewnętrzne mechanizmy Pytesta, traktując aplikację jako "Czarną Skrzynkę" (Black Box). |
 
 ---
 
