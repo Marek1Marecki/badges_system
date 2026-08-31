@@ -70,7 +70,8 @@ class AscentLog(models.Model):
     """
 
     # ZMIANA: Wskazuje na Profil, a nie na Usera!
-    profile = models.ForeignKey(TouristProfile, on_delete=models.CASCADE, related_name="ascents")
+    # AUDYT-045: PROTECT chroni wejścia przed utratą przy usunięciu profilu.
+    profile = models.ForeignKey(TouristProfile, on_delete=models.PROTECT, related_name="ascents")
     peak = models.ForeignKey(TouristObject, on_delete=models.PROTECT, related_name="ascents_logged")
     ascent_date = models.DateField(verbose_name="Data wejścia")
 
@@ -89,6 +90,10 @@ class AscentLog(models.Model):
         # ZMIANA: Zabezpieczenie upsert chroni teraz Profil, a nie Usera
         constraints = [
             models.UniqueConstraint(fields=["profile", "peak", "ascent_date"], name="unique_ascent_per_day_per_profile")
+        ]
+        # AUDYT-029: indeks złożony na (profile_id, ascent_date) dla get_oldest_ascent_date
+        indexes = [
+            models.Index(fields=["profile", "ascent_date"], name="ascent_profile_date_idx"),
         ]
 
     def __str__(self) -> str:
@@ -117,7 +122,8 @@ class UserBadgeProgress(models.Model):
     """Zmaterializowany stan zdobywania odznaki (Subskrypcja + Snapshot)."""
 
     # ZMIANA: Wskazuje na Profil, a nie na Usera!
-    profile = models.ForeignKey(TouristProfile, on_delete=models.CASCADE, related_name="badge_progresses")
+    # AUDYT-045: PROTECT chroni postępy przed utratą przy usunięciu profilu.
+    profile = models.ForeignKey(TouristProfile, on_delete=models.PROTECT, related_name="badge_progresses")
     badge = models.ForeignKey(BadgeModel, on_delete=models.CASCADE, related_name="user_progresses")
     version = models.ForeignKey(
         BadgeVersionModel,
@@ -148,6 +154,10 @@ class UserBadgeProgress(models.Model):
             models.UniqueConstraint(
                 fields=["profile", "badge", "cycle_number"], name="unique_active_cycle_per_badge_per_profile"
             )
+        ]
+        # AUDYT-029: composite index dla zapytań Czystej Domeny o postęp
+        indexes = [
+            models.Index(fields=["profile", "badge", "domain_status"], name="progress_p_b_s_idx"),
         ]
 
     def __str__(self) -> str:

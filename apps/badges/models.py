@@ -3,6 +3,7 @@
 from django.contrib.gis.db import models as gis_models
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Index
 from django.utils.translation import gettext_lazy as _
 from django_jsonform.models.fields import JSONField
 from tinymce.models import HTMLField
@@ -402,6 +403,11 @@ class TouristObject(gis_models.Model):
         verbose_name = "Obiekt Turystyczny"
         verbose_name_plural = "Obiekty Turystyczne"
         ordering = ["name"]
+        indexes = [
+            Index(fields=["name"], name="tourist_object_name_idx"),
+            Index(fields=["status"], name="tourist_object_status_idx"),
+            Index(fields=["is_active"], name="tourist_object_is_active_idx"),
+        ]
 
     def __str__(self) -> str:
         """Reprezentacja tekstowa obiektu turystycznego."""

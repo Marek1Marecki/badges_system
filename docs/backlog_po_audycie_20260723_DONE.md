@@ -163,6 +163,37 @@ Mockowanie ORM to antywzorzec. Przebudujemy testy infrastruktury tak, aby uderza
 
 ---
 
+### [AUDYT-024] Załatanie podatności Open Redirect w `switch_profile_view`
+**Obszar:** `API / Bezpieczeństwo`  
+**Priorytet:** `🔴 KRYTYCZNY`  
+
+**Diagnoza Audytora:** 
+Widok odpowiedzialny za zmianę profilu rodzinnego w `apps/tourists/views.py` używa niebezpiecznej konstrukcji `redirect(request.META.get("HTTP_REFERER", "home"))`. Nie weryfikuje on, czy nagłówek Referer faktycznie należy do naszej domeny. Atakujący może stworzyć spreparowany link nakłaniający ofiarę do kliknięcia, co po przełączeniu profilu przekieruje ją na złośliwą stronę (Phishing).
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [ ] Zmodyfikować `switch_profile_view`, tak aby walidował bezpieczny adres docelowy. Np.: `next_url = request.GET.get("next") or request.META.get("HTTP_REFERER"); if next_url and not next_url.startswith("/"): next_url = "home"`.
+
+**Komentarz Architekta:**
+Klasyczny błąd z grupy A01 (OWASP). Prosta łatka z użyciem `startswith("/")` całkowicie zamyka ten wektor ataku, wymuszając nawigację wyłącznie w obrębie naszej witryny.
+
+---
+
+### [AUDYT-025] Brak autoryzacji zasobu w `BadgeLogisticsView` (Luka IDOR)
+**Obszar:** `API / Autoryzacja`  
+**Priorytet:** `🔴 KRYTYCZNY`  
+
+**Diagnoza Audytora:** 
+Widok `BadgeLogisticsView` (odpowiedzialny za Osobisty Kanban logistyki) przyjmuje z adresu URL parametr `progress_id`. Chociaż widok weryfikuje, czy użytkownik jest zalogowany (`_require_auth`), nie weryfikuje, czy edytowany postęp faktycznie należy do profilu wykonującego to żądanie. Złośliwy użytkownik znający `progress_id` obcej osoby może bezkarnie przesuwać status wysyłki jego odznak!
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [ ] Zmodyfikować `AdvanceLogisticStatusUseCase`, aby upewnić się, że `progress.profile_id == profile_id`.
+- [ ] Dodać asercje i rzucać wyjątek w przypadku braku uprawnień.
+
+**Komentarz Architekta:**
+Krytyczne przeoczenie logiki w `Use Case`. IDOR to jeden z najgroźniejszych i najczęściej występujących błędów w REST API.
+
+---
+
 ### [AUDYT-038] Potrzeba Testów Bezpieczeństwa Deserializacji (Fail-Fast)
 **Obszar:** `Infrastruktura / Testy`  
 **Priorytet:** `🟠 WYSOKI`  
@@ -175,6 +206,53 @@ Audytor wyznaczył adapter `django_badge_repo.py` jako punkt ryzyka klasy `🔴 
 
 **Komentarz Architekta:**
 Ufamy naszej implementacji słownika `RULE_BUILDERS`, ale nie udowodniliśmy w testach, że faktycznie zatrzymuje on złośliwy lub uszkodzony schemat JSONB z bazy. Proste i tanie zabezpieczenie.
+
+---
+
+### [AUDYT-047] Luki w bezpieczeństwie zarządzania sesją (Brak Secure Flags)
+**Obszar:** `Infrastruktura / Bezpieczeństwo HTTP`  
+**Priorytet:** `🔴 KRYTYCZNY`  
+
+**Diagnoza Audytora:** 
+W projekcie brakuje wymuszenia flag bezpieczeństwa dla ciasteczek w środowisku produkcyjnym. Domyślne ustawienia Django pozwalają na przesyłanie ciasteczka sesyjnego (`SESSION_COOKIE`) oraz tokena CSRF przez nieszyfrowane połączenia HTTP. Stanowi to ogromne ryzyko kradzieży sesji (Session Hijacking) przy ataku MITM.
+
+**Action Items (Do wdrożenia w `settings.py`):**
+- [ ] Dodać zabezpieczenia dla środowiska `app_env == "production"`: `SESSION_COOKIE_SECURE = True`, `CSRF_COOKIE_SECURE = True`, `SECURE_SSL_REDIRECT = True`.
+- [ ] Opcjonalnie wdrożyć politykę HSTS (`SECURE_HSTS_SECONDS`).
+
+**Komentarz Architekta:**
+Klasyczny błąd konfiguracji przy wychodzeniu z fazy deweloperskiej. Mimo że Caddy (Reverse Proxy) wymusza u nas HTTPS, aplikacja Django wewnętrznie musi oznaczyć te ciastka jako dostępne *wyłącznie* dla połączeń bezpiecznych.
+
+---
+
+### [AUDYT-048] Ochrona przed fałszowaniem wieku (Age Fraud)
+**Obszar:** `API / Logika Biznesowa (RODO)`  
+**Priorytet:** `🟠 WYSOKI`  
+
+**Diagnoza Audytora:** 
+Obecnie widok `ProfileSettingsView` (lub nowy Use Case aktualizacji profilu) pozwala użytkownikowi na swobodną, nieograniczoną modyfikację pola `birth_date` w dowolnym momencie. Ponieważ system opiera punktację i weryfikację na dacie urodzenia (`MinAgeRule`, `MaxAgeRule`), użytkownik może wielokrotnie zmieniać wiek w celu sztucznego zdobycia zablokowanych odznak dziecięcych lub seniorskich.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [ ] W `UpdateProfileUseCase` zablokować możliwość zmiany daty urodzenia, jeśli została już raz ustawiona.
+- [ ] (Alternatywa) Pozwolić na zmianę, ale wymagać twardego zresetowania wszystkich postępów zależnych od wieku lub uruchomienia alertu audytowego.
+
+**Komentarz Architekta:**
+Znakomite wyłapanie luki w logice grywalizacji (Gamification Exploit). Data urodzenia to kluczowy Invariant tożsamościowy – po jego ustaleniu powinien stać się niezmienny.
+
+---
+
+### [AUDYT-050] Zabezpieczenie Content-Type dla uploadu plików GPX
+**Obszar:** `API / Bezpieczeństwo`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Widok odpowiedzialny za odbieranie plików GPX weryfikuje ich rozmiar, ale nie weryfikuje jednoznacznie ich zawartości w oparciu o typ MIME. Złośliwy użytkownik może wysłać plik `.exe` jako GPX. Co prawda biblioteka `defusedxml` odrzuci to na etapie parsowania, ale plik i tak zostanie przetransferowany i załadowany do pamięci serwera.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [ ] Dodać walidację nagłówka pliku (Magic Bytes) oraz dopuszczonego typu MIME (`application/gpx+xml` lub `text/xml`) przed wpuszczeniem pliku do pamięci operacyjnej parsera.
+
+**Komentarz Architekta:**
+Klasyczne zabezpieczenie bramki sieciowej. Zapobiegnie to obciążaniu pamięci RAM serwera djangowego złośliwymi ładunkami.
 
 ---
 
@@ -258,3 +336,20 @@ Główny plik wejściowy do projektu (`README.md`) kieruje programistę pod niei
 Klasyczny przypadek "Martwych Linków" (Dead Links). Jest to drobnostka z perspektywy kodu, ale kluczowy błąd z perspektywy pierwszego wrażenia (Developer Experience).
 
 ---
+
+### [AUDYT-004] Wyciek architektury: Brakująca wiedza o progach wielostopniowych
+**Obszar:** `Infrastruktura / Adaptery`
+**Priorytet:** `🟠 WYSOKI`
+
+**Diagnoza Audytora:**
+Podczas hydracji definicji odznaki z bazy danych, wartość progu zaliczeniowego `required_count` była sztucznie obliczana jako długość puli (`len(pool_peaks)`) na poziomie Wersji. Mechanizm ten psuł odznaki wielostopniowe, gdzie właściwy próg przypisany jest do konkretnego `BadgeTier` (Stopnia).
+
+**Action Items (Do wdrożenia):**
+- [X] Przenieść progi liczbowe z Wersji Odznaki do poszczególnych Stopni (`BadgeTierDomain`).
+- [X] Zmodyfikować logikę oceny `evaluate()` w Domenie, by weryfikowała postęp względem tablicy wstrzykniętych Stopni (Tiers).
+- [X] Zamknąć opisany dług techniczny `TD-03` w dokumentacji.
+
+**Wdrożenie:**
+- Domena (`BadgeVersionDomain`, `BadgeTierDomain`) posiada pole `required_count` na każdym Stopniu; `evaluate()` (linia 76) używa `t.required_count`.
+- Adapter (`_hydrate_version`) odczytuje `BadgeTierModel.required_peaks_count`, fallback `len(pool_peaks)` tylko dla `None`.
+- Testy: `test_hydrates_multi_tier_with_distinct_thresholds`, `test_hydrates_fallback_to_pool_size_when_required_peaks_count_is_null`.

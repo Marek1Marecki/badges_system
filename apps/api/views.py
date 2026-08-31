@@ -623,6 +623,30 @@ class GpxAnalyzeView(View):
                 request, "validation-failed", "Plik za duży", 422, "Plik GPX nie może przekraczać 10 MB."
             )
 
+        # SECURITY: Walidacja typu MIME i Magic Bytes zanim plik trafi do RAM
+        allowed_mime_types = ("application/gpx+xml", "application/xml", "text/xml", "text/plain")
+        content_type = gpx_file.content_type
+        if content_type and content_type not in allowed_mime_types:
+            return _problem_detail(
+                request,
+                "validation-failed",
+                "Niedozwolony typ pliku",
+                422,
+                "Akceptowane są pliki GPX (application/gpx+xml, text/xml).",
+            )
+
+        # Magic bytes: GPX musi być XML-em
+        first_chunk = gpx_file.read(512)
+        gpx_file.seek(0)
+        if b"<gpx" not in first_chunk and not first_chunk.lstrip().startswith(b"<?xml"):
+            return _problem_detail(
+                request,
+                "validation-failed",
+                "Nieprawidłowy format pliku",
+                422,
+                "Plik nie jest prawidłowym plikiem GPX ani XML.",
+            )
+
         file_content = gpx_file.read()
 
         try:
@@ -719,8 +743,12 @@ class ProfileSettingsView(View):
 
         try:
             body = json.loads(request.body)
+            # SECURITY (AUDYT-048): zapisujemy oryginalne żądanie birth_date
+            # zanim zostanie przekształcone (pusty string → None).
+            original_birth_date_requested = body.get("birth_date")
+
             # Puste stringi dla daty zamieniamy na None (czyszczenie wieku)
-            if body.get("birth_date") == "":
+            if original_birth_date_requested == "":
                 body["birth_date"] = None
             dto = UpdateProfileRequestDTO(**body)
         except ValidationError:
@@ -734,8 +762,26 @@ class ProfileSettingsView(View):
 
         if dto.nickname:
             profile.nickname = dto.nickname
-        if dto.birth_date is not None or "birth_date" in body:
+
+        # SECURITY (AUDYT-048): birth_date jest niezmienny po ustawieniu.
+        # Chroni to przed Age Fraud — manipulacją wiekiem w celu zdobycia odznak.
+        if original_birth_date_requested is not None:
+            if profile.birth_date is not None:
+                logger.warning(
+                    "Attempt to modify birth_date for profile %s by user %s",
+                    profile.id,
+                    request.user.id,
+                    extra={"request_id": getattr(request, "request_id", "unknown")},
+                )
+                return _problem_detail(
+                    request,
+                    "conflict",
+                    "Niedozwolona zmiana",
+                    409,
+                    "Data urodzenia nie może być zmieniona po ustawieniu.",
+                )
             profile.birth_date = dto.birth_date
+
         if dto.preferred_base_map:
             profile.preferred_base_map = dto.preferred_base_map
 

@@ -1,0 +1,17 @@
+# Release Registry (ADR-022)
+# Każdy wpis to Release Candidate z 3 artefaktami: app_image, migration_identifier, snapshot.
+# Deployment Pipeline weryfikuje tę kombinację przed wdrożeniem (pre-flight validation).
+releases:
+  - id: PROD-001
+    app_image:
+      name: badges-system
+      tag: latest
+      digest: sha256:placeholder
+    db_schema:
+      migration_owner: "Dominik / AI Architect"
+      migration_identifier: 0002_alter_ascentlog_profile_and_more
+      atomic: true
+      risk_level: low
+      notes: "PROTECT na AscentLog.profile i UserBadgeProgress.profile — blokada cascade-usunięcia profili z wejściami (AUDYT-045)."
+    reference_data:
+      snapshot: "2026-08-07T20:44:00+02:00"

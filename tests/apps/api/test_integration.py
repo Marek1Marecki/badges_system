@@ -402,12 +402,13 @@ class TestProfileSettingsView:
             mock_profile.save.assert_called_once()
 
     def test_clears_birth_date_on_empty_string(self, factory, mock_user, use_cases) -> None:
-        """Czyści datę urodzenia przy pustym ciągu znaków."""
+        """Czyści datę urodzenia przy pustym ciągu znaków — tylko gdy jeszcze nie była ustawiona."""
         from apps.api.views import ProfileSettingsView
         from apps.tourists.models import TouristProfile
 
         mock_profile = MagicMock(spec=TouristProfile)
         mock_profile.user = mock_user
+        mock_profile.birth_date = None
 
         with patch("apps.api.views.get_object_or_404", return_value=mock_profile):
             request = factory.patch(
@@ -421,6 +422,52 @@ class TestProfileSettingsView:
 
             assert response.status_code == 200
             assert mock_profile.birth_date is None
+
+    def test_rejects_birth_date_change_when_already_set(self, factory, mock_user, use_cases) -> None:
+        """SECURITY: Odmusza zmiany birth_date gdy już ustawiona (AUDYT-048, Age Fraud)."""
+        from apps.api.views import ProfileSettingsView
+        from apps.tourists.models import TouristProfile
+        from datetime import date
+
+        mock_profile = MagicMock(spec=TouristProfile)
+        mock_profile.user = mock_user
+        mock_profile.birth_date = date(2000, 1, 1)
+
+        with patch("apps.api.views.get_object_or_404", return_value=mock_profile):
+            request = factory.patch(
+                "/api/v1/profiles/1/",
+                data=json.dumps({"birth_date": "1990-05-15"}),
+                content_type="application/json",
+            )
+            request.user = mock_user
+
+            response = ProfileSettingsView.as_view()(request, profile_id=1)
+
+            assert response.status_code == 409
+            data = json.loads(response.content)
+            assert data["detail"] == "Data urodzenia nie może być zmieniona po ustawieniu."
+
+    def test_rejects_birth_date_clear_when_already_set(self, factory, mock_user, use_cases) -> None:
+        """SECURITY: Odmusza wyczyszczenia birth_date gdy już ustawiona (AUDYT-048)."""
+        from apps.api.views import ProfileSettingsView
+        from apps.tourists.models import TouristProfile
+        from datetime import date
+
+        mock_profile = MagicMock(spec=TouristProfile)
+        mock_profile.user = mock_user
+        mock_profile.birth_date = date(2000, 1, 1)
+
+        with patch("apps.api.views.get_object_or_404", return_value=mock_profile):
+            request = factory.patch(
+                "/api/v1/profiles/1/",
+                data=json.dumps({"birth_date": ""}),
+                content_type="application/json",
+            )
+            request.user = mock_user
+
+            response = ProfileSettingsView.as_view()(request, profile_id=1)
+
+            assert response.status_code == 409
 
 
 # ---------------------------------------------------------------------------
@@ -507,14 +554,63 @@ class TestGpxAnalyzeView:
         large_content = b"x" * (11 * 1024 * 1024)
         mock_file = SimpleUploadedFile("test.gpx", large_content, content_type="application/gpx+xml")
 
-        request = factory.post("/api/v1/gpx/analyze/", data={"file": mock_file})
+        request = factory.post(
+            "/api/v1/gpx/analyze/",
+            data={"file": mock_file},
+            format="multipart",
+        )
         request.user = mock_user
+        request.session["active_profile_id"] = 1
 
         response = GpxAnalyzeView.as_view()(request)
 
         assert response.status_code == 422
         data = json.loads(response.content)
-        assert "request_id" in data
+        assert data["detail"] == "Plik GPX nie może przekraczać 10 MB."
+
+    def test_returns_422_when_invalid_mime_type(self, factory, mock_user, use_cases) -> None:
+        """SECURITY: Odrzuca pliki o niebezpiecznym Content-Type (AUDYT-050)."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from apps.api.views import GpxAnalyzeView
+
+        fake_file = SimpleUploadedFile("malware.exe", b"MZ\x90\x00", content_type="application/x-msdownload")
+
+        request = factory.post(
+            "/api/v1/gpx/analyze/",
+            data={"file": fake_file},
+            format="multipart",
+        )
+        request.user = mock_user
+        request.session["active_profile_id"] = 1
+
+        response = GpxAnalyzeView.as_view()(request)
+
+        assert response.status_code == 422
+        data = json.loads(response.content)
+        assert data["detail"] == "Akceptowane są pliki GPX (application/gpx+xml, text/xml)."
+
+    def test_returns_422_when_file_not_xml(self, factory, mock_user, use_cases) -> None:
+        """SECURITY: Odrzuca plik oznaczony jako XML, ale bez magic bytes XML/GPX."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from apps.api.views import GpxAnalyzeView
+
+        fake_file = SimpleUploadedFile("not_gpx.xml", b"NOT XML CONTENT AT ALL", content_type="text/xml")
+
+        request = factory.post(
+            "/api/v1/gpx/analyze/",
+            data={"file": fake_file},
+            format="multipart",
+        )
+        request.user = mock_user
+        request.session["active_profile_id"] = 1
+
+        response = GpxAnalyzeView.as_view()(request)
+
+        assert response.status_code == 422
+        data = json.loads(response.content)
+        assert data["detail"] == "Plik nie jest prawidłowym plikiem GPX ani XML."
 
 
 # ---------------------------------------------------------------------------

@@ -175,9 +175,9 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 
 ### EC-031 — Próg wejść (required_count) zaszyty w Wersji zamiast w Stopniu
 **Obszar:** `infrastructure/adapters/persistence/django_badge_repo.py` (`_hydrate_version`)  
-**Status:** `open` (Dług Technologiczny TD-03)  
-**Opis:** Podczas hydracji `BadgeVersionDomain` adapter przypisuje `required_count=len(pool_peaks)`. Jest to poprawne wyłącznie dla odznak jednostopniowych, w których należy zdobyć 100% szczytów z puli. Dla odznak typu "Zdobądź 20 z 50" lub wielostopniowych, to `BadgeTier` przechowuje rzeczywisty próg.  
-**Rozwiązanie / workaround:** Do czasu przebudowy Use Case'a tak, by wstrzykiwał progi ze Stopni (Tiers) do Czystej Domeny, weryfikacja takich odznak poprawnie policzy `valid_ascents_count`, ale pole `verified` fałszywie zwróci `False`. Konieczna refaktoryzacja w Fazie C.
+**Status:** `resolved (TD-03 zamknięte)`  
+**Opis:** Podczas hydracji `BadgeVersionDomain` adapter przypisuje `required_count=len(pool_peaks)`. Jest to poprawne wyłącznie dla odznak jednostopniowych, w których należy zdobyć 100% szczytów z puli. Dla odznak typu "Zdobądż 20 z 50" lub wielostopniowych, to `BadgeTier` przechowuje rzeczywisty próg.  
+**Rozwiązanie / workaround:** Zmiana została wprowadzona w Fazie C (`CHANGELOG.md` 0.3.0): `BadgeTierDomain` posiada własne pole `required_count`, a `evaluate()` ewaluuje progi na poziomie każdego Stopnia — nie na poziomie Wersji. Adapter (`_hydrate_version`) odczytuje `BadgeTierModel.required_peaks_count` i tylko dla `None` (brak tierów) fallbackuje do `len(pool_peaks)`. Oznaczenie fallback jako poprawne zachowanie dla odznak wymagających 100% puli. Testy: `test_hydrates_multi_tier_with_distinct_thresholds` + `test_hydrates_fallback_to_pool_size_when_required_peaks_count_is_null`.
 
 ### EC-032 — Testy `RequestFactory` omijają Django Middleware
 **Obszar:** `apps/api/views.py`, `tests/apps/api/`  

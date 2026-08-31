@@ -172,40 +172,50 @@ class DjangoTouristRepository(
         from apps.badges.models import BadgeVersionModel, ObjectRegionCache
         from apps.tourists.models import AscentLog
 
-        # Aby nie ładować do RAM-u tysięcy logów, filtrujemy tylko te obiekty,
-        # które fizycznie mogą mieć znaczenie dla tej odznaki.
+        # AUDYT-053: Aby nie ładować do RAM-u tysięcy logów, filtrujemy tylko te
+        # obiekty, które fizycznie mogą mieć znaczenie dla tej odznaki.
+        # values_list(...).distinct() jako __in jest kompilowane do SQL — nie
+        # materializuje się w RAM.
         peak_ids = (
             BadgeVersionModel.objects.filter(badge__code=badge_code).values_list("pool_peaks__id", flat=True).distinct()
         )
 
+        # AUDYT-053: tylko potrzebne kolumny — peak_id i ascent_date są
+        # kolumnami na AscentLog, nie potrzebujemy select_related ani całych OB.
         qs = AscentLog.objects.filter(profile_id=profile_id, peak_id__in=peak_ids)
-
-        # Odrzucamy logi "zużyte" (Starsze lub równe dacie zamknięcia poprzedniego cyklu)
         if cutoff_date:
             qs = qs.filter(ascent_date__gt=cutoff_date)
 
-        ascents = list(qs)
-        if not ascents:
+        # Przebieg 1: strumień po ascents, by zebrać unikalne peak_ids (chunk_size=2000)
+        fetched_peak_ids: set[int] = set()
+        for ascent in qs.only("peak_id").iterator(chunk_size=2000):
+            fetched_peak_ids.add(ascent.peak_id)
+        if not fetched_peak_ids:
             return []
 
-        # Wstrzykiwanie CQRS (Invariant R-03) — wyciągamy regiony jednym zapytaniem SQL
-        fetched_peak_ids = {a.peak_id for a in ascents}
-        region_caches = ObjectRegionCache.objects.filter(tourist_object_id__in=fetched_peak_ids).values(
-            "tourist_object_id", "region_id"
-        )
-
-        region_map = defaultdict(set)
-        for rc in region_caches:
+        # Wstrzykiwanie CQRS (Invariant R-03) — regiony w jednym zapytaniu SQL
+        region_map: defaultdict[int, set[int]] = defaultdict(set)
+        for rc in (
+            ObjectRegionCache.objects.filter(
+                tourist_object_id__in=fetched_peak_ids,
+            )
+            .values("tourist_object_id", "region_id")
+            .iterator(chunk_size=2000)
+        ):
             region_map[rc["tourist_object_id"]].add(rc["region_id"])
 
-        return [
-            AscentDTO(
-                peak_id=a.peak_id,
-                ascent_date=a.ascent_date,
-                region_ids=frozenset(region_map.get(a.peak_id, set())),
+        # Przebieg 2: strumień po ascents, by skonstruować DTO — nie trzyma
+        # tysięcy obiektów AscentLog w RAM naraz.
+        ascents: list[AscentDTO] = []
+        for ascent in qs.only("peak_id", "ascent_date").iterator(chunk_size=2000):
+            ascents.append(
+                AscentDTO(
+                    peak_id=ascent.peak_id,
+                    ascent_date=ascent.ascent_date,
+                    region_ids=frozenset(region_map.get(ascent.peak_id, set())),
+                )
             )
-            for a in ascents
-        ]
+        return ascents
 
     def get_objects_lifespans(self, peak_ids: set[int]) -> dict[int, tuple[date | None, date | None]]:
         """Pobiera bitemporalne ramy życia dla wielu obiektów naraz (Optymalizacja N+1).
@@ -437,30 +447,38 @@ class DjangoTouristRepository(
         from apps.badges.models import ObjectRegionCache
         from apps.tourists.models import AscentLog
 
-        ascents = list(AscentLog.objects.filter(profile_id=profile_id))
-        if not ascents:
+        # AUDYT-031: streaming iterator zamiast materializacji listy w RAM.
+        # peak_id (FK id) i ascent_date są kolumnami na AscentLog — nie potrzebujemy select_related.
+        ascent_qs = AscentLog.objects.filter(profile_id=profile_id).only("peak_id", "ascent_date")
+
+        # Przebieg 1: zbieramy unikalne peak_ids strumieniowo (niska pamięć).
+        peak_ids: set[int] = set()
+        for ascent in ascent_qs.iterator(chunk_size=2000):
+            peak_ids.add(ascent.peak_id)
+
+        if not peak_ids:
             return []
 
         # Doklejanie CQRS zoptymalizowane do jednego zapytania
-        peak_ids = {a.peak_id for a in ascents}
-        region_caches = ObjectRegionCache.objects.filter(tourist_object_id__in=peak_ids).values(
-            "tourist_object_id", "region_id"
-        )
-
-        from collections import defaultdict
-
-        region_map = defaultdict(set)
-        for rc in region_caches:
+        region_map: defaultdict[int, set[int]] = defaultdict(set)
+        for rc in (
+            ObjectRegionCache.objects.filter(tourist_object_id__in=peak_ids)
+            .values("tourist_object_id", "region_id")
+            .iterator(chunk_size=2000)
+        ):
             region_map[rc["tourist_object_id"]].add(rc["region_id"])
 
-        return [
-            AscentDTO(
-                peak_id=a.peak_id,
-                ascent_date=a.ascent_date,
-                region_ids=frozenset(region_map.get(a.peak_id, set())),
+        # Przebieg 2: strumieniujemy z powrotem, by nie trzymać 50k obiektów w RAM.
+        ascents: list[AscentDTO] = []
+        for ascent in ascent_qs.iterator(chunk_size=2000):
+            ascents.append(
+                AscentDTO(
+                    peak_id=ascent.peak_id,
+                    ascent_date=ascent.ascent_date,
+                    region_ids=frozenset(region_map.get(ascent.peak_id, set())),
+                )
             )
-            for a in ascents
-        ]
+        return ascents
 
     def delete_progress(self, profile_id: int, badge_code: str) -> None:
         """

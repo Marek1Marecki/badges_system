@@ -1,10 +1,12 @@
 """Widoki HTML dla obszaru Turysty (Faza C - Frontend)."""
 
+import logging
 from typing import Any
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -31,6 +33,8 @@ from apps.tourists.models import (
     TouristProfile,
     UserBadgeProgress,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _get_active_profile_id(request) -> int:
@@ -188,7 +192,22 @@ def profile_settings_view(request):
 
             if nickname:
                 active_profile.nickname = nickname
-            if birth_date:
+
+            # SECURITY (AUDYT-048): birth_date jest niezmienny po ustawieniu.
+            # Chroni to przed Age Fraud — manipulacją wiekiem w celu zdobycia odznak.
+            if birth_date == "":
+                if active_profile.birth_date is not None:
+                    raise PermissionDenied("Data urodzenia nie może być usunięta po ustawieniu.")
+                active_profile.birth_date = None
+            elif birth_date:
+                if active_profile.birth_date is not None:
+                    logger.warning(
+                        "Attempt to modify birth_date for profile %s by user %s",
+                        active_profile.id,
+                        request.user.id,
+                        extra={"request_id": getattr(request, "request_id", "unknown")},
+                    )
+                    raise PermissionDenied("Data urodzenia nie może być zmieniona po ustawieniu.")
                 active_profile.birth_date = birth_date
 
             active_profile.save(update_fields=["nickname", "birth_date"])
@@ -293,7 +312,13 @@ def badge_detail_view(request, badge_code: str):
     profile_id = _get_active_profile_id(request)
     badge = get_object_or_404(BadgeModel.objects.select_related("organizer"), code=badge_code)
 
-    progress = UserBadgeProgress.objects.filter(profile_id=profile_id, badge=badge).order_by("-cycle_number").first()
+    progress = (
+        UserBadgeProgress.objects.filter(profile_id=profile_id, badge=badge)
+        .select_related("version")
+        .prefetch_related("version__pool_peaks")
+        .order_by("-cycle_number")
+        .first()
+    )
 
     evaluation = None
     target_version = None
@@ -313,6 +338,7 @@ def badge_detail_view(request, badge_code: str):
                 badge=badge,
                 valid_from__lte=today,
             )
+            .prefetch_related("pool_peaks")
             .order_by("-valid_from")
             .first()
         )
