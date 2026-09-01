@@ -129,6 +129,7 @@ def build_container() -> AppContainer:
         analyze_gpx_track=AnalyzeGpxTrackUseCase(map_repository=map_repo, gpx_parser=gpx_parser),
         advance_logistic_status=AdvanceLogisticStatusUseCase(
             progress_repository=progress_repo,
+            event_publisher=event_publisher,
         ),
         bitemporal_validation_service=bitemporal_validation_service,
         bulk_log_ascents=BulkLogAscentsUseCase(

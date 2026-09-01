@@ -175,7 +175,9 @@ digraph G {
   "application.services.poi_scoring_service" -> "domain.services.badge_eligibility_domain_service";
   "application.services.poi_scoring_service" -> "domain.value_objects.verification_context";
   "application.use_cases.advance_logistic_status" -> "application.exceptions";
+  "application.use_cases.advance_logistic_status" -> "application.ports.event_publisher_port";
   "application.use_cases.advance_logistic_status" -> "application.ports.user_progress_port";
+  "application.use_cases.advance_logistic_status" -> "domain.events";
   "application.use_cases.analyze_gpx_track" -> "application.dto.ascent_dto";
   "application.use_cases.analyze_gpx_track" -> "application.exceptions";
   "application.use_cases.analyze_gpx_track" -> "application.ports.gpx_port";

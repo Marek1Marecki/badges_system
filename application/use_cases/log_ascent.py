@@ -13,7 +13,7 @@ from application.ports.uow_port import UnitOfWorkPort
 from application.ports.user_progress_port import AscentLogRepositoryPort, TouristProfileRepositoryPort
 from application.services.bitemporal_validation_service import BitemporalValidationService
 from application.services.poi_scoring_service import PoiScoringService
-from domain.events import UserProgressStateChanged
+from domain.events import AscentLogged, UserProgressStateChanged
 
 
 class LogAscentUseCase:
@@ -77,6 +77,14 @@ class LogAscentUseCase:
             )
             # Uruchamiamy powiadomienie (odpali to Celery, gdy transakcja z commituje się w db)
             self._event_publisher.publish(UserProgressStateChanged(profile_id=profile_id))
+            # Audit trail: kto (profil) zalogował wejście na który szczyt i kiedy (AUDYT-051)
+            self._event_publisher.publish(
+                AscentLogged(
+                    actor_profile_id=profile_id,
+                    peak_id=dto.peak_id,
+                    ascent_date=dto.ascent_date,
+                )
+            )
 
         # Wskazówka implementacyjna Fazy C:
         # Zgodnie z Event-Driven Cache Invalidation, warstwa API wywołująca ten UseCase

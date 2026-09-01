@@ -22,43 +22,51 @@ class TestAdvanceLogisticStatusUseCase:
         """Rzuca błąd gdy postęp nie istnieje."""
         repo = MagicMock()
         repo.get_progress_by_id.return_value = None
-        uc = AdvanceLogisticStatusUseCase(repo)
+        uc = AdvanceLogisticStatusUseCase(repo, MagicMock())
 
         with pytest.raises(UseCaseError, match="nie istnieje"):
-            uc.execute(1, 1, "WAITING_FOR_SEND", "2026-01-01")
+            uc.execute(1, 1, "WAITING_FOR_SEND", "2026-01-01", actor_user_id=1)
 
     def test_raises_when_domain_not_completed(self) -> None:
         """Rzuca błąd gdy domena nie jest zakończona."""
         repo = MagicMock()
         prog = MagicMock(domain_status="IN_PROGRESS")
         repo.get_progress_by_id.return_value = prog
-        uc = AdvanceLogisticStatusUseCase(repo)
+        uc = AdvanceLogisticStatusUseCase(repo, MagicMock())
 
         with pytest.raises(ConflictError, match="Nie można aktualizować"):
-            uc.execute(1, 1, "WAITING_FOR_SEND", "2026-01-01")
+            uc.execute(1, 1, "WAITING_FOR_SEND", "2026-01-01", actor_user_id=1)
 
     def test_raises_on_invalid_transition(self) -> None:
         """Rzuca błąd przy nieprawidłowym przejściu statusu."""
         repo = MagicMock()
         prog = MagicMock(domain_status="COMPLETED", logistic_status="WAITING_FOR_VERIFICATION")
         repo.get_progress_by_id.return_value = prog
-        uc = AdvanceLogisticStatusUseCase(repo)
+        uc = AdvanceLogisticStatusUseCase(repo, MagicMock())
 
         # Próba nieprawidłowego przejścia (WAITING_FOR_VERIFICATION -> ALBUM nie jest dozwolone)
         with pytest.raises(ConflictError, match="Niedozwolone przejście"):
-            uc.execute(1, 1, "ALBUM", "2026-01-01")
+            uc.execute(1, 1, "ALBUM", "2026-01-01", actor_user_id=1)
 
     def test_success_transition(self) -> None:
         """Prawidłowo aktualizuje status logistyczny."""
         repo = MagicMock()
-        prog = MagicMock(domain_status="COMPLETED", logistic_status="WAITING_FOR_VERIFICATION", progress_id=42)
+        publisher = MagicMock()
+        prog = MagicMock(
+            domain_status="COMPLETED",
+            logistic_status="WAITING_FOR_VERIFICATION",
+            progress_id=42,
+            badge_code="KGP",
+            version_id=3,
+        )
         repo.get_progress_by_id.return_value = prog
-        uc = AdvanceLogisticStatusUseCase(repo)
+        uc = AdvanceLogisticStatusUseCase(repo, publisher)
 
-        uc.execute(1, 1, "WAITING_FOR_RECEIVING", "2026-01-01")
+        uc.execute(1, 1, "WAITING_FOR_RECEIVING", "2026-01-01", actor_user_id=9)
         repo.update_logistic_status.assert_called_once_with(
             progress_id=42, logistic_status="WAITING_FOR_RECEIVING", status_date="2026-01-01"
         )
+        publisher.publish.assert_called_once()
 
 
 # 2. EXPLORE MAP (GEOJSON)

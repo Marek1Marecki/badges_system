@@ -479,6 +479,7 @@ class BadgeLogisticsView(View):
                 progress_id=progress_id,
                 new_logistic_status=dto.logistic_status,
                 status_date=dto.status_date,
+                actor_user_id=request.user.id,
             )
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
