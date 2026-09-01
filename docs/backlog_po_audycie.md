@@ -223,13 +223,21 @@ Klasyka skalowania aplikacji Pythonowych. Mamy na to czas – przy 50-100 aktywn
 Brak zapisów "kto, kiedy, co zmienił" dla operacji krytycznych.
 
 **Wdrożone:**
-- [X] Model `AuditLog` (append-only, `apps/tourists/models.py`) z polami `actor`, `action`, `target_type`, `target_id`, `payload` (JSON), `created_at`.
-- [X] 3 zdarzenia domenowe w `domain/events.py`: `AscentLogged`, `BadgeStatusChanged`, `ProfileUpdated`.
-- [X] `CeleryEventPublisher` persistuje wszystkie zdarzenia w tabeli `audit_log` (lazy `AuditLog.objects.create`).
-- [X] Migracja `0004_alter_asc...auditlog.py`.
-- [X] 6 testów publishera (`tests/infrastructure/adapters/test_celery_event_publisher.py`) — mocki bez DB.
+- [X] Model `AuditLog` (append-only, `apps/tourists/models.py`) — pola `actor` (FK→User, SET_NULL), `action`, `target_type`, `target_id`, `payload` (JSON), `created_at`.
+- [X] Model `AuditLog` ma **append-only invariant protection**: `save()` rzuca `AssertionError` gdy `pk is not None`; `delete()` rzuca `AssertionError`.
+- [X] `AuditLogAdmin` read-only w panelu (`has_add_permission/has_change_permission/has_delete_permission` = False).
+- [X] `actor` jako FK do `User` (SET_NULL) **plus** `payload.actor_user_id` jako snapshot — aktor identyfikowany nawet po usunięciu konta.
+- [X] 4 zdarzenia domenowe w `domain/events.py`: `AscentLogged`, `BadgeStatusChanged`, `ProfileUpdated` (+ istniejący `UserProgressStateChanged`).
+- [X] `CeleryEventPublisher` persistuje wszystkie zdarzenia w tabeli `audit_log` przez `_persist_audit_log()`.
+- [X] **Dispatch z Use Case'ów:**
+  - `AdvanceLogisticStatusUseCase` emituje `BadgeStatusChanged` → przekazuje `actor_user_id=request.user.id`.
+  - `LogAscentUseCase` emituje `AscentLogged` → przekazuje `actor_profile_id=profile_id`.
+- [X] Migracja `apps/tourists/migrations/0004_alter_asc...auditlog.py`.
+- [X] 9 testów publishera (`tests/infrastructure/adapters/test_celery_event_publisher.py`) — mocki bez DB.
 
-**Pozostaje jako future:** podpięcie `BadgeStatusChanged` do `AdvanceLogisticStatusUseCase` / weryfikatorów PTTK oraz `AscentLogged` do `LogAscentUseCase` (obecnie agregat emituje zdarzenia, ale nie są jeszcze dispatchowane z Use Case'ów).
+**Known limitation / future:**
+- `AuditLog` nie jest chroniony **na poziomie DB** — ochrona to `model.save()/delete()` lock + Admin read-only. W przyszłości dodać trigger PostgreSQL `BEFORE UPDATE|DELETE ON audit_log FOR EACH ROW EXECUTE FUNCTION deny();`.
+- `ProfileUpdated` jest gotowy (event + persistence), ale nie jest jeszcze dispatchowany (brak use case'u edycji profilu — `UpdateProfileUseCase` w future).
 
 ---
 
