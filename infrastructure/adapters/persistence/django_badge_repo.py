@@ -97,8 +97,8 @@ class DjangoBadgeRepository(BadgeRepositoryPort):
         for rule_dict in version_model.rules:
             try:
                 domain_rules.append(build_rule_from_dict(rule_dict))
-            except ValueError as e:
-                rule_type = rule_dict.get("type", "<brak>")
+            except (ValueError, TypeError) as e:
+                rule_type = rule_dict.get("type", "<brak>") if isinstance(rule_dict, dict) else type(rule_dict).__name__
                 raise ValueError(
                     f"Błąd hydracji reguły '{rule_type}' dla wersji '{badge_code}/{version_model.version_code}': {e}"
                 ) from e

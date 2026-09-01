@@ -284,6 +284,9 @@ def build_rule_from_dict(data: dict[str, Any]) -> BadgeRule:
     Returns:
       BadgeRule:
     """
+    if not isinstance(data, dict):
+        raise TypeError(f"Błąd hydracji reguły: oczekiwano dict, otrzymano {type(data).__name__}.")
+
     data = dict(data)
     rule_type = data.pop("type", None)
 

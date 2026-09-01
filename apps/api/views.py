@@ -131,7 +131,7 @@ def _handle_application_exception(request, exc: ApplicationException) -> JsonRes
         )
 
     if isinstance(exc, ConflictError):
-        logger.info("conflict", extra={"request_id": request_id})
+        logger.warning("conflict", extra={"request_id": request_id})
         return _problem_detail(request, "conflict", "Konflikt Danych", 409, "Konflikt danych.")
 
     if isinstance(exc, BitemporalTimeError):

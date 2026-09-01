@@ -25,6 +25,23 @@ Klasyczny dług technologiczny po szybkiej refaktoryzacji widoków API. Do napra
 
 ---
 
+### [AUDYT-002] Rozbicie "God Class" adaptera turysty na dedykowane repozytoria
+**Obszar:** `Infrastruktura / Persistence`  
+**Priorytet:** `🟠 WYSOKI`  
+
+**Diagnoza Audytora:** 
+`DjangoTouristRepository` implementuje jednocześnie trzy odrębne porty aplikacyjne (Profile, Logi Wejść, Postępy), łamiąc zasadę *Single Responsibility* i utrudniając wstrzykiwanie zależności oraz testowanie.
+
+**Action Items (Do wdrożenia):**
+- [X] Rozbić klasę `DjangoTouristRepository` na trzy mniejsze adaptery (`DjangoTouristProfileRepository`, `DjangoAscentLogRepository`, `DjangoUserProgressRepository`).
+- [X] Zaktualizować rejestrację adapterów w `bootstrap/container.py`.
+- [X] Usunąć martwy kod po atrybucie `request.profile.id` w widoku `BadgeLogisticsView` na rzecz poprawnego wzorca z sesją.
+
+**Komentarz Architekta:**
+Zgodne z kontraktem czystości adapterów. Konieczne przed wejściem w rozwój modułów społecznościowych (Faza D).
+
+---
+
 ### [AUDYT-004] Wyciek architektury: Brakująca wiedza o progach wielostopniowych
 **Obszar:** `Infrastruktura / Adaptery`
 **Priorytet:** `🟠 WYSOKI`
@@ -179,6 +196,51 @@ Klasyczny wyciek logiki do kontrolerów powstały podczas szybkiego dowożenia f
 
 ---
 
+### [AUDYT-017] Duplikacja logiki weryfikacji bitemporalnej
+**Obszar:** `Aplikacja / Use Case`
+**Priorytet:** `🟡 ŚREDNI`
+
+**Diagnoza Audytora:**
+Zasada bitemporalności (T-01, czyli sprawdzanie `existence_start` i `existence_end` obiektu) była zaimplementowana dwukrotnie: w `LogAscentUseCase` oraz w pętli dla `BulkLogAscentsUseCase`.
+
+**Rozwiązanie:**
+- [X] Utworzono `BitemporalValidationService` (`application/services/bitemporal_validation_service.py`) jako serwis aplikacyjny.
+- [X] `LogAscentUseCase.execute` używa `validate_single(peak_id, ascent_date)`.
+- [X] `BulkLogAscentsUseCase.execute` używa `validate_batch(ascents)`.
+- [X] Serwis wstrzyknięty do obu use case'ów w `bootstrap/container.py`.
+- [X] `make check` zielone, 816 testów pass.
+
+**Uzasadnienie decyzji:**
+Serwis aplikacyjny (nie domenowy), bo zależy od `AscentLogRepositoryPort` (port aplikacyjny). Logika T-01/T-03 nie jest encją domenową — to invariants orkiestracji.
+
+**Komentarz Architekta:**
+Wyeliminowano duplikację DRY. Logika T-01/T-03 teraz w jednym miejscu — `BitemporalValidationService`.
+
+---
+
+### [AUDYT-018] Niespójna hierarchia i wykorzystanie wyjątków `ConflictError`
+**Obszar:** `Domena / Wyjątki`
+**Priorytet:** `🟡 ŚREDNI`
+
+**Diagnoza Audytora:**
+Wyjątek `ConflictError` był używany do dwóch różnych celów: (1) duplikaty danych D-04 (Idempotentność), (2) nielegalne przejścia stanu w Kanban FSM (S-03).
+
+**Rozwiązanie:**
+- [X] Wprowadzono `IllegalStateTransitionError` jako subklasę `ConflictError` w `application/exceptions.py` (zgodnie z `docs/Error Handling.md` hierarchią).
+- [X] `advance_logistic_status.py` używa `IllegalStateTransitionError` dla naruszeń FSM (S-03).
+- [X] `ConflictError` ograniczono do dokumentacji do duplikatów D-04.
+- [X] `apps/api/views.py` loguje `IllegalStateTransitionError` jako `invalid-state-transition` (409, typ `/errors/invalid-state-transition`), `ConflictError` jako `conflict`.
+- [X] Test `test_patch_conflict_returns_409` aktualizuje do `IllegalStateTransitionError`.
+- [X] `make check` zielone, 816 testów pass.
+
+**Uzasadnienie decyzji:**
+Subklasa zachowuje backward-compat (`isinstance(exc, ConflictError)` → 409). Nazwa precyzyjniej opisuje przyczynę — lepsza Traceability.
+
+**Komentarz Architekta:**
+`ConflictError` → wyłącznie Idempotentność D-04. `IllegalStateTransitionError` → FSM Kanban.
+
+---
+
 ### [AUDYT-020] Brakujące Testy Integracyjne (PostGIS i Restore Data)
 **Obszar:** `Testy Integracyjne / Infrastruktura`  
 **Priorytet:** `🔴 KRYTYCZNY`  
@@ -217,6 +279,28 @@ Zmiana to faktycznie ~3 min Find & Replace + 1 edycja tolerance.
 
 ---
 
+### [AUDYT-022] Niespójność Testów API z RFC 7807 (Brak `request_id`)
+**Obszar:** `Testy API / Error Handling`
+**Priorytet:** `🟠 WYSOKI`
+
+**Diagnoza Audytora:**
+Żadna asercja błędu API nie weryfikowała `request_id` w odpowiedzi RFC 7807.
+
+**Rozwiązane jako część AUDYT-027:**
+- [X] `_problem_detail` (zarówno `apps/api/views.py`, jak i `infrastructure/middleware/error_handling.py`) zawiera `"request_id": getattr(request, "request_id", "unknown")`.
+
+- [X] Wszystkie 35 asercji kodów `4xx/500` w `tests/apps/api/test_integration.py` mają `assert "request_id" in data` (potwierdzono skanowaniem: 0 missing).
+- [X] `tests/infrastructure/test_error_handling.py` (8 testów, 100% coverage) asercjonuje `request_id` = `req_12345678` oraz fallback `unknown`.
+- [X] `tests/architecture/test_structured_error_context.py` jako fitness function weryfikuje strukturę RFC 7807.
+
+**Uzasadnienie decyzji:**
+Diagnoza była przestrzona — `request_id` był już implementowany (AUDYT-048/050), brakowało jedynie **test coverage**. Wdrożenie AUDYT-027 dodało brakujące asercje.
+
+**Komentarz Architekta:**
+`ERROR_HANDLING.md` jest teraz w pełni pokryty przez testy: każda ścieżka błędu zwraca `request_id`, a każdy test tego weryfikuje.
+
+---
+
 ### [AUDYT-024] Załatanie podatności Open Redirect w `switch_profile_view`
 **Obszar:** `API / Bezpieczeństwo`  
 **Priorytet:** `🔴 KRYTYCZNY`  
@@ -245,6 +329,25 @@ Widok `BadgeLogisticsView` (odpowiedzialny za Osobisty Kanban logistyki) przyjmu
 
 **Komentarz Architekta:**
 Krytyczne przeoczenie logiki w `Use Case`. IDOR to jeden z najgroźniejszych i najczęściej występujących błędów w REST API.
+
+---
+
+### [AUDYT-027] Brak wymuszenia `request_id` w zwracanych błędach
+**Obszar:** `API / Error Handling`
+**Priorytet:** `🟡 ŚREDNI`
+
+**Diagnoza Audytora:**
+RFC 7807 wymaga `request_id` w odpowiedziach błędów; `_problem_detail` oraz testy nie weryfikowały tego pola.
+
+**Rozwiązanie:**
+- [X] Zweryfikowano, że `_problem_detail` już zawiera `"request_id": getattr(request, "request_id", "unknown")` — w `apps/api/views.py` oraz `infrastructure/middleware/error_handling.py`.
+- [X] Uzupełniono testy integracyjne o `assert "request_id" in data` dla 5 ścieżek błędowych (`409 birth_date`, `422 file_too_large / invalid_mime / not_xml`, `422 GPX`).
+
+**Uzasadnienie decyzji:**
+`request_id` był już obecny (z AUDYT-048/050) — diagnoza wymagała potwierdzenia + test coverage. Middleware `RFC7807ErrorMiddleware` wstrzykuje `request_id` do każdego requestu (`process_exception` → 500 fallback również ma request_id).
+
+**Komentarz Architekta:**
+SRE może teraz mapować każdy błąd HTTP na logi serwera.
 
 ---
 
@@ -318,6 +421,39 @@ Bardzo mądre spojrzenie do przodu. Wprawdzie model `AscentLog` jest dość wąs
 
 ---
 
+### [AUDYT-035] Wyciek logiki domenowej do Usługi Aplikacyjnej (`PoiScoringService`)
+**Obszar:** `Aplikacja / Domain Services`  
+**Priorytet:** `🟠 WYSOKI`  
+
+**Diagnoza Audytora:** 
+Audytor wyłapał, że `PoiScoringService` operuje na bardzo skomplikowanej logice (tzw. "symulacja wejść" i mechanizmy leniwego zakotwiczenia). Zadaje pytania: "Co gdyby turysta wszedł tu dzisiaj?". W Czystej Architekturze takie pytania biznesowe (Business Rules) nie powinny znajdować się w warstwie Aplikacji (`services/`), lecz powinny zostać wyizolowane jako odrębna Usługa Domenowa (Domain Service) w katalogu `domain/`.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [X] Utworzyć klasę np. `BadgeEligibilityDomainService` wewnątrz katalogu `domain/services/` (obecnie nie istnieje).
+- [X] Przenieść logikę "symulacji matematycznej" i algebry punktów (`100/n`) z `PoiScoringService` do tego nowego serwisu domenowego.
+- [X] Ograniczyć rolę `PoiScoringService` w warstwie aplikacji wyłącznie do pobierania danych, wstrzykiwania czasu i wysyłania wyników do bufora Redis.
+
+**Komentarz Architekta:**
+Bardzo słuszna uwaga. Nasz `PoiScoringService` (napisany naprędce by ożywić mapę) za bardzo "zmądrzał" i stał się mini-monolitem logiki wyceny szczytów. Czysta algebra punktów musi wrócić do Domeny.
+
+---
+
+### [AUDYT-036] Brak enkapsulacji fabryk reguł z dala od ORM
+**Obszar:** `Infrastruktura / Fabryki`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Repozytorium `DjangoBadgeRepository` zajmuje się obecnie nie tylko mapowaniem modeli z bazy danych, ale posiada w sobie "na twardo" zdefiniowane, złożone funkcje budujące instancje reguł Domeny (tzw. Buildery / Fabryki Reguł z JSONB). Zaciemnia to odpowiedzialność repozytorium ORM.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [X] Rozważyć utworzenie w warstwie infrastruktury odrębnego modułu `factories` (np. `infrastructure/factories/badge_rule_factory.py`).
+- [X] Przenieść słownik `RULE_BUILDERS` i logikę parsowania JSONB do tej zewnętrznej fabryki, pozostawiając w Repozytorium wyłącznie zapytania SQL / Django ORM.
+
+**Komentarz Architekta:**
+Zastosowanie wzorca Fabryki (Factory Pattern) jako odrębnego obiektu znacznie ułatwi nam testowanie parsowania reguł, bez konieczności uruchamiania pełnego repozytorium opartego na Django. Drobne, ale cenne usprawnienie kodu (Code Quality).
+
+---
+
 ### [AUDYT-038] Potrzeba Testów Bezpieczeństwa Deserializacji (Fail-Fast)
 **Obszar:** `Infrastruktura / Testy`  
 **Priorytet:** `🟠 WYSOKI`  
@@ -381,21 +517,6 @@ Znakomite wyłapanie luki w logice grywalizacji (Gamification Exploit). Data uro
 
 ---
 
-### [AUDYT-050] Zabezpieczenie Content-Type dla uploadu plików GPX
-**Obszar:** `API / Bezpieczeństwo`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Widok odpowiedzialny za odbieranie plików GPX weryfikuje ich rozmiar, ale nie weryfikuje jednoznacznie ich zawartości w oparciu o typ MIME. Złośliwy użytkownik może wysłać plik `.exe` jako GPX. Co prawda biblioteka `defusedxml` odrzuci to na etapie parsowania, ale plik i tak zostanie przetransferowany i załadowany do pamięci serwera.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [X] Dodać walidację nagłówka pliku (Magic Bytes) oraz dopuszczonego typu MIME (`application/gpx+xml` lub `text/xml`) przed wpuszczeniem pliku do pamięci operacyjnej parsera.
-
-**Komentarz Architekta:**
-Klasyczne zabezpieczenie bramki sieciowej. Zapobiegnie to obciążaniu pamięci RAM serwera djangowego złośliwymi ładunkami.
-
----
-
 ### [AUDYT-049] Brak walidacji bezpiecznych wektorów w BBox (Over-fetching DoS)
 **Obszar:** `API / GIS`
 **Priorytet:** `🟡 ŚREDNI`
@@ -414,6 +535,21 @@ Pydantic `Field(ge=, le=)` = 3-linijka walidacja na bramce. `extra="forbid"` zab
 
 **Komentarz Architekta:**
 Defense in Depth — walidacja na DTO (Application) przed PostGIS. `bbox=-999` nigdy nie dotrze do `ST_Within`.
+
+---
+
+### [AUDYT-050] Zabezpieczenie Content-Type dla uploadu plików GPX
+**Obszar:** `API / Bezpieczeństwo`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Widok odpowiedzialny za odbieranie plików GPX weryfikuje ich rozmiar, ale nie weryfikuje jednoznacznie ich zawartości w oparciu o typ MIME. Złośliwy użytkownik może wysłać plik `.exe` jako GPX. Co prawda biblioteka `defusedxml` odrzuci to na etapie parsowania, ale plik i tak zostanie przetransferowany i załadowany do pamięci serwera.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [X] Dodać walidację nagłówka pliku (Magic Bytes) oraz dopuszczonego typu MIME (`application/gpx+xml` lub `text/xml`) przed wpuszczeniem pliku do pamięci operacyjnej parsera.
+
+**Komentarz Architekta:**
+Klasyczne zabezpieczenie bramki sieciowej. Zapobiegnie to obciążaniu pamięci RAM serwera djangowego złośliwymi ładunkami.
 
 ---
 
@@ -513,88 +649,28 @@ Klasyczny przypadek "Martwych Linków" (Dead Links). Jest to drobnostka z perspe
 
 ---
 
-### [AUDYT-017] Duplikacja logiki weryfikacji bitemporalnej
-**Obszar:** `Aplikacja / Use Case`
+### [REGRESJA-001] Zmiana logu `ConflictError` z `logger.warning` → `logger.info`
+
+**Obszar:** `API / Views`
 **Priorytet:** `🟡 ŚREDNI`
 
-**Diagnoza Audytora:**
-Zasada bitemporalności (T-01, czyli sprawdzanie `existence_start` i `existence_end` obiektu) była zaimplementowana dwukrotnie: w `LogAscentUseCase` oraz w pętli dla `BulkLogAscentsUseCase`.
+**Diagnoza:** Test `test_security.py::test_conflict_error_does_not_leak_internal_details` wykrył, że handler `_handle_application_exception` loguje `ConflictError` poprzez `logger.info`, podczas gdy asercja testowa (i konsekwentny drugi handler w `ProfileSettingsView`) oczekuje `logger.warning`. Była to nieostrożona zmiana log-levelu.
 
-**Rozwiązanie:**
-- [X] Utworzono `BitemporalValidationService` (`application/services/bitemporal_validation_service.py`) jako serwis aplikacyjny.
-- [X] `LogAscentUseCase.execute` używa `validate_single(peak_id, ascent_date)`.
-- [X] `BulkLogAscentsUseCase.execute` używa `validate_batch(ascents)`.
-- [X] Serwis wstrzyknięty do obu use case'ów w `bootstrap/container.py`.
-- [X] `make check` zielone, 816 testów pass.
-
-**Uzasadnienie decyzji:**
-Serwis aplikacyjny (nie domenowy), bo zależy od `AscentLogRepositoryPort` (port aplikacyjny). Logika T-01/T-03 nie jest encją domenową — to invariants orkiestracji.
-
-**Komentarz Architekta:**
-Wyeliminowano duplikację DRY. Logika T-01/T-03 teraz w jednym miejscu — `BitemporalValidationService`.
+**Działania:**
+- [X] Przywrócić `logger.warning("conflict", ...)` w handlerze `ConflictError` (`apps/api/views.py:134`).
+- [X] Zweryfikować, że wszystkie 409-conflict handlery używają `logger.warning` (spójność semantyczna).
 
 ---
 
-### [AUDYT-018] Niespójna hierarchia i wykorzystanie wyjątków `ConflictError`
-**Obszar:** `Domena / Wyjątki`
-**Priorytet:** `🟡 ŚREDNI`
+### [REGRESJA-002] `AttributeError` w hydracji dla nie-listowego `rules`
 
-**Diagnoza Audytora:**
-Wyjątek `ConflictError` był używany do dwóch różnych celów: (1) duplikaty danych D-04 (Idempotentność), (2) nielegalne przejścia stanu w Kanban FSM (S-03).
+**Obszar:** `Infrastruktura / Repozytorium`
+**Priorytet:** `🔴 KRYTYCZNY`
 
-**Rozwiązanie:**
-- [X] Wprowadzono `IllegalStateTransitionError` jako subklasę `ConflictError` w `application/exceptions.py` (zgodnie z `docs/Error Handling.md` hierarchią).
-- [X] `advance_logistic_status.py` używa `IllegalStateTransitionError` dla naruszeń FSM (S-03).
-- [X] `ConflictError` ograniczono do dokumentacji do duplikatów D-04.
-- [X] `apps/api/views.py` loguje `IllegalStateTransitionError` jako `invalid-state-transition` (409, typ `/errors/invalid-state-transition`), `ConflictError` jako `conflict`.
-- [X] Test `test_patch_conflict_returns_409` aktualizuje do `IllegalStateTransitionError`.
-- [X] `make check` zielone, 816 testów pass.
+**Diagnoza:** Test `test_raises_on_non_list_rules` przekazuje `rules="not-a-list"` (string zamiast listy). Iterowanie stringa po literach → `build_rule_from_dict("n")` → `dict("n")` rzucił `ValueError` wewnątrz fabryki, po czym `except ValueError` handler w `_hydrate_version` próbował `rule_dict.get("type")`, gdzie `rule_dict` był `str` → `AttributeError` (nie w `pytest.raises((ValueError, TypeError)`).
 
-**Uzasadnienie decyzji:**
-Subklasa zachowuje backward-compat (`isinstance(exc, ConflictError)` → 409). Nazwa precyzyjniej opisuje przyczynę — lepsza Traceability.
-
-**Komentarz Architekta:**
-`ConflictError` → wyłącznie Idempotentność D-04. `IllegalStateTransitionError` → FSM Kanban.
-
----
-
-### [AUDYT-027] Brak wymuszenia `request_id` w zwracanych błędach
-**Obszar:** `API / Error Handling`
-**Priorytet:** `🟡 ŚREDNI`
-
-**Diagnoza Audytora:**
-RFC 7807 wymaga `request_id` w odpowiedziach błędów; `_problem_detail` oraz testy nie weryfikowały tego pola.
-
-**Rozwiązanie:**
-- [X] Zweryfikowano, że `_problem_detail` już zawiera `"request_id": getattr(request, "request_id", "unknown")` — w `apps/api/views.py` oraz `infrastructure/middleware/error_handling.py`.
-- [X] Uzupełniono testy integracyjne o `assert "request_id" in data` dla 5 ścieżek błędowych (`409 birth_date`, `422 file_too_large / invalid_mime / not_xml`, `422 GPX`).
-
-**Uzasadnienie decyzji:**
-`request_id` był już obecny (z AUDYT-048/050) — diagnoza wymagała potwierdzenia + test coverage. Middleware `RFC7807ErrorMiddleware` wstrzykuje `request_id` do każdego requestu (`process_exception` → 500 fallback również ma request_id).
-
-**Komentarz Architekta:**
-SRE może teraz mapować każdy błąd HTTP na logi serwera.
-
----
-
-### [AUDYT-022] Niespójność Testów API z RFC 7807 (Brak `request_id`)
-**Obszar:** `Testy API / Error Handling`
-**Priorytet:** `🟠 WYSOKI`
-
-**Diagnoza Audytora:**
-Żadna asercja błędu API nie weryfikowała `request_id` w odpowiedzi RFC 7807.
-
-**Rozwiązane jako część AUDYT-027:**
-- [X] `_problem_detail` (zarówno `apps/api/views.py`, jak i `infrastructure/middleware/error_handling.py`) zawiera `"request_id": getattr(request, "request_id", "unknown")`.
-
-- [X] Wszystkie 35 asercji kodów `4xx/500` w `tests/apps/api/test_integration.py` mają `assert "request_id" in data` (potwierdzono skanowaniem: 0 missing).
-- [X] `tests/infrastructure/test_error_handling.py` (8 testów, 100% coverage) asercjonuje `request_id` = `req_12345678` oraz fallback `unknown`.
-- [X] `tests/architecture/test_structured_error_context.py` jako fitness function weryfikuje strukturę RFC 7807.
-
-**Uzasadnienie decyzji:**
-Diagnoza była przestrzona — `request_id` był już implementowany (AUDYT-048/050), brakowało jedynie **test coverage**. Wdrożenie AUDYT-027 dodało brakujące asercje.
-
-**Komentarz Architekta:**
-`ERROR_HANDLING.md` jest teraz w pełni pokryty przez testy: każda ścieżka błędu zwraca `request_id`, a każdy test tego weryfikuje.
+**Działania:**
+- [X] Dodać do `build_rule_from_dict` early-return walidację `isinstance(data, dict)` → `TypeError` (semantycznie poprawny dla złego typu).
+- [X] W `_hydrate_version` łapać `(ValueError, TypeError)` i obsłużyć `rule_dict.get` dla non-dict (fallback do `type(rule_dict).__name__`).
 
 ---
