@@ -173,3 +173,63 @@ class UserBadgeProgress(models.Model):
         """Reprezentacja tekstowa postępu użytkownika w odznadze."""
         ver = self.version.version_code if self.version else "BRAK (Oczekuje)"
         return f"{self.profile.nickname} | {self.badge.code} [{ver}] (Cykl {self.cycle_number}) | {self.domain_status}"
+
+
+class AuditLog(models.Model):
+    """Niezmienny dziennik zdarzeń (append-only audit trail).
+
+    Spełnia AUDYT-051: rejestruje 'kto, kiedy, co' dla operacji krytycznych
+    (np. cofnięcia statusu odznaki). Chroni przed utratą możliwości odtworzenia
+    sekwencji zdarzeń w przypadku niespójności danych.
+
+    Wypełniany asynchronicznie przez `CeleryEventPublisher` na bazie
+    zdarzeń domenowych (`domain/events.py`).
+    """
+
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="audit_logs_caused",
+        verbose_name="Aktor (User)",
+    )
+    action = models.CharField(
+        max_length=100,
+        verbose_name="Akcja (typ zdarzenia)",
+        db_index=True,
+        help_text="Nazwa zdarzenia domenowego, np. 'BadgeStatusChanged', 'AscentLogged'.",
+    )
+    target_type = models.CharField(
+        max_length=60,
+        verbose_name="Typ obiektu",
+        help_text="Model docelowego rekordu, np. 'BadgeVersion', 'TouristProfile'.",
+    )
+    target_id = models.CharField(
+        max_length=100,
+        verbose_name="ID obiektu",
+        help_text="Wartość klucza głównego lub kod obiektu (dla składanych kluczy).",
+    )
+    payload = models.JSONField(
+        default=dict,
+        verbose_name="Dane zdarzenia (payload)",
+        help_text="Dane zdarzenia w formacie JSON — np. {badge_code, version_code, new_status, reason}.",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        verbose_name="Czas zdarzenia (UTC)",
+    )
+
+    class Meta:
+        """Konfiguracja modelu AuditLog."""
+
+        db_table = "audit_log"
+        verbose_name = "Log Audytowy"
+        verbose_name_plural = "Logi Audytowe"
+        # chronologia malejąco dla typowego podglądu "ostatnie zmiany"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        """Reprezentacja tekstowa wpisu logu audytowego."""
+        return f"[{self.created_at.isoformat()}] {self.action} na {self.target_type}:{self.target_id}"
