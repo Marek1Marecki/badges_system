@@ -1,7 +1,15 @@
 """Adapter repozytorium dla obszaru Turysty (B2C).
 
-Implementuje porty z application/ports/user_progress_port.py przy użyciu Django ORM. Zgodnie z 22-ports-adapters-dto-
-contract.md, izoluje Use Case'y od bazy danych, zwracając i przyjmując wyłącznie DTO oraz proste typy Pythona.
+AUDYT-002: Zespół `DjangoTouristRepository` (implementujący 3 porty) został
+rozbity na trzy dedykowane adaptery, każdy realizujący **jeden port**:
+
+- ``DjangoTouristProfileRepository``  → ``TouristProfileRepositoryPort``
+- ``DjangoAscentLogRepository``       → ``AscentLogRepositoryPort``
+- ``DjangoUserProgressRepository``    → ``UserProgressRepositoryPort``
+
+Stara klasa ``DjangoTouristRepository`` zachowana jest jako **deprecated**
+alias łączący wszystkie trzy, by umożliwić stopnią migrację w `container.py`
+oraz testach.
 """
 
 from collections import defaultdict
@@ -19,16 +27,11 @@ from application.ports.user_progress_port import (
 )
 
 
-class DjangoTouristRepository(
-    TouristProfileRepositoryPort,
-    AscentLogRepositoryPort,
-    UserProgressRepositoryPort,
-):
-    """Zunifikowany adapter bazy danych dla operacji związanych z Turystą."""
+class DjangoTouristProfileRepository(TouristProfileRepositoryPort):
+    """Adapter bazy danych dla portu `TouristProfileRepositoryPort`.
 
-    # =====================================================================
-    # TouristProfileRepositoryPort
-    # =====================================================================
+    Odpowiedzialny wyłącznie za odczyt profilu turysty (wiek, limity, kluby).
+    """
 
     def get_profile(self, profile_id: int) -> TouristProfileDTO | None:
         """
@@ -62,9 +65,13 @@ class DjangoTouristRepository(
             max_active_badges=profile.max_active_badges,
         )
 
-    # =====================================================================
-    # AscentLogRepositoryPort
-    # =====================================================================
+
+class DjangoAscentLogRepository(AscentLogRepositoryPort):
+    """Adapter bazy danych dla portu `AscentLogRepositoryPort`.
+
+    Odpowiedzialny wyłącznie za dziennik wejść (logowanie, odczyt,
+    strumieniowanie i masowe zapisy).
+    """
 
     def get_object_lifespan(self, peak_id: int) -> tuple[date | None, date | None] | None:
         """
@@ -196,9 +203,7 @@ class DjangoTouristRepository(
         # Wstrzykiwanie CQRS (Invariant R-03) — regiony w jednym zapytaniu SQL
         region_map: defaultdict[int, set[int]] = defaultdict(set)
         for rc in (
-            ObjectRegionCache.objects.filter(
-                tourist_object_id__in=fetched_peak_ids,
-            )
+            ObjectRegionCache.objects.filter(tourist_object_id__in=fetched_peak_ids)
             .values("tourist_object_id", "region_id")
             .iterator(chunk_size=2000)
         ):
@@ -236,13 +241,13 @@ class DjangoTouristRepository(
         """Masowo zapisuje wejścia.
 
         Ignoruje duplikaty (Idempotentność D-04).
-                Args:
-                  profile_id: int:
-                  ascents: list[AscentInputDTO]:
-                  profile_id: int:
-                  ascents: list[AscentInputDTO]:
+        Args:
+          profile_id: int:
+          ascents: list[AscentInputDTO]:
+          profile_id: int:
+          ascents: list[AscentInputDTO]:
 
-                Returns:
+        Returns:
         """
         from apps.tourists.models import AscentLog
 
@@ -263,9 +268,61 @@ class DjangoTouristRepository(
         created = AscentLog.objects.bulk_create(new_logs, ignore_conflicts=True)
         return len(created)
 
-    # =====================================================================
-    # UserProgressRepositoryPort
-    # =====================================================================
+    def get_all_ascents_for_user(self, profile_id: int) -> list[AscentDTO]:
+        """
+
+        Args:
+          profile_id: int:
+          profile_id: int:
+
+        Returns:
+
+        """
+        from apps.badges.models import ObjectRegionCache
+        from apps.tourists.models import AscentLog
+
+        # AUDYT-053: streaming iterator zamiast materializacji listy w RAM.
+        # peak_id (FK id) i ascent_date są kolumnami na AscentLog — nie potrzebujemy select_related.
+        ascent_qs = AscentLog.objects.filter(profile_id=profile_id).only("peak_id", "ascent_date")
+
+        # Przebieg 1: zbieramy unikalne peak_ids strumieniowo (niska pamięć).
+        peak_ids: set[int] = set()
+        for ascent in ascent_qs.iterator(chunk_size=2000):
+            peak_ids.add(ascent.peak_id)
+
+        if not peak_ids:
+            return []
+
+        # Doklejanie CQRS zoptymalizowane do jednego zapytania SQL
+        region_map: defaultdict[int, set[int]] = defaultdict(set)
+        for rc in (
+            ObjectRegionCache.objects.filter(
+                tourist_object_id__in=peak_ids,
+            )
+            .values("tourist_object_id", "region_id")
+            .iterator(chunk_size=2000)
+        ):
+            region_map[rc["tourist_object_id"]].add(rc["region_id"])
+
+        # Przebieg 2: strumień z powrotem, by nie trzymać 50k obiektów w RAM.
+        ascents: list[AscentDTO] = []
+        for ascent in ascent_qs.only("peak_id", "ascent_date").iterator(chunk_size=2000):
+            ascents.append(
+                AscentDTO(
+                    peak_id=ascent.peak_id,
+                    ascent_date=ascent.ascent_date,
+                    region_ids=frozenset(region_map.get(ascent.peak_id, set())),
+                )
+            )
+        return ascents
+
+
+class DjangoUserProgressRepository(UserProgressRepositoryPort):
+    """Adapter bazy danych dla portu `UserProgressRepositoryPort`.
+
+    Odpowiedzialny wyłącznie za subskrypcje, Prawa Nabyte i Osobisty Kanban
+    (tworzenie, aktualizacja i odczyt postępów użytkownika).
+    """
 
     def _to_progress_dto(self, progress_obj) -> BadgeProgressDTO:
         """Prywatny mapper ORM -> DTO.
@@ -307,10 +364,7 @@ class DjangoTouristRepository(
         Args:
           profile_id: int:
           badge_code: str:
-          cycle_number: int:  (Default value = 1)
-          profile_id: int:
-          badge_code: str:
-          cycle_number: int:  (Default value = 1)
+          cycle_number: int:
 
         Returns:
 
@@ -318,12 +372,13 @@ class DjangoTouristRepository(
         from apps.tourists.models import UserBadgeProgress
 
         try:
-            prog = UserBadgeProgress.objects.select_related("badge", "version").get(
+            progress = UserBadgeProgress.objects.select_related("badge", "version").get(
                 profile_id=profile_id, badge__code=badge_code, cycle_number=cycle_number
             )
-            return self._to_progress_dto(prog)
         except UserBadgeProgress.DoesNotExist:
             return None
+
+        return self._to_progress_dto(progress)
 
     def start_progress(self, profile_id: int, badge_code: str, version_id: int, cycle_number: int = 1) -> int:
         """
@@ -332,11 +387,7 @@ class DjangoTouristRepository(
           profile_id: int:
           badge_code: str:
           version_id: int:
-          cycle_number: int:  (Default value = 1)
-          profile_id: int:
-          badge_code: str:
-          version_id: int:
-          cycle_number: int:  (Default value = 1)
+          cycle_number: int:
 
         Returns:
 
@@ -418,8 +469,6 @@ class DjangoTouristRepository(
         Args:
           profile_id: int:
           progress_id: int:
-          profile_id: int:
-          progress_id: int:
 
         Returns:
 
@@ -427,58 +476,13 @@ class DjangoTouristRepository(
         from apps.tourists.models import UserBadgeProgress
 
         try:
-            prog = UserBadgeProgress.objects.select_related("badge", "version").get(
+            progress = UserBadgeProgress.objects.select_related("badge", "version").get(
                 id=progress_id, profile_id=profile_id
             )
-            return self._to_progress_dto(prog)
         except UserBadgeProgress.DoesNotExist:
             return None
 
-    def get_all_ascents_for_user(self, profile_id: int) -> list[AscentDTO]:
-        """
-
-        Args:
-          profile_id: int:
-          profile_id: int:
-
-        Returns:
-
-        """
-        from apps.badges.models import ObjectRegionCache
-        from apps.tourists.models import AscentLog
-
-        # AUDYT-031: streaming iterator zamiast materializacji listy w RAM.
-        # peak_id (FK id) i ascent_date są kolumnami na AscentLog — nie potrzebujemy select_related.
-        ascent_qs = AscentLog.objects.filter(profile_id=profile_id).only("peak_id", "ascent_date")
-
-        # Przebieg 1: zbieramy unikalne peak_ids strumieniowo (niska pamięć).
-        peak_ids: set[int] = set()
-        for ascent in ascent_qs.iterator(chunk_size=2000):
-            peak_ids.add(ascent.peak_id)
-
-        if not peak_ids:
-            return []
-
-        # Doklejanie CQRS zoptymalizowane do jednego zapytania
-        region_map: defaultdict[int, set[int]] = defaultdict(set)
-        for rc in (
-            ObjectRegionCache.objects.filter(tourist_object_id__in=peak_ids)
-            .values("tourist_object_id", "region_id")
-            .iterator(chunk_size=2000)
-        ):
-            region_map[rc["tourist_object_id"]].add(rc["region_id"])
-
-        # Przebieg 2: strumieniujemy z powrotem, by nie trzymać 50k obiektów w RAM.
-        ascents: list[AscentDTO] = []
-        for ascent in ascent_qs.iterator(chunk_size=2000):
-            ascents.append(
-                AscentDTO(
-                    peak_id=ascent.peak_id,
-                    ascent_date=ascent.ascent_date,
-                    region_ids=frozenset(region_map.get(ascent.peak_id, set())),
-                )
-            )
-        return ascents
+        return self._to_progress_dto(progress)
 
     def delete_progress(self, profile_id: int, badge_code: str) -> None:
         """
@@ -495,3 +499,11 @@ class DjangoTouristRepository(
         from apps.tourists.models import UserBadgeProgress
 
         UserBadgeProgress.objects.filter(profile_id=profile_id, badge__code=badge_code).delete()
+
+
+class DjangoTouristRepository(DjangoTouristProfileRepository, DjangoAscentLogRepository, DjangoUserProgressRepository):
+    """**DEPRECATED** — Zunifikowany adapter łączący trzy porty.
+
+    AUDYT-002: Ta klasa została rozbita na trzy dedykowane adaptery. Zachowana
+    jedynie dla kompatybilności wstecznej. Użyj odpowiednich podklas bezpośrednio.
+    """

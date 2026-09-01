@@ -126,6 +126,7 @@ digraph G {
     "apps.badges.management.commands.validate_reference_manifest" [fillcolor="pink"];
     "apps.badges.migrations" [fillcolor="pink"];
     "apps.badges.migrations.0001_initial" [fillcolor="pink"];
+    "apps.badges.migrations.0002_alter_organizermodel_has_publication_consent_and_more" [fillcolor="pink"];
     "apps.badges.models" [fillcolor="pink"];
     "apps.badges.reference_data" [fillcolor="pink"];
     "apps.badges.reference_data.constants" [fillcolor="pink"];
@@ -138,6 +139,8 @@ digraph G {
     "apps.tourists.context_processors" [fillcolor="pink"];
     "apps.tourists.migrations" [fillcolor="pink"];
     "apps.tourists.migrations.0001_initial" [fillcolor="pink"];
+    "apps.tourists.migrations.0002_alter_ascentlog_profile_and_more" [fillcolor="pink"];
+    "apps.tourists.migrations.0003_ascentlog_ascent_profile_date_idx_and_more" [fillcolor="pink"];
     "apps.tourists.models" [fillcolor="pink"];
     "apps.tourists.signals" [fillcolor="pink"];
     "apps.tourists.views" [fillcolor="pink"];

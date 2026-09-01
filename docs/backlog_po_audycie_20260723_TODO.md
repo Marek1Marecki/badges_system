@@ -58,21 +58,6 @@ Decyzja o HTMX była jedną z najważniejszych w projekcie. Zdecydowanie zasług
 
 ---
 
-### [AUDYT-012] Sanity Check: Prawa Nabyte i Cinderella Bug
-**Obszar:** `Infrastructure / Badge Repo`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Audytor wytypował plik `infrastructure/adapters/persistence/django_badge_repo.py` jako ryzykowny (P1) ze względu na hydrację reguł z pola JSONB do obiektów Czystej Domeny oraz problem "Cinderella Bug" (EC-068), który znikał z czasem (brak obsługi pola `valid_to`).
-
-**Action Items (Do wdrożenia PRZEZ CIEBIE w IDE):**
-- [ ] Sprawdzić implementację `get_latest_badge_version` i `get_version_id_for_date`. Upewnić się, że obie metody posiadają warunek logiczny chroniący przed błędem upływu dnia (np. `Q(valid_to__isnull=True) | Q(valid_to__gte=target_date)`).
-
-**Komentarz Architekta:**
-Zastosowaliśmy to rozwiązanie podczas incydentu "Znikających Szczytów o Północy", ale warto sprawdzić, czy zmiana na 100% nie została cofnięta przez przypadek przy kopiowaniu plików.
-
----
-
 ### [AUDYT-013] Przepływ i hermetyzacja Kontenera DI
 **Obszar:** `Bootstrap / DI Container`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -263,55 +248,6 @@ Ochrona "w głąb" (Defense in Depth). Nawet użycie biblioteki `defusedxml` pow
 
 ---
 
-### [AUDYT-029] Brak indeksów na często używanych kolumnach ORM
-**Obszar:** `Baza Danych / Modele Django`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Baza rosnąc do setek tysięcy wierszy utknie na pełnych skanach tabel (Seq Scan). Modele nie posiadają zdefiniowanych indeksów w klasie `Meta` (lub bezpośrednio na polach za pomocą `db_index=True`) dla najczęściej filtrowanych ścieżek odczytu.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Dodać indeksy na polach: `TouristObject.name`, `TouristObject.status`, `TouristObject.is_active`.
-- [ ] Dodać Composite Index (złożony indeks) dla `AscentLog(profile_id, ascent_date)` (wspiera operację `get_oldest_ascent_date`).
-- [ ] Dodać Composite Index dla `UserBadgeProgress(profile_id, badge_id, domain_status)` (optymalizacja dla zapytań Czystej Domeny o postęp).
-- [ ] Wdrożyć indeksy poprzez stworzenie nowych migracji schematu (`Database Release`).
-
-**Komentarz Architekta:**
-Klasyczny błąd MVP. Dodanie tych indeksów skróci czas krytycznych zapytań Use Case'ów z kilkuset do pojedynczych milisekund. Obowiązkowe przed wejściem na 10 tysięcy użytkowników.
-
----
-
-### [AUDYT-030] N+1 Query w widoku `badge_detail_view` (M2M `pool_peaks`)
-**Obszar:** `API / Widoki HTMX`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Pętla odczytująca listę obiektów na stronie ze szczegółami odznaki (renderowana w HTML) odwołuje się do `target_version.pool_peaks.all()`. Ponieważ obiekt wersji nie został pobrany z użyciem instrukcji `prefetch_related("pool_peaks")`, przejście po 100 szczytach odznaki spowoduje wygenerowanie 100 osobnych zapytań SQL do bazy w jednym żądaniu HTTP.
-
-**Action Items (Do wdrożenia):**
-- [ ] W pliku `apps/tourists/views.py` (lub w Query Service) zmodyfikować zapytanie pobierające wersję odznaki tak, by dołączyć `prefetch_related("pool_peaks")` przed przekazaniem obiektu do szablonu.
-
-**Komentarz Architekta:**
-Zjawisko to zostało usunięte z głównego rankingu (`ExploreQueriesService`), ale zapomnieliśmy o nim w "lewym pasku" na samej stronie detali odznaki. Szybka poprawka (`prefetch_related`) w zapytaniu zdejmie gigantyczne obciążenie z połączenia z PostGIS-em.
-
----
-
-### [AUDYT-031] Przepełnienie RAM przy pobieraniu wszystkich logów wejść
-**Obszar:** `Infrastruktura / Repozytoria`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Metoda `get_all_ascents_for_user` w `DjangoTouristRepository` wczytuje wszystkie historyczne logi użytkownika (`list(AscentLog.objects...)`) prosto do pamięci RAM naraz. Kiedy użytkownik zacznie gromadzić tysiące wpisów z tras GPX, system odczytu postępów spowoduje zjawisko OOM (Out Of Memory) na serwerze i zawieszenie procesu `web` (Gunicorn).
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Zastąpić bezwzględne wywołanie `.all()` użyciem parsera strumieniowego bazy danych (np. `.iterator(chunk_size=2000)` w Django).
-- [ ] Zaprojektować ewentualną paginację dla endpointu weryfikacyjnego.
-
-**Komentarz Architekta:**
-Bardzo mądre spojrzenie do przodu. Wprawdzie model `AscentLog` jest dość wąski w SQL, ładowanie 50 000 obiektów do pamięci przy każdym przeliczeniu punktacji (PoiScoringService) udławi serwer. Przebudowa odczytu na iteratory jest koniecznością w fazie stabilizacji (SRE).
-
----
-
 ### [AUDYT-032] Nadmiernie obciążająca agregacja `get_oldest_ascent_date`
 **Obszar:** `Infrastruktura / Zapytania`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -476,22 +412,6 @@ Temat do podjęcia wyłącznie po zmonitorowaniu rzeczywistego obciążenia na p
 
 ---
 
-### [AUDYT-045] Usunięcie Opcji `CASCADE` w Profilach Turystów
-**Obszar:** `Architektura / RODO`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Relacja z profilu turysty na jego wejścia w bazie danych posiada parametr `on_delete=CASCADE`. Jeśli administrator (lub system RODO) usunie profil, baza automatycznie i bezpowrotnie zniszczy wszystkie jego wejścia. Prowadzi to do utraty zanonimizowanych danych analitycznych (historii ruchu na szlakach PTTK) oraz niszczy agregaty popularności szczytów.
-
-**Action Items (Do wdrożenia):**
-- [ ] Zmodyfikować powiązanie na `on_delete=PROTECT` lub `SET_NULL` (wymaga zmiany `profile_id` na opcjonalne).
-- [ ] Zaimplementować mechanizm "Tombstoningu" (Soft Delete) dla profili – kasowanie e-maili/haseł, ale pozostawianie zanonimizowanego identyfikatora przypisanego do wejść.
-
-**Komentarz Architekta:**
-Uwaga wybitna. Twarde usuwanie na kaskadzie to łatwe wyjście na etapie MVP, ale destrukcyjne na produkcji.
-
----
-
 ### [AUDYT-046] Wdrożenie Connection Poolingu (pgBouncer)
 **Obszar:** `Infrastruktura / DevOps`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -551,21 +471,6 @@ Obecny model danych zakłada 7-poziomową strukturę terytorialną opartą na `F
 
 **Komentarz Architekta:**
 Klasyczny dług technologiczny. Do momentu osiągnięcia dziesiątek tysięcy użytkowników i obiektów w Polsce obecna architektura połączona z tabelą CQRS (Zmaterializowanym widokiem odczytu `ObjectRegionCache`) jest w pełni wydolna. Zadanie do realizacji w okienku optymalizacyjnym (Scale-Out Phase).
-
----
-
-### [AUDYT-053] Ograniczenie ryzyka OOM (Out Of Memory) przy pobieraniu historii
-**Obszar:** `Wydajność / Adaptery`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-W repozytoriach znajdują się metody takie jak `get_all_ascents_for_user`, które ładują wszystkie rekordy historii turysty bezpośrednio do jednej listy w pamięci RAM Pythona. Brak wbudowanego stronicowania (Paginacji) lub użycia iteratorów (`.iterator(chunk_size)`) spowoduje zjawisko OOM na serwerach aplikacyjnych w momencie, gdy tysiące użytkowników zaimportuje wieloletnie paczki z plików GPX.
-
-**Action Items (Do wdrożenia w najbliższych sprintach):**
-- [ ] Zastąpić bezwzględne wywołania typu `.all()` mechanizmami dzielenia na paczki (Batching) lub generatorami w warstwie adapterów bazodanowych dla tabel rosnących.
-
-**Komentarz Architekta:**
-Typowy "Cichy Zabójca" aplikacji pisanych w ORM-ach, który ujawnia się dopiero w fazie produkcyjnego wzrostu obciążenia (Load Spikes). Szybki do naprawy, wymagający modyfikacji kilku linijek w adapterach odczytu.
 
 ---
 

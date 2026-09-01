@@ -38,7 +38,11 @@ from infrastructure.adapters.persistence.django_news_repo import DjangoNewsRepos
 from infrastructure.adapters.persistence.django_proximity_repo import DjangoProximityRepository
 from infrastructure.adapters.persistence.django_region_cache_repo import DjangoRegionCacheRepository
 from infrastructure.adapters.persistence.django_region_geometry_repo import DjangoTouristRegionGeometryRepository
-from infrastructure.adapters.persistence.django_tourist_repo import DjangoTouristRepository
+from infrastructure.adapters.persistence.django_tourist_repo import (
+    DjangoAscentLogRepository,
+    DjangoTouristProfileRepository,
+    DjangoUserProgressRepository,
+)
 
 
 @dataclass(frozen=True)
@@ -87,7 +91,10 @@ def build_container() -> AppContainer:
     region_cache_repo = DjangoRegionCacheRepository()
     region_geom_repo = DjangoTouristRegionGeometryRepository()
     proximity_repo = DjangoProximityRepository()
-    tourist_repo = DjangoTouristRepository()
+    # AUDYT-002: rozbito DjangoTouristRepository na 3 dedykowane adaptery.
+    profile_repo = DjangoTouristProfileRepository()
+    ascent_repo = DjangoAscentLogRepository()
+    progress_repo = DjangoUserProgressRepository()
 
     # gpx_parser = ElementTreeGpxParser()
     news_scraper = BeautifulSoupNewsScraper()
@@ -99,25 +106,25 @@ def build_container() -> AppContainer:
     # PoiScoringService (Naprawa argumentów z błędu Mypy)
     poi_scoring_service = PoiScoringService(
         badge_repository=badge_repo,
-        progress_repository=tourist_repo,
-        ascent_repository=tourist_repo,
-        profile_repository=tourist_repo,
+        progress_repository=progress_repo,
+        ascent_repository=ascent_repo,
+        profile_repository=profile_repo,
         cache=cache_adapter,
         clock=clock,
     )
     explore_queries_service = ExploreQueriesService(
         query_repository=explore_query_repo,
-        progress_repository=tourist_repo,
+        progress_repository=progress_repo,
         cache=cache_adapter,
     )
 
     _container_instance = AppContainer(
         analyze_gpx_track=AnalyzeGpxTrackUseCase(map_repository=map_repo, gpx_parser=gpx_parser),
         advance_logistic_status=AdvanceLogisticStatusUseCase(
-            progress_repository=tourist_repo,
+            progress_repository=progress_repo,
         ),
         bulk_log_ascents=BulkLogAscentsUseCase(
-            ascent_repository=tourist_repo,
+            ascent_repository=ascent_repo,
             clock=clock,
             uow=uow,
             event_publisher=event_publisher,
@@ -130,8 +137,8 @@ def build_container() -> AppContainer:
         run_osm_night_watchman=RunOsmNightWatchmanUseCase(osm_repository=osm_repo, clock=clock),
         get_mvt_tile=GetMvtTileUseCase(mvt_repository=mvt_repo, cache=cache_adapter),
         log_ascent=LogAscentUseCase(
-            ascent_repository=tourist_repo,
-            profile_repository=tourist_repo,
+            ascent_repository=ascent_repo,
+            profile_repository=profile_repo,
             poi_service=poi_scoring_service,
             clock=clock,
             uow=uow,
@@ -139,35 +146,35 @@ def build_container() -> AppContainer:
         ),
         scan_proximity_candidates=ScanProximityCandidatesUseCase(proximity_repository=proximity_repo),
         start_badge_progress=StartBadgeProgressUseCase(
-            progress_repository=tourist_repo,
-            ascent_repository=tourist_repo,
+            progress_repository=progress_repo,
+            ascent_repository=ascent_repo,
             badge_repository=badge_repo,
-            profile_repository=tourist_repo,
+            profile_repository=profile_repo,
             clock=clock,
             uow=uow,
             event_publisher=event_publisher,
         ),
         unsubscribe_badge=UnsubscribeBadgeUseCase(
-            progress_repository=tourist_repo,
+            progress_repository=progress_repo,
             uow=uow,
             event_publisher=event_publisher,
         ),
         evaluate_badge_progress=EvaluateBadgeProgressQuery(
-            progress_repository=tourist_repo,
-            ascent_repository=tourist_repo,
-            profile_repository=tourist_repo,
+            progress_repository=progress_repo,
+            ascent_repository=ascent_repo,
+            profile_repository=profile_repo,
             badge_repository=badge_repo,
             clock=clock,
         ),
         update_badge_progress=UpdateBadgeProgressCommand(
             query_service=EvaluateBadgeProgressQuery(
-                progress_repository=tourist_repo,
-                ascent_repository=tourist_repo,
-                profile_repository=tourist_repo,
+                progress_repository=progress_repo,
+                ascent_repository=ascent_repo,
+                profile_repository=profile_repo,
                 badge_repository=badge_repo,
                 clock=clock,
             ),
-            progress_repository=tourist_repo,
+            progress_repository=progress_repo,
         ),
         poi_scoring_service=poi_scoring_service,
         explore_queries_service=explore_queries_service,

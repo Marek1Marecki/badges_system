@@ -25,6 +25,25 @@ Klasyczny dług technologiczny po szybkiej refaktoryzacji widoków API. Do napra
 
 ---
 
+### [AUDYT-004] Wyciek architektury: Brakująca wiedza o progach wielostopniowych
+**Obszar:** `Infrastruktura / Adaptery`
+**Priorytet:** `🟠 WYSOKI`
+
+**Diagnoza Audytora:**
+Podczas hydracji definicji odznaki z bazy danych, wartość progu zaliczeniowego `required_count` była sztucznie obliczana jako długość puli (`len(pool_peaks)`) na poziomie Wersji. Mechanizm ten psuł odznaki wielostopniowe, gdzie właściwy próg przypisany jest do konkretnego `BadgeTier` (Stopnia).
+
+**Action Items (Do wdrożenia):**
+- [X] Przenieść progi liczbowe z Wersji Odznaki do poszczególnych Stopni (`BadgeTierDomain`).
+- [X] Zmodyfikować logikę oceny `evaluate()` w Domenie, by weryfikowała postęp względem tablicy wstrzykniętych Stopni (Tiers).
+- [X] Zamknąć opisany dług techniczny `TD-03` w dokumentacji.
+
+**Wdrożenie:**
+- Domena (`BadgeVersionDomain`, `BadgeTierDomain`) posiada pole `required_count` na każdym Stopniu; `evaluate()` (linia 76) używa `t.required_count`.
+- Adapter (`_hydrate_version`) odczytuje `BadgeTierModel.required_peaks_count`, fallback `len(pool_peaks)` tylko dla `None`.
+- Testy: `test_hydrates_multi_tier_with_distinct_thresholds`, `test_hydrates_fallback_to_pool_size_when_required_peaks_count_is_null`.
+
+---
+
 ### [AUDYT-005] Kaskadowe wygnanie ducha "VerificationRequest"
 **Obszar:** `Dokumentacja / Architektura`  
 **Priorytet:** `🔴 KRYTYCZNY`  
@@ -127,6 +146,21 @@ Większość z tych zabezpieczeń wprowadziliśmy już we wczorajszym sprincie, 
 
 ---
 
+### [AUDYT-012] Sanity Check: Prawa Nabyte i Cinderella Bug
+**Obszar:** `Infrastructure / Badge Repo`  
+**Priorytet:** `🟠 WYSOKI`  
+
+**Diagnoza Audytora:** 
+Audytor wytypował plik `infrastructure/adapters/persistence/django_badge_repo.py` jako ryzykowny (P1) ze względu na hydrację reguł z pola JSONB do obiektów Czystej Domeny oraz problem "Cinderella Bug" (EC-068), który znikał z czasem (brak obsługi pola `valid_to`).
+
+**Action Items (Do wdrożenia PRZEZ CIEBIE w IDE):**
+- [ ] Sprawdzić implementację `get_latest_badge_version` i `get_version_id_for_date`. Upewnić się, że obie metody posiadają warunek logiczny chroniący przed błędem upływu dnia (np. `Q(valid_to__isnull=True) | Q(valid_to__gte=target_date)`).
+
+**Komentarz Architekta:**
+Zastosowaliśmy to rozwiązanie podczas incydentu "Znikających Szczytów o Północy", ale warto sprawdzić, czy zmiana na 100% nie została cofnięta przez przypadek przy kopiowaniu plików.
+
+---
+
 ### [AUDYT-014] Ominięcie architektury w widokach API (Direct ORM Usage)
 **Obszar:** `API / Hexagonal Architecture`  
 **Priorytet:** `🔴 KRYTYCZNY`  
@@ -144,7 +178,6 @@ Widoki `ProfileSettingsView` oraz `NearbyObjectsView` w `apps/api/views.py` łam
 Klasyczny wyciek logiki do kontrolerów powstały podczas szybkiego dowożenia funkcji Fazy C. Jest to bardzo szkodliwe dla izolacji testów i musi zostać wyczyszczone jako priorytet przed rozwojem aplikacji.
 
 ---
-
 
 ### [AUDYT-020] Brakujące Testy Integracyjne (PostGIS i Restore Data)
 **Obszar:** `Testy Integracyjne / Infrastruktura`  
@@ -194,6 +227,55 @@ Krytyczne przeoczenie logiki w `Use Case`. IDOR to jeden z najgroźniejszych i n
 
 ---
 
+### [AUDYT-029] Brak indeksów na często używanych kolumnach ORM
+**Obszar:** `Baza Danych / Modele Django`  
+**Priorytet:** `🟠 WYSOKI`  
+
+**Diagnoza Audytora:** 
+Baza rosnąc do setek tysięcy wierszy utknie na pełnych skanach tabel (Seq Scan). Modele nie posiadają zdefiniowanych indeksów w klasie `Meta` (lub bezpośrednio na polach za pomocą `db_index=True`) dla najczęściej filtrowanych ścieżek odczytu.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [ ] Dodać indeksy na polach: `TouristObject.name`, `TouristObject.status`, `TouristObject.is_active`.
+- [ ] Dodać Composite Index (złożony indeks) dla `AscentLog(profile_id, ascent_date)` (wspiera operację `get_oldest_ascent_date`).
+- [ ] Dodać Composite Index dla `UserBadgeProgress(profile_id, badge_id, domain_status)` (optymalizacja dla zapytań Czystej Domeny o postęp).
+- [ ] Wdrożyć indeksy poprzez stworzenie nowych migracji schematu (`Database Release`).
+
+**Komentarz Architekta:**
+Klasyczny błąd MVP. Dodanie tych indeksów skróci czas krytycznych zapytań Use Case'ów z kilkuset do pojedynczych milisekund. Obowiązkowe przed wejściem na 10 tysięcy użytkowników.
+
+---
+
+### [AUDYT-030] N+1 Query w widoku `badge_detail_view` (M2M `pool_peaks`)
+**Obszar:** `API / Widoki HTMX`  
+**Priorytet:** `🟠 WYSOKI`  
+
+**Diagnoza Audytora:** 
+Pętla odczytująca listę obiektów na stronie ze szczegółami odznaki (renderowana w HTML) odwołuje się do `target_version.pool_peaks.all()`. Ponieważ obiekt wersji nie został pobrany z użyciem instrukcji `prefetch_related("pool_peaks")`, przejście po 100 szczytach odznaki spowoduje wygenerowanie 100 osobnych zapytań SQL do bazy w jednym żądaniu HTTP.
+
+**Action Items (Do wdrożenia):**
+- [ ] W pliku `apps/tourists/views.py` (lub w Query Service) zmodyfikować zapytanie pobierające wersję odznaki tak, by dołączyć `prefetch_related("pool_peaks")` przed przekazaniem obiektu do szablonu.
+
+**Komentarz Architekta:**
+Zjawisko to zostało usunięte z głównego rankingu (`ExploreQueriesService`), ale zapomnieliśmy o nim w "lewym pasku" na samej stronie detali odznaki. Szybka poprawka (`prefetch_related`) w zapytaniu zdejmie gigantyczne obciążenie z połączenia z PostGIS-em.
+
+---
+
+### [AUDYT-031] Przepełnienie RAM przy pobieraniu wszystkich logów wejść
+**Obszar:** `Infrastruktura / Repozytoria`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Metoda `get_all_ascents_for_user` w `DjangoTouristRepository` wczytuje wszystkie historyczne logi użytkownika (`list(AscentLog.objects...)`) prosto do pamięci RAM naraz. Kiedy użytkownik zacznie gromadzić tysiące wpisów z tras GPX, system odczytu postępów spowoduje zjawisko OOM (Out Of Memory) na serwerze i zawieszenie procesu `web` (Gunicorn).
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [ ] Zastąpić bezwzględne wywołanie `.all()` użyciem parsera strumieniowego bazy danych (np. `.iterator(chunk_size=2000)` w Django).
+- [ ] Zaprojektować ewentualną paginację dla endpointu weryfikacyjnego.
+
+**Komentarz Architekta:**
+Bardzo mądre spojrzenie do przodu. Wprawdzie model `AscentLog` jest dość wąski w SQL, ładowanie 50 000 obiektów do pamięci przy każdym przeliczeniu punktacji (PoiScoringService) udławi serwer. Przebudowa odczytu na iteratory jest koniecznością w fazie stabilizacji (SRE).
+
+---
+
 ### [AUDYT-038] Potrzeba Testów Bezpieczeństwa Deserializacji (Fail-Fast)
 **Obszar:** `Infrastruktura / Testy`  
 **Priorytet:** `🟠 WYSOKI`  
@@ -206,6 +288,22 @@ Audytor wyznaczył adapter `django_badge_repo.py` jako punkt ryzyka klasy `🔴 
 
 **Komentarz Architekta:**
 Ufamy naszej implementacji słownika `RULE_BUILDERS`, ale nie udowodniliśmy w testach, że faktycznie zatrzymuje on złośliwy lub uszkodzony schemat JSONB z bazy. Proste i tanie zabezpieczenie.
+
+---
+
+### [AUDYT-045] Usunięcie Opcji `CASCADE` w Profilach Turystów
+**Obszar:** `Architektura / RODO`  
+**Priorytet:** `🟠 WYSOKI`  
+
+**Diagnoza Audytora:** 
+Relacja z profilu turysty na jego wejścia w bazie danych posiada parametr `on_delete=CASCADE`. Jeśli administrator (lub system RODO) usunie profil, baza automatycznie i bezpowrotnie zniszczy wszystkie jego wejścia. Prowadzi to do utraty zanonimizowanych danych analitycznych (historii ruchu na szlakach PTTK) oraz niszczy agregaty popularności szczytów.
+
+**Action Items (Do wdrożenia):**
+- [ ] Zmodyfikować powiązanie na `on_delete=PROTECT` lub `SET_NULL` (wymaga zmiany `profile_id` na opcjonalne).
+- [ ] Zaimplementować mechanizm "Tombstoningu" (Soft Delete) dla profili – kasowanie e-maili/haseł, ale pozostawianie zanonimizowanego identyfikatora przypisanego do wejść.
+
+**Komentarz Architekta:**
+Uwaga wybitna. Twarde usuwanie na kaskadzie to łatwe wyjście na etapie MVP, ale destrukcyjne na produkcji.
 
 ---
 
@@ -253,6 +351,21 @@ Widok odpowiedzialny za odbieranie plików GPX weryfikuje ich rozmiar, ale nie w
 
 **Komentarz Architekta:**
 Klasyczne zabezpieczenie bramki sieciowej. Zapobiegnie to obciążaniu pamięci RAM serwera djangowego złośliwymi ładunkami.
+
+---
+
+### [AUDYT-053] Ograniczenie ryzyka OOM (Out Of Memory) przy pobieraniu historii
+**Obszar:** `Wydajność / Adaptery`  
+**Priorytet:** `🟠 WYSOKI`  
+
+**Diagnoza Audytora:** 
+W repozytoriach znajdują się metody takie jak `get_all_ascents_for_user`, które ładują wszystkie rekordy historii turysty bezpośrednio do jednej listy w pamięci RAM Pythona. Brak wbudowanego stronicowania (Paginacji) lub użycia iteratorów (`.iterator(chunk_size)`) spowoduje zjawisko OOM na serwerach aplikacyjnych w momencie, gdy tysiące użytkowników zaimportuje wieloletnie paczki z plików GPX.
+
+**Action Items (Do wdrożenia w najbliższych sprintach):**
+- [ ] Zastąpić bezwzględne wywołania typu `.all()` mechanizmami dzielenia na paczki (Batching) lub generatorami w warstwie adapterów bazodanowych dla tabel rosnących.
+
+**Komentarz Architekta:**
+Typowy "Cichy Zabójca" aplikacji pisanych w ORM-ach, który ujawnia się dopiero w fazie produkcyjnego wzrostu obciążenia (Load Spikes). Szybki do naprawy, wymagający modyfikacji kilku linijek w adapterach odczytu.
 
 ---
 
@@ -336,20 +449,3 @@ Główny plik wejściowy do projektu (`README.md`) kieruje programistę pod niei
 Klasyczny przypadek "Martwych Linków" (Dead Links). Jest to drobnostka z perspektywy kodu, ale kluczowy błąd z perspektywy pierwszego wrażenia (Developer Experience).
 
 ---
-
-### [AUDYT-004] Wyciek architektury: Brakująca wiedza o progach wielostopniowych
-**Obszar:** `Infrastruktura / Adaptery`
-**Priorytet:** `🟠 WYSOKI`
-
-**Diagnoza Audytora:**
-Podczas hydracji definicji odznaki z bazy danych, wartość progu zaliczeniowego `required_count` była sztucznie obliczana jako długość puli (`len(pool_peaks)`) na poziomie Wersji. Mechanizm ten psuł odznaki wielostopniowe, gdzie właściwy próg przypisany jest do konkretnego `BadgeTier` (Stopnia).
-
-**Action Items (Do wdrożenia):**
-- [X] Przenieść progi liczbowe z Wersji Odznaki do poszczególnych Stopni (`BadgeTierDomain`).
-- [X] Zmodyfikować logikę oceny `evaluate()` w Domenie, by weryfikowała postęp względem tablicy wstrzykniętych Stopni (Tiers).
-- [X] Zamknąć opisany dług techniczny `TD-03` w dokumentacji.
-
-**Wdrożenie:**
-- Domena (`BadgeVersionDomain`, `BadgeTierDomain`) posiada pole `required_count` na każdym Stopniu; `evaluate()` (linia 76) używa `t.required_count`.
-- Adapter (`_hydrate_version`) odczytuje `BadgeTierModel.required_peaks_count`, fallback `len(pool_peaks)` tylko dla `None`.
-- Testy: `test_hydrates_multi_tier_with_distinct_thresholds`, `test_hydrates_fallback_to_pool_size_when_required_peaks_count_is_null`.
