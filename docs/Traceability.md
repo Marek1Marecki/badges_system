@@ -32,12 +32,13 @@
 | **US-C06** | `BadgeVersion` | UC-004 `VerifyBadgeUseCase` | R-01 (Set Math w RAM) | `test_badge_version.py` | ✔ |
 | **US-C09** | `UserBadgeProgress`| UC-004 `VerifyBadgeUseCase` | P-02 (Zużycie Wejść / `cutoff_date`) | `test_verify_badge.py` | ✔ |
 | **(Wildcard)**| `Ascent` (VO) | UC-004 `VerifyBadgeUseCase` | R-03 (Wildcard), `RegionCountRule` | `test_badge_rules.py` | ✔ |
+| **Progi Wielostopniowe (T-03)** | `BadgeTierDomain` | `VerifyBadgeUseCase` / Fabryka Reguł | Dynamiczne liczenie zależne od stopnia | `test_hydrates_multi_tier` | ✔ |
 
 ## 4. Osobisty Kanban Logistyczny (Epic 4)
 
 | Story | Aggregate / Entity | Use Case | Domain Rule / Invariant | Plik Testowy | Status |
 |:---|:---|:---|:---|:---|:---:|
-| **US-C07** | `UserBadgeProgress`| UC-008 `AdvanceLogisticStatusUseCase` | S-03 (Separacja Matematyki) | `test_advance_logistic_status.py` | ✔ |
+| **US-C07** | `UserBadgeProgress`| UC-008 `AdvanceLogisticStatusUseCase` | **S-03** (FSM Kanban, Ochrona Stanu), Wyjątek `IllegalStateTransitionError` | `test_advance_logistic_status.py` / `test_patch_conflict_returns_409` | ✔ |
 | **US-C08b**| `UserBadgeProgress`| UC-009 `UnsubscribeBadgeUseCase`| Ochrona stanu `COMPLETED` | `test_unsubscribe_badge.py` | ✔ |
 
 ## 5. Operacje Danych i Automatyzacja (Epic 6)
@@ -47,6 +48,7 @@
 | **US-A01** | `BadgeNewsItem` | UC-010 `FetchBadgeNewsUseCase` | Fail-Silently Web Scraping | `test_news_scraper.py` | ✔ |
 | **(Sync)** | `TouristObject` | UC-011 `RunOsmNightWatchmanUseCase` | S-02 (Poison Pill), Ochrona WAF | `test_osm_adapter.py` | ✔ |
 | **(Klastry)**| `TouristObject` | UC-012 `TouristObject.clean()` | C-01 (Płaska Gwiazda) | `test_tourist_object_clean.py` | ✔ |
+| **Ochrona BBox (Anti-DoS)** | Walidacja Pydantic (`-180..180`) | `ExploreMapUseCase` | Endpoint `/map/objects/` | `test_rejects_out_of_range_bbox` | ✔ |
 
 ## 6. Operacje i Utrzymanie Danych (Data Stewardship)
 
