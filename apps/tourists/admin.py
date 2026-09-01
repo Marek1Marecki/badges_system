@@ -8,7 +8,7 @@ from django.contrib import admin
 from django.contrib.sites.models import Site
 from unfold.admin import ModelAdmin
 
-from apps.tourists.models import AscentLog, TouristProfile, UserBadgeProgress
+from apps.tourists.models import AscentLog, AuditLog, TouristProfile, UserBadgeProgress
 
 
 @admin.register(TouristProfile)
@@ -142,3 +142,31 @@ class SiteAdmin(ModelAdmin):
 
     list_display = ("domain", "name")
     search_fields = ("domain", "name")
+
+
+@admin.register(AuditLog)
+class AuditLogAdmin(ModelAdmin):
+    """Panel administracyjny — **tylko do odczytu** (AUDYT-051).
+
+    `audit_log` jest append-only: każdy rekord powstaje wyłącznie jako
+    zapis zdarzenia domenowego. Zabrania się dodawania, edycji ani usuwania
+    ręcznego — chroni integralność łańu audytowego.
+    """
+
+    list_display = ("created_at", "action", "target_type", "target_id", "actor")
+    list_filter = ("action", "target_type", "created_at")
+    search_fields = ("target_id", "payload")
+    readonly_fields = ("created_at",)
+    date_hierarchy = "created_at"
+
+    def has_add_permission(self, request):
+        """Zabrania ręcznego dodawania rekordów (append-only)."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Zabrania edycji istniejących rekordów (immutable event)."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Zabrania usuwania rekordów (append-only invariant)."""
+        return False

@@ -230,6 +230,23 @@ class AuditLog(models.Model):
         # chronologia malejąco dla typowego podglądu "ostatnie zmiany"
         ordering = ["-created_at"]
 
+    def save(self, *args, **kwargs):
+        """Nadpisanie `save` gwarantuje append-only na poziomie aplikacji.
+
+        Aktualizacja istniejącego rekordu (UPDATE) jest równoważna usunięciu
+        faktu i napisaniu innego — zabroniona przez invariant AUDYT-051.
+
+        Baza jest chroniona dodatkowo na poziomie DB w przyszłości
+        poprzez trigger `BEFORE UPDATE|DELETE ON audit_log` (Planowane, AUDYT-051 future).
+        """
+        if self.pk is not None:
+            raise AssertionError("audit_log jest append-only — UPDATE/DELETE jest zabronione.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        """Zabronione usuwanie — audit log musi być niezmienny."""
+        raise AssertionError("audit_log jest append-only — DELETE jest zabronione.")
+
     def __str__(self) -> str:
         """Reprezentacja tekstowa wpisu logu audytowego."""
         return f"[{self.created_at.isoformat()}] {self.action} na {self.target_type}:{self.target_id}"
