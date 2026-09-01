@@ -5,6 +5,7 @@ from datetime import date
 from application.dto.ascent_dto import AscentInputDTO
 from application.services.bitemporal_validation_service import BitemporalValidationService
 from application.use_cases.bulk_log_ascents import BulkLogAscentsUseCase
+from tests.fakes.mocks import MockEventPublisher, MockUnitOfWork
 
 
 class MockAscentRepository:
@@ -16,19 +17,6 @@ class MockAscentRepository:
 
     def bulk_save_ascents(self, profile_id, ascents):
         return len(ascents)
-
-
-class MockUnitOfWork:
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        pass
-
-
-class MockEventPublisher:
-    def publish(self, event):
-        pass
 
 
 class MockClock:

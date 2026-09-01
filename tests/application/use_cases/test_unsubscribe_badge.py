@@ -4,20 +4,8 @@ import pytest
 
 from application.exceptions import ConflictError, UseCaseError
 from application.use_cases.unsubscribe_badge import UnsubscribeBadgeUseCase
+from tests.fakes.mocks import MockEventPublisher, MockUnitOfWork
 from tests.fakes.user_progress_repository import FakeTouristRepository
-
-
-class MockUnitOfWork:
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        pass
-
-
-class MockEventPublisher:
-    def publish(self, event):
-        pass
 
 
 class TestUnsubscribeBadgeUseCase:

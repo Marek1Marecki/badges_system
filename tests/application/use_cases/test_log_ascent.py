@@ -10,19 +10,7 @@ from application.exceptions import BitemporalTimeError, ConflictError, UseCaseEr
 from application.services.bitemporal_validation_service import BitemporalValidationService
 from application.use_cases.log_ascent import LogAscentUseCase
 from tests.fakes.clock import FakeClock
-
-
-class MockUnitOfWork:
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        pass
-
-
-class MockEventPublisher:
-    def publish(self, event):
-        pass
+from tests.fakes.mocks import MockEventPublisher, MockUnitOfWork
 
 
 class MockPoiScoringService:
