@@ -1,8 +1,13 @@
-"""Testy integracyjne dla REST API turysty (Faza C).
+"""Testy kontrlerów (Controller Contract) dla REST API turysty (Faza C).
 
 Strategia: RequestFactory + MagicMock user + request.app_container.
 Views używają request.app_container (ustawianego przez ContainerMiddleware),
 więc factory automatycznie wstrzykuje kontener DI do każdego requestu.
+
+Uwaga (AUDYT-080): Nie są to testy *prawdziwie integracyjne* — mockują
+UseCase'y przez request.app_container. Dlatego nazwa odzwierciedla
+rolę (Controller Contract), a nie fale testów integracyjnych.
+Prawdziwe testy E2E realizowane są w testach Playwright (tests/e2e/).
 """
 
 import json

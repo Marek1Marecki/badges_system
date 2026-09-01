@@ -81,6 +81,11 @@ jobs:
       - name: Weryfikacja Kontraktów Czystej Architektury (Import Linter)
         run: uv run lint-imports
 
+      - name: Skanowanie luk w zależnościach Pythona (pip-audit)
+        run: |
+          uv export --frozen --no-hashes > /tmp/requirements.txt
+          uv run --with pip-audit pip-audit --requirement /tmp/requirements.txt
+
       - name: Skanowanie Bezpieczeństwa Kodu (SAST / Semgrep)
         run: make security-audit
 
