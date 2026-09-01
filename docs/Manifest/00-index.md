@@ -46,7 +46,6 @@ Dokumenty są podzielone na trzy kategorie:
 | # | Dokument | Kluczowa zasada |
 |---|----------|-----------------|
 | 14 | [Domain Purity Contract](14-domain-purity.md) | stdlib-only w `domain/`, DTO pattern, import-linter, TYPE_CHECKING |
-| 15 | [DataFrame Contract](15-dataframe-contract.md) | DataFrame jako transport, Pandera na granicach warstw |
 | 16 | [Error Boundary Contract](16-error-boundary.md) | `DomainException → ApplicationException`, `raise X from e` |
 | 17 | [Determinism Contract](17-determinism-contract.md) | ClockPort + IdGeneratorPort, FakeClock w testach |
 | 20 | [Configuration Contract](20-configuration-contract.md) | `pydantic-settings`, bootstrap, feature flags, środowiska |
