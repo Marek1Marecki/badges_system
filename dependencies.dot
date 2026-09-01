@@ -9,6 +9,7 @@ digraph G {
     "domain" [fillcolor="lightblue"];
     "domain.entities" [fillcolor="lightblue"];
     "domain.entities.badge_version" [fillcolor="lightblue"];
+    "domain.entities.tourist_profile" [fillcolor="lightblue"];
     "domain.events" [fillcolor="lightblue"];
     "domain.exceptions" [fillcolor="lightblue"];
     "domain.rules" [fillcolor="lightblue"];
@@ -146,6 +147,7 @@ digraph G {
     "apps.tourists.migrations.0001_initial" [fillcolor="pink"];
     "apps.tourists.migrations.0002_alter_ascentlog_profile_and_more" [fillcolor="pink"];
     "apps.tourists.migrations.0003_ascentlog_ascent_profile_date_idx_and_more" [fillcolor="pink"];
+    "apps.tourists.migrations.0004_alter_ascentlog_souvenir_image_auditlog" [fillcolor="pink"];
     "apps.tourists.models" [fillcolor="pink"];
     "apps.tourists.signals" [fillcolor="pink"];
     "apps.tourists.views" [fillcolor="pink"];
@@ -247,6 +249,7 @@ digraph G {
   "apps.tourists.context_processors" -> "apps.tourists.models";
   "apps.tourists.context_processors" -> "infrastructure.config.map_layers";
   "apps.tourists.migrations.0001_initial" -> "apps.tourists.models";
+  "apps.tourists.migrations.0004_alter_ascentlog_souvenir_image_auditlog" -> "apps.tourists.models";
   "apps.tourists.models" -> "apps.badges.models";
   "apps.tourists.signals" -> "apps.tourists.models";
   "apps.tourists.views" -> "apps.badges.models";
@@ -255,6 +258,7 @@ digraph G {
   "domain.entities.badge_version" -> "domain.value_objects.ascent";
   "domain.entities.badge_version" -> "domain.value_objects.verification_context";
   "domain.entities.badge_version" -> "domain.value_objects.verification_result";
+  "domain.entities.tourist_profile" -> "domain.events";
   "domain.rules.badge_rules" -> "domain.value_objects.ascent";
   "domain.rules.badge_rules" -> "domain.value_objects.verification_context";
   "domain.services.badge_eligibility_domain_service" -> "domain.entities.badge_version";
@@ -262,6 +266,7 @@ digraph G {
   "domain.services.badge_eligibility_domain_service" -> "domain.value_objects.verification_context";
   "infrastructure.adapters.celery_event_publisher" -> "application.ports.event_publisher_port";
   "infrastructure.adapters.celery_event_publisher" -> "apps.badges.tasks";
+  "infrastructure.adapters.celery_event_publisher" -> "apps.tourists.models";
   "infrastructure.adapters.celery_event_publisher" -> "domain.events";
   "infrastructure.adapters.django_cache" -> "application.ports.cache_port";
   "infrastructure.adapters.django_uow" -> "application.ports.uow_port";
