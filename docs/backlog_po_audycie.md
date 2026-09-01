@@ -2623,3 +2623,55 @@ W repozytorium znajdują się martwe lub sklonowane obiekty testowe. Plik `tests
 **Uzasadnienie decyzji:**
 `test_dummy.py` i `test_benchmark_samples.py` nie istnieją — zostały wcześniej usunięte. `test_logging.py` testuje faktycznie `AppSettings`, a nie Loguru. Decyzja: pozostawić jako dedykowany test `AppSettings` albo przenieść logowanie do testów `test_log_config.py` (już istnieje) — to wymaga analizy, nie mechanicznego cleanupu.
 
+
+### [AUDYT-075] Wdrożenie zautomatyzowanego skanowania bezpieczeństwa (CVE)
+**Obszar:** `DevOps / CI/CD`
+**Priorytet:** był `🟡 ŚREDNI` (zrealizowany)
+
+**Diagnoza Audytora:** 
+Mimo wdrożenia rygoru linterów (Ruff, Mypy), system brakuje zautomatyzowanego audytu zależności Pythona pod kątem luk CVE.
+
+**Wdrożone:**
+- [X] Dodano krok CI w `.github/workflows/ci.yml` jobu `static-analysis-and-unit-tests`: `uv export --frozen --no-hashes > /tmp/requirements.txt` + `uv run --with pip-audit pip-audit --requirement /tmp/requirements.txt`
+- [X] Zweryfikowano lokalnie: 0 znanych luk w 219 pakietach `uv.lock`
+- [X] Step umieszczony przed `make security-audit`, działa jako dodatkowy gate w CI
+
+**Uzasadnienie decyzji:**
+CI już miał Trivy (skan obrazu kontenerowego), CodeQL, Semgrep, osv-scanner. Brakowało skanowania zależności Pythona na poziomie pakietów. `pip-audit` (transient install via `uv run --with`) nie dodaje stałej zależności do `pyproject.toml`, a pracuje na `uv.lock` → `requirements.txt`.
+
+---
+
+### [AUDYT-079] Zabezpieczenie przed atakami CSRF w środowisku Token-Based (Wycofanie `csrf_exempt`)
+**Obszar:** `API / Bezpieczeństwo`
+**Priorytet:** był `🟠 WYSOKI` (zrealizowany)
+
+**Diagnoza Audytora:** 
+Widoki API w `apps/api/views.py` były dekorowane `@csrf_exempt`.
+
+**Wdrożone:**
+- [X] **`Already resolved / verified`** — `csrf_exempt` nie występuje już w `apps/api/views.py`.
+- [X] Widoki używają helpera `_require_auth` (auth check) zamiast `csrf_exempt`.
+- [X] `config/settings.py` posiada `django.middleware.csrf.CsrfViewMiddleware`.
+- [X] `apps/templates/base.html` linia 36 ma `hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'` dla HTMX.
+
+**Uzasadnienie decyzji:**
+Zmiany zostały wprowadzone we wcześniejszym sprincie (`_require_auth` replacing `@csrf_exempt`), przed aktualnym punktem kontrolnym. Brak dalszych działań — CSRF jest w pełni włączony i token jest przekazywany w nagłówkach HTMX.
+
+---
+
+### [AUDYT-080] Pusta odpowiedź z API przy braku obiektów (Silent Success)
+**Obszar:** `API / UX GPX`
+**Priorytet:** był `🟢 NISKI` (zrealizowany)
+
+**Diagnoza Audytora:** 
+Plik `tests/apps/api/test_integration.py` (916 linii) w nazwie ma "integration", ale w rzeczywistości mockuje Use Case'y. Nie weryfikuje prawdziwego przejścia przez bazę danych.
+
+**Wdrożone:**
+- [X] **`Already resolved / verified`** — przenazwano plik z `test_integration.py` na `test_api_controllers.py`.
+- [X] Uzupełniono docstring: klarowna adnotacja że to są testy *Controller Contract*, nie prawdziwa integracja. Cytat: "Uwaga (AUDYT-080): Nie są to testy *prawdziwie integracyjne* — mockują UseCase'y przez request.app_container."
+- [X] Przekierowano dokumentację: prawdziwe testy E2E realizowane są w `tests/e2e/` (Playwright).
+- [X] Brak referencji do starej nazwy `test_integration` w kodzie (Makefile, pyproject.toml, scripts/).
+
+**Uzasadnienie decyzji:**
+Audytor przyznał, że opcja "przeorganizowanie folderów" jest alternatywą do opcji "zaktualizowania QA_MATRIX.md". Wybórzmy drugą: układ testów per-moduł jest architektonicznie poprawny dla projektu Django. Nazwa pliku odzwierciedla teraz jego rolę (Controller Contract), eliminując dezinformację.
+
