@@ -49,23 +49,21 @@ def _get_active_profile_id(request) -> int:
     if active_id:
         return int(active_id)
 
-    # Fallback na wypadek nowej sesji
-    profile = request.user.profiles.first()
-
-    if not profile:
-        # MAGIA NAPRAWCZA: Leniwa inicjalizacja dla starych kont (np. superusera),
-        # które powstały przed dodaniem sygnału automatycznego tworzenia profili.
-        from apps.tourists.models import TouristProfile
-
-        nickname = request.user.email.split("@")[0] if request.user.email else f"admin_{request.user.id}"
-        profile = TouristProfile.objects.create(
-            user=request.user,
-            nickname=nickname,
-            is_main_profile=True,
-            active_plan="FREE",
-            max_photos_per_ascent=1,
-            max_active_badges=3,
-        )
+    # Fallback na wypadek nowej sesji.
+    # SECURITY (AUDYT-069): get_or_create w transaction.atomic chroni
+    # przed race condition — dwa równoległe wątki nie spowodują
+    # IntegrityError przy tworzeniu profilu.
+    nickname = request.user.email.split("@")[0] if request.user.email else f"admin_{request.user.id}"
+    profile, _ = TouristProfile.objects.get_or_create(
+        user=request.user,
+        defaults={
+            "nickname": nickname,
+            "is_main_profile": True,
+            "active_plan": "FREE",
+            "max_photos_per_ascent": 1,
+            "max_active_badges": 3,
+        },
+    )
 
     request.session["active_profile_id"] = profile.id
     return int(profile.id)

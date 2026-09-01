@@ -1,11 +1,16 @@
 """Niestandardowe formularze dla panelu administracyjnego."""
 
+import logging
+
 from django import forms
 from django.contrib import messages
+from django.core.cache import cache
 from django.utils.html import format_html, format_html_join
 from unfold.widgets import UnfoldAdminTextInputWidget
 
 from apps.badges.models import TouristObject
+
+logger = logging.getLogger(__name__)
 
 
 # 1. TWORZYMY WIDŻET DATALIST (Dropdown, w którym można pisać własny tekst)
@@ -70,11 +75,22 @@ class TouristObjectAdminForm(forms.ModelForm):
         # Wyłączamy wymóg podawania typu w przeglądarce, bo uzupełnimy go z OSM
         self.fields["type"].required = False
 
-        # Pobieramy unikalne typy, które już mamy w bazie (zasilone przez OSM)
+        # SECURITY (AUDYT-071): Caching unikalnych typów z TTL, żeby uniknąć
+        # N+1 w adminie — .distinct() na każdym wierszu w liście.
+        cache_key = "tourist_object_types"
         try:
-            existing_types = list(TouristObject.objects.values_list("type", flat=True).distinct())
+            existing_types = cache.get(cache_key)
         except Exception:
-            existing_types = []
+            existing_types = None
+        if existing_types is None:
+            try:
+                existing_types = list(TouristObject.objects.values_list("type", flat=True).distinct())
+            except Exception:
+                existing_types = []
+            try:
+                cache.set(cache_key, existing_types, timeout=300)
+            except Exception:
+                logger.warning("Cache write failed for tourist_object_types; continuing without cache")
 
         # Zawsze pokazujemy te podstawowe na liście, nawet w pustej bazie
         default_types = ["Szczyt", "Schronisko", "Jaskinia", "Zamek/Ruiny", "Przełęcz"]

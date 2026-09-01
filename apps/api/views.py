@@ -391,11 +391,8 @@ class MapObjectsView(View):
 
         region_id_str = request.GET.get("region_id")
 
-        # Pobieramy profil bezpośrednio z sesji lub z relacji użytkownika
-        profile_id = request.session.get("active_profile_id")
-        if not profile_id:
-            first_profile = request.user.profiles.first()
-            profile_id = first_profile.id if first_profile else 0
+        # SECURITY (AUDYT-070): Ujednolicony, bezpieczny pattern — zawsze fallback na pierwszy profil
+        profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id
 
         try:
             dto = MapExploreRequestDTO(
