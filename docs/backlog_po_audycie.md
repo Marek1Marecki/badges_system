@@ -151,19 +151,19 @@ Zgodnie z Invariantem, że wszystko w Redis można odtworzyć z Postgresa, narzu
 
 ---
 
-### [AUDYT-037] Sformalizowanie Agregatu dla Kontekstu Turysty
-**Obszar:** `Domena / Agregaty`  
-**Priorytet:** `🟢 NISKI`  
+### [x] AUDYT-037 — Sformalizowanie Agregatu dla Kontekstu Turysty
+**Obszar:** `Domena / Agregaty`
+**Priorytet:** był `🟢 NISKI` (zrealizowany)
 
-**Diagnoza Audytora (Synteza z SWE i Bito):** 
-Modele w katalogu `apps/tourists/models.py` (Konta Rodzinne, `TouristProfile`, postępy) to anemiczne modele danych (Django ORM). System traktuje profil turysty jako zbiór informacji w DTO przepychany między portami a widokiem. Brakuje wyraźnego, czysto pythonowego *Agregatu Domenowego* (np. `TouristProfileDomain`), który stałby na straży reguł takich jak odblokowywanie pakietów Freemium, limitów zdjęć, czy ważności członkostwa w klubach.
+**Diagnoza Audytora:** `apps/tourists/models.py` to anemiczne modele Django ORM. Brak czystego agregatu domenowego na straży limitów Freemium.
 
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Utworzyć klasę agregatu np. `TouristProfileAggregate` w warstwie Czystej Domeny.
-- [ ] Przenieść logikę walidacji limitów Freemium (obecnie rozsianą w Use Case'ach) do metod tego agregatu.
+**Wdrożone:**
+- [X] Utworzono `TouristProfileDomain` (`domain/entities/tourist_profile.py`) — immutable agregat z `can_log_ascent`/`can_track_new_badge` + mutacje `with_nickname`/`with_upgraded_plan`.
+- [X] Logika Freemium scentralizowana w agregacie (była w Use Case'ach).
+- [X] Mutacje emitują zdarzenie `ProfileUpdated` (AUDYT-051).
+- [X] 10 testów jednostkowych (`tests/domain/entities/test_tourist_profile.py`).
 
-**Komentarz Architekta:**
-W Fazie MVP orkiestracja w Use Case'ach sprawdza się świetnie i jest szybka. Jednak w miarę rozwoju modelu biznesowego abonamentów, utrzymywanie tego w Use Case'ach doprowadzi do duplikacji. Dobry punkt na przyszłość.
+**Pozostaje jako future:** podpięcie agregatu do `DjangoTouristProfileRepository` i Use Case'ów (stopniowa migracja z `TouristProfileDTO`).
 
 ---
 
@@ -215,18 +215,21 @@ Klasyka skalowania aplikacji Pythonowych. Mamy na to czas – przy 50-100 aktywn
 
 ---
 
-### [AUDYT-051] Dodanie audytu zmian (Audit Log) dla operacji krytycznych
-**Obszar:** `Baza Danych / Architektura`  
-**Priorytet:** `🟢 NISKI`  
+### [x] AUDYT-051 — Dodanie audytu zmian (Audit Log)
+**Obszar:** `Baza Danych / Architektura`
+**Priorytet:** był `🟢 NISKI` (zrealizowany)
 
 **Diagnoza Audytora:** 
-Obecnie w systemie brakuje zapisów mówiących "kto, kiedy i co zmienił". Jeśli w przypadku "Osobistego Kanbana" lub "Dziennika Wejść" dojdzie do niespójności lub nieautoryzowanej zmiany (np. weryfikator z PTTK cofnął odznakę ze stanu `COMPLETED`), system nie posiada śladu audytowego pozwalającego na odtworzenie sekwencji zdarzeń.
+Brak zapisów "kto, kiedy, co zmienił" dla operacji krytycznych.
 
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Rozważyć wdrożenie biblioteki takiej jak `django-simple-history` dla najważniejszych modeli w `apps/tourists/models.py`.
+**Wdrożone:**
+- [X] Model `AuditLog` (append-only, `apps/tourists/models.py`) z polami `actor`, `action`, `target_type`, `target_id`, `payload` (JSON), `created_at`.
+- [X] 3 zdarzenia domenowe w `domain/events.py`: `AscentLogged`, `BadgeStatusChanged`, `ProfileUpdated`.
+- [X] `CeleryEventPublisher` persistuje wszystkie zdarzenia w tabeli `audit_log` (lazy `AuditLog.objects.create`).
+- [X] Migracja `0004_alter_asc...auditlog.py`.
+- [X] 6 testów publishera (`tests/infrastructure/adapters/test_celery_event_publisher.py`) — mocki bez DB.
 
-**Komentarz Architekta:**
-W fazie MVP nie jest to blokujące, jednakże wraz ze wzrostem bazy użytkowników i dołączaniem Weryfikatorów PTTK, logi audytowe staną się prawym i lewym ramieniem Zespołu Wsparcia (Support Team).
+**Pozostaje jako future:** podpięcie `BadgeStatusChanged` do `AdvanceLogisticStatusUseCase` / weryfikatorów PTTK oraz `AscentLogged` do `LogAscentUseCase` (obecnie agregat emituje zdarzenia, ale nie są jeszcze dispatchowane z Use Case'ów).
 
 ---
 
