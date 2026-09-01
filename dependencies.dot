@@ -13,6 +13,8 @@ digraph G {
     "domain.exceptions" [fillcolor="lightblue"];
     "domain.rules" [fillcolor="lightblue"];
     "domain.rules.badge_rules" [fillcolor="lightblue"];
+    "domain.services" [fillcolor="lightblue"];
+    "domain.services.badge_eligibility_domain_service" [fillcolor="lightblue"];
     "domain.value_objects" [fillcolor="lightblue"];
     "domain.value_objects.ascent" [fillcolor="lightblue"];
     "domain.value_objects.verification_context" [fillcolor="lightblue"];
@@ -161,7 +163,7 @@ digraph G {
   "application.services.poi_scoring_service" -> "application.ports.cache_port";
   "application.services.poi_scoring_service" -> "application.ports.clock_port";
   "application.services.poi_scoring_service" -> "application.ports.user_progress_port";
-  "application.services.poi_scoring_service" -> "domain.value_objects.ascent";
+  "application.services.poi_scoring_service" -> "domain.services.badge_eligibility_domain_service";
   "application.services.poi_scoring_service" -> "domain.value_objects.verification_context";
   "application.use_cases.advance_logistic_status" -> "application.exceptions";
   "application.use_cases.advance_logistic_status" -> "application.ports.user_progress_port";
@@ -247,6 +249,9 @@ digraph G {
   "domain.entities.badge_version" -> "domain.value_objects.verification_result";
   "domain.rules.badge_rules" -> "domain.value_objects.ascent";
   "domain.rules.badge_rules" -> "domain.value_objects.verification_context";
+  "domain.services.badge_eligibility_domain_service" -> "domain.entities.badge_version";
+  "domain.services.badge_eligibility_domain_service" -> "domain.value_objects.ascent";
+  "domain.services.badge_eligibility_domain_service" -> "domain.value_objects.verification_context";
   "infrastructure.adapters.celery_event_publisher" -> "application.ports.event_publisher_port";
   "infrastructure.adapters.celery_event_publisher" -> "apps.badges.tasks";
   "infrastructure.adapters.celery_event_publisher" -> "domain.events";
