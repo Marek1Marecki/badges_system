@@ -251,18 +251,6 @@ W Fazie MVP orkiestracja w Use Case'ach sprawdza się świetnie i jest szybka. J
 ---
 
 ### [AUDYT-039] Usunięcie osieroconych kontraktów Manifestu (Pandas/DataFrame)
-**Obszar:** `Dokumentacja / Manifest`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-Audytor wyłapał, że w katalogu kontraktów znajduje się plik `15-dataframe-contract.md` (dotyczący bibliotek `pandas` i `pandera`). Projekt PTTK Badges to aplikacja transakcyjna GIS/Django, która fizycznie nie posiada (i nie planuje posiadać) w `pyproject.toml` zależności od tych ciężkich bibliotek analitycznych.
-
-**Action Items (Do wdrożenia PRZEZ CIEBIE):**
-- [ ] Usunąć plik `15-dataframe-contract.md` z katalogu `docs/Manifest/`.
-- [ ] Zaktualizować plik indeksu manifestu (np. `00-index.md`), wykreślając ten kontrakt, by nie wprowadzać w błąd agentów kodujących AI.
-
-**Komentarz Architekta:**
-Klasyczna pozostałość (Boilerplate) po sklonowaniu bazowego repozytorium firmowego. Śmieci w Manifeście mogą sprowokować agenta AI do instalacji niepotrzebnych, ciężkich paczek w `Dockerfile`.
 
 ---
 

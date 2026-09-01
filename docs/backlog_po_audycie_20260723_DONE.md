@@ -674,3 +674,20 @@ Klasyczny przypadek "Martwych Linków" (Dead Links). Jest to drobnostka z perspe
 - [X] W `_hydrate_version` łapać `(ValueError, TypeError)` i obsłużyć `rule_dict.get` dla non-dict (fallback do `type(rule_dict).__name__`).
 
 ---
+
+### [REGRESJA-003] Test-hygiene cleanup (AUDYT-039 + test_dummy)
+
+**Obszar:** `Dokumentacja / Testy`
+**Priorytet:** `🟢 NISKI`
+
+**Diagnoza:** 
+- `docs/Manifest/15-dataframe-contract.md` (pandera/pandas) — biblioteki nie ma w `pyproject.toml`, plik to martwy boilerplate z szablonu.
+- `tests/test_benchmark_samples.py` — wymaga `pytest-benchmark` (nie zainstalowany), blokuje kolekcję pytest.
+- `tests/test_dummy.py` — 3-linijkowy smoke test, pozostałość z AUDYT-023.
+
+**Działania:**
+- [X] Usunąć `docs/Manifest/15-dataframe-contract.md` + wyrejestrować w `docs/Manifest/00-index.md` (usunięto wiersz 15 z tabeli kontraktów).
+- [X] Usunąć `tests/test_benchmark_samples.py` (brak wtyczki pytest-benchmark).
+- [X] Usunąć `tests/test_dummy.py` (pozostałość AUDYT-023).
+
+---
