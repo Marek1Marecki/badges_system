@@ -226,21 +226,7 @@ W Fazie MVP orkiestracja w Use Case'ach sprawdza się świetnie i jest szybka. J
 
 ---
 
-### [AUDYT-040] Ujednolicenie wersji technologii i "Dryf Tożsamości" w starszych plikach
-**Obszar:** `Dokumentacja / Słownik`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-Wyodrębniono dwa istotne "dryfy" informacyjne:
-1. Niespójność wersji: `Architecture.md` wspomina Pythona `3.14`, podczas gdy `pyproject.toml` blokuje `>=3.14,<3.15` (choć to akurat bezpieczne doprecyzowanie, wymaga ujednolicenia np. w starych plikach instalacyjnych).
-2. Niespójność terminologii w najstarszych plikach dokumentacyjnych (z Fazy A/B), gdzie pojęcia `User`, `Tourist` i `Profile` są używane zamiennie. Zgodnie z nowym `ADR-016` (Konta Rodzinne) pojęcia te mają teraz twarde, odseparowane znaczenie.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Przeprowadzić globalne wyszukiwanie (Find in Files) dla słowa "User" w dokumentacji domenowej i upewnić się, że odnosi się wyłącznie do konta Google/uwierzytelnienia, a dla ról turysty zaktualizować tekst na "Profil" (`TouristProfile`).
-- [ ] Ujednolicić deklaracje wersji (np. dopisać `<3.15` w `Architecture.md` w tabeli Tech Stack).
-
-**Komentarz Architekta:**
-Niespójne nazewnictwo ("Ubiquitous Language") to cichy zabójca projektów DDD. Nowy programista czytając starą dokumentację nie zrozumie dlaczego model `UserBadgeProgress` wskazuje na `profile_id`. To szybkie zadanie na funkcję "Search & Replace".
+### AUDYT-040 — Przeniesiony do DONE (ujednolicenie wersji Pythona + terminologia)
 
 ---
 

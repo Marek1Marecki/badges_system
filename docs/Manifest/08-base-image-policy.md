@@ -12,10 +12,10 @@
 Pinujemy **minor** wersję Pythona **i wersję dystrybucji OS**:
 
 ```dockerfile
-FROM python:3.12-slim-bookworm
+FROM python:3.14-slim-bookworm
 ```
 
-**Dlaczego minor, nie patch?** Pinowanie patcha (`3.12.12`) daje złudne poczucie kontroli — i tak wymaga ręcznej aktualizacji. Pinowanie minor zachowuje prostotę, a SHA w CI zapewnia świadomość dokładnej wersji przy każdym buildzie.
+**Dlaczego minor, nie patch?** Pinowanie patcha (`3.14.4`) daje złudne poczucie kontroli — i tak wymaga ręcznej aktualizacji. Pinowanie minor zachowuje prostotę, a SHA w CI zapewnia świadomość dokładnej wersji przy każdym buildzie.
 
 **Dlaczego `-bookworm`, nie samo `-slim`?** Tag `-slim` bez wersji OS jest ruchomym celem — może przeskoczyć z Debian 12 (bookworm) na Debian 13 (trixie) bez ostrzeżenia. Zmiana dystrybucji może podmienić wersje bibliotek systemowych (libc, OpenSSL) i złamać buildy projektów GIS (GDAL, PROJ, GEOS). Jawne wskazanie `-bookworm` gwarantuje stabilność środowiska systemowego niezależnie od aktualizacji Pythona.
 
@@ -23,8 +23,7 @@ FROM python:3.12-slim-bookworm
 
 | Tag Pythona | Debian |
 |-------------|--------|
-| `python:3.10-slim-bookworm` | Debian 12 |
-| `python:3.12-slim-bookworm` | Debian 12 |
+| `python:3.10-slim-bookworm` | Debian 12 (legacy) |
 | `python:3.14-slim-bookworm` | Debian 12 |
 
 ### W CI Pipeline
@@ -33,7 +32,7 @@ Każdy build rejestruje dokładny SHA obrazu bazowego:
 
 ```yaml
 - name: Log base image SHA
-  run: docker inspect python:3.12-slim-bookworm --format='{{index .RepoDigests 0}}'
+  run: docker inspect python:3.14-slim-bookworm --format='{{index .RepoDigests 0}}'
 ```
 
 SHA jest używany do audytu i weryfikacji reproducibility. Nie pinujemy SHA w Dockerfile (zbyt częste zmiany) — logujemy go w CI jako ślad audytowy.

@@ -21,9 +21,9 @@ Wersja Pythona musi być identyczna w trzech miejscach:
 
 | Miejsce | Przykład |
 |---------|----------|
-| `.python-version` | `3.12` |
-| `Dockerfile` | `FROM python:3.12-slim-bookworm` |
-| `pyproject.toml` | `requires-python = ">=3.12"` |
+| `.python-version` | `3.14` |
+| `Dockerfile` | `FROM python:3.14-slim-bookworm` |
+| `pyproject.toml` | `requires-python = ">=3.14,<3.15"` |
 
 Rozbieżność między tymi trzema plikami → naruszenie kontraktu.
 
