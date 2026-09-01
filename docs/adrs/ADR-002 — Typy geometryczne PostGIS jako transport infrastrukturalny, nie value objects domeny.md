@@ -1,7 +1,7 @@
 # ADR-002 — Typy geometryczne PostGIS jako transport infrastrukturalny, nie value objects domeny
 
 > **Status:** `accepted`
-> **Data:** 2025-05-26
+> **Data:** 2026-05-26
 > **Autor:** —
 > **Zastępuje:** —
 > **Zastąpiony przez:** —

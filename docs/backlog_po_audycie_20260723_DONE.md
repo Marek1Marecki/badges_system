@@ -691,3 +691,25 @@ Klasyczny przypadek "Martwych Linków" (Dead Links). Jest to drobnostka z perspe
 - [X] Usunąć `tests/test_dummy.py` (pozostałość AUDYT-023).
 
 ---
+
+### AUDYT-034 — Brak ADR dla wyboru Frameworka Frontendu i Autoryzacji
+
+**Obszar:** `Dokumentacja / Architektura`
+**Priorytet:** `🟢 NISKI`
+
+**Diagnoza:** Brak historycznego rekordu decyzji architektonicznej dla: (1) HTMX + SSR zamiast SPA, (2) Google OAuth zamiast hasła lokalnych.
+
+**Działania:**
+- [X] Utworzyć `ADR-017 — Strategia Frontendu (HTMX + SSR zamiast SPA)`: opis alternatyw (SPA vs HTMX), uzasadnienie (SEO, jeden stos, brak Node.js), ochronione zasady (czysty endpoint HTTP dla każdej akcji, frontend = transport, nie logika domenowa).
+- [X] Utworzyć `ADR-018 — Uwierzytelnienie i Zarządzanie Tożsamościem (Google OAuth + Model Rodzinny)`: auth. wyłącznie przez `django-allauth` + Google OAuth; `auth.User` = tożsamość, `TouristProfile` = dane PTTK; odmowa haseł lokalnych.
+- [X] Dodać `ADR-019 — Placeholder` dla numeracji (gap 017–019 → 020+).
+- [X] Poprawić datę w `ADR-002` z `2025-05-26` na `2026-05-26`.
+- [X] Ujednolić wersję Pythona na `3.14` w `Runbook.md` (było `3.12+`).
+
+### AUDYT-008 — Housekeeping ADR-i (przeniesiony do DONE)
+
+**Działania:**
+- [X] Numeracja ADR zrównana — `ADR-017`, `ADR-018`, `ADR-019` (placeholder) wypełniają lukę 016→020.
+- [X] Poprawiona data `ADR-002` i wersja Pythona (zob. AUDYT-034).
+
+---

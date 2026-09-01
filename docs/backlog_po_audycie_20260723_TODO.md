@@ -41,22 +41,6 @@ Audytor wyłapał tu niespójność, która w rzeczywistości jest naszym świad
 ---
 
 ### [AUDYT-008] Brakujące ADR-y i ujednolicenie wersji (Housekeeping)
-**Obszar:** `Architektura`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Sekwencja ADR skacze z 016 na 020 (brakuje 017-019). Istnieje potężna decyzja o użyciu HTMX jako podstawy Frontendu, która nie posiada swojego ADR-a. Data w ADR-002 wskazuje rok 2025 zamiast 2026. Brak spójności czy wymagamy Pythona 3.12 czy 3.14 (wskazania w Runbooku vs Prompt).
-
-**Action Items (Do wdrożenia):**
-- [ ] Ujednolicić wymóg wersji Pythona na `3.14` we wszystkich plikach (Runbook, System Prompt).
-- [ ] Poprawić datę w ADR-002 na 2026 r.
-- [ ] (Opcjonalnie) Dodać plik zastępczy np. `ADR-017_019-Placeholder.md` wyjaśniający przeskok numeracji lub przenumerować pliki.
-- [ ] Dodać `ADR-017 — Strategia Frontendu (HTMX + SSR zamiast SPA/React)`.
-
-**Komentarz Architekta:**
-Decyzja o HTMX była jedną z najważniejszych w projekcie. Zdecydowanie zasługuje na własny ADR. Skok w numeracji to zwykły błąd komunikacyjny, ale warto go sformalizować.
-
----
 
 ### [AUDYT-013] Przepływ i hermetyzacja Kontenera DI
 **Obszar:** `Bootstrap / DI Container`  
@@ -184,19 +168,7 @@ Zgodnie z Invariantem, że wszystko w Redis można odtworzyć z Postgresa, narzu
 
 ---
 
-### [AUDYT-034] Brak ADR dla wyboru Frameworka Frontendu i Autoryzacji
-**Obszar:** `Dokumentacja / Architektura`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-W dokumentacji (szczególnie w folderze `docs/adr/`) brakuje formalnego zapisu architektonicznego (ADR) dotyczącego strategii interfejsu użytkownika, mianowicie decyzji o użyciu Server-Side Renderingu (HTMX + Django Templates) zamiast Single Page Application (React/Vue). Brakuje również formalnego ADR dla decyzji o użyciu zewnętrznego dostawcy tożsamości (Google OAuth) i odrzucenia autoryzacji opartej na hasłach lokalnych.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Utworzyć plik `ADR-017 — Strategia Frontendu (HTMX i SSR)`. Opisać w nim powody odrzucenia ciężkich frameworków SPA ze względu na mniejszy narzut na zespół deweloperski, SEO i bezpośrednie parowanie z bazą.
-- [ ] Utworzyć plik `ADR-018 — Uwierzytelnienie i Zarządzanie Tożsamością`. Opisać decyzję o użyciu Google OAuth (Social Login) z wbudowanym mechanizmem "Modelu Rodzinnego" w tabeli Profilu, oddzielającym weryfikację e-maila od logiki domenowej PTTK.
-
-**Komentarz Architekta:**
-Wszystko to uregulowaliśmy w dokumencie `UI_GUIDELINES.md` oraz w rozmowach, ale brakuje temu historycznego rekordu decyzji w katalogu `docs/adr/`, przez co nowi architekci mogą nie rozumieć kontekstu "dlaczego tak, a nie inaczej". Warto uzupełnić te dokumenty w wolnym czasie.
+### AUDYT-034 — Przeniesiony do DONE (utworzono ADR-017 i ADR-018)
 
 ---
 

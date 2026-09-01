@@ -12,7 +12,7 @@
 
 | Narzędzie | Minimalna wersja | Instalacja / Uwagi |
 |-----------|-----------------|------------|
-| **Python** | 3.12+ | Instalowany i zarządzany przez narzędzie `uv`. |
+| **Python** | 3.14+ | Instalowany i zarządzany przez narzędzie `uv`. |
 | **uv** | 0.2+ | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | **Docker** | 24.x | Niezbędny do uruchomienia infrastruktury (PostGIS i Redis). |
 | **System** | Ubuntu 22.04+ (WSL2) | **Środowisko natywne Windows nie jest obsługiwane.** Środowisko macOS: Nieprzetestowane, instalacja GDAL przez Homebrew może wymagać dodatkowej konfiguracji ścieżek zmiennych systemowych. |
