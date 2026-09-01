@@ -95,9 +95,9 @@ To nie jest błąd krytyczny dla obecnej skali projektu (mamy kilkanaście regu�
 W repozytorium znajdują się martwe lub sklonowane obiekty testowe. Plik `tests/infrastructure/test_logging.py` to fizyczna kopia pliku `test_app_settings.py` (testuje on `AppSettings`, a nie logi!). Istnieje również pusty, bezwartościowy plik `tests/test_dummy.py`. Testy reguł (np. budowanie JSON) pokrywają się miejscami z weryfikacją obiektów domeny.
 
 **Action Items (Do wdrożenia PRZEZ CIEBIE w wolnej chwili):**
-- [ ] Zmienić zawartość `tests/infrastructure/test_logging.py`, by weryfikował konfigurację `Loguru` lub usunąć go z repozytorium.
-- [ ] Usunąć plik `tests/test_dummy.py`.
-- [ ] Zebrać rozrzucone w wielu plikach pomocnicze klasy testowe (np. `MockUnitOfWork`, `MockEventPublisher`) i przenieść je do jednego, współdzielonego folderu (np. `tests/fakes/` lub wspólnego `conftest.py`).
+- [ ] Zmienić zawartość `tests/infrastructure/test_logging.py`, by weryfikował konfigurację `Loguru` lub usunąć go z repo (pozostaje otwarte — decyzja architektoniczna, nie cleanup).
+- [X] Usunąć plik `tests/test_dummy.py` (usunięty — potwierdzono brak pliku).
+- [X] Zebrać rozrzucone w wielu plikach pomocnicze klasy testowe (np. `MockUnitOfWork`, `MockEventPublisher`) i przenieść je do `tests/fakes/mocks.py` + `tests/conftest.py`.
 
 **Komentarz Architekta:**
 Zwykłe porządki po intensywnym refaktoringu. Idealne zadania na rozgrzewkę przed trudniejszym kodowaniem.
@@ -151,21 +151,8 @@ Zgodnie z Invariantem, że wszystko w Redis można odtworzyć z Postgresa, narzu
 
 ---
 
-### [x] AUDYT-037 — Sformalizowanie Agregatu dla Kontekstu Turysty
-**Obszar:** `Domena / Agregaty`
-**Priorytet:** był `🟢 NISKI` (zrealizowany)
 
-**Diagnoza Audytora:** `apps/tourists/models.py` to anemiczne modele Django ORM. Brak czystego agregatu domenowego na straży limitów Freemium.
-
-**Wdrożone:**
-- [X] Utworzono `TouristProfileDomain` (`domain/entities/tourist_profile.py`) — immutable agregat z `can_log_ascent`/`can_track_new_badge` + mutacje `with_nickname`/`with_upgraded_plan`.
-- [X] Logika Freemium scentralizowana w agregacie (była w Use Case'ach).
-- [X] Mutacje emitują zdarzenie `ProfileUpdated` (AUDYT-051).
-- [X] 10 testów jednostkowych (`tests/domain/entities/test_tourist_profile.py`).
-
-**Pozostaje jako future:** podpięcie agregatu do `DjangoTouristProfileRepository` i Use Case'ów (stopniowa migracja z `TouristProfileDTO`).
-
----
+### [AUDYT-043] Refaktoryzacja "Głębokiej Hierarchii" Regionów (Deep Hierarchy)
 
 ### [AUDYT-043] Refaktoryzacja "Głębokiej Hierarchii" Regionów (Deep Hierarchy)
 **Obszar:** `Baza Danych / Architektura`  
@@ -212,32 +199,6 @@ Django otwiera odrębne połączenie do bazy danych dla każdego napływającego
 
 **Komentarz Architekta:**
 Klasyka skalowania aplikacji Pythonowych. Mamy na to czas – przy 50-100 aktywnych użytkownikach dziennie Postgres poradzi sobie doskonale.
-
----
-
-### [x] AUDYT-051 — Dodanie audytu zmian (Audit Log)
-**Obszar:** `Baza Danych / Architektura`
-**Priorytet:** był `🟢 NISKI` (zrealizowany)
-
-**Diagnoza Audytora:** 
-Brak zapisów "kto, kiedy, co zmienił" dla operacji krytycznych.
-
-**Wdrożone:**
-- [X] Model `AuditLog` (append-only, `apps/tourists/models.py`) — pola `actor` (FK→User, SET_NULL), `action`, `target_type`, `target_id`, `payload` (JSON), `created_at`.
-- [X] Model `AuditLog` ma **append-only invariant protection**: `save()` rzuca `AssertionError` gdy `pk is not None`; `delete()` rzuca `AssertionError`.
-- [X] `AuditLogAdmin` read-only w panelu (`has_add_permission/has_change_permission/has_delete_permission` = False).
-- [X] `actor` jako FK do `User` (SET_NULL) **plus** `payload.actor_user_id` jako snapshot — aktor identyfikowany nawet po usunięciu konta.
-- [X] 4 zdarzenia domenowe w `domain/events.py`: `AscentLogged`, `BadgeStatusChanged`, `ProfileUpdated` (+ istniejący `UserProgressStateChanged`).
-- [X] `CeleryEventPublisher` persistuje wszystkie zdarzenia w tabeli `audit_log` przez `_persist_audit_log()`.
-- [X] **Dispatch z Use Case'ów:**
-  - `AdvanceLogisticStatusUseCase` emituje `BadgeStatusChanged` → przekazuje `actor_user_id=request.user.id`.
-  - `LogAscentUseCase` emituje `AscentLogged` → przekazuje `actor_profile_id=profile_id`.
-- [X] Migracja `apps/tourists/migrations/0004_alter_asc...auditlog.py`.
-- [X] 9 testów publishera (`tests/infrastructure/adapters/test_celery_event_publisher.py`) — mocki bez DB.
-
-**Known limitation / future:**
-- `AuditLog` nie jest chroniony **na poziomie DB** — ochrona to `model.save()/delete()` lock + Admin read-only. W przyszłości dodać trigger PostgreSQL `BEFORE UPDATE|DELETE ON audit_log FOR EACH ROW EXECUTE FUNCTION deny();`.
-- `ProfileUpdated` jest gotowy (event + persistence), ale nie jest jeszcze dispatchowany (brak use case'u edycji profilu — `UpdateProfileUseCase` w future).
 
 ---
 
@@ -366,20 +327,6 @@ Złapanie "czasu" w testach to podstawa. Czysta domena wymaga 100% determinizmu 
 
 ---
 
-### [AUDYT-062] Składnia Pythona 2 w testach (`test_verification_context.py`)
-**Obszar:** `Python / Lintery`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-W pliku `tests/domain/value_objects/test_verification_context.py` w linii 73 ostała się stara składnia `except AttributeError, TypeError:`. Powoduje to błąd kompilacji. (Ruff prawdopodobnie omijał ten folder lub plik ten nie był modyfikowany przy ostatnim `make check`).
-
-**Action Items (Do wdrożenia natychmiastowego):**
-- [ ] Otworzyć `tests/domain/value_objects/test_verification_context.py` i zmienić linię 73 na `except (AttributeError, TypeError):`.
-
-**Komentarz Architekta:**
-Znany nam już błąd (EC-045), który wyłapaliśmy w kodzie, ale zapomnieliśmy usunąć go z testów jednostkowych. Błyskawiczna łatka do zastosowania w IDE.
-
----
 
 ### [AUDYT-063] Duplikaty Fixture'ów i Brak `conftest.py`
 **Obszar:** `Architektura Testów`  
@@ -2605,4 +2552,74 @@ W widokach API (`apps/api/views.py`) wrzucamy ładunek JSON prosto do Pydantica,
 Klasyczny błąd na styku walidacji. Nasz system wyrzuca świetne błędy, gdy odzywa się Czysta Domena, ale rzuca nieestetyczny śmietnik, jeśli turysta wyśle zły typ zmiennej w JSON-ie. 
 
 ---
+
+
+### [AUDYT-037] Sformalizowanie Agregatu dla Kontekstu Turysty
+**Obszar:** `Domena / Agregaty`
+**Priorytet:** był `🟢 NISKI` (zrealizowany)
+
+**Diagnoza Audytora:** `apps/tourists/models.py` to anemiczne modele Django ORM. Brak czystego agregatu domenowego na straży limitów Freemium.
+
+**Wdrożone:**
+- [X] Utworzono `TouristProfileDomain` (`domain/entities/tourist_profile.py`) — immutable agregat z `can_log_ascent`/`can_track_new_badge` + mutacje `with_nickname`/`with_upgraded_plan`.
+- [X] Logika Freemium scentralizowana w agregacie (była w Use Case'ach).
+- [X] Mutacje emitują zdarzenie `ProfileUpdated` (AUDYT-051).
+- [X] 10 testów jednostkowych (`tests/domain/entities/test_tourist_profile.py`).
+
+**Pozostaje jako future:** podpięcie agregatu do `DjangoTouristProfileRepository` i Use Case'ów (stopniowa migracja z `TouristProfileDTO`).
+
+---
+
+### [AUDYT-051] Dodanie audytu zmian (Audit Log)
+**Obszar:** `Baza Danych / Architektura`
+**Priorytet:** był `🟢 NISKI` (zrealizowany)
+
+**Diagnoza Audytora:** 
+Brak zapisów "kto, kiedy, co zmienił" dla operacji krytycznych.
+
+**Wdrożone:**
+- [X] Model `AuditLog` (append-only, `apps/tourists/models.py`) — pola `actor` (FK→User, SET_NULL), `action`, `target_type`, `target_id`, `payload` (JSON), `created_at`.
+- [X] Model `AuditLog` ma **append-only invariant protection**: `save()` rzuca `AssertionError` gdy `pk is not None`; `delete()` rzuca `AssertionError`.
+- [X] `AuditLogAdmin` read-only w panelu (`has_add/has_change/has_delete_permission` = False).
+- [X] `actor` jako FK do `User` (SET_NULL) **plus** `payload.actor_user_id` jako snapshot — aktor identyfikowany nawet po usunięciu konta.
+- [X] 4 zdarzenia domenowe w `domain/events.py`: `AscentLogged`, `BadgeStatusChanged`, `ProfileUpdated` (+ istnejący `UserProgressStateChanged`).
+- [X] `CeleryEventPublisher` persistuje wszystkie zdarzenia w tabeli `audit_log` przez `_persist_audit_log()`.
+- [X] **Dispatch z Use Case'ów:**
+  - `AdvanceLogisticStatusUseCase` emituje `BadgeStatusChanged` → przekazuje `actor_user_id=request.user.id`.
+  - `LogAscentUseCase` emituje `AscentLogged` → przekazuje `actor_profile_id=profile_id`.
+- [X] Migracja `apps/tourists/migrations/0004_alter_asc...auditlog.py`.
+- [X] 9 testów publishera (`tests/infrastructure/adapters/test_celery_event_publisher.py`) — mocki bez DB.
+
+**Known limitation / future:**
+- `AuditLog` nie jest chroniony **na poziomie DB** — ochrona to `model.save()/delete()` lock + Admin read-only. W przyszłości dodać trigger PostgreSQL `BEFORE UPDATE|DELETE ON audit_log FOR EACH ROW EXECUTE FUNCTION deny();`.
+- `ProfileUpdated` jest gotowy (event + persistence), ale nie jest jeszcze dispatchowany (brak use case'u edycji profilu — `UpdateProfileUseCase` w future).
+
+---
+
+### [AUDYT-062] Składnia Pythona 2 w testach (`test_verification_context.py`)
+**Obszar:** `Python / Linter`  
+**Priorytet:** był `🟡 ŚREDNI` (zrealizowany)
+
+**Diagnoza Audytora:** 
+W pliku `tests/domain/value_objects/test_verification_context.py` w linii 73 ostała się stara składnia `except AttributeError, TypeError:`. Powoduje to błąd kompilacji. (Ruff prawdopodobnie omijał ten folder lub plik ten nie był modyfikowany przy ostatnim `make check`).
+
+**Działania:**
+- [X] **`Already resolved / verified`** — linia 73 w `test_verification_context.py` już używa poprawnej składni `except (AttributeError, TypeError):` (zwerfikowano 2026-09-01). Brak kodu Pythona 2 w pliku.
+
+---
+
+### [AUDYT-023] Oczyszczanie "Śmieci" Testowych (Quick Wins)
+**Obszar:** `Testy / Higiena Kodu`  
+**Priorytet:** był `🟢 NISKI` (częściowo zrealizowany)
+
+**Diagnoza Audytora:** 
+W repozytorium znajdują się martwe lub sklonowane obiekty testowe. Plik `tests/infrastructure/test_logging.py` to fizyczna kopia pliku `test_app_settings.py` (testuje `AppSettings`, a nie logi!). Istnieje również pusty, bezwartościowy plik `tests/test_dummy.py`. Testy reguł pokrywają się miejscami z weryfikacją obiektów domeny.
+
+**Działania:**
+- [ ] Zmienić zawartość `tests/infrastructure/test_logging.py`, by weryfikował konfigurację `Loguru` lub usunąć go z repo (pozostaje otwarte — decyzja architektoniczna, nie cleanup).
+- [X] Usunąć plik `tests/test_dummy.py` (usunięty — potwierdzono brak pliku, commit z AUDYT-023).
+- [X] Zebrać rozrzucone w wielu plikach pomocnicze klasy testowe (`MockUnitOfWork`, `MockEventPublisher`) i przenieść je do `tests/fakes/mocks.py` + `tests/conftest.py` (AUDYT-063, commit `fb1dd0d`).
+
+**Uzasadnienie decyzji:**
+`test_dummy.py` i `test_benchmark_samples.py` nie istnieją — zostały wcześniej usunięte. `test_logging.py` testuje faktycznie `AppSettings`, a nie Loguru. Decyzja: pozostawić jako dedykowany test `AppSettings` albo przenieść logowanie do testów `test_log_config.py` (już istnieje) — to wymaga analizy, nie mechanicznego cleanupu.
 
