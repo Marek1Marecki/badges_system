@@ -6,7 +6,7 @@ matematyczny stan z Czystej Domeny to COMPLETED.
 
 from datetime import date
 
-from application.exceptions import ConflictError, UseCaseError
+from application.exceptions import IllegalStateTransitionError, UseCaseError
 from application.ports.user_progress_port import UserProgressRepositoryPort
 
 # Definicja dozwolonych przejść (Maszyna stanów Trackera B2C)
@@ -42,7 +42,8 @@ class AdvanceLogisticStatusUseCase:
 
         Raises:
           UseCaseError: Gdy postęp nie istnieje lub nie należy do turysty.
-          ConflictError: Gdy domena nie jest COMPLETED lub przejście FSM jest nielegalne.
+          IllegalStateTransitionError: Gdy domena nie jest COMPLETED (S-03)
+              lub przejście FSM jest nielegalne (Kanban). AUDYT-018.
         """
         # 1. Weryfikacja tożsamości i istnienia zasobu
         progress = self._progress_repo.get_progress_by_id(profile_id=profile_id, progress_id=progress_id)
@@ -51,7 +52,7 @@ class AdvanceLogisticStatusUseCase:
 
         # 2. Invariant S-03: Logistyka dostępna TYLKO dla matematycznie zdobytych odznak
         if progress.domain_status != "COMPLETED":
-            raise ConflictError(
+            raise IllegalStateTransitionError(
                 "Nie można aktualizować logistyki dla odznaki, "
                 "która nie spełniła jeszcze wymagań regulaminowych (Czysta Domena)."
             )
@@ -59,7 +60,7 @@ class AdvanceLogisticStatusUseCase:
         # 3. Walidacja FSM (Maszyny Stanów)
         allowed_next = VALID_TRANSITIONS.get(progress.logistic_status, [])
         if new_logistic_status not in allowed_next:
-            raise ConflictError(
+            raise IllegalStateTransitionError(
                 f"Niedozwolone przejście stanu logistycznego. "
                 f"Nie można zmienić [{progress.logistic_status}] na [{new_logistic_status}]."
             )

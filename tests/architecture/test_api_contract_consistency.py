@@ -13,9 +13,8 @@ import json
 from pathlib import Path
 
 import pytest
-from django.urls import get_resolver
 from django.conf import settings
-
+from django.urls import get_resolver
 
 OPENAPI_SCHEMA_PATH = Path(settings.BASE_DIR) / "config" / "openapi.json"
 

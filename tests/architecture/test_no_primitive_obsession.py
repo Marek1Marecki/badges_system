@@ -3,8 +3,6 @@
 import ast
 from pathlib import Path
 
-import pytest
-
 USECASES_DIR = Path("application/use_cases")
 ALLOWED_DICT_RETURNS = {
     "explore_map.execute",
@@ -22,7 +20,7 @@ def _get_return_annotation(node: ast.FunctionDef) -> str | None:
 def _is_primitive_annotation(annotation: str) -> bool:
     primitive_types = {"dict", "Any", "list", "tuple", "set"}
     for primitive in primitive_types:
-        if annotation == primitive or annotation.startswith(f"dict[") or annotation.startswith("list["):
+        if annotation == primitive or annotation.startswith("dict[") or annotation.startswith("list["):
             return True
     return False
 

@@ -4,8 +4,6 @@ import ast
 import re
 from pathlib import Path
 
-import pytest
-
 USECASES_DIR = Path("application/use_cases")
 SERVICES_DIR = Path("application/services")
 CONTAINER_FILE = Path("bootstrap/container.py")

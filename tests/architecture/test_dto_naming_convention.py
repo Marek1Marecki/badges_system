@@ -3,8 +3,6 @@
 import ast
 from pathlib import Path
 
-import pytest
-
 DTO_DIR = Path("application/dto")
 ALLOWED_SUFFIXES = ("InputDTO", "RequestDTO", "ResponseDTO")
 LEGACY_DTOS = {

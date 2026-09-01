@@ -4,7 +4,6 @@ from factory import django
 
 from apps.tourists.models import TouristProfile
 
-
 User = get_user_model()
 
 

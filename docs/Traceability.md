@@ -55,6 +55,9 @@
 | **Snapshot Referencyjny** | Single Source of Truth w Repozytorium Gita | `export_reference_data.py`, `manifest.json` | Deterministyczne odtwarzanie środowiska za pomocą `restore_reference_data.py`. |
 | **Idempotencja DataOps** | Ochrona przed duplikacją na PROD | Zapisano w `TEST_STRATEGY.md` | Test `test_restore_reference_data_is_idempotent` weryfikujący podwójny przebieg. |
 | **Architecture Quality & Complexity** | Zapobieganie Erozji Architektury i długowi technologicznemu | `Radon`, `Xenon`, `wily` | Twarda bramka (Gating) w CI/CD odrzucająca funkcje o zbyt wysokiej złożoności cyklomatycznej (Max = B). Comiesięczny raport trendów z artefaktów GitHub Actions. |
+| **Zarządzanie Pamięcią (OOM Protection)** | Optymalizacja zapytań o pełną historię turysty | `DjangoTouristRepository` (iterator 2000, `.only()`) | Zabezpiecza serwer przed wyczerpaniem RAM przy masowym eksporcie logów GPX. |
+| **Optymalizacja Domeny (Indexes)** | Eliminacja zjawiska Seq Scan dla krytycznych ścieżek | Migracje `AddIndex` (złożone indeksy profili) | Skrócenie czasu zapytań w `VerifyBadgeUseCase` z kilkuset do pojedynczych milisekund. |
+| **Ochrona Danych (RODO / Anti-Tombstoning)**| Blokada przypadkowego skasowania historii wejść przy usunięciu konta | `on_delete=models.PROTECT` w relacjach profili | Usunięcie konta wymusza jawną i ostrożną kasację wejść, blokując kaskadę frameworka Django. |
 
 ---
 **Podsumowanie pokrycia:** Wymagania z Fazy C posiadają 100% powiązanie z fizycznymi plikami testowymi dla warstw logiki.

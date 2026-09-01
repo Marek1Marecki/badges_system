@@ -2,7 +2,6 @@ import pytest
 from django.test import Client
 from django.urls import reverse
 
-from apps.tourists.models import TouristProfile
 from tests.factories.tourist import TouristProfileFactory
 
 

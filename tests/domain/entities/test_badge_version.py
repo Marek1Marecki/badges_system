@@ -29,7 +29,7 @@ class TestBadgeVersionDomain:
     def test_evaluate_success_with_valid_ascents(self, ctx: VerificationContext) -> None:
         """Weryfikuje sukces gdy wszystkie wejścia poprawne."""
         domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1, 2]), tiers=_tiers(2))
-        ascents = [Ascent(peak_id=1, ascent_date=date.today()), Ascent(peak_id=2, ascent_date=date.today())]
+        ascents = [Ascent(peak_id=1, ascent_date=date(2024, 6, 15)), Ascent(peak_id=2, ascent_date=date(2024, 6, 15))]
 
         result = domain.evaluate(ascents, ctx)
 
@@ -40,7 +40,7 @@ class TestBadgeVersionDomain:
     def test_evaluate_fails_with_insufficient_peaks(self, ctx: VerificationContext) -> None:
         """Weryfikuje niepowodzenie przy zbyt małej liczbie wejść."""
         domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1, 2]), tiers=_tiers(2))
-        ascents = [Ascent(peak_id=1, ascent_date=date.today())]
+        ascents = [Ascent(peak_id=1, ascent_date=date(2024, 6, 15))]
 
         result = domain.evaluate(ascents, ctx)
 
@@ -50,7 +50,7 @@ class TestBadgeVersionDomain:
     def test_evaluate_ignores_peaks_outside_pool(self, ctx: VerificationContext) -> None:
         """Ignoruje szczyty spoza puli."""
         domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1, 2]), tiers=_tiers(2))
-        ascents = [Ascent(peak_id=1, ascent_date=date.today()), Ascent(peak_id=3, ascent_date=date.today())]
+        ascents = [Ascent(peak_id=1, ascent_date=date(2024, 6, 15)), Ascent(peak_id=3, ascent_date=date(2024, 6, 15))]
 
         result = domain.evaluate(ascents, ctx)
 
@@ -66,7 +66,7 @@ class TestBadgeVersionDomain:
         domain = BadgeVersionDomain(
             version_id="v1", rules=[rule1, rule2], pool_peak_ids=frozenset([1]), tiers=_tiers(1)
         )
-        ascents = [Ascent(peak_id=1, ascent_date=date.today())]
+        ascents = [Ascent(peak_id=1, ascent_date=date(2024, 6, 15))]
 
         result = domain.evaluate(ascents, ctx)
 
@@ -86,7 +86,7 @@ class TestBadgeVersionDomain:
     def test_evaluate_with_duplicate_peaks(self, ctx: VerificationContext) -> None:
         """Ignoruje duplikaty szczyców."""
         domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1]), tiers=_tiers(2))
-        ascents = [Ascent(peak_id=1, ascent_date=date.today()), Ascent(peak_id=1, ascent_date=date.today())]
+        ascents = [Ascent(peak_id=1, ascent_date=date(2024, 6, 15)), Ascent(peak_id=1, ascent_date=date(2024, 6, 15))]
 
         result = domain.evaluate(ascents, ctx)
 

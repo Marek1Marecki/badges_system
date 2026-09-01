@@ -6,11 +6,12 @@ dnia.
 """
 
 from application.dto.ascent_dto import AscentInputDTO
-from application.exceptions import BitemporalTimeError, ConflictError, UseCaseError
+from application.exceptions import ConflictError
 from application.ports.clock_port import ClockPort
 from application.ports.event_publisher_port import DomainEventPublisherPort
 from application.ports.uow_port import UnitOfWorkPort
 from application.ports.user_progress_port import AscentLogRepositoryPort, TouristProfileRepositoryPort
+from application.services.bitemporal_validation_service import BitemporalValidationService
 from application.services.poi_scoring_service import PoiScoringService
 from domain.events import UserProgressStateChanged
 
@@ -23,14 +24,16 @@ class LogAscentUseCase:
         ascent_repository: AscentLogRepositoryPort,
         profile_repository: TouristProfileRepositoryPort,
         poi_service: PoiScoringService,
+        bitemporal_service: BitemporalValidationService,
         clock: ClockPort,
         uow: UnitOfWorkPort,
         event_publisher: DomainEventPublisherPort,
     ) -> None:
-        """Inicjuje przypadek użycia logowania wejścia."""
+        """Inicjalizuje przypadek użycia logowania wejścia."""
         self._ascent_repo = ascent_repository
         self._profile_repo = profile_repository
         self._poi_service = poi_service
+        self._bitemporal_service = bitemporal_service
         self._clock = clock
         self._uow = uow
         self._event_publisher = event_publisher
@@ -54,21 +57,10 @@ class LogAscentUseCase:
           BitemporalTimeError: Jeśli data wejścia wykracza poza cykl życia obiektu (T-01).
           ConflictError: Jeśli turysta zalogował już ten obiekt tego samego dnia (D-04).
         """
-        # 1. Zakaz logowania w przyszłości (Invariant T-03)
-        today = self._clock.now().date()
-        if dto.ascent_date > today:
-            raise UseCaseError(f"Data wejścia ({dto.ascent_date}) nie może być z przyszłości.")
-
-        # 2. Weryfikacja Bitemporalna (Invariant T-01)
-        lifespan = self._ascent_repo.get_object_lifespan(dto.peak_id)
-        if lifespan is None:
-            raise UseCaseError(f"Obiekt o ID {dto.peak_id} nie istnieje w bazie.")
-
-        existence_start, existence_end = lifespan
-        if existence_start and dto.ascent_date < existence_start:
-            raise BitemporalTimeError(f"Obiekt nie istniał w dacie {dto.ascent_date}.")
-        if existence_end and dto.ascent_date > existence_end:
-            raise BitemporalTimeError(f"Obiekt został wyłączony lub zniszczony po {existence_end}.")
+        # AUDYT-017: Bitemporalna weryfikacja (T-01, T-03) + istnnienie peak'a
+        # został przeniesiona do BitemporalValidationService — single source of
+        # truth, uniknięty duplikat z BulkLogAscentsUseCase.
+        self._bitemporal_service.validate_single(dto.peak_id, dto.ascent_date)
 
         # 3. Zabezpieczenie przed duplikatami / Upsert (Invariant D-04)
         if self._ascent_repo.ascent_exists(profile_id=profile_id, peak_id=dto.peak_id, ascent_date=dto.ascent_date):

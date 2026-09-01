@@ -12,10 +12,10 @@ Gwarantuje tzw. Partial Success - zwraca co się udało zapisać, a co odrzucono
 """
 
 from application.dto.ascent_dto import AscentInputDTO
-from application.ports.clock_port import ClockPort
 from application.ports.event_publisher_port import DomainEventPublisherPort
 from application.ports.uow_port import UnitOfWorkPort
 from application.ports.user_progress_port import AscentLogRepositoryPort
+from application.services.bitemporal_validation_service import BitemporalValidationService
 from domain.events import UserProgressStateChanged
 
 
@@ -28,13 +28,13 @@ class BulkLogAscentsUseCase:
     def __init__(
         self,
         ascent_repository: AscentLogRepositoryPort,
-        clock: ClockPort,
+        bitemporal_service: BitemporalValidationService,
         uow: UnitOfWorkPort,
         event_publisher: DomainEventPublisherPort,
     ) -> None:
-        """Inicjuje przypadek użycia masowego importu wejść."""
+        """Inicjalizuje przypadek użycia masowego importu wejść."""
         self._ascent_repo = ascent_repository
-        self._clock = clock
+        self._bitemporal_service = bitemporal_service
         self._uow = uow
         self._event_publisher = event_publisher
 
@@ -50,34 +50,13 @@ class BulkLogAscentsUseCase:
         Returns:
           Raport z liczbą zapisanych wejść i listą błędów.
         """
-        today = self._clock.now().date()
-        errors = []
-        valid_ascents = []
+        # AUDYT-017: Bitemporalna weryfikacja (T-01, T-03) + N+1 batch
+        # pobierająca ramy życia grupowo została wyodrębniona do
+        # BitemporalValidationService — single source of truth.
+        validation_result = self._bitemporal_service.validate_batch(ascents)
 
-        # 1. Optymalizacja N+1: Pobieramy daty życia grupowo (jeden strzał SQL)
-        peak_ids = {a.peak_id for a in ascents}
-        lifespans = self._ascent_repo.get_objects_lifespans(peak_ids)
-
-        # 2. Walidacja T-01 i T-03
-        for ascent in ascents:
-            if ascent.ascent_date > today:
-                errors.append({"peak_id": str(ascent.peak_id), "reason": "Data z przyszłości."})
-                continue
-
-            lifespan = lifespans.get(ascent.peak_id)
-            if not lifespan:
-                errors.append({"peak_id": str(ascent.peak_id), "reason": "Obiekt nie istnieje."})
-                continue
-
-            start_date, end_date = lifespan
-            if start_date and ascent.ascent_date < start_date:
-                errors.append({"peak_id": str(ascent.peak_id), "reason": "Obiekt nie istniał w tej dacie."})
-                continue
-            if end_date and ascent.ascent_date > end_date:
-                errors.append({"peak_id": str(ascent.peak_id), "reason": "Obiekt został zniszczony/wyłączony."})
-                continue
-
-            valid_ascents.append(ascent)
+        errors = [{"peak_id": str(v.peak_id), "reason": v.reason} for v in validation_result.violations]
+        valid_ascents = validation_result.accepted
 
         # 3. Zapis i Publikacja (Unit Of Work)
         if valid_ascents:

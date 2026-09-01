@@ -40,7 +40,23 @@ class BitemporalTimeError(ApplicationException):
 class ConflictError(ApplicationException):
     """Błąd w przypadku konfliktu danych.
 
-    Używany dla: duplikat logu wejścia (D-04),
-    błędne przejście stanu logistycznego.
+    Używany wyłącznie dla: duplikatów danych (Idempotentność, D-04),
+    które mogą powstać w wyniku równoległego zapisu tego samego rekordu.
+
+    Dla naruszeń maszyny stanów (FSM) użyj ``IllegalStateTransitionError``.
+    Mapuje na: 409 Conflict
+    """
+
+
+class IllegalStateTransitionError(ConflictError):
+    """Błąd nielegalnej zmiany stanu w maszynie stanów (Kanban FSM).
+
+    Subklasa ``ConflictError`` — oba mapują na HTTP 409 Conflict, lecz
+    nazwa precyzyjniej opisuje przyczynę (naruszenie S-03, FSM), co
+    poprawia Traceability logów (AUDYT-018).
+
+    Używany dla:
+      - próby aktualizacji logistyki dla odznaki nie w stanie COMPLETED (S-03).
+      - nielegalnego przejścia stanu logistycznego w Kanbanie (US-C07/US-C08).
     Mapuje na: 409 Conflict
     """

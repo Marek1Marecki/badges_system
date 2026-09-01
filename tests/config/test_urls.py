@@ -1,11 +1,8 @@
 """Tests for main URL configuration."""
 
-from unittest.mock import patch
 
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase
 from django.urls import resolve, reverse
-
-from config.urls import health_check
 
 
 class TestMainUrls(SimpleTestCase):

@@ -4,7 +4,6 @@ from django.contrib.auth import get_user_model
 from apps.tourists.models import TouristProfile
 from tests.factories.tourist import TouristProfileFactory, UserFactory
 
-
 User = get_user_model()
 
 

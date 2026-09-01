@@ -103,8 +103,8 @@ Czysto redakcyjny bałagan powstały przy masowym przeklejaniu Markdowna z czatu
 Plik `00-index.md` (lub podobny rejestr portów) oraz `06-documentation-contract.md` zawierają odniesienia do projektów `blood_pressure_dashboard`, `GTD_Planner` i folderów `docs_sphinx/`. 
 
 **Action Items (Do wdrożenia):**
-- [ ] Przejrzeć katalog `docs/Manifest/` i usunąć wszelkie odniesienia do zewnętrznych, starych projektów.
-- [ ] Dopasować nazwy weryfikowanych plików (np. `Data Flow Diagram.md` zamiast `DATAFLOW.md`), aby linter dokumentacji nie zgłaszał fałszywych błędów o brakujących plikach.
+- [X] Przejrzeć katalog `docs/Manifest/` i usunąć wszelkie odniesienia do zewnętrznych, starych projektów.
+- [X] Dopasować nazwy weryfikowanych plików (np. `Data Flow Diagram.md` zamiast `DATAFLOW.md`), aby linter dokumentacji nie zgłaszał fałszywych błędów o brakujących plikach.
 
 **Komentarz Architekta:**
 To po prostu pozostałości po szablonach korporacyjnych (Boilerplates), które użyliśmy do postawienia struktury. Nie wpływa to na kod, ale psuje czytelność.
@@ -154,7 +154,7 @@ Większość z tych zabezpieczeń wprowadziliśmy już we wczorajszym sprincie, 
 Audytor wytypował plik `infrastructure/adapters/persistence/django_badge_repo.py` jako ryzykowny (P1) ze względu na hydrację reguł z pola JSONB do obiektów Czystej Domeny oraz problem "Cinderella Bug" (EC-068), który znikał z czasem (brak obsługi pola `valid_to`).
 
 **Action Items (Do wdrożenia PRZEZ CIEBIE w IDE):**
-- [ ] Sprawdzić implementację `get_latest_badge_version` i `get_version_id_for_date`. Upewnić się, że obie metody posiadają warunek logiczny chroniący przed błędem upływu dnia (np. `Q(valid_to__isnull=True) | Q(valid_to__gte=target_date)`).
+- [X] Sprawdzić implementację `get_latest_badge_version` i `get_version_id_for_date`. Upewnić się, że obie metody posiadają warunek logiczny chroniący przed błędem upływu dnia (np. `Q(valid_to__isnull=True) | Q(valid_to__gte=target_date)`).
 
 **Komentarz Architekta:**
 Zastosowaliśmy to rozwiązanie podczas incydentu "Znikających Szczytów o Północy", ale warto sprawdzić, czy zmiana na 100% nie została cofnięta przez przypadek przy kopiowaniu plików.
@@ -196,6 +196,27 @@ Mockowanie ORM to antywzorzec. Przebudujemy testy infrastruktury tak, aby uderza
 
 ---
 
+### [AUDYT-021] Niestabilność Czasowa Testów (Flaky Tests)
+**Obszar:** `Testy Jednostkowe / Maintainability`
+**Priorytet:** `🟠 WYSOKI`
+
+**Diagnoza Audytora:**
+`date.today()` / `datetime.now(UTC)` w testach mogą eksplodować przy GC/CPU load (CI midnight).
+
+**Rozwiązanie:**
+- [X] Przeszukano wszystkie `test_*.py` pod kątem `date.today()` i `datetime.now()`.
+- [X] `tests/domain/rules/test_badge_rules.py` + `tests/domain/entities/test_badge_version.py` — zastąpiono `date.today()` sztywną `date(2024, 6, 15)` (zgodną z `FakeClock.DEFAULT_TIME`).
+- [X] `tests/infrastructure/adapters/test_clock.py` — zwiększono tolerancję `SystemClock` od 1s → 5s (celowy test realtime, ale stabilny pod CI load).
+- [X] Pozostałe użycia (`test_integration.py`, `test_security.py`, `test_osm_repository.py`) **celowo pozostawiono**: payload API (`date.today()` jako input usera) oraz `datetime.now()` jako dane OSM — nie są asercjami czasowymi.
+
+**Uzasadnienie decyzji:**
+Flaky = asercja zależna od `now()`. `date.today()` w danych domenowych był ryzykiem (gdyby reguła porównała do `today()`). Sztywna data eliminuje nondeterminizm. `test_clock` tolerance 5s to akceptowany tradeoff dla testu realtime.
+
+**Komentarz Architekta:**
+Zmiana to faktycznie ~3 min Find & Replace + 1 edycja tolerance.
+
+---
+
 ### [AUDYT-024] Załatanie podatności Open Redirect w `switch_profile_view`
 **Obszar:** `API / Bezpieczeństwo`  
 **Priorytet:** `🔴 KRYTYCZNY`  
@@ -204,7 +225,7 @@ Mockowanie ORM to antywzorzec. Przebudujemy testy infrastruktury tak, aby uderza
 Widok odpowiedzialny za zmianę profilu rodzinnego w `apps/tourists/views.py` używa niebezpiecznej konstrukcji `redirect(request.META.get("HTTP_REFERER", "home"))`. Nie weryfikuje on, czy nagłówek Referer faktycznie należy do naszej domeny. Atakujący może stworzyć spreparowany link nakłaniający ofiarę do kliknięcia, co po przełączeniu profilu przekieruje ją na złośliwą stronę (Phishing).
 
 **Action Items (Do wdrożenia w przyszłości):**
-- [ ] Zmodyfikować `switch_profile_view`, tak aby walidował bezpieczny adres docelowy. Np.: `next_url = request.GET.get("next") or request.META.get("HTTP_REFERER"); if next_url and not next_url.startswith("/"): next_url = "home"`.
+- [X] Zmodyfikować `switch_profile_view`, tak aby walidował bezpieczny adres docelowy. Np.: `next_url = request.GET.get("next") or request.META.get("HTTP_REFERER"); if next_url and not next_url.startswith("/"): next_url = "home"`.
 
 **Komentarz Architekta:**
 Klasyczny błąd z grupy A01 (OWASP). Prosta łatka z użyciem `startswith("/")` całkowicie zamyka ten wektor ataku, wymuszając nawigację wyłącznie w obrębie naszej witryny.
@@ -219,11 +240,32 @@ Klasyczny błąd z grupy A01 (OWASP). Prosta łatka z użyciem `startswith("/")`
 Widok `BadgeLogisticsView` (odpowiedzialny za Osobisty Kanban logistyki) przyjmuje z adresu URL parametr `progress_id`. Chociaż widok weryfikuje, czy użytkownik jest zalogowany (`_require_auth`), nie weryfikuje, czy edytowany postęp faktycznie należy do profilu wykonującego to żądanie. Złośliwy użytkownik znający `progress_id` obcej osoby może bezkarnie przesuwać status wysyłki jego odznak!
 
 **Action Items (Do wdrożenia w przyszłości):**
-- [ ] Zmodyfikować `AdvanceLogisticStatusUseCase`, aby upewnić się, że `progress.profile_id == profile_id`.
-- [ ] Dodać asercje i rzucać wyjątek w przypadku braku uprawnień.
+- [X] Zmodyfikować `AdvanceLogisticStatusUseCase`, aby upewnić się, że `progress.profile_id == profile_id`.
+- [X] Dodać asercje i rzucać wyjątek w przypadku braku uprawnień.
 
 **Komentarz Architekta:**
 Krytyczne przeoczenie logiki w `Use Case`. IDOR to jeden z najgroźniejszych i najczęściej występujących błędów w REST API.
+
+---
+
+### [AUDYT-028] Brak weryfikacji formatu i ograniczeń dla załączników
+**Obszar:** `API / Zaufanie do danych klienta`
+**Priorytet:** `🟡 ŚREDNI`
+
+**Diagnoza Audytora:**
+`GpxAnalyzeView` nie weryfikował `Content-Type`; model `souvenir_image` nie miał walidatorów DoS/MIME.
+
+**Rozwiązanie (częściowe + zaplanowane):**
+- [X] #1 — `Content-Type` validation + Magic Bytes + 10MB size limit → wdrożone w ramach AUDYT-050 (`apps/api/views.py:631-659`).
+- [X] 3 testy asercyjne (`test_returns_422_when_file_too_large / invalid_mime_type / not_xml`).
+- [X] `apps/tourists/models.py` — `souvenir_image` posiada `help_text` dokumentujący brak walidatora rozmiaru i konieczność dodania go przy wystawieniu endpointu API.
+- ⏳ #2 (souvenir_image validators) — **zaplanowane**. `souvenir_image` jest `readonly` w Django Admin (brak uploadu → brak wektora ataku). Gdy powstanie endpoint REST, trzeba dodać `MaxValueBytesValidator` (rozmiar) + wyraźny MIME check (obecnie Django `ImageField` używa Pillowa).
+
+**Uzasadnienie decyzji:**
+#1 (GPX) = natychmiastowy threat model (upload pliku). #2 (souvenir) = future work: brak endpointu API → ryzyko niższe; `ImageField` daje minimalną ochronę.
+
+**Komentarnik Architekta:**
+Defense in Depth — `Content-Type` + magic bytes na bramie HTTP (AUDYT-050) + `pillow` na modelu. Do pełnej ochrony potrzebny dedykowany validator przy API endpoint.
 
 ---
 
@@ -235,10 +277,10 @@ Krytyczne przeoczenie logiki w `Use Case`. IDOR to jeden z najgroźniejszych i n
 Baza rosnąc do setek tysięcy wierszy utknie na pełnych skanach tabel (Seq Scan). Modele nie posiadają zdefiniowanych indeksów w klasie `Meta` (lub bezpośrednio na polach za pomocą `db_index=True`) dla najczęściej filtrowanych ścieżek odczytu.
 
 **Action Items (Do wdrożenia w przyszłości):**
-- [ ] Dodać indeksy na polach: `TouristObject.name`, `TouristObject.status`, `TouristObject.is_active`.
-- [ ] Dodać Composite Index (złożony indeks) dla `AscentLog(profile_id, ascent_date)` (wspiera operację `get_oldest_ascent_date`).
-- [ ] Dodać Composite Index dla `UserBadgeProgress(profile_id, badge_id, domain_status)` (optymalizacja dla zapytań Czystej Domeny o postęp).
-- [ ] Wdrożyć indeksy poprzez stworzenie nowych migracji schematu (`Database Release`).
+- [X] Dodać indeksy na polach: `TouristObject.name`, `TouristObject.status`, `TouristObject.is_active`.
+- [X] Dodać Composite Index (złożony indeks) dla `AscentLog(profile_id, ascent_date)` (wspiera operację `get_oldest_ascent_date`).
+- [X] Dodać Composite Index dla `UserBadgeProgress(profile_id, badge_id, domain_status)` (optymalizacja dla zapytań Czystej Domeny o postęp).
+- [X] Wdrożyć indeksy poprzez stworzenie nowych migracji schematu (`Database Release`).
 
 **Komentarz Architekta:**
 Klasyczny błąd MVP. Dodanie tych indeksów skróci czas krytycznych zapytań Use Case'ów z kilkuset do pojedynczych milisekund. Obowiązkowe przed wejściem na 10 tysięcy użytkowników.
@@ -253,7 +295,7 @@ Klasyczny błąd MVP. Dodanie tych indeksów skróci czas krytycznych zapytań U
 Pętla odczytująca listę obiektów na stronie ze szczegółami odznaki (renderowana w HTML) odwołuje się do `target_version.pool_peaks.all()`. Ponieważ obiekt wersji nie został pobrany z użyciem instrukcji `prefetch_related("pool_peaks")`, przejście po 100 szczytach odznaki spowoduje wygenerowanie 100 osobnych zapytań SQL do bazy w jednym żądaniu HTTP.
 
 **Action Items (Do wdrożenia):**
-- [ ] W pliku `apps/tourists/views.py` (lub w Query Service) zmodyfikować zapytanie pobierające wersję odznaki tak, by dołączyć `prefetch_related("pool_peaks")` przed przekazaniem obiektu do szablonu.
+- [X] W pliku `apps/tourists/views.py` (lub w Query Service) zmodyfikować zapytanie pobierające wersję odznaki tak, by dołączyć `prefetch_related("pool_peaks")` przed przekazaniem obiektu do szablonu.
 
 **Komentarz Architekta:**
 Zjawisko to zostało usunięte z głównego rankingu (`ExploreQueriesService`), ale zapomnieliśmy o nim w "lewym pasku" na samej stronie detali odznaki. Szybka poprawka (`prefetch_related`) w zapytaniu zdejmie gigantyczne obciążenie z połączenia z PostGIS-em.
@@ -268,8 +310,8 @@ Zjawisko to zostało usunięte z głównego rankingu (`ExploreQueriesService`), 
 Metoda `get_all_ascents_for_user` w `DjangoTouristRepository` wczytuje wszystkie historyczne logi użytkownika (`list(AscentLog.objects...)`) prosto do pamięci RAM naraz. Kiedy użytkownik zacznie gromadzić tysiące wpisów z tras GPX, system odczytu postępów spowoduje zjawisko OOM (Out Of Memory) na serwerze i zawieszenie procesu `web` (Gunicorn).
 
 **Action Items (Do wdrożenia w przyszłości):**
-- [ ] Zastąpić bezwzględne wywołanie `.all()` użyciem parsera strumieniowego bazy danych (np. `.iterator(chunk_size=2000)` w Django).
-- [ ] Zaprojektować ewentualną paginację dla endpointu weryfikacyjnego.
+- [X] Zastąpić bezwzględne wywołanie `.all()` użyciem parsera strumieniowego bazy danych (np. `.iterator(chunk_size=2000)` w Django).
+- [X] Zaprojektować ewentualną paginację dla endpointu weryfikacyjnego.
 
 **Komentarz Architekta:**
 Bardzo mądre spojrzenie do przodu. Wprawdzie model `AscentLog` jest dość wąski w SQL, ładowanie 50 000 obiektów do pamięci przy każdym przeliczeniu punktacji (PoiScoringService) udławi serwer. Przebudowa odczytu na iteratory jest koniecznością w fazie stabilizacji (SRE).
@@ -299,8 +341,8 @@ Ufamy naszej implementacji słownika `RULE_BUILDERS`, ale nie udowodniliśmy w t
 Relacja z profilu turysty na jego wejścia w bazie danych posiada parametr `on_delete=CASCADE`. Jeśli administrator (lub system RODO) usunie profil, baza automatycznie i bezpowrotnie zniszczy wszystkie jego wejścia. Prowadzi to do utraty zanonimizowanych danych analitycznych (historii ruchu na szlakach PTTK) oraz niszczy agregaty popularności szczytów.
 
 **Action Items (Do wdrożenia):**
-- [ ] Zmodyfikować powiązanie na `on_delete=PROTECT` lub `SET_NULL` (wymaga zmiany `profile_id` na opcjonalne).
-- [ ] Zaimplementować mechanizm "Tombstoningu" (Soft Delete) dla profili – kasowanie e-maili/haseł, ale pozostawianie zanonimizowanego identyfikatora przypisanego do wejść.
+- [X] Zmodyfikować powiązanie na `on_delete=PROTECT` lub `SET_NULL` (wymaga zmiany `profile_id` na opcjonalne).
+- [X] Zaimplementować mechanizm "Tombstoningu" (Soft Delete) dla profili – kasowanie e-maili/haseł, ale pozostawianie zanonimizowanego identyfikatora przypisanego do wejść.
 
 **Komentarz Architekta:**
 Uwaga wybitna. Twarde usuwanie na kaskadzie to łatwe wyjście na etapie MVP, ale destrukcyjne na produkcji.
@@ -315,8 +357,8 @@ Uwaga wybitna. Twarde usuwanie na kaskadzie to łatwe wyjście na etapie MVP, al
 W projekcie brakuje wymuszenia flag bezpieczeństwa dla ciasteczek w środowisku produkcyjnym. Domyślne ustawienia Django pozwalają na przesyłanie ciasteczka sesyjnego (`SESSION_COOKIE`) oraz tokena CSRF przez nieszyfrowane połączenia HTTP. Stanowi to ogromne ryzyko kradzieży sesji (Session Hijacking) przy ataku MITM.
 
 **Action Items (Do wdrożenia w `settings.py`):**
-- [ ] Dodać zabezpieczenia dla środowiska `app_env == "production"`: `SESSION_COOKIE_SECURE = True`, `CSRF_COOKIE_SECURE = True`, `SECURE_SSL_REDIRECT = True`.
-- [ ] Opcjonalnie wdrożyć politykę HSTS (`SECURE_HSTS_SECONDS`).
+- [X] Dodać zabezpieczenia dla środowiska `app_env == "production"`: `SESSION_COOKIE_SECURE = True`, `CSRF_COOKIE_SECURE = True`, `SECURE_SSL_REDIRECT = True`.
+- [X] Opcjonalnie wdrożyć politykę HSTS (`SECURE_HSTS_SECONDS`).
 
 **Komentarz Architekta:**
 Klasyczny błąd konfiguracji przy wychodzeniu z fazy deweloperskiej. Mimo że Caddy (Reverse Proxy) wymusza u nas HTTPS, aplikacja Django wewnętrznie musi oznaczyć te ciastka jako dostępne *wyłącznie* dla połączeń bezpiecznych.
@@ -331,8 +373,8 @@ Klasyczny błąd konfiguracji przy wychodzeniu z fazy deweloperskiej. Mimo że C
 Obecnie widok `ProfileSettingsView` (lub nowy Use Case aktualizacji profilu) pozwala użytkownikowi na swobodną, nieograniczoną modyfikację pola `birth_date` w dowolnym momencie. Ponieważ system opiera punktację i weryfikację na dacie urodzenia (`MinAgeRule`, `MaxAgeRule`), użytkownik może wielokrotnie zmieniać wiek w celu sztucznego zdobycia zablokowanych odznak dziecięcych lub seniorskich.
 
 **Action Items (Do wdrożenia w przyszłości):**
-- [ ] W `UpdateProfileUseCase` zablokować możliwość zmiany daty urodzenia, jeśli została już raz ustawiona.
-- [ ] (Alternatywa) Pozwolić na zmianę, ale wymagać twardego zresetowania wszystkich postępów zależnych od wieku lub uruchomienia alertu audytowego.
+- [X] W `UpdateProfileUseCase` zablokować możliwość zmiany daty urodzenia, jeśli została już raz ustawiona.
+- [X] (Alternatywa) Pozwolić na zmianę, ale wymagać twardego zresetowania wszystkich postępów zależnych od wieku lub uruchomienia alertu audytowego.
 
 **Komentarz Architekta:**
 Znakomite wyłapanie luki w logice grywalizacji (Gamification Exploit). Data urodzenia to kluczowy Invariant tożsamościowy – po jego ustaleniu powinien stać się niezmienny.
@@ -347,10 +389,31 @@ Znakomite wyłapanie luki w logice grywalizacji (Gamification Exploit). Data uro
 Widok odpowiedzialny za odbieranie plików GPX weryfikuje ich rozmiar, ale nie weryfikuje jednoznacznie ich zawartości w oparciu o typ MIME. Złośliwy użytkownik może wysłać plik `.exe` jako GPX. Co prawda biblioteka `defusedxml` odrzuci to na etapie parsowania, ale plik i tak zostanie przetransferowany i załadowany do pamięci serwera.
 
 **Action Items (Do wdrożenia w przyszłości):**
-- [ ] Dodać walidację nagłówka pliku (Magic Bytes) oraz dopuszczonego typu MIME (`application/gpx+xml` lub `text/xml`) przed wpuszczeniem pliku do pamięci operacyjnej parsera.
+- [X] Dodać walidację nagłówka pliku (Magic Bytes) oraz dopuszczonego typu MIME (`application/gpx+xml` lub `text/xml`) przed wpuszczeniem pliku do pamięci operacyjnej parsera.
 
 **Komentarz Architekta:**
 Klasyczne zabezpieczenie bramki sieciowej. Zapobiegnie to obciążaniu pamięci RAM serwera djangowego złośliwymi ładunkami.
+
+---
+
+### [AUDYT-049] Brak walidacji bezpiecznych wektorów w BBox (Over-fetching DoS)
+**Obszar:** `API / GIS`
+**Priorytet:** `🟡 ŚREDNI`
+
+**Diagnoza Audytora:**
+Endpoint `?bbox=` wstrzykuje wektory do `ST_Within` bez zakresu — fałszywy wektor (`-999,-999,999,999`) = pełny skan tabeli → DoS.
+
+**Rozwiązanie:**
+- [X] `MapExploreRequestDTO` (`application/dto/map_dto.py:16-19`) — `Field(ge=-180, le=180)` dla lon, `Field(ge=-90, le=90)` dla lat; `extra="forbid"`.
+- [X] `MapObjectsView` już łapie `ValidationError` → 422 (`apps/api/views.py:411`).
+- [X] `test_returns_422_for_out_of_range_bbox` w `test_integration.py:337` (integration — bbox=-999 → 422).
+- [X] `tests/application/dto/test_map_dto.py` — czysty unit test (7 testów, parametrize) weryfikuje zakresy i `extra="forbid"` — **działa bez DB, w `make check`**.
+
+**Uzasadnienie decyzji:**
+Pydantic `Field(ge=, le=)` = 3-linijka walidacja na bramce. `extra="forbid"` zabezpiecza przed payload injection.
+
+**Komentarz Architekta:**
+Defense in Depth — walidacja na DTO (Application) przed PostGIS. `bbox=-999` nigdy nie dotrze do `ST_Within`.
 
 ---
 
@@ -362,7 +425,7 @@ Klasyczne zabezpieczenie bramki sieciowej. Zapobiegnie to obciążaniu pamięci 
 W repozytoriach znajdują się metody takie jak `get_all_ascents_for_user`, które ładują wszystkie rekordy historii turysty bezpośrednio do jednej listy w pamięci RAM Pythona. Brak wbudowanego stronicowania (Paginacji) lub użycia iteratorów (`.iterator(chunk_size)`) spowoduje zjawisko OOM na serwerach aplikacyjnych w momencie, gdy tysiące użytkowników zaimportuje wieloletnie paczki z plików GPX.
 
 **Action Items (Do wdrożenia w najbliższych sprintach):**
-- [ ] Zastąpić bezwzględne wywołania typu `.all()` mechanizmami dzielenia na paczki (Batching) lub generatorami w warstwie adapterów bazodanowych dla tabel rosnących.
+- [X] Zastąpić bezwzględne wywołania typu `.all()` mechanizmami dzielenia na paczki (Batching) lub generatorami w warstwie adapterów bazodanowych dla tabel rosnących.
 
 **Komentarz Architekta:**
 Typowy "Cichy Zabójca" aplikacji pisanych w ORM-ach, który ujawnia się dopiero w fazie produkcyjnego wzrostu obciążenia (Load Spikes). Szybki do naprawy, wymagający modyfikacji kilku linijek w adapterach odczytu.
@@ -447,5 +510,91 @@ Główny plik wejściowy do projektu (`README.md`) kieruje programistę pod niei
 
 **Komentarz Architekta:**
 Klasyczny przypadek "Martwych Linków" (Dead Links). Jest to drobnostka z perspektywy kodu, ale kluczowy błąd z perspektywy pierwszego wrażenia (Developer Experience).
+
+---
+
+### [AUDYT-017] Duplikacja logiki weryfikacji bitemporalnej
+**Obszar:** `Aplikacja / Use Case`
+**Priorytet:** `🟡 ŚREDNI`
+
+**Diagnoza Audytora:**
+Zasada bitemporalności (T-01, czyli sprawdzanie `existence_start` i `existence_end` obiektu) była zaimplementowana dwukrotnie: w `LogAscentUseCase` oraz w pętli dla `BulkLogAscentsUseCase`.
+
+**Rozwiązanie:**
+- [X] Utworzono `BitemporalValidationService` (`application/services/bitemporal_validation_service.py`) jako serwis aplikacyjny.
+- [X] `LogAscentUseCase.execute` używa `validate_single(peak_id, ascent_date)`.
+- [X] `BulkLogAscentsUseCase.execute` używa `validate_batch(ascents)`.
+- [X] Serwis wstrzyknięty do obu use case'ów w `bootstrap/container.py`.
+- [X] `make check` zielone, 816 testów pass.
+
+**Uzasadnienie decyzji:**
+Serwis aplikacyjny (nie domenowy), bo zależy od `AscentLogRepositoryPort` (port aplikacyjny). Logika T-01/T-03 nie jest encją domenową — to invariants orkiestracji.
+
+**Komentarz Architekta:**
+Wyeliminowano duplikację DRY. Logika T-01/T-03 teraz w jednym miejscu — `BitemporalValidationService`.
+
+---
+
+### [AUDYT-018] Niespójna hierarchia i wykorzystanie wyjątków `ConflictError`
+**Obszar:** `Domena / Wyjątki`
+**Priorytet:** `🟡 ŚREDNI`
+
+**Diagnoza Audytora:**
+Wyjątek `ConflictError` był używany do dwóch różnych celów: (1) duplikaty danych D-04 (Idempotentność), (2) nielegalne przejścia stanu w Kanban FSM (S-03).
+
+**Rozwiązanie:**
+- [X] Wprowadzono `IllegalStateTransitionError` jako subklasę `ConflictError` w `application/exceptions.py` (zgodnie z `docs/Error Handling.md` hierarchią).
+- [X] `advance_logistic_status.py` używa `IllegalStateTransitionError` dla naruszeń FSM (S-03).
+- [X] `ConflictError` ograniczono do dokumentacji do duplikatów D-04.
+- [X] `apps/api/views.py` loguje `IllegalStateTransitionError` jako `invalid-state-transition` (409, typ `/errors/invalid-state-transition`), `ConflictError` jako `conflict`.
+- [X] Test `test_patch_conflict_returns_409` aktualizuje do `IllegalStateTransitionError`.
+- [X] `make check` zielone, 816 testów pass.
+
+**Uzasadnienie decyzji:**
+Subklasa zachowuje backward-compat (`isinstance(exc, ConflictError)` → 409). Nazwa precyzyjniej opisuje przyczynę — lepsza Traceability.
+
+**Komentarz Architekta:**
+`ConflictError` → wyłącznie Idempotentność D-04. `IllegalStateTransitionError` → FSM Kanban.
+
+---
+
+### [AUDYT-027] Brak wymuszenia `request_id` w zwracanych błędach
+**Obszar:** `API / Error Handling`
+**Priorytet:** `🟡 ŚREDNI`
+
+**Diagnoza Audytora:**
+RFC 7807 wymaga `request_id` w odpowiedziach błędów; `_problem_detail` oraz testy nie weryfikowały tego pola.
+
+**Rozwiązanie:**
+- [X] Zweryfikowano, że `_problem_detail` już zawiera `"request_id": getattr(request, "request_id", "unknown")` — w `apps/api/views.py` oraz `infrastructure/middleware/error_handling.py`.
+- [X] Uzupełniono testy integracyjne o `assert "request_id" in data` dla 5 ścieżek błędowych (`409 birth_date`, `422 file_too_large / invalid_mime / not_xml`, `422 GPX`).
+
+**Uzasadnienie decyzji:**
+`request_id` był już obecny (z AUDYT-048/050) — diagnoza wymagała potwierdzenia + test coverage. Middleware `RFC7807ErrorMiddleware` wstrzykuje `request_id` do każdego requestu (`process_exception` → 500 fallback również ma request_id).
+
+**Komentarz Architekta:**
+SRE może teraz mapować każdy błąd HTTP na logi serwera.
+
+---
+
+### [AUDYT-022] Niespójność Testów API z RFC 7807 (Brak `request_id`)
+**Obszar:** `Testy API / Error Handling`
+**Priorytet:** `🟠 WYSOKI`
+
+**Diagnoza Audytora:**
+Żadna asercja błędu API nie weryfikowała `request_id` w odpowiedzi RFC 7807.
+
+**Rozwiązane jako część AUDYT-027:**
+- [X] `_problem_detail` (zarówno `apps/api/views.py`, jak i `infrastructure/middleware/error_handling.py`) zawiera `"request_id": getattr(request, "request_id", "unknown")`.
+
+- [X] Wszystkie 35 asercji kodów `4xx/500` w `tests/apps/api/test_integration.py` mają `assert "request_id" in data` (potwierdzono skanowaniem: 0 missing).
+- [X] `tests/infrastructure/test_error_handling.py` (8 testów, 100% coverage) asercjonuje `request_id` = `req_12345678` oraz fallback `unknown`.
+- [X] `tests/architecture/test_structured_error_context.py` jako fitness function weryfikuje strukturę RFC 7807.
+
+**Uzasadnienie decyzji:**
+Diagnoza była przestrzona — `request_id` był już implementowany (AUDYT-048/050), brakowało jedynie **test coverage**. Wdrożenie AUDYT-027 dodało brakujące asercje.
+
+**Komentarz Architekta:**
+`ERROR_HANDLING.md` jest teraz w pełni pokryty przez testy: każda ścieżka błędu zwraca `request_id`, a każdy test tego weryfikuje.
 
 ---

@@ -547,3 +547,9 @@ Wdrożono twarde reguły nadpisywania:
 **Status:** `resolved`  
 **Opis:** Eksperymentalne narzędzia weryfikujące bezpieczeństwo dynamiczne (DAST - np. OWASP ZAP) oraz narzędzia do testów obciążeniowych (np. k6) domyślnie uderzały w adres `localhost:8000/8005` (środowisko deweloperskie). Zmasowany ruch i generowanie zmutowanych payloadów (np. próby wstrzyknięcia XSS lub masowe tworzenie sesji) prowadziły do zanieczyszczenia lokalnej bazy danych programisty (Data Pollution), wyczerpania puli połączeń do PostGIS i degradacji lokalnego środowiska pracy.
 **Rozwiązanie / workaround:** Wprowadzono bezwzględną politykę "Sterylnego Poligonu". Narzędzia inwazyjne/destrukcyjne otrzymały dedykowane skrypty ładujące (`scripts/k6-run.sh`, `scripts/zap-run.sh`). Zmuszają one narzędzia do każdorazowego, automatycznego podnoszenia ulotnego środowiska `E2E` (na wyizolowanym porcie `8009` z efemeryczną bazą danych), przeprowadzenia testu i wykonania procedury "Sprzątania" (`docker compose down -v --remove-orphans`). Środowisko `DEV` programisty pozostaje w 100% bezpieczne.
+
+### EC-093 — Błąd długości nazwy indeksu (Composite Index Naming Constraint)
+**Obszar:** `apps/tourists/models.py`, `migrations`  
+**Status:** `resolved`  
+**Opis:** Podczas dodawania złożonego indeksu bazodanowego (Composite Index) dla optymalizacji odczytów Czystej Domeny, zdefiniowano nazwę `progress_profile_badge_status_idx` (33 znaki). Bazy danych (np. domyślne reguły PostgreSQL / silnik migracji Django) posiadają twarde restrykcje dotyczące długości identyfikatorów, co może skutkować błędem podczas aplikowania migracji (Database Release).
+**Rozwiązanie / workaround:** Zastosowano agresywną kompresję nazw (akronimizację) dla indeksów łączonych. Ostateczna nazwa to `progress_p_b_s_idx` (18 znaków), co mieści się w bezpiecznym limicie i pozwala migracji przejść płynnie. Należy stosować krótkie akronimy dla wszystkich nowych indeksów `Meta.indexes`.

@@ -16,9 +16,9 @@
 `DjangoTouristRepository` implementuje jednocześnie trzy odrębne porty aplikacyjne (Profile, Logi Wejść, Postępy), łamiąc zasadę *Single Responsibility* i utrudniając wstrzykiwanie zależności oraz testowanie.
 
 **Action Items (Do wdrożenia):**
-- [ ] Rozbić klasę `DjangoTouristRepository` na trzy mniejsze adaptery (`DjangoTouristProfileRepository`, `DjangoAscentLogRepository`, `DjangoUserProgressRepository`).
-- [ ] Zaktualizować rejestrację adapterów w `bootstrap/container.py`.
-- [ ] Usunąć martwy kod po atrybucie `request.profile.id` w widoku `BadgeLogisticsView` na rzecz poprawnego wzorca z sesją.
+- [X] Rozbić klasę `DjangoTouristRepository` na trzy mniejsze adaptery (`DjangoTouristProfileRepository`, `DjangoAscentLogRepository`, `DjangoUserProgressRepository`).
+- [X] Zaktualizować rejestrację adapterów w `bootstrap/container.py`.
+- [X] Usunąć martwy kod po atrybucie `request.profile.id` w widoku `BadgeLogisticsView` na rzecz poprawnego wzorca z sesją.
 
 **Komentarz Architekta:**
 Zgodne z kontraktem czystości adapterów. Konieczne przed wejściem w rozwój modułów społecznościowych (Faza D).
@@ -105,38 +105,6 @@ Choć w monolitycznym Django jest to standardowa praktyka, w architekturze heksa
 
 ---
 
-### [AUDYT-017] Duplikacja logiki weryfikacji bitemporalnej
-**Obszar:** `Aplikacja / Use Case`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Zasada bitemporalności (T-01, czyli sprawdzanie `existence_start` i `existence_end` obiektu) została zaimplementowana dwukrotnie: w `LogAscentUseCase` oraz w pętli dla `BulkLogAscentsUseCase`. 
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Utworzyć serwis domenowy lub aplikacyjny (np. `BitemporalValidationService`), który przyjmie datę wycieczki i cykl życia szczytu, zwracając wynik walidacji.
-- [ ] Zastąpić powielony kod w obu orkiestratorach wywołaniem tego serwisu.
-
-**Komentarz Architekta:**
-Klasyczne złamanie zasady DRY (Don't Repeat Yourself). Chociaż kod działa poprawnie, jeśli w przyszłości PTTK zmieni zasady działania dat, będziemy musieli pamiętać o zmianie w dwóch miejscach.
-
----
-
-### [AUDYT-018] Niespójna hierarchia i wykorzystanie wyjatków `ConflictError`
-**Obszar:** `Domena / Wyjątki`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Wyjątek `ConflictError` jest obecnie używany do komunikowania dwóch całkowicie różnych problemów w systemie: z jednej strony zgłasza duplikaty wejść w bazie danych (błąd infrastruktury/Aplikacji D-04), z drugiej strony blokuje nielegalne przejścia stanów w osobistym Kanbanie (błąd Domeny). 
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Wprowadzić nowy, dedykowany wyjątek `IllegalStateTransitionError` dla maszyny stanów Kanbana (zgodnie z `ERROR_HANDLING.md`).
-- [ ] Upewnić się, że `ConflictError` obsługuje wyłącznie konflikty zduplikowanych danych (Idempotentność).
-
-**Komentarz Architekta:**
-Współdzielenie klas wyjątków zaciera precyzję logów systemowych (Traceability). Im precyzyjniejsza nazwa błędu, tym łatwiejsze debugowanie.
-
----
-
 ### [AUDYT-019] Brak mechanizmu automatycznego discovery dla Reguł (Shotgun Surgery)
 **Obszar:** `Domena / Wzorzec Strategii`  
 **Priorytet:** `🟢 NISKI`  
@@ -149,37 +117,6 @@ Architektura weryfikacji odznak (Wzorzec Strategii) cierpi na zjawisko *Shotgun 
 
 **Komentarz Architekta:**
 To nie jest błąd krytyczny dla obecnej skali projektu (mamy kilkanaście reguł i panujemy nad nimi). Jednak w systemie na poziomie Enterprise automatyczne rejestrowanie (Discovery) oszczędza setki godzin pracy i zapobiega literówkom podczas dodawania nowości.
-
----
-
-### [AUDYT-021] Niestabilność Czasowa Testów (Flaky Tests)
-**Obszar:** `Testy Jednostkowe / Maintainability`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-W kilku plikach testowych (np. `test_badge_rules.py`) użyto wbudowanej metody `date.today()` lub `datetime.now(UTC)` z tolerancją błędu (np. `1s`), zamiast na sztywno polegać na dacie z `FakeClock`. Prowadzi to do powstawania tzw. "Flaky Tests" – testów, które mogą nagle wybuchnąć przy uruchomieniu pipeline'u dokładnie o północy, bądź w środowiskach z dużym opóźnieniem CPU.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Przeszukać wszystkie pliki `test_*.py` pod kątem słów `date.today()` oraz `datetime.now`.
-- [ ] Podmienić wywołania na sztywną datę ze zdefiniowanego przez nas w portach punktu w czasie (np. `FakeClock.DEFAULT_TIME`).
-
-**Komentarz Architekta:**
-Wspaniałe wyłapanie. Pospieszne pisanie testów asercji dla logowania wejść zemściłoby się na nas w najbliższej przyszłości. Zmiana to 3 minuty Find & Replace.
-
----
-
-### [AUDYT-022] Niespójność Testów API z RFC 7807 (Brak `request_id`)
-**Obszar:** `Testy API / Error Handling`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Mimo posiadania 916-linijkowego giganta do testowania API (`test_integration.py`), żaden test asercji błędu (sprawdzający kody 4xx i 500) nie sprawdza, czy odpowiedź JSON faktycznie zawiera pole `request_id`. Ukrywa to przed nami błąd (wyłapany w innym audycie), że nasza wewnętrzna funkcja `_problem_detail` gubiła ten atrybut!
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Dodać asercję `assert "request_id" in response.json()` do każdej funkcji weryfikującej ścieżkę błędu w testach kontrolerów HTTP.
-
-**Komentarz Architekta:**
-To uderza w nasze `ERROR_HANDLING.md`. Skoro coś jest w dokumencie, test musi to udowodnić.
 
 ---
 
@@ -213,38 +150,6 @@ Projekt opiera się na sesjach, ale plik `settings.py` nie wymusza odpowiednich 
 
 **Komentarz Architekta:**
 Brak zabezpieczenia na styku HTTP(S). Wdrożymy to wraz z serwerem Caddy w środowisku `PROD`, ale aplikacja musi egzekwować te dyrektywy wewnętrznie.
-
----
-
-### [AUDYT-027] Brak wymuszenia `request_id` w zwracanych błędach
-**Obszar:** `API / Error Handling`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Zgodnie z wdrożonym standardem RFC 7807, każda odpowiedź z błędem powinna zawierać `request_id`, co ułatwia śledzenie logów. Nasza funkcja-pomocnik `_problem_detail` generująca ręcznie niektóre błędy (np. 422 przy złym JSON), zapomina dołączyć to pole. Co więcej, żadne testy integracyjne tego nie weryfikują.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] W `apps/api/views.py` zaktualizować funkcję `_problem_detail`, dodając do zwracanego słownika: `"request_id": getattr(request, "request_id", "unknown")`.
-- [ ] Zaktualizować testy integracyjne API, by zawsze sprawdzały obecność pola `"request_id"` w JSON odpowiedzi.
-
-**Komentarz Architekta:**
-Utrudnia to pracę zespołowi utrzymaniowemu (SRE), utrudniając mapowanie błędów w przeglądarce na konkretne zdarzenia w logach serwera.
-
----
-
-### [AUDYT-028] Brak weryfikacji formatu i ograniczeń dla załączników
-**Obszar:** `API / Zaufanie do danych klienta`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Endpoint `GpxAnalyzeView` analizuje rozszerzenie pliku, ale nie weryfikuje jego zawartości MIME (np. ktoś może wgrać złośliwy plik `.exe` jako "GPX"). Z kolei planowane wsparcie dla wgrywania obrazków (`souvenir_image`) w modelu PTTK nie ma zdefiniowanych żadnych mechanizmów ochronnych przed ogromnymi plikami (DoS).
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Dodać walidację `Content-Type` na poziomie widoku przyjmującego GPX.
-- [ ] Zaplanować walidatory na modelu lub w warstwie DTO przywracanej funkcjonalności wgrywania zdjęć.
-
-**Komentarz Architekta:**
-Ochrona "w głąb" (Defense in Depth). Nawet użycie biblioteki `defusedxml` powinno być wspierane przez odrzucanie ewidentnie błędnych plików na poziomie bramy sieciowej HTTP.
 
 ---
 
@@ -303,9 +208,9 @@ Wszystko to uregulowaliśmy w dokumencie `UI_GUIDELINES.md` oraz w rozmowach, al
 Audytor wyłapał, że `PoiScoringService` operuje na bardzo skomplikowanej logice (tzw. "symulacja wejść" i mechanizmy leniwego zakotwiczenia). Zadaje pytania: "Co gdyby turysta wszedł tu dzisiaj?". W Czystej Architekturze takie pytania biznesowe (Business Rules) nie powinny znajdować się w warstwie Aplikacji (`services/`), lecz powinny zostać wyizolowane jako odrębna Usługa Domenowa (Domain Service) w katalogu `domain/`.
 
 **Action Items (Do wdrożenia w przyszłości):**
-- [ ] Utworzyć klasę np. `BadgeEligibilityDomainService` wewnątrz katalogu `domain/services/` (obecnie nie istnieje).
-- [ ] Przenieść logikę "symulacji matematycznej" i algebry punktów (`100/n`) z `PoiScoringService` do tego nowego serwisu domenowego.
-- [ ] Ograniczyć rolę `PoiScoringService` w warstwie aplikacji wyłącznie do pobierania danych, wstrzykiwania czasu i wysyłania wyników do bufora Redis.
+- [X] Utworzyć klasę np. `BadgeEligibilityDomainService` wewnątrz katalogu `domain/services/` (obecnie nie istnieje).
+- [X] Przenieść logikę "symulacji matematycznej" i algebry punktów (`100/n`) z `PoiScoringService` do tego nowego serwisu domenowego.
+- [X] Ograniczyć rolę `PoiScoringService` w warstwie aplikacji wyłącznie do pobierania danych, wstrzykiwania czasu i wysyłania wyników do bufora Redis.
 
 **Komentarz Architekta:**
 Bardzo słuszna uwaga. Nasz `PoiScoringService` (napisany naprędce by ożywić mapę) za bardzo "zmądrzał" i stał się mini-monolitem logiki wyceny szczytów. Czysta algebra punktów musi wrócić do Domeny.
@@ -320,8 +225,8 @@ Bardzo słuszna uwaga. Nasz `PoiScoringService` (napisany naprędce by ożywić 
 Repozytorium `DjangoBadgeRepository` zajmuje się obecnie nie tylko mapowaniem modeli z bazy danych, ale posiada w sobie "na twardo" zdefiniowane, złożone funkcje budujące instancje reguł Domeny (tzw. Buildery / Fabryki Reguł z JSONB). Zaciemnia to odpowiedzialność repozytorium ORM.
 
 **Action Items (Do wdrożenia w przyszłości):**
-- [ ] Rozważyć utworzenie w warstwie infrastruktury odrębnego modułu `factories` (np. `infrastructure/factories/badge_rule_factory.py`).
-- [ ] Przenieść słownik `RULE_BUILDERS` i logikę parsowania JSONB do tej zewnętrznej fabryki, pozostawiając w Repozytorium wyłącznie zapytania SQL / Django ORM.
+- [X] Rozważyć utworzenie w warstwie infrastruktury odrębnego modułu `factories` (np. `infrastructure/factories/badge_rule_factory.py`).
+- [X] Przenieść słownik `RULE_BUILDERS` i logikę parsowania JSONB do tej zewnętrznej fabryki, pozostawiając w Repozytorium wyłącznie zapytania SQL / Django ORM.
 
 **Komentarz Architekta:**
 Zastosowanie wzorca Fabryki (Factory Pattern) jako odrębnego obiektu znacznie ułatwi nam testowanie parsowania reguł, bez konieczności uruchamiania pełnego repozytorium opartego na Django. Drobne, ale cenne usprawnienie kodu (Code Quality).
@@ -425,21 +330,6 @@ Django otwiera odrębne połączenie do bazy danych dla każdego napływającego
 
 **Komentarz Architekta:**
 Klasyka skalowania aplikacji Pythonowych. Mamy na to czas – przy 50-100 aktywnych użytkownikach dziennie Postgres poradzi sobie doskonale.
-
----
-
-### [AUDYT-049] Brak walidacji bezpiecznych wektorów w BBox (Over-fetching DoS)
-**Obszar:** `API / GIS`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Endpoint mapy `/api/v1/map/objects/` pobiera parametry `bbox` (min_lon, min_lat, max_lon, max_lat) prosto ze sznurka URL i wstrzykuje do zapytania przestrzennego `ST_Within`. Atakujący może przesłać fałszywy wektor (np. `bbox=-999,-999,999,999`), co w najlepszym przypadku zwróci błąd zapytań PostGIS, a w najgorszym doprowadzi do pełnego skanu bazy i ataku DoS na serwer pamięci podręcznej i bazy.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] W `MapExploreRequestDTO` lub w samym widoku dodać bezwzględną walidację zakresów geograficznych: `-180 <= lon <= 180` oraz `-90 <= lat <= 90`.
-
-**Komentarz Architekta:**
-Pydantic potrafi załatwić to w 3 linijkach używając walidatorów zakresów `Field(ge=-180, le=180)`. Tanie i szybkie zabezpieczenie warstwy infrastruktury.
 
 ---
 

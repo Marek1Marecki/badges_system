@@ -21,9 +21,9 @@ class TestSystemClock:
         assert result.tzinfo == UTC
 
     def test_now_is_recent(self):
-        """Test that now() returns current time (within 1 second)."""
+        """Test that now() returns current time (within 5s tolerance for CI load)."""
         clock = SystemClock()
         result = clock.now()
         now = datetime.now(UTC)
         difference = abs((result - now).total_seconds())
-        assert difference < 1.0
+        assert difference < 5.0

@@ -1,7 +1,5 @@
 """Testy architektury: kontrakt request_id / correlation ID."""
 
-import json
-from unittest.mock import patch
 
 from django.test import RequestFactory, SimpleTestCase
 

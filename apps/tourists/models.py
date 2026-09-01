@@ -76,7 +76,16 @@ class AscentLog(models.Model):
     ascent_date = models.DateField(verbose_name="Data wejścia")
 
     souvenir_image = models.ImageField(
-        upload_to=profile_directory_path, null=True, blank=True, verbose_name="Zdjęcie pamiątkowe"
+        upload_to=profile_directory_path,
+        null=True,
+        blank=True,
+        verbose_name="Zdjęcie pamiątkowe",
+        help_text=(
+            "Ochrona: Django ImageField weryfikuje nagłówek obrazu (Pillow). "
+            "BRAK: limit rozmiaru (DoS) oraz wyraźna walidacja MIME — zob. AUDYT-028. "
+            "Upload przez API nie jest jeszcze obsługiwany (tylko Admin); "
+            "przed dodaniem endpointu REST trzeba dodać validator rozmiaru + Content-Type."
+        ),
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

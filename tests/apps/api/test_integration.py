@@ -279,11 +279,11 @@ class TestBadgeLogisticsView:
         assert json.loads(response.content)["status"] == "UPDATED"
 
     def test_patch_conflict_returns_409(self, factory, mock_user, use_cases) -> None:
-        """Zwraca 409 przy niedozwolonym przejściu statusu logistycznego."""
-        from application.exceptions import ConflictError
+        """Zwraca 409 przy niedozwolonym przejściu statusu logistycznego (FSM Kanban)."""
+        from application.exceptions import IllegalStateTransitionError
         from apps.api.views import BadgeLogisticsView
 
-        use_cases["advance_logistic_status"].execute.side_effect = ConflictError("Niedozwolone przejście")
+        use_cases["advance_logistic_status"].execute.side_effect = IllegalStateTransitionError("Niedozwolone przejście")
 
         request = factory.patch(
             "/api/v1/progress/1/logistics/",
@@ -296,6 +296,7 @@ class TestBadgeLogisticsView:
 
         assert response.status_code == 409
         data = json.loads(response.content)
+        assert data["type"] == "https://api.pttk-badges.pl/errors/invalid-state-transition"
         assert "request_id" in data
 
 
@@ -325,6 +326,23 @@ class TestMapObjectsView:
         from apps.api.views import MapObjectsView
 
         request = factory.get("/api/v1/map/objects/")
+        request.user = mock_user
+
+        response = MapObjectsView.as_view()(request)
+
+        assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
+
+    def test_returns_422_for_out_of_range_bbox(self, factory, mock_user, use_cases) -> None:
+        """Zwraca 422 gdy bbox poza dozwolonym zakresem geograficznym (AUDYT-049).
+
+        Chroni PostGIS i cache przed atakiem DoS poprzez fałszywy wektor
+        (np. -999,-999,999,999) skanujący całą tabelę.
+        """
+        from apps.api.views import MapObjectsView
+
+        request = factory.get("/api/v1/map/objects/?bbox=-999,-999,999,999")
         request.user = mock_user
 
         response = MapObjectsView.as_view()(request)
@@ -425,9 +443,10 @@ class TestProfileSettingsView:
 
     def test_rejects_birth_date_change_when_already_set(self, factory, mock_user, use_cases) -> None:
         """SECURITY: Odmusza zmiany birth_date gdy już ustawiona (AUDYT-048, Age Fraud)."""
+        from datetime import date
+
         from apps.api.views import ProfileSettingsView
         from apps.tourists.models import TouristProfile
-        from datetime import date
 
         mock_profile = MagicMock(spec=TouristProfile)
         mock_profile.user = mock_user
@@ -446,12 +465,14 @@ class TestProfileSettingsView:
             assert response.status_code == 409
             data = json.loads(response.content)
             assert data["detail"] == "Data urodzenia nie może być zmieniona po ustawieniu."
+            assert "request_id" in data
 
     def test_rejects_birth_date_clear_when_already_set(self, factory, mock_user, use_cases) -> None:
         """SECURITY: Odmusza wyczyszczenia birth_date gdy już ustawiona (AUDYT-048)."""
+        from datetime import date
+
         from apps.api.views import ProfileSettingsView
         from apps.tourists.models import TouristProfile
-        from datetime import date
 
         mock_profile = MagicMock(spec=TouristProfile)
         mock_profile.user = mock_user
@@ -468,6 +489,8 @@ class TestProfileSettingsView:
             response = ProfileSettingsView.as_view()(request, profile_id=1)
 
             assert response.status_code == 409
+            data = json.loads(response.content)
+            assert "request_id" in data
 
 
 # ---------------------------------------------------------------------------
@@ -567,6 +590,7 @@ class TestGpxAnalyzeView:
         assert response.status_code == 422
         data = json.loads(response.content)
         assert data["detail"] == "Plik GPX nie może przekraczać 10 MB."
+        assert "request_id" in data
 
     def test_returns_422_when_invalid_mime_type(self, factory, mock_user, use_cases) -> None:
         """SECURITY: Odrzuca pliki o niebezpiecznym Content-Type (AUDYT-050)."""
@@ -589,6 +613,7 @@ class TestGpxAnalyzeView:
         assert response.status_code == 422
         data = json.loads(response.content)
         assert data["detail"] == "Akceptowane są pliki GPX (application/gpx+xml, text/xml)."
+        assert "request_id" in data
 
     def test_returns_422_when_file_not_xml(self, factory, mock_user, use_cases) -> None:
         """SECURITY: Odrzuca plik oznaczony jako XML, ale bez magic bytes XML/GPX."""
@@ -611,6 +636,7 @@ class TestGpxAnalyzeView:
         assert response.status_code == 422
         data = json.loads(response.content)
         assert data["detail"] == "Plik nie jest prawidłowym plikiem GPX ani XML."
+        assert "request_id" in data
 
 
 # ---------------------------------------------------------------------------
@@ -909,9 +935,9 @@ class TestProfileSettingsViewAdditional:
 
             response = ProfileSettingsView.as_view()(request, profile_id=1)
 
-            assert response.status_code == 422
-            data = json.loads(response.content)
-            assert "request_id" in data
+        assert response.status_code == 422
+        data = json.loads(response.content)
+        assert "request_id" in data
 
 
 # ---------------------------------------------------------------------------

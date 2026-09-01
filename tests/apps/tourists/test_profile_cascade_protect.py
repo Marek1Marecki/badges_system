@@ -3,9 +3,9 @@ from datetime import date
 import pytest
 from django.db.models.deletion import ProtectedError
 
+from apps.badges.models import TouristObject
 from apps.tourists.models import AscentLog, TouristProfile
 from tests.factories.tourist import TouristProfileFactory
-from apps.badges.models import TouristObject
 
 
 @pytest.mark.django_db(transaction=True)

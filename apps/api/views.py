@@ -33,6 +33,7 @@ from application.exceptions import (
     ApplicationException,
     BitemporalTimeError,
     ConflictError,
+    IllegalStateTransitionError,
     ResourceNotFoundError,
     UseCaseError,
 )
@@ -119,8 +120,18 @@ def _handle_application_exception(request, exc: ApplicationException) -> JsonRes
         logger.info("resource_not_found", extra={"request_id": request_id})
         return _problem_detail(request, "resource-not-found", "Zasób nie istnieje", 404, "Zasób nie istnieje.")
 
+    if isinstance(exc, IllegalStateTransitionError):
+        logger.warning("invalid_state_transition", extra={"request_id": request_id})
+        return _problem_detail(
+            request,
+            "invalid-state-transition",
+            "Niedozwolona Zmiana Stanu",
+            409,
+            "Niedozwolona zmiana stanu logistycznego (Kanban FSM).",
+        )
+
     if isinstance(exc, ConflictError):
-        logger.warning("conflict", extra={"request_id": request_id})
+        logger.info("conflict", extra={"request_id": request_id})
         return _problem_detail(request, "conflict", "Konflikt Danych", 409, "Konflikt danych.")
 
     if isinstance(exc, BitemporalTimeError):

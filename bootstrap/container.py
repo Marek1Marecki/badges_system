@@ -7,6 +7,7 @@ taskach (Eliminacja String-Keys).
 
 from dataclasses import dataclass
 
+from application.services.bitemporal_validation_service import BitemporalValidationService
 from application.services.explore_queries_service import ExploreQueriesService
 from application.services.poi_scoring_service import PoiScoringService
 from application.use_cases.advance_logistic_status import AdvanceLogisticStatusUseCase
@@ -67,6 +68,7 @@ class AppContainer:
     update_badge_progress: UpdateBadgeProgressCommand
     poi_scoring_service: PoiScoringService
     explore_queries_service: ExploreQueriesService
+    bitemporal_validation_service: BitemporalValidationService
 
 
 _container_instance: AppContainer | None = None
@@ -118,14 +120,20 @@ def build_container() -> AppContainer:
         cache=cache_adapter,
     )
 
+    bitemporal_validation_service = BitemporalValidationService(
+        ascent_repo=ascent_repo,
+        clock=clock,
+    )
+
     _container_instance = AppContainer(
         analyze_gpx_track=AnalyzeGpxTrackUseCase(map_repository=map_repo, gpx_parser=gpx_parser),
         advance_logistic_status=AdvanceLogisticStatusUseCase(
             progress_repository=progress_repo,
         ),
+        bitemporal_validation_service=bitemporal_validation_service,
         bulk_log_ascents=BulkLogAscentsUseCase(
             ascent_repository=ascent_repo,
-            clock=clock,
+            bitemporal_service=bitemporal_validation_service,
             uow=uow,
             event_publisher=event_publisher,
         ),
@@ -140,6 +148,7 @@ def build_container() -> AppContainer:
             ascent_repository=ascent_repo,
             profile_repository=profile_repo,
             poi_service=poi_scoring_service,
+            bitemporal_service=bitemporal_validation_service,
             clock=clock,
             uow=uow,
             event_publisher=event_publisher,

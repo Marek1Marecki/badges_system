@@ -87,8 +87,8 @@ def test_start_date_rule(ctx: VerificationContext) -> None:
 def test_mandatory_objects_rule(ctx: VerificationContext) -> None:
     """Weryfikuje regułę obowiązkowych szczytów."""
     rule = MandatoryObjectsRule(mandatory_peak_ids=frozenset([1, 2]))
-    valid_ascents = [Ascent(peak_id=1, ascent_date=date.today()), Ascent(peak_id=2, ascent_date=date.today())]
-    invalid_ascents = [Ascent(peak_id=1, ascent_date=date.today())]
+    valid_ascents = [Ascent(peak_id=1, ascent_date=date(2024, 6, 15)), Ascent(peak_id=2, ascent_date=date(2024, 6, 15))]
+    invalid_ascents = [Ascent(peak_id=1, ascent_date=date(2024, 6, 15))]
     assert not rule.validate(valid_ascents, ctx)
     assert len(rule.validate(invalid_ascents, ctx)) == 1
 
@@ -96,8 +96,11 @@ def test_mandatory_objects_rule(ctx: VerificationContext) -> None:
 def test_grouped_alternatives_rule(ctx: VerificationContext) -> None:
     """Weryfikuje regułę grupowanych alternatyw."""
     rule = GroupedAlternativesRule(groups=(frozenset([1, 2]), frozenset([3, 4])), min_groups_required=2)
-    valid_ascents = [Ascent(peak_id=1, ascent_date=date.today()), Ascent(peak_id=3, ascent_date=date.today())]
-    invalid_ascents = [Ascent(peak_id=1, ascent_date=date.today()), Ascent(peak_id=2, ascent_date=date.today())]
+    valid_ascents = [Ascent(peak_id=1, ascent_date=date(2024, 6, 15)), Ascent(peak_id=3, ascent_date=date(2024, 6, 15))]
+    invalid_ascents = [
+        Ascent(peak_id=1, ascent_date=date(2024, 6, 15)),
+        Ascent(peak_id=2, ascent_date=date(2024, 6, 15)),
+    ]
     assert not rule.validate(valid_ascents, ctx)
     assert len(rule.validate(invalid_ascents, ctx)) == 1
 
@@ -109,13 +112,13 @@ def test_multi_pool_requirement_rule(ctx: VerificationContext) -> None:
     rule = MultiPoolRequirementRule(pools=(pool1, pool2))
 
     valid_ascents = [
-        Ascent(peak_id=1, ascent_date=date.today()),
-        Ascent(peak_id=2, ascent_date=date.today()),
-        Ascent(peak_id=4, ascent_date=date.today()),
+        Ascent(peak_id=1, ascent_date=date(2024, 6, 15)),
+        Ascent(peak_id=2, ascent_date=date(2024, 6, 15)),
+        Ascent(peak_id=4, ascent_date=date(2024, 6, 15)),
     ]
     invalid_ascents = [
-        Ascent(peak_id=1, ascent_date=date.today()),
-        Ascent(peak_id=4, ascent_date=date.today()),
+        Ascent(peak_id=1, ascent_date=date(2024, 6, 15)),
+        Ascent(peak_id=4, ascent_date=date(2024, 6, 15)),
     ]
     assert not rule.validate(valid_ascents, ctx)
     assert len(rule.validate(invalid_ascents, ctx)) == 1
@@ -134,12 +137,12 @@ def test_region_count_rule(ctx: VerificationContext) -> None:
     """Weryfikuje regułę liczby wejść w regionie."""
     rule = RegionCountRule(region_id=42, required_count=2)
     valid_ascents = [
-        Ascent(peak_id=1, ascent_date=date.today(), region_ids=frozenset([42, 10])),
-        Ascent(peak_id=2, ascent_date=date.today(), region_ids=frozenset([42])),
+        Ascent(peak_id=1, ascent_date=date(2024, 6, 15), region_ids=frozenset([42, 10])),
+        Ascent(peak_id=2, ascent_date=date(2024, 6, 15), region_ids=frozenset([42])),
     ]
     invalid_ascents = [
-        Ascent(peak_id=1, ascent_date=date.today(), region_ids=frozenset([42, 10])),
-        Ascent(peak_id=3, ascent_date=date.today(), region_ids=frozenset([99])),
+        Ascent(peak_id=1, ascent_date=date(2024, 6, 15), region_ids=frozenset([42, 10])),
+        Ascent(peak_id=3, ascent_date=date(2024, 6, 15), region_ids=frozenset([99])),
     ]
     assert not rule.validate(valid_ascents, ctx)
     assert len(rule.validate(invalid_ascents, ctx)) == 1

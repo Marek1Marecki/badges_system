@@ -3,8 +3,6 @@
 import ast
 from pathlib import Path
 
-import pytest
-
 RULES_DIR = Path("domain/rules")
 BASE_RULE_NAME = "BadgeRule"
 

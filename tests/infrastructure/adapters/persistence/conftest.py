@@ -11,7 +11,6 @@ from django.db import connections
 from pytest_django.plugin import blocking_manager_key
 from testcontainers.community.postgres import PostgresContainer
 
-
 _testcontainers_container = None
 
 

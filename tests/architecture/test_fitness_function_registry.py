@@ -1,6 +1,5 @@
 """Testy architektury: weryfikacja kompletności rejestru fitness functions."""
 
-import ast
 import re
 from pathlib import Path
 

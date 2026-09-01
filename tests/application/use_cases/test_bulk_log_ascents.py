@@ -3,6 +3,7 @@
 from datetime import date
 
 from application.dto.ascent_dto import AscentInputDTO
+from application.services.bitemporal_validation_service import BitemporalValidationService
 from application.use_cases.bulk_log_ascents import BulkLogAscentsUseCase
 
 
@@ -37,6 +38,16 @@ class MockClock:
         return datetime(2023, 6, 15)
 
 
+def _use_case(repo: MockAscentRepository, clock: MockClock) -> BulkLogAscentsUseCase:
+    """Buduje BulkLogAscentsUseCase z realnym BitemporalValidationService (AUDYT-017)."""
+    return BulkLogAscentsUseCase(
+        repo,
+        BitemporalValidationService(repo, clock),
+        MockUnitOfWork(),
+        MockEventPublisher(),
+    )
+
+
 class TestBulkLogAscentsUseCase:
     """Test BulkLogAscentsUseCase."""
 
@@ -44,9 +55,7 @@ class TestBulkLogAscentsUseCase:
         """Test execute with empty ascents list."""
         repo = MockAscentRepository()
         clock = MockClock()
-        uow = MockUnitOfWork()
-        event_publisher = MockEventPublisher()
-        use_case = BulkLogAscentsUseCase(repo, clock, uow, event_publisher)
+        use_case = _use_case(repo, clock)
 
         result = use_case.execute(1, [])
 
@@ -57,9 +66,7 @@ class TestBulkLogAscentsUseCase:
         """Test execute with valid ascents."""
         repo = MockAscentRepository()
         clock = MockClock()
-        uow = MockUnitOfWork()
-        event_publisher = MockEventPublisher()
-        use_case = BulkLogAscentsUseCase(repo, clock, uow, event_publisher)
+        use_case = _use_case(repo, clock)
 
         ascents = [
             AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1)),
@@ -75,9 +82,7 @@ class TestBulkLogAscentsUseCase:
         """Test execute rejects ascents with future dates."""
         repo = MockAscentRepository()
         clock = MockClock()
-        uow = MockUnitOfWork()
-        event_publisher = MockEventPublisher()
-        use_case = BulkLogAscentsUseCase(repo, clock, uow, event_publisher)
+        use_case = _use_case(repo, clock)
 
         ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2024, 1, 1))]
 
@@ -91,9 +96,7 @@ class TestBulkLogAscentsUseCase:
         """Test execute rejects ascents for nonexistent objects."""
         repo = MockAscentRepository()
         clock = MockClock()
-        uow = MockUnitOfWork()
-        event_publisher = MockEventPublisher()
-        use_case = BulkLogAscentsUseCase(repo, clock, uow, event_publisher)
+        use_case = _use_case(repo, clock)
 
         ascents = [AscentInputDTO(peak_id=999, ascent_date=date(2023, 1, 1))]
 
@@ -107,9 +110,7 @@ class TestBulkLogAscentsUseCase:
         """Test execute rejects ascents before object creation."""
         repo = MockAscentRepository()
         clock = MockClock()
-        uow = MockUnitOfWork()
-        event_publisher = MockEventPublisher()
-        use_case = BulkLogAscentsUseCase(repo, clock, uow, event_publisher)
+        use_case = _use_case(repo, clock)
 
         ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2019, 1, 1))]
 
@@ -123,9 +124,7 @@ class TestBulkLogAscentsUseCase:
         """Test execute rejects ascents after object destruction."""
         repo = MockAscentRepository()
         clock = MockClock()
-        uow = MockUnitOfWork()
-        event_publisher = MockEventPublisher()
-        use_case = BulkLogAscentsUseCase(repo, clock, uow, event_publisher)
+        use_case = _use_case(repo, clock)
 
         ascents = [AscentInputDTO(peak_id=2, ascent_date=date(2023, 1, 1))]
 
@@ -139,9 +138,7 @@ class TestBulkLogAscentsUseCase:
         """Test execute with mixed valid and invalid ascents."""
         repo = MockAscentRepository()
         clock = MockClock()
-        uow = MockUnitOfWork()
-        event_publisher = MockEventPublisher()
-        use_case = BulkLogAscentsUseCase(repo, clock, uow, event_publisher)
+        use_case = _use_case(repo, clock)
 
         ascents = [
             AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1)),  # Valid
@@ -158,9 +155,7 @@ class TestBulkLogAscentsUseCase:
         """Test execute returns BulkAscentResultDTO."""
         repo = MockAscentRepository()
         clock = MockClock()
-        uow = MockUnitOfWork()
-        event_publisher = MockEventPublisher()
-        use_case = BulkLogAscentsUseCase(repo, clock, uow, event_publisher)
+        use_case = _use_case(repo, clock)
 
         ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1))]
 

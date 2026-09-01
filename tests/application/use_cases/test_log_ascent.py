@@ -7,6 +7,7 @@ import pytest
 
 from application.dto.ascent_dto import AscentInputDTO
 from application.exceptions import BitemporalTimeError, ConflictError, UseCaseError
+from application.services.bitemporal_validation_service import BitemporalValidationService
 from application.use_cases.log_ascent import LogAscentUseCase
 from tests.fakes.clock import FakeClock
 
@@ -53,7 +54,19 @@ def _use_case(
     uow = MockUnitOfWork()
     event_publisher = MockEventPublisher()
 
-    return LogAscentUseCase(ascent_repo, profile_repo, poi_service, clock, uow, event_publisher), ascent_repo, clock
+    return (
+        LogAscentUseCase(
+            ascent_repo,
+            profile_repo,
+            poi_service,
+            BitemporalValidationService(ascent_repo, clock),
+            clock,
+            uow,
+            event_publisher,
+        ),
+        ascent_repo,
+        clock,
+    )
 
 
 class TestLogAscentUseCase:
