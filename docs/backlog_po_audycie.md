@@ -61,9 +61,9 @@ Ryzyko to nie jest blokujące, ale obniża "testowalność" systemu (Testability
 
 ### [AUDYT-016] Importy modeli między niezależnymi aplikacjami Django
 **Obszar:** `Aplikacje / Izolacja Bounded Contexts`  
-**Priorytet:** `🟠 WYSOKI`  
+**Priorytet:** `🟠 WYSOKI`
 
-**Diagnoza Audytora:** 
+**Diagnoza Audytora:**
 Plik `apps/tourists/views.py` (obsługujący HTML) bezpośrednio importuje modele z `apps/badges/models.py` (np. `BadgeModel`, `TouristObject`). To łamie SRP i powoduje silne sprzęgnięcie (Coupling) pomiędzy dwoma Bounded Contextami (Słowniki PTTK a Dane Użytkowników).
 
 **Action Items (Do wdrożenia w przyszłości):**
@@ -1043,13 +1043,13 @@ W MVP to niepotrzebny koszt optymalizacyjny, jednak z chwilą wejścia w produkc
 **Diagnoza Audytora:** 
 Analiza statyczna importów wykazała pętlę zależności (Circular Dependency). Warstwa dostarczania (`apps/badges/models.py`) importuje bezpośrednio schemat z warstwy infrastruktury (`infrastructure/schemas/badge_rules_schema.py`), podczas gdy adaptery z `infrastructure/` importują modele i zadania z `apps/`. Łamie to reguły Enkapsulacji i zamienia modularny monolit w spaghetti.
 
-**Action Items (Do wdrożenia w najbliższym sprincie refaktoryzacyjnym):**
-- [X] Przeniesiono definicję `RULES_SCHEMA` z `infrastructure/schemas/` do `apps/badges/rules_schema.py` (AUDYT-085).
-- [ ] Usunąć bezpośrednie importy z `apps/` wewnątrz `infrastructure/adapters/` (np. zastąpić bezpośrednie odwołania do `apps.badges.tasks` w `celery_event_publisher.py` przez wstrzykiwanie portów lub dynamiczny call) — DŁUG-004.
+**Action Items (Do wdrożenia):**
+- [X] Przenieść `RULES_SCHEMA` z `infrastructure/schemas/` → `apps/badges/rules_schema.py` (AUDYT-085).
+- [X] Dodać `TransientInfrastructureError` do `application/exceptions.py`; `InfrastructureException` dziedziczy po nim, co pozwala taskom Celery łapać błędy infrastruktury na poziomie aplikacji bez importowania warstwy infrastruktury (AUDYT-119).
 - [X] Konfiguracja `import-linter` w `.importlinter` ma kontrakt `hexagonal-layers` blokujący apps → infrastructure.
 
 **Komentarz Architekta:**
-To jest najpoważniejsze naruszenie granic heksagonalnych w całym kodzie. Modele Django w `apps/badges/models.py` powinny być "głupie" i nie wiedzieć nic o specyficznych schematach walidacyjnych formularzy Admina z infrastruktury. 
+To jest najpoważniejsze naruszenie granic heksagonalnych w całym kodzie. Modele Django w `apps/badges/models/` powinny być "głupie" i nie wiedzieć nic o specyficznych schematach walidacyjnych formularzy Admina z infrastruktury. **✅ ZREALIZOWANO** — AUDYT-085 przeniósł `RULES_SCHEMA`, AUDYT-119 usunął import `OsmAdapterError` z warstwy infrastruktury w taskach, a AUDYT-121 dodał kontrakt `hexagonal-layers` do `.importlinter`.
 
 ---
 
@@ -1145,12 +1145,12 @@ Bardzo głębokie zrozumienie ułomności frameworka (Active Record). W 99% przy
 Plik `apps/badges/models.py` osiągnął rozmiar 750 linii i zawiera 17 modeli Django. Skupia on w sobie całkowicie różne byty: hierarchię geograficzną (6 poziomów regionów), definicje odznak, konfigurację OSM oraz obiekty turystyczne z ich cyklem życia. Stanowi to klasyczny antywzorzec "God File", drastycznie utrudniając nawigację po kodzie i przeglądy (Code Review).
 
 **Action Items (Do wdrożenia w nadchodzącym sprincie):**
-- [ ] Przekształcić plik `models.py` w moduł (utworzyć katalog `models/` z plikiem `__init__.py`).
-- [ ] Wydzielić modele do logicznych plików (np. `region_models.py`, `badge_models.py`, `tourist_object_models.py`, `osm_models.py`).
-- [ ] Zaktualizować importy w reszcie systemu.
+- [X] Przekształcić plik `models.py` w moduł (utworzyć katalog `models/` z plikiem `__init__.py`).
+- [X] Wydzielić modele do logicznych plików (region.py, organizer.py, osm.py, badge.py, proximity.py, news.py, read_model.py).
+- [X] Zaktualizować importy w reszcie systemu (`__init__.py` re-eksportuje wszystkie 25 nazw klas dla kompatybilności wstecznej).
 
 **Komentarz Architekta:**
-Bardzo prosta operacja, która radykalnie obniży "Złożoność Poznawczą" (Cognitive Load) u programistów wchodzących do projektu.
+Bardzo prosta operacja, która radykalnie obniży "Złożoność Poznawczą" (Cognitive Load) u programistów wchodzących do projektu. **✅ ZREALIZOWANO** — przekształcono `models.py` (827 linii) w pakiet `models/` z 7 podmodułami: `region.py`, `organizer.py`, `osm.py`, `badge.py`, `proximity.py`, `news.py`, `read_model.py`. Plik `__init__.py` re-eksportuje wszystkie 25 nazw klas dla pełnej kompatybilności wstecznej.
 
 ---
 
