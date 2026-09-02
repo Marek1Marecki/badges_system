@@ -1,7 +1,10 @@
 """Usługa Aplikacyjna: Silnik Punktacji i Kolorowania Mapy.
 
-Zgodnie z ADR-010 i ADR-015: Wylicza punkty 100/n dla szczytów i nadaje im kolory. Wynik jest agresywnie buforowany w
+Zgodnie z ADR-010 i ADR-015: Wylicza punkty 100/n dla szczytów i nadaje im kolory. Wynik jest agresywnie buforowany
 Cache z precyzyjnym czasem wygaśnięcia o północy.
+
+AUDYT-033: Stały TTL 300s (5 min) zapewnia świeżość stanu mapy, niezależnie od
+czasu dnia. Ogranicza to ryzyko wycieków pamięciowych w Redis przy 100k+ profilach.
 
 AUDYT-035: Logika biznesowa (symulacja wejść, algebra punktowa) została
 wydzielona do `domain.services.BadgeEligibilityDomainService`.
@@ -10,8 +13,6 @@ wstrzykiwanie czasu, wywołanie serwisu domenowego i zapis do Redisa.
 """
 
 from collections import defaultdict
-from datetime import datetime, timedelta
-from datetime import time as dt_time
 
 from application.ports.badge_repository_port import BadgeRepositoryPort
 from application.ports.cache_port import CachePort
@@ -29,6 +30,8 @@ from domain.services.badge_eligibility_domain_service import (  # noqa: F401
     BadgeEligibilityDomainService,
 )
 from domain.value_objects.verification_context import VerificationContext
+
+MAP_STATE_TTL_SECONDS: int = 300
 
 
 class PoiScoringService:
@@ -144,15 +147,11 @@ class PoiScoringService:
                 if COLOR_PRIORITY[result.color] > COLOR_PRIORITY[current_color]:
                     final_colors[peak_id] = result.color
 
-        # 5. Zapis do bufora Redis z TTL do dokładnej północy
-        tomorrow = today_date + timedelta(days=1)
-        midnight = datetime.combine(tomorrow, dt_time.min, tzinfo=now.tzinfo)
-        seconds_to_midnight = int((midnight - now).total_seconds())
-
+        # 5. Zapis do bufora Redis z TTL 300s (AUDYT-033)
         cache_payload = {
             "scores": dict(final_scores),
             "colors": final_colors,
         }
 
         cache_key = f"map_state:{profile_id}"
-        self._cache.set(cache_key, cache_payload, timeout_seconds=seconds_to_midnight)
+        self._cache.set(cache_key, cache_payload, timeout_seconds=MAP_STATE_TTL_SECONDS)

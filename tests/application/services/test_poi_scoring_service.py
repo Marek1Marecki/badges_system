@@ -406,8 +406,8 @@ class TestPoiScoringService:
         assert colors[1] == "BLUE"
         assert colors[1] != "XXBLUEXX"
 
-    def test_cache_timeout_until_midnight(self):
-        """Test że cache timeout jest ustawiony do północy."""
+    def test_cache_timeout_fixed_300s(self):
+        """Test że map_state cache ma stały TTL = 300 sekund (AUDYT-033)."""
         progress_repo = MagicMock()
         progress_repo.get_active_progresses.return_value = []
         ascent_repo = MagicMock()
@@ -431,5 +431,4 @@ class TestPoiScoringService:
 
         call_args = cache.set.call_args
         timeout_seconds = call_args[1]["timeout_seconds"]
-        assert timeout_seconds > 0
-        assert timeout_seconds <= 86400  # Maksymalnie 24 godziny
+        assert timeout_seconds == 300

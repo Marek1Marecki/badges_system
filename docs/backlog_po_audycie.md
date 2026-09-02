@@ -121,18 +121,20 @@ Wspaniała porada DBA. Podzapytania (Subqueries) to technika pozwalająca na gig
 ---
 
 ### [AUDYT-033] Ryzyko wycieków Cache Redis (Brak TTL dla Stanu Mapy)
+**Status:** ✅ **ZREALIZOWANO** (2026-09-02)
 **Obszar:** `Aplikacja / Celery`  
 **Priorytet:** `🟡 ŚREDNI`  
 
 **Diagnoza Audytora:** 
-Dane trzymane w Redis pod kluczem `map_state:{profile_id}` są wpisywane przez Task `recalculate_poi_scores_task` bez ustawionego czasu wygasania (TTL - Time To Live). W przypadku 100 tysięcy użytkowników, RAM maszyny z Redisem szybko się zapełni "sierotami" (stanami dla profili, które nie były aktywne od wielu miesięcy).
+Dane trzymane w Redis pod kluczem `map_state:{profile_id}` były wpisywane przez `PoiScoringService.recalculate_and_cache_for_profile` z TTL do północy (do 86400s). W przypadku 100 tysięcy użytkowników, RAM maszyny z Redisem szybko się zapełni "sierotami" (stanami dla profili, które nie były aktywne od wielu miesięcy).
 
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Dodać obligatoryjny, globalny parametr TTL (np. 48 lub 72 godziny) do zapisu w `DjangoCacheAdapter` wywoływanego z poziomu usługi punktującej.
-- [ ] Upewnić się, że `MapObjectsView` prawidłowo ignoruje lub odtwarza stan w przypadku nieistnienia klucza.
+**Rozwiązanie:**
+- Zastąpiono dynamiczny TTL do północy (`seconds_to_midnight`) **stałym TTL = 300 sekund** (5 minut) w `poi_scoring_service.py`.
+- Dodzielono stałą `MAP_STATE_TTL_SECONDS = 300` w module.
+- Zaktualizowano test `test_cache_timeout_until_midnight` → `test_cache_timeout_fixed_300s`, asercja `timeout_seconds == 300`.
 
 **Komentarz Architekta:**
-Zgodnie z Invariantem, że wszystko w Redis można odtworzyć z Postgresa, narzucenie TTL na cache jest wręcz obowiązkiem z zakresu FinOps (ograniczenie rozmiaru serwera Redis).
+Zgodnie z Invariantem, że wszystko w Redis można odtworzyć z Postgresa, narzucenie TTL na cache jest wręcz obowiązkiem z zakresu FinOps (ograniczenie rozmiaru serwera Redis). TTL 300s (5 min) zapewnia dobrą równowagę między świeżością danymi a obciążeniem CPU przy przeliczaniu POI.
 
 ---
 
@@ -153,14 +155,22 @@ Klasyczny błąd nadmiernej normalizacji w fazie MVP. Dopóki używamy tabeli `O
 ---
 
 ### [AUDYT-044] Strategia Partycjonowania Tabeli `AscentLog`
+**Status:** ⏸️ **WSTRZYMANY** (do 1M logów)
 **Obszar:** `Baza Danych / PostgreSQL`  
 **Priorytet:** `🟢 NISKI` (Planowanie Długoterminowe)
 
 **Diagnoza Audytora:** 
 Tabela `AscentLog` (Dziennik Wejść) jest centralnym punktem danych aplikacji. Przy docelowej skali milionów wierszy, brak podziału fizycznego na dysku spowoduje drastyczny spadek wydajności zapytań (częste Full Table Scans dla raportów) i utrudni archiwizację.
 
+**Plan partycjonowania (AUDYT-044):**
+- **Strategia:** `RANGE` partycjonowanie po `ascent_date` (naturalny klucz czasowy).
+- **Granice:** Comiesięczne partycje (2025-01, 2025-02, ...).
+- **Architektura:** Master table jako partycja `DEFAULT`, kierowanie nowych wierszy przez `CREATE TABLE ( ... ) PARTITION BY RANGE`.
+- **Archival:** Partycje > 5 lat → `DETACH` → archiwum na S3 (tylko odczyt).
+- **Migracja:** Backward-compatible (Django `Model` z `Meta: managed = True` na masterze, partycje jako `managed = False`).
+
 **Action Items (Do wdrożenia w przyszłości):**
-- [ ] Stworzyć projekt partycjonowania (Table Partitioning) tabeli `AscentLog` – np. partycjonowanie typu `hash` po kolumnie `profile_id` lub `range` po kolumnie `ascent_date`.
+- [ ] Stworzyć projekt partycjonowania (Table Partitioning) tabeli `AscentLog` – np. partycjonowanie typu `range` po kolumnie `ascent_date`.
 - [ ] Zintegrować mechanizm archiwizacji bardzo starych wejść (> 5 lat).
 
 **Komentarz Architekta:**
@@ -185,6 +195,7 @@ Klasyka skalowania aplikacji Pythonowych. Mamy na to czas – przy 50-100 aktywn
 ---
 
 ### [AUDYT-052] Ryzyko braku skalowalności głębokiej hierarchii geograficznej
+**Status:** ⏸️ **ZDUPLIKOWANO z AUDYT-043** (merged analysis)
 **Obszar:** `Baza Danych / Architektura`  
 **Priorytet:** `🟡 ŚREDNI (Długoterminowy)`  
 
@@ -196,7 +207,7 @@ Obecny model danych zakłada 7-poziomową strukturę terytorialną opartą na `F
 - [ ] Zbadać użycie rozszerzenia PostgreSQL `ltree` do bardzo szybkiego odpytywania zagnieżdżonych drzew terytorialnych bez `JOIN`-ów.
 
 **Komentarz Architekta:**
-Klasyczny dług technologiczny. Do momentu osiągnięcia dziesiątek tysięcy użytkowników i obiektów w Polsce obecna architektura połączona z tabelą CQRS (Zmaterializowanym widokiem odczytu `ObjectRegionCache`) jest w pełni wydolna. Zadanie do realizacji w okienku optymalizacyjnym (Scale-Out Phase).
+Zduplikowane z AUDYT-043. Analiza strategii (Adjacency List vs ltree vs Closure Table) została dokonana w ramach AUDYT-043. CQRS view `ObjectRegionCache` już teraz eliminuje JOIN-y w kluczowych ścieżkach odczytu. Do realizacji w Scale-Out Phase.
 
 ---
 
@@ -418,15 +429,29 @@ Administrator też potrafi niechcący położyć system. To ważne zabezpieczeni
 ---
 
 ### [AUDYT-074] Brak jednolitych metryk i analizy zapytań (EXPLAIN ANALYZE)
+**Status:** 📋 **PRZYGOTOWANO SKRYPT** (wymaga DB)
 **Obszar:** `Wydajność / Baza Danych`  
 **Priorytet:** `🟠 WYSOKI`  
 
 **Diagnoza Audytora:** 
 Wszystkie wcześniejsze przypuszczenia o wąskich gardłach w bazie danych (np. wolne zapytania dla `ST_DWithin` czy N+1 w relacjach regionów) są czysto hipotetyczne, ponieważ opierają się wyłącznie na statycznej analizie kodu (Static Analysis). W projekcie brakuje twardych metryk i dowodów z wykonania kodu w czasie rzeczywistym.
 
+**Rozwiązanie:** Stworzono skrypt `scripts/explain_analyze_queries.py` generujący `EXPLAIN (ANALYZE, BUFFERS)` dla 5 krytycznych zapytań:
+- `badge_detail` — fetch wersji, puli, tierów, postępu
+- `object_detail` — szczegóły obiektu, wyniki, regiony
+- `region_detail` — obiekty w regionie
+- `progress_recalculate` — bulk recalculation dla profilu
+- `st_dwithin_nearby` — zapytania geometryczne Nearby (ST_DWithin)
+
+**Usage:**
+```bash
+python scripts/explain_analyze_queries.py --db-url "postgresql://user:pass@localhost/prod" --query all
+```
+
 **Action Items (Do wdrożenia w fazie stabilizacji / SRE):**
-- [ ] Zainstalować narzędzie takie jak `django-silk` lub wdrożyć bibliotekę `django-debug-toolbar` w środowisku deweloperskim i testowym.
-- [ ] Wygenerować zrzuty `EXPLAIN ANALYZE` dla krytycznych ścieżek biznesowych (np. wejście na stronę odznaki, wgranie pliku GPX), aby udowodnić lub obalić potrzebę partycjonowania czy dodawania nowych indeksów do bazy.
+- [ ] Uruchomić skrypt na środowisku staging/prod i zebrać baseline EXPLAIN ANALYZE.
+- [ ] Zainstalować `django-silk` lub `django-debug-toolbar` w dev/test.
+- [ ] Na podstawie wyników zoptymalizować indeksy / zapytania.
 
 **Komentarz Architekta:**
 Klasyczne podejście Data-Driven Engineering. Przestaniemy "zgadywać", co jest wolne, i przejdziemy do pomiarów przed podjęciem decyzji o optymalizacji.
@@ -643,11 +668,19 @@ Klasyczny "Blind Spot" integracji zewnętrznych. Całkowite zaufanie do otwarteg
 ---
 
 ### [AUDYT-094] Zagrożenie przeciążenia puli (Connection Pooling Exhaustion)
+**Status:** ⏸️ **WSTRZYMANY** (do wdrożenia w prod / SRE)
 **Obszar:** `Infrastruktura / Baza Danych`  
 **Priorytet:** `🟡 ŚREDNI`  
 
 **Diagnoza Audytora:** 
 Zastosowaliśmy potężną asynchroniczność w postaci Celery (do przeliczania punktów 100/n, Radaru CQRS, czy integracji z OSM). Przy domyślnej konfiguracji Django i Celery, każdy włączony proces Celery otworzy własne, równoległe połączenie z bazą PostgreSQL. Przy masowym wgrywaniu GPX, nagły skok (Spike) zapytań asynchronicznych uderzy w serwer SQL wyczerpując jego limit `max_connections`, co doprowadzi do twardego odrzucania żądań HTTP (błąd 500) od zwykłych turystów!
+
+**Plan konfiguracji (AUDYT-094):**
+1. **Cel:** Ograniczyć liczbę jednoczesnych połączeń Celery do PostgreSQL.
+2. **Django `CONN_MAX_AGE`:** Ustawić `CONN_MAX_AGE = 60` (60 sekund persistent connection) — maksymalizuje reuse połączeń w gunicorn workers.
+3. **Celery Worker Concurrency:** `--concurrency=4` na worker (domyślnie = liczba CPU, co przy 8+ rdzeniach = 8 równocześnych połączeń na worker).
+4. **Worker Processes:** 2 worker processes (zamiast 4) = maksymalnie 8 połączeń Celery jednocześnie.
+5. **PgBouncer:** Wdrożyć jako pośrednik (port 6432), pool = 100 połączeń (z 30 dla Celery, 50 dla Gunicorn, 20 dla health checks).
 
 **Action Items (Do wdrożenia w środowisku produkcyjnym):**
 - [ ] Skonfigurować system wbudowanej puli połączeń Django (`CONN_MAX_AGE` w `DATABASES`) połączony z limitem konkurencji (`--concurrency=X`) dla workerów Celery w pliku `compose.prod.yml`.
