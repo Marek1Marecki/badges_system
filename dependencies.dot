@@ -108,8 +108,6 @@ digraph G {
     "infrastructure.logging.log_config" [fillcolor="orange"];
     "infrastructure.middleware" [fillcolor="orange"];
     "infrastructure.middleware.error_handling" [fillcolor="orange"];
-    "infrastructure.schemas" [fillcolor="orange"];
-    "infrastructure.schemas.badge_rules_schema" [fillcolor="orange"];
   }
 
   subgraph cluster_interface {
@@ -136,6 +134,7 @@ digraph G {
     "apps.badges.models" [fillcolor="pink"];
     "apps.badges.reference_data" [fillcolor="pink"];
     "apps.badges.reference_data.constants" [fillcolor="pink"];
+    "apps.badges.rules_schema" [fillcolor="pink"];
     "apps.badges.tasks" [fillcolor="pink"];
     "apps.badges.tests" [fillcolor="pink"];
     "apps.badges.views" [fillcolor="pink"];
@@ -243,7 +242,7 @@ digraph G {
   "apps.badges.forms" -> "apps.badges.models";
   "apps.badges.management.commands.calculate_neighbors" -> "apps.badges.models";
   "apps.badges.management.commands.restore_reference_data" -> "apps.badges.models";
-  "apps.badges.models" -> "infrastructure.schemas.badge_rules_schema";
+  "apps.badges.models" -> "apps.badges.rules_schema";
   "apps.badges.tasks" -> "application.exceptions";
   "apps.badges.tasks" -> "infrastructure.adapters.osm_adapter";
   "apps.tourists.admin" -> "apps.tourists.models";

@@ -1,6 +1,6 @@
 """Testy dla badge_rules_schema."""
 
-from infrastructure.schemas.badge_rules_schema import RULES_SCHEMA
+from apps.badges.rules_schema import RULES_SCHEMA
 
 
 class TestBadgeRulesSchema:

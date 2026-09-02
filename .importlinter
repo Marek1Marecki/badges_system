@@ -68,13 +68,7 @@ ignore_imports =
     #         dedykowany wyjątek biznesowy; task pozostaje cienkim wrapperem.
     apps.badges.tasks -> infrastructure.adapters.osm_adapter
 
-    # DŁUG-002: apps.badges.models -> infrastructure.schemas.badge_rules_schema
-    # Powód: Model Django importuje schemat JSONB do walidacji.
-    # Target: Przenieść walidację schematu do warstwy formularzy
-    #         administracyjnych (admin.py) lub do Application Service.
-    apps.badges.models -> infrastructure.schemas.badge_rules_schema
-
-    # DŁUG-003: apps.tourists.context_processors -> infrastructure.config.map_layers
+     # DŁUG-003: apps.tourists.context_processors -> infrastructure.config.map_layers
     # Powód: Context Processor w Django wstrzykuje warstwy map bezpośrednio
     #        do kontekstu szablonów HTML.
     # Target: Wydzielić serwis konfiguracyjny zwracający DTO map dla

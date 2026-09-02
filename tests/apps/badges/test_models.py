@@ -3,7 +3,6 @@
 from unittest.mock import MagicMock
 
 from apps.badges.models import (
-    RULES_SCHEMA,
     BadgeModel,
     BadgeTierModel,
     BadgeVersionModel,
@@ -15,6 +14,7 @@ from apps.badges.models import (
     SubprovinceModel,
     VoivodeshipModel,
 )
+from apps.badges.rules_schema import RULES_SCHEMA
 
 
 class TestRulesSchema:

@@ -49,7 +49,7 @@
 ### `infrastructure/` — Warstwa Infrastruktury (Adaptery)
 **Odpowiedzialność:** Implementacja technicznych szczegółów systemu. Gadanie z bazą danych (PostGIS), wysyłanie zapytań HTTP do OSM, obsługa logów i wczytywanie zmiennych środowiskowych.  
 **Zarządza encjami:** Mapuje modele bazodanowe Django na czyste obiekty domenowe.  
-**Eksportuje:** `Adapters` (implementacje Portów), `AppSettings` (Centralna konfiguracja), `configure_logging()`. Eksportuje również `RULES_SCHEMA` jako techniczny detal implementacyjny, dostarczany wyłącznie na użytek renderowania UI w `apps/badges/admin.py`.  
+**Eksportuje:** `Adapters` (implementacje Portów), `AppSettings` (Centralna konfiguracja), `configure_logging()`.  
 **Zależy od:** `application/` (by implementować jej Porty), `domain/` (by budować jej agregaty) oraz bibliotek (`httpx`, `django`, `pydantic-settings`, `loguru`).
 
 ---
@@ -57,7 +57,7 @@
 ### `apps/badges/` — Warstwa Dostarczania (Django Monolith)
 **Odpowiedzialność:** Interfejs użytkownika (Django Admin), schemat relacyjny bazy danych (Modele ORM) oraz punkty wejścia dla operacji asynchronicznych (Taski Celery).  
 **Uwaga architektoniczna:** Koncepcyjnie `apps/` jest przedłużeniem warstwy infrastruktury, jednak dla narzędzia `import-linter` traktowane jest jako osobna warstwa w celu najwyższej precyzji egzekwowania kontraktów.  
-**Eksportuje:** Widoki, panele administracyjne i cienkie wrappery zadań (`tasks.py`), które jedynie delegują pracę do Use Case'ów.  
+**Eksportuje:** Widoki, panele administracyjne, cienkie wrappery zadań (`tasks.py`) oraz `rules_schema` (definicja schematu JSON dla formularzy Django Admin).  
 **Zależy od:** `bootstrap/` (by pobrać wstrzyknięte Use Case'y) oraz własnych modeli (ORM).
 
 ---

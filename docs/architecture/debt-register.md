@@ -45,16 +45,17 @@
 
 | Pole | Wartość |
 |------|---------|
-| **Tytuł** | `apps.badges.models` importuje `infrastructure.schemas.badge_rules_schema` |
+| **Tytuł** | `apps.badges.models` importuje `RULES_SCHEMA` z `infrastructure.schemas.badge_rules_schema` |
 | **Kategoria** | domain |
 | **Powiązany ADR** | ADR-001 (Hexagonal Architecture), ADR-003 (Silnik Reguł Biznesowych) |
 | **Wpływ** | Naruszenie czystości architektury; logika walidacji w modelu Django |
 | **Remediacja** | Przenieść walidację schematu do `admin.py` lub Application Service |
-| **Status** | open |
+| **Status** | **resolved** |
 
 **Szczegóły:**
-- `.importlinter` wyjątek: `apps.badges.models -> infrastructure.schemas.badge_rules_schema`
-- `TouristObject.clean()` importuje schemat JSONB do walidacji
+- Przeniesiono `RULES_SCHEMA` z `infrastructure/schemas/badge_rules_schema.py` do `apps/badges/rules_schema.py`.
+- Usunięto wyjątek `DŁUG-002` z `.importlinter`.
+- `apps.badges.models` importuje teraz bezpośrednio z `apps.badges.rules_schema` (legalne w ramach tej samej aplikacji Django).
 
 ---
 

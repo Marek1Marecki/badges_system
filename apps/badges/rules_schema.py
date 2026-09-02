@@ -113,7 +113,6 @@ RULES_SCHEMA = {
                                     "required": False,
                                 },
                                 "required_count": {"type": "integer", "title": "Wymagana liczba z tej grupy"},
-                                # ZMIANA: Zamiast 'array', robimy 'string' z przecinkami
                                 "peak_ids": {
                                     "type": "string",
                                     "title": "ID obiektów (po przecinku, np: 12, 45, 102)",

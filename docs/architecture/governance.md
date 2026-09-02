@@ -326,7 +326,7 @@ Pełny rejestr: [`docs/architecture/fitness-functions.md`](fitness-functions.md)
 | Wyjątek | Uzasadnienie | Powiązanie | Status |
 |---------|--------------|------------|--------|
 | `apps.badges.tasks -> infrastructure.adapters.osm_adapter` | Zadania Celery wywołują OSMAdapter bezpośrednio dla retry logic | DŁUG-001 | Open |
-| `apps.badges.models -> infrastructure.schemas.badge_rules_schema` | Walidacja JSONB w modelu Django | DŁUG-002 | Open |
+| `apps.badges.models -> apps.badges.rules_schema` | ~~Walidacja JSONB w modelu Django~~ | DŁUG-002 | **resolved** — przeniesiono z `infrastructure.schemas` |
 | `apps.tourists.context_processors -> infrastructure.config.map_layers` | Context Processor wstrzykuje warstwy map | DŁUG-003 | Open |
 | `infrastructure.adapters.celery_event_publisher -> apps.badges.tasks` | Adapter zdarzeń importuje nazwy zadań Celery | DŁUG-004 | Open |
 
@@ -506,7 +506,7 @@ Diagnostic
 | Wyjątek | Uzasadnienie | Powiązanie | Status |
 |---------|--------------|------------|--------|
 | `apps.badges.tasks -> infrastructure.adapters.osm_adapter` | Zadania Celery wywołują OSMAdapter bezpośrednio dla retry logic | DŁUG-001 | Open |
-| `apps.badges.models -> infrastructure.schemas.badge_rules_schema` | Walidacja JSONB w modelu Django | DŁUG-002 | Open |
+| `apps.badges.models -> apps.badges.rules_schema` | ~~Walidacja JSONB w modelu Django~~ | DŁUG-002 | **resolved** — przeniesiono z `infrastructure.schemas` |
 | `apps.tourists.context_processors -> infrastructure.config.map_layers` | Context Processor wstrzykuje warstwy map | DŁUG-003 | Open |
 | `infrastructure.adapters.celery_event_publisher -> apps.badges.tasks` | Adapter zdarzeń importuje nazwy zadań Celery | DŁUG-004 | Open |
 

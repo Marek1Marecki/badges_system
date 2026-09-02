@@ -8,7 +8,7 @@ from django.utils.translation import gettext_lazy as _
 from django_jsonform.models.fields import JSONField
 from tinymce.models import HTMLField
 
-from infrastructure.schemas.badge_rules_schema import RULES_SCHEMA
+from apps.badges.rules_schema import RULES_SCHEMA
 
 
 class RegionBaseModel(gis_models.Model):

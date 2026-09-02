@@ -551,17 +551,20 @@ Zmiana nazw klas dla "lepszego brzmienia" jest użyteczna na bardzo dojrzałym e
 
 ### [AUDYT-085] Zablokowanie wycieku infrastruktury do modeli ORM (Luka importowa)
 **Obszar:** `Django / Architektura Heksagonalna`  
-**Priorytet:** `🟠 WYSOKI`  
+**Priorytet:** `🟠 WYSOKI` (zrealizowany)
 
 **Diagnoza Audytora:** 
-Plik `apps/badges/models.py` importuje słownik `RULES_SCHEMA` z katalogu `infrastructure/schemas/`. Mimo, że nie łamie to zasady *Domain Purity* (bo mówimy tu o warstwie `apps`, a nie `domain`), to stanowi klasyczne złamanie kierunku zależności Heksagonu – to infrastruktura i jej adaptery powinny zależeć od modeli Django, a nie odwrotnie. Takie powiązanie uziemia aplikację.
+Plik `apps/badges/models.py` importował słownik `RULES_SCHEMA` z `infrastructure/schemas/badge_rules_schema.py`. To stanowiło złamanie kierunku zależności Heksagonu — infrastruktura nie powinna być zależna od warstwy Delivery (`apps/`), a tu było odwrotne.
 
-**Action Items (Do wdrożenia w Fazy Refaktoryzacji):**
-- [ ] Usunąć import schematu `JSON` bezpośrednio do pliku modeli.
-- [ ] Zastosowanie walidacji lub konfiguracji schematu przenieść w całości na poziom interfejsu (Formularza `django-jsonform`) w plikach z katalogu `admin.py` lub `forms.py`.
+**Wdrożone:**
+- [X] Przeniesiono `RULES_SCHEMA` z `infrastructure/schemas/badge_rules_schema.py` do `apps/badges/rules_schema.py`.
+- [X] Zaktualizowano import w `apps/badges/models.py` → `from apps.badges.rules_schema import RULES_SCHEMA`.
+- [X] Usunięto wyjątek `DŁUG-002` z `.importlinter` (kontrakt `hexagonal-layers`).
+- [X] Przeniesiono testy z `tests/infrastructure/test_badge_rules_schema.py` → `tests/apps/badges/test_rules_schema.py`.
+- [X] Zaktualizowano `RULES_SCHEMA` import w `tests/apps/badges/test_models.py`.
 
-**Komentarz Architekta:**
-Klasyczny błąd na styku warstw wynikający z próby zapewnienia walidacji JSON na poziomie bazy. W architekturze heksagonalnej zrobimy to nieco wyżej, by chronić czystość modeli Active Record.
+**Uzasadnienie:**
+`RULES_SCHEMA` to konfiguracja UI dla `django-jsonform` w Django Admin — nie jest logiką infrastruktury. Przeniesienie go do `apps/badges/` przywraca poprawny kierunek zależności: `infrastructure/ → apps/` (nie odwrotnie). `lint-imports` potwierdza 4 contracts, 0 broken.
 
 ---
 
@@ -1079,9 +1082,9 @@ W MVP to niepotrzebny koszt optymalizacyjny, jednak z chwilą wejścia w produkc
 Analiza statyczna importów wykazała pętlę zależności (Circular Dependency). Warstwa dostarczania (`apps/badges/models.py`) importuje bezpośrednio schemat z warstwy infrastruktury (`infrastructure/schemas/badge_rules_schema.py`), podczas gdy adaptery z `infrastructure/` importują modele i zadania z `apps/`. Łamie to reguły Enkapsulacji i zamienia modularny monolit w spaghetti.
 
 **Action Items (Do wdrożenia w najbliższym sprincie refaktoryzacyjnym):**
-- [ ] Przenieść definicję `RULES_SCHEMA` z `infrastructure/schemas/` do pakietu `application/` lub zdefiniować ją jako element Czystej Domeny / Shared Kernel, do którego `apps/` ma legalny dostęp.
-- [ ] Usunąć bezpośrednie importy z `apps/` wewnątrz `infrastructure/adapters/` (np. zastąpić bezpośrednie odwołania do `apps.badges.tasks` w `celery_event_publisher.py` przez wstrzykiwanie portów lub dynamiczny call).
-- [ ] Rozszerzyć konfigurację narzędzia `import-linter` w `pyproject.toml`, aby aktywnie blokowała importy z `apps/` do `infrastructure/`.
+- [X] Przeniesiono definicję `RULES_SCHEMA` z `infrastructure/schemas/` do `apps/badges/rules_schema.py` (AUDYT-085).
+- [ ] Usunąć bezpośrednie importy z `apps/` wewnątrz `infrastructure/adapters/` (np. zastąpić bezpośrednie odwołania do `apps.badges.tasks` w `celery_event_publisher.py` przez wstrzykiwanie portów lub dynamiczny call) — DŁUG-004.
+- [X] Konfiguracja `import-linter` w `.importlinter` ma kontrakt `hexagonal-layers` blokujący apps → infrastructure.
 
 **Komentarz Architekta:**
 To jest najpoważniejsze naruszenie granic heksagonalnych w całym kodzie. Modele Django w `apps/badges/models.py` powinny być "głupie" i nie wiedzieć nic o specyficznych schematach walidacyjnych formularzy Admina z infrastruktury. 
