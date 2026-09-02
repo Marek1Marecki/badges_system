@@ -17,7 +17,7 @@ from typing import Any
 from celery import shared_task
 from loguru import logger
 
-from application.exceptions import UseCaseError
+from application.exceptions import TransientInfrastructureError, UseCaseError
 from bootstrap.container import get_container
 
 
@@ -45,7 +45,6 @@ def fetch_osm_data_task(self, object_id: int) -> str:
         Returns:
     """
     from bootstrap import get_container
-    from infrastructure.adapters.osm_adapter import OsmAdapterError
 
     try:
         use_case = get_container().fetch_osm_data
@@ -54,7 +53,7 @@ def fetch_osm_data_task(self, object_id: int) -> str:
         return result
     except UseCaseError as e:
         return f"Błąd: {e}"
-    except OsmAdapterError as e:
+    except TransientInfrastructureError as e:
         if self.request.retries < self.max_retries:
             raise self.retry(exc=e, countdown=60) from e
         from apps.badges.models import TouristObject

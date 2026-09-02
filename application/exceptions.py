@@ -20,6 +20,17 @@ class UseCaseError(ApplicationException):
     """
 
 
+class TransientInfrastructureError(ApplicationException):
+    """Błąd infrastruktury, który może być retryowany.
+
+    Używany dla: błędów sieciowych, limitów API (rate limiting),
+    tymczasowych błędów zewnętrznych usług.
+    Nie jest używany dla: błędów danych (np. nieprawidłowy plik GPX),
+    które nie zostaną naprawione przez ponowne wywołanie.
+    Mapuje na: 500 (fallback) — taski Celery decydują o retry.
+    """
+
+
 class ResourceNotFoundError(ApplicationException):
     """Żądany zasób nie istnieje.
 

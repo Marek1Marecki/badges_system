@@ -61,14 +61,7 @@ type = forbidden
 source_modules = apps
 forbidden_modules = infrastructure
 ignore_imports =
-    # DŁUG-001: apps.badges.tasks -> infrastructure.adapters.osm_adapter
-    # Powód: Zadanie Celery wywołuje OSMAdapter bezpośrednio do łapania
-    #        OsmAdapterError i uruchamiania retry logic na granicy warstw.
-    # Target: Przenieść retry logic do Application Service, który zwróci
-    #         dedykowany wyjątek biznesowy; task pozostaje cienkim wrapperem.
-    apps.badges.tasks -> infrastructure.adapters.osm_adapter
-
-     # DŁUG-003: apps.tourists.context_processors -> infrastructure.config.map_layers
+    # DŁUG-003: apps.tourists.context_processors -> infrastructure.config.map_layers
     # Powód: Context Processor w Django wstrzykuje warstwy map bezpośrednio
     #        do kontekstu szablonów HTML.
     # Target: Wydzielić serwis konfiguracyjny zwracający DTO map dla
@@ -78,15 +71,17 @@ ignore_imports =
     # EXC-001: apps.badges.tasks -> bootstrap
     # Powód: Zadania Celery nie mają dostępu do obiektu request (cykl HTTP),
     #        więc nie mogą otrzymać kontenera DI przez middleware. Jako jedyne
-    #        miejsce w warstwie Delivery, taski zachowują prawo do bezpośredniego
+    #        miejsce w warstwie Deliveru, taski zachowują prawo do bezpośredniego
     #        importowania Composition Root.
     # Target: Brak — to jest zamierzony wyjątek architektoniczny.
+    #
+    # apps.badges.tasks -> bootstrap.container jest potrzebne jako osobna
+    # pozycja, ponieważ import-linter 2.13 nie obsługuje łańcuchów
+    # przechodnich w ignore_imports. Ignorując tę krawędź,
+    # import-linter nie śledzi dalej do infrastructure.adapters.django_cache
+    # (przez bootstrap.container), co zapobiega wykryciu fałszywego
+    # naruszenia apps -> infrastructure.
     apps.badges.tasks -> bootstrap
-
-    # EXC-002: apps.badges.tasks -> bootstrap.container
-    # Powód: Ten sam cel co powyżej — bezpośredni import kontenera w taskach
-    #        Celery, które działają poza cyklem HTTP.
-    # Target: Brak — to jest zamierzony wyjątek architektoniczny.
     apps.badges.tasks -> bootstrap.container
 
 # ==============================================================================
