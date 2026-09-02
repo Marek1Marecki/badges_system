@@ -106,3 +106,82 @@ ignore_imports =
     infrastructure.adapters.celery_event_publisher -> apps.badges.tasks
 unrelated_modules =
     apps.badges.tasks
+
+# ==============================================================================
+# 5. ARCHITEKTURA HEKSAAGRALNA: INFRASTRUKTURA → DELIVERY (Apps)
+# ==============================================================================
+# Kierunek ten jest CZĘŚNIE słuszny w Django — adaptery ORM i infrastruktura
+# muszą odnosić się do modeli Django (które mieszkają w apps/), aby wykonać
+# zapytania SQL. Nie ma tu "czystej" inwersji zależności w klasycznym sensie.
+#
+# Kontrakt służy jako **tarcza zapobiegająca nowym wyciekom**: każdy nowy
+# import z apps.* do infrastructure.* musi być udokumentowany jako świadoma
+# decyzja (Architecture Debt Register), a nie powstawać przez przypadek.
+# # ==============================================================================
+[importlinter:contract:infra-to-apps-boundary]
+name = Infrastructure must document dependencies on Apps layer
+type = forbidden
+source_modules = infrastructure
+forbidden_modules = apps
+ignore_imports =
+    # DŁUG-005: infrastructure/adapters/osm_adapter.py -> apps.badges.models.OsmTypeMapping
+    # Powód: Adaptery OSM używają modelu OsmTypeMapping (słownik typów OSM) do
+    #        tłumaczenia typów zewnętrznych na wewnętrzne. Model ten jest
+    #        jedynie enumem/konfiguracją danych, nie logiką domenową.
+    # Target: Wyjąć enumy i statyczne słowniki do wspólnego modułu
+    #         (domain/enums.py lub shared_kernel), aby infrastructura
+    #         nie musiała importować modeli Django.
+    infrastructure.adapters.osm_adapter -> apps.badges.models
+
+    # DŁUG-006: infrastructure/adapters/persistence/django_tourist_repo.py -> apps.*
+    # Powód: Adaptery repozytoriów Django muszą odwoływać się do modeli ORM
+    #        (TouristProfile, AscentLog, UserBadgeProgress, etc.) do wykonywania
+    #        zapytań SQL. W architekturze heksagonalnej w Django to nieuniknione —
+    #        modele definiowane są w apps/, a adaptery w infrastrukturze.
+    # Target: Stopniowo przenieść modele do infrastructure/ lub wdrożyć
+    #         wzorzec ports-and-adapters z osobnym modelem domenowym.
+    infrastructure.adapters.persistence.django_tourist_repo -> apps.badges.models
+    infrastructure.adapters.persistence.django_tourist_repo -> apps.tourists.models
+
+    # DŁUG-007: infrastructure/adapters/persistence/django_badge_repo.py -> apps.*
+    # Powód: Ten sam wzorzec — repozytorium dostępu do odznak.
+    infrastructure.adapters.persistence.django_badge_repo -> apps.badges.models
+
+    # DŁUG-008: infrastructure/adapters/persistence/django_region_cache_repo.py -> apps.badges.models
+    # Powód: Adaptery regionów i cache używają modeli turystycznych (ObjectRegionCache,
+    #        TouristObject, TouristRegionModel) do zapytań GIS.
+    infrastructure.adapters.persistence.django_region_cache_repo -> apps.badges.models
+
+    # DŁUG-009: infrastructure/adapters/persistence/django_region_geometry_repo.py -> apps.badges.models
+    # Powód: Geometria regionów w PostGIS wymaga modeli Django.
+    infrastructure.adapters.persistence.django_region_geometry_repo -> apps.badges.models
+
+    # DŁUG-010: infrastructure/adapters/persistence/django_proximity_repo.py -> apps.badges.models
+    # Powód: Repozytorium proximity candidateów.
+    infrastructure.adapters.persistence.django_proximity_repo -> apps.badges.models
+
+    # DŁUG-011: infrastructure/adapters/persistence/django_explore_queries_repo.py -> apps.badges.models
+    # Powód: Zapytania eksploracyjne dla mapy.
+    infrastructure.adapters.persistence.django_explore_queries_repo -> apps.badges.models
+
+    # DŁUG-012: infrastructure/adapters/persistence/django_mvt_repo.py -> apps.badges.models
+    # Powód: Repozytorium MVT (Map Vector Tiles) dla renderowania map.
+    infrastructure.adapters.persistence.django_mvt_repo -> apps.badges.models
+
+    # DŁUG-013: infrastructure/adapters/persistence/django_map_repo.py -> apps.badges.models
+    # Powód: Zapytania przestrzenne (ST_DWithin) dla mapy.
+    infrastructure.adapters.persistence.django_map_repo -> apps.badges.models
+
+    # DŁUG-014: infrastructure/adapters/persistence/django_news_repo.py -> apps.badges.models
+    # Powód: Repozytorium dla newsów o odznakach.
+    infrastructure.adapters.persistence.django_news_repo -> apps.badges.models
+
+    # DŁUG-015: infrastructure/adapters/osm_repository.py -> apps.badges.models
+    # Powód: Repozytorium synchronizacji OSM.
+    infrastructure.adapters.osm_repository -> apps.badges.models
+
+    # DŁUG-004: infrastructure/adapters/celery_event_publisher.py -> apps.badges.tasks
+    # Powód: Zadania Celery rejestrowane przez import (patrz sekcja 4 powyżej).
+    # Target: String-based task registry.
+    infrastructure.adapters.celery_event_publisher -> apps.badges.tasks
+    infrastructure.adapters.celery_event_publisher -> apps.tourists.models
