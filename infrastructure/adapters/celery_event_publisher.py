@@ -4,6 +4,8 @@ Rejestruje także zdarzenia w tabeli `audit_log` (AUDYT-051), co pozwala
 odtworzyć 'kto, kiedy, co' dla operacji krytycznych.
 """
 
+from typing import Any
+
 from django.conf import settings
 from django.db import transaction
 
@@ -17,7 +19,7 @@ from domain.events import (
 )
 
 
-def _persist_audit_log(action: str, target_type: str, target_id: str, payload: dict) -> None:
+def _persist_audit_log(action: str, target_type: str, target_id: str, payload: dict[str, Any]) -> None:
     """Zapisuje zdarzenie do tabeli `audit_log`.
 
     Oddzielona funkcja, by nie tworzyć zależności infrastruktury

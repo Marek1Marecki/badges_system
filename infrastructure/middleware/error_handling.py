@@ -62,11 +62,11 @@ class RFC7807ErrorMiddleware:
     def __call__(self, request: HttpRequest) -> Any:
         """Przetwarza żądanie i obsługuje błędy w formacie RFC 7807."""
         # Propagacja request_id: preferuj X-Request-ID z zewnątrz, w przeciwnym razie wygeneruj nowy.
-        request_id = request.headers.get("X-Request-ID") or f"req_{uuid.uuid4().hex[:8]}"  # type: ignore[attr-defined]
-        request.request_id = request_id  # type: ignore[attr-defined]
+        request_id = request.headers.get("X-Request-ID") or f"req_{uuid.uuid4().hex[:8]}"
+        request.request_id = request_id
 
         # Loguru kontekst owija całe żądanie
-        with logger.contextualize(request_id=request.request_id):  # type: ignore[attr-defined]
+        with logger.contextualize(request_id=request.request_id):
             return self.get_response(request)
 
     def process_exception(self, request: HttpRequest, exception: Exception) -> JsonResponse | None:

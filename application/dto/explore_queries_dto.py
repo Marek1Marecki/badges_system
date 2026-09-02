@@ -1,5 +1,7 @@
 """Modele odczytu (DTO) dla widoków eksploracji i rankingów."""
 
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -19,7 +21,7 @@ class RankingItemDTO(BaseModel):
     cluster_score: int
     cluster_id: int | None
     cluster_name: str | None
-    items: list[dict]  # Lista słowników reprezentujących dzieci (szczyty/schroniska)
+    items: list[dict[str, Any]]  # Lista słowników reprezentujących dzieci (szczyty/schroniska)
 
 
 class RegionRankingItemDTO(BaseModel):
@@ -38,7 +40,7 @@ class PoiRankingResponseDTO(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    active_progresses: list[dict]
+    active_progresses: list[dict[str, Any]]
     subscribed_badge_codes: list[str]
     ranking: list[RankingItemDTO]
 

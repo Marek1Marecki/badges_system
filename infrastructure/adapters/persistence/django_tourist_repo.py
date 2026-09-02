@@ -14,7 +14,7 @@ oraz testach.
 
 from collections import defaultdict
 from datetime import date
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from django.db.models import Min
 
@@ -25,6 +25,9 @@ from application.ports.user_progress_port import (
     TouristProfileRepositoryPort,
     UserProgressRepositoryPort,
 )
+
+if TYPE_CHECKING:
+    from apps.tourists.models import UserBadgeProgress
 
 
 class DjangoTouristProfileRepository(TouristProfileRepositoryPort):
@@ -324,7 +327,7 @@ class DjangoUserProgressRepository(UserProgressRepositoryPort):
     (tworzenie, aktualizacja i odczyt postępów użytkownika).
     """
 
-    def _to_progress_dto(self, progress_obj) -> BadgeProgressDTO:
+    def _to_progress_dto(self, progress_obj: UserBadgeProgress) -> BadgeProgressDTO:
         """Prywatny mapper ORM -> DTO.
 
         Args:
