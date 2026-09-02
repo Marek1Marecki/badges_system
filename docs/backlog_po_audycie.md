@@ -1157,16 +1157,18 @@ Bardzo prosta operacja, która radykalnie obniży "Złożoność Poznawczą" (Co
 ### [AUDYT-129] Dekompozycja panelu administracyjnego (`apps/badges/admin.py`)
 **Obszar:** `Django Admin / Architektura Plików`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** ✅ ZREALIZOWANO  
 
 **Diagnoza Audytora:** 
 Plik `admin.py` posiada blisko 800 linii kodu. Poza samą definicją interfejsów (UI) zawiera on potężną logikę biznesową w postaci "Akcji Admina" (np. rozwiązywanie par klastrów, akceptacja zmian OSM). Zmiana logiki wyświetlania jednej tabeli naraża na konflikty scalania kod dla pozostałych 8 modeli.
 
 **Action Items (Do wdrożenia w nadchodzącym sprincie):**
-- [ ] Przekształcić plik `admin.py` w moduł (katalog `admin/` z `__init__.py`).
-- [ ] Wydzielić klasy paneli do mniejszych plików (np. `badge_admin.py`, `tourist_object_admin.py`).
+- [X] Przekształcić plik `admin.py` w moduł (katalog `admin/` z plikiem `__init__.py`).
+- [X] Wydzielić klasy paneli do mniejszych plików: `forms.py`, `filters.py`, `inlines.py`, `region_admin.py`, `organizer_admin.py`, `osm_admin.py`, `badge_admin.py`, `proximity_admin.py`, `sync_conflict_admin.py`, `news_admin.py`, `celery_admin.py`.
+- [X] Uzupełnić `__init__.py` o re-eksport wszystkich klas oraz modelu `ObjectRegionCache` dla kompatybilności ze starszymi importami i testami.
 
 **Komentarz Architekta:**
-Podobnie jak modele, panel administracyjny rozrósł się ponad miarę MVP. Czas go ustrukturyzować.
+Podobnie jak modele, panel administracyjny rozrósł się ponad miarę MVP. Czas go ustrukturyzować. **✅ ZREALIZOWANO** — podzielono na 12 plików, wszystkie 843 testy przechodzą, coverage 80.96%.
 
 ---
 
