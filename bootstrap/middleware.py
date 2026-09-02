@@ -9,9 +9,14 @@ Architektura:
   ``request.app_container``, skąd widoki w ``apps`` mogą go pobrać.
 """
 
+from typing import cast
+
+from django.contrib.auth.models import AbstractUser
+from django.db import transaction
 from django.http import HttpRequest
 from django.utils.deprecation import MiddlewareMixin
 
+from apps.tourists.models import TouristProfile
 from bootstrap.container import get_container
 
 
@@ -20,7 +25,6 @@ class ContainerMiddleware(MiddlewareMixin):
 
     def process_request(self, request: HttpRequest) -> None:
         """
-
         Args:
           request: HttpRequest:
           request: HttpRequest:
@@ -29,3 +33,54 @@ class ContainerMiddleware(MiddlewareMixin):
 
         """
         request.app_container = get_container()
+
+
+class EnsureTouristProfileMiddleware(MiddlewareMixin):
+    """Upewnia się, że zalogowany użytkownik posiada TouristProfile.
+
+    W ramach jednego cyklu żądania-odpowiedzi:
+    1. Sprawdza, czy w sesji jest ustawione ``active_profile_id``.
+    2. Jeśli nie — szuka profilu dla ``request.user``.
+    3. Jeśli brak profilu (np. stary użytkownik z dev-środowiska), tworzy go
+       atomowo z ``get_or_create`` w ``transaction.atomic()``.
+
+    Dzięki temu widoki w ``apps/tourists/views.py`` nie muszą wywoływać
+    operacji zapisu w funkcjach nazwanych jak *gettery*. Głównym benefitem
+    jest eliminacja stronego zapisu z widoków read-only (np. map).
+    """
+
+    def process_request(self, request: HttpRequest) -> None:
+        """
+        Args:
+          request: HttpRequest:
+
+        Returns:
+        """
+        if not hasattr(request, "user") or not request.user.is_authenticated:
+            return
+
+        active_id = request.session.get("active_profile_id")
+        if active_id:
+            return
+
+        profile = self._ensure_profile(request.user)
+        if profile:
+            request.session["active_profile_id"] = profile.id
+
+    @staticmethod
+    def _ensure_profile(user: AbstractUser) -> TouristProfile | None:
+        """Tworzy profil turysty, jeśli nie istnieje."""
+        nickname = user.email.split("@")[0] if user.email else f"admin_{user.id}"
+
+        with transaction.atomic():
+            profile, _ = TouristProfile.objects.get_or_create(
+                user=user,
+                defaults={
+                    "nickname": nickname,
+                    "is_main_profile": True,
+                    "active_plan": "FREE",
+                    "max_photos_per_ascent": 1,
+                    "max_active_badges": 3,
+                },
+            )
+        return cast("TouristProfile | None", profile)

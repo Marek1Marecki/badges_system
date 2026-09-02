@@ -261,7 +261,6 @@ Wyprzedzanie przyszłości. Mamy to już zabezpieczone koncepcyjnie w `SECURITY_
 
 ---
 
-
 ### [AUDYT-060] Prawdziwa Integracja API bez fałszywych Mocków (Fake DI)
 **Obszar:** `Testy API`  
 **Priorytet:** `🟠 WYSOKI`  
@@ -292,7 +291,6 @@ Mimo wdrożenia `FakeClock`, testy w `test_badge_version.py` oraz `test_badge_ru
 Złapanie "czasu" w testach to podstawa. Czysta domena wymaga 100% determinizmu w testach.
 
 ---
-
 
 ### [AUDYT-063] Duplikaty Fixture'ów i Brak `conftest.py`
 **Obszar:** `Architektura Testów`  
@@ -371,8 +369,6 @@ Obecnie mechanizm `django.contrib.sessions` i przełączanie profilu (`active_pr
 
 **Komentarz Architekta:**
 To zmiana operacyjna wymagająca tylko jednej linijki w pliku `settings.py`, zdefiniowana w dokumentacji Django jako gotowe rozwiązanie.
-
-
 
 ---
 
@@ -469,22 +465,6 @@ To lekcja z budowania startupów. Kiedy zaczynamy pobierać opłaty, płatności
 
 ---
 
-### [AUDYT-079] Zabezpieczenie przed atakami CSRF w środowisku Token-Based (Wycofanie `csrf_exempt`)
-**Obszar:** `API / Bezpieczeństwo`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Obecnie wszystkie widoki API w `apps/api/views.py` dekorowane są klauzulą `@method_decorator(csrf_exempt)`. Zostało to wdrożone dla ułatwienia pracy z sesjami na początku Fazy C. Audytor słusznie punktuje, że o ile dla komunikacji z aplikacją mobilną poświadczaną Tokenami (JWT) jest to poprawne, to w przypadku aplikacji przeglądarkowych korzystających z Sesji (Cookie), wyłączenie weryfikacji CSRF naraża każdą mutację danych (np. Logowanie wejścia) na ataki *Cross-Site Request Forgery*.
-
-**Action Items (Do wdrożenia w Fazy Security/API):**
-- [ ] Zdefiniować jasny model dla klientów mobilnych i webowych: Wdrożyć w API autoryzację opartą na tokenach (np. `django-rest-framework-simplejwt` bez sesji), **ALBO**
-- [ ] Przywrócić obowiązek przesyłania tokenu CSRF w nagłówku HTTP `X-CSRFToken` dla żądań POST/PATCH wysyłanych z HTMX i MapLibre GL JS, zdejmując dekorator `csrf_exempt` z widoków.
-
-**Komentarz Architekta:**
-Kluczowa poprawka bezpieczeństwa przed publicznym udostępnieniem aplikacji w internecie. Najprostszym sposobem dla HTMX jest włączenie domyślnych zabezpieczeń Django i dodanie eventu globalnego dodającego token do każdego nagłówka AJAX.
-
----
-
 ### [AUDYT-081] Eliminacja słowa "Odznaka" jako homonimu (Semantyczne ujednoznacznienie)
 **Obszar:** `Słownik / Komunikacja w Zespole`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -548,25 +528,6 @@ Nazwy `PoiScoringService` oraz `ExploreQueriesService` to "Techniczny Bełkot". 
 
 **Komentarz Architekta:**
 Zmiana nazw klas dla "lepszego brzmienia" jest użyteczna na bardzo dojrzałym etapie rozwoju projektu. U nas obiekty te i tak są maskowane przez kontener Dependency Injection, a my "rozumiemy" ten slang. Odłożyć do głębokiego Backlogu.
-
----
-
-### [AUDYT-085] Zablokowanie wycieku infrastruktury do modeli ORM (Luka importowa)
-**Obszar:** `Django / Architektura Heksagonalna`  
-**Priorytet:** `🟠 WYSOKI` (zrealizowany)
-
-**Diagnoza Audytora:** 
-Plik `apps/badges/models.py` importował słownik `RULES_SCHEMA` z `infrastructure/schemas/badge_rules_schema.py`. To stanowiło złamanie kierunku zależności Heksagonu — infrastruktura nie powinna być zależna od warstwy Delivery (`apps/`), a tu było odwrotne.
-
-**Wdrożone:**
-- [X] Przeniesiono `RULES_SCHEMA` z `infrastructure/schemas/badge_rules_schema.py` do `apps/badges/rules_schema.py`.
-- [X] Zaktualizowano import w `apps/badges/models.py` → `from apps.badges.rules_schema import RULES_SCHEMA`.
-- [X] Usunięto wyjątek `DŁUG-002` z `.importlinter` (kontrakt `hexagonal-layers`).
-- [X] Przeniesiono testy z `tests/infrastructure/test_badge_rules_schema.py` → `tests/apps/badges/test_rules_schema.py`.
-- [X] Zaktualizowano `RULES_SCHEMA` import w `tests/apps/badges/test_models.py`.
-
-**Uzasadnienie:**
-`RULES_SCHEMA` to konfiguracja UI dla `django-jsonform` w Django Admin — nie jest logiką infrastruktury. Przeniesienie go do `apps/badges/` przywraca poprawny kierunek zależności: `infrastructure/ → apps/` (nie odwrotnie). `lint-imports` potwierdza 4 contracts, 0 broken.
 
 ---
 
@@ -647,7 +608,6 @@ Wspaniała weryfikacja biznesowa. Zaprojektowaliśmy proces w dokumentacji, ale 
 
 **Komentarz Architekta:**
 Klasyczne "odcięcie frontendu od backendu". Backend to umie (bo przyjmuje parametr `version_id`), ale turysta nie ma jak wywołać tego żądania. Krytyczne dla zgodności z oryginalną intencją biznesową.
-
 
 ---
 
@@ -1159,23 +1119,6 @@ Zwracanie słowników osłabia działanie narzędzia `Mypy` i ukrywa kształt od
 **Komentarz Architekta:**
 Zjawisko to nazywa się *Primitive Obsession* (Obsesja Typów Prostych). W fazie szybkiego dowożenia funkcji (Faza C) słowniki pozwalały na błyskawiczne renderowanie `JsonResponse`. Na dłuższą metę, aby dokumentacja API (np. Swagger/OpenAPI) generowała się automatycznie, wyjścia muszą być równie rygorystyczne co wejścia.
 
-
----
-
-### [AUDYT-126] Niejawne mutowanie stanu w Leniwej Inicjalizacji (`_get_active_profile_id`)
-**Obszar:** `Apps / Widoki HTML`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Funkcja `_get_active_profile_id(request)` uchodzi za *Getter* (funkcję odczytującą ID profilu z sesji). W praktyce, dla starych użytkowników bez profilu, funkcja ta wywołuje `TouristProfile.objects.create(...)`, wykonując potężny zapis do bazy danych (Side Effect). Wywołanie tego gettera w 15 różnych widokach HTML (w tym w czystym odczycie mapy) to "bomba z opóźnionym zapłonem".
-
-**Action Items (Do wdrożenia w fazie stabilizacji):**
-- [ ] Przenieść proces wymuszania założenia konta (Fallback) do dedykowanego Middleware'a (np. `EnsureTouristProfileMiddleware`) wywoływanego raz w cyklu życia żądania.
-- [ ] Zredukować `_get_active_profile_id` do bezpiecznego i błyskawicznego `return request.session.get("active_profile_id")`.
-
-**Komentarz Architekta:**
-Wdrożyliśmy to celowo w Fazie C jako szybki ratunek dla "zagubionych profili" z dev-środowiska. Na dłuższą metę funkcja o nazwie `get_` nie ma prawa odpalać instrukcji `INSERT` w SQL.
-
 ---
 
 ### [AUDYT-127] Brak egzekwowania walidacji (C-01) przy operacjach masowych
@@ -1380,7 +1323,6 @@ Orkiestratory (Use Case'y) zwracają obecnie niespójne typy prymitywne w zależ
 **Komentarz Architekta:**
 Nieblokujące. Kwestia estetyki kontraktów API i ułatwienia pracy z GraphQL w przyszłości. 
 
-
 ---
 
 ### [AUDYT-141] Rozbieżność w nazewnictwie: Ascent (Domena) vs AscentLog (Infrastruktura)
@@ -1570,7 +1512,30 @@ System DevSecOps osiągnął pełną dojrzałość. Posiadamy analizę statyczn�
 
 ---
 
-### [AUDYT-001] Naprawa składni Pythona i kolejności argumentów Exception Handlera
+### [AUDYT-126] Niejawne mutowanie stanu w Leniwej Inicjalizacji (`_get_active_profile_id`)
+**Obszar:** `Apps / Widoki HTML`  
+**Priorytet:** był `🟠 WYSOKI` (zrealizowany)
+
+**Diagnoza Audytora:** 
+Funkcja `_get_active_profile_id(request)` uchodzi za *Getter* (funkcję odczytującą ID profilu z sesji). W praktyce, dla starych użytkowników bez profilu, funkcja ta wywołuje `TouristProfile.objects.create(...)`, wykonując potężny zapis do bazy danych (Side Effect). Wywołanie tego gettera w 15 różnych widokach HTML (w tym w czystym odczycie mapy) to "bomba z opóźnionym zapłonem".
+
+**Wdrożone:**
+- [X] **`Already resolved / verified`** — utworzono `EnsureTouristProfileMiddleware` w `bootstrap/middleware.py`.
+- [X] Middleware uruchamia się raz na żądanie (`process_request`), pomija nieautoryzowanych użytkowników, early-return jeśli `active_profile_id` w sesji.
+- [X] `_ensure_profile()` używa `get_or_create` w `transaction.atomic()` — chroni przed race condition (AUDYT-069).
+- [X] Zredukowano `_get_active_profile_id` w `apps/tourists/views.py:40` do czystego gettera: `return request.session.get("active_profile_id")`.
+- [X] Middleware dodany do `MIDDLEWARE` w `config/settings.py` po `AuthenticationMiddleware`.
+- [X] 6 testów jednostkowych w `tests/bootstrap/test_ensure_profile_middleware.py` (mockowane `TouristProfile` + `transaction.atomic`).
+- [X] Test w `tests/config/test_settings.py::test_ensure_profile_middleware_present`.
+- [X] `make check` — 841 passed, ruff/mypy/lint-imports/audit_contracts PASS.
+
+**Uzasadnienie:**
+Rozwiązanie przenosi hidden write z widoków do middleware — eliminując stronę mutacji w getterze. Testy używają `@patch` zamiast `@pytest.mark.django_db` (zgodnie ze wzorcem z `tests/apps/tourists/test_signals.py`), co utrzymuje `make check` jako szybkie, deterministic, no-external-infrastructure.
+
+**Komentarz Architekta:**
+Wdrożyliśmy to celowo w Fazie C jako szybki ratunek dla "zagubionych profili" z dev-środowiska. Na dłuższą metę funkcja o nazwie `get_` nie ma prawa odpalać instrukcji `INSERT` w SQL. Middleware rozwiązuje to elegancko.
+
+---
 **Obszar:** `API / Views`  
 **Priorytet:** `🔴 KRYTYCZNY`  
 

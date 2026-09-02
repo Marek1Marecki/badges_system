@@ -101,6 +101,9 @@ class TestMiddleware:
         for middleware in core_middleware:
             assert middleware in MIDDLEWARE
 
+    def test_ensure_profile_middleware_present(self):
+        assert "bootstrap.middleware.EnsureTouristProfileMiddleware" in MIDDLEWARE
+
 
 class TestDatabaseSettings:
     """Testy ustawień bazy danych."""

@@ -40,33 +40,18 @@ logger = logging.getLogger(__name__)
 def _get_active_profile_id(request) -> int:
     """Helper: Pobiera ID aktywnego profilu (Konto Rodzinne) z sesji.
 
+    Strona profilu jest zapewniona przez ``EnsureTouristProfileMiddleware``,
+    który uruchamia się raz na żądanie. Ta funkcja jest czystym getterem —
+    nie wykonuje żadnych operacji zapisu (Zero Side Effects).
+
     Args:
       request:
 
     Returns:
+      ID profilu turysty jako int.
     """
     active_id = request.session.get("active_profile_id")
-    if active_id:
-        return int(active_id)
-
-    # Fallback na wypadek nowej sesji.
-    # SECURITY (AUDYT-069): get_or_create w transaction.atomic chroni
-    # przed race condition — dwa równoległe wątki nie spowodują
-    # IntegrityError przy tworzeniu profilu.
-    nickname = request.user.email.split("@")[0] if request.user.email else f"admin_{request.user.id}"
-    profile, _ = TouristProfile.objects.get_or_create(
-        user=request.user,
-        defaults={
-            "nickname": nickname,
-            "is_main_profile": True,
-            "active_plan": "FREE",
-            "max_photos_per_ascent": 1,
-            "max_active_badges": 3,
-        },
-    )
-
-    request.session["active_profile_id"] = profile.id
-    return int(profile.id)
+    return int(active_id)
 
 
 @login_required
