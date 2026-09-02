@@ -139,6 +139,7 @@ Semantyka `NULL` (puste = dowolne):
 **Uzasadnienie:** Naruszenie (cykl grafu) wywoła rekurencję bez wyjścia i przepełni pamięć (Stack Overflow) przy renderowaniu map i obliczaniu zysków `100/n`.
 **Gdzie egzekwować:** 
 - Nadpisana metoda `save()` i `clean()` w modelu `TouristObject` (ochrona przed ominięciem walidacji przez Django Admin Actions).
+- **Zakaz (AUDYT-139):** Operacje masowe `QuerySet.update()`, `bulk_create()`, `bulk_update()` **muszą** omijać pole `parent_object` w `TouristObject`. Każda masowa zmiana hierarchii musi iterować po obiektach i wywoływać `save()`, który trigruje walidację `clean()`. Naruszenie tej reguły może wprowadzić pętle grafu niezauważone przez `save()`.
 
 ### C-01 — Brak Cykli w Grafie Relacji Rodzic-Dziecko 🔴 KRYTYCZNY
 **Treść:** Relacja `parent_object` nie może stworzyć pętli (np. A jest rodzicem B, a B rodzicem A).

@@ -1154,22 +1154,6 @@ Zwracanie słowników osłabia działanie narzędzia `Mypy` i ukrywa kształt od
 **Komentarz Architekta:**
 Zjawisko to nazywa się *Primitive Obsession* (Obsesja Typów Prostych). W fazie szybkiego dowożenia funkcji (Faza C) słowniki pozwalały na błyskawiczne renderowanie `JsonResponse`. Na dłuższą metę, aby dokumentacja API (np. Swagger/OpenAPI) generowała się automatycznie, wyjścia muszą być równie rygorystyczne co wejścia.
 
----
-
-### [AUDYT-125] Złamanie Idempotentności metody `GET` (Hidden Write w `VerifyBadgeUseCase`)
-**Obszar:** `Aplikacja / Use Case / REST API`  
-**Priorytet:** `🔴 KRYTYCZNY`  
-
-**Diagnoza Audytora:** 
-Widok `BadgeProgressView` odbiera od turysty zapytanie `GET /api/v1/badges/{code}/progress/`. Zgodnie ze standardem HTTP, żądanie `GET` musi być bezpieczne i wolne od efektów ubocznych (Side Effects). Tymczasem, wywoływany przez niego `VerifyBadgeUseCase` posiada ukrytą logikę zapisu: jeśli w locie wyliczy, że postęp się zmienił, zapisuje go do bazy danych (`self._progress_repo.update_domain_status(...)`). 
-
-**Action Items (Do wdrożenia PRZED udostępnieniem API):**
-- [X] Rozbić `VerifyBadgeUseCase` na dwa odrębne procesy:
-  1. `CalculateBadgeProgressQuery` (Zwraca zmaterializowane DTO bez zapisu - bezpieczne dla `GET`).
-  2. `UpdateBadgeProgressCommand` (Wywoływane wyłącznie po zdarzeniach takich jak `AscentLoggedEvent`).
-
-**Komentarz Architekta:**
-Klasyczny przykład "Boga-Orkiestratora", który dla wygody programisty robi za dużo (Oblicza i Zapisuje). Naruszenie to uziemi cache na poziomie przeglądarek internetowych i load balancerów, które uznają, że `GET` można odpytywać w kółko bez konsekwencji.
 
 ---
 
@@ -1391,21 +1375,6 @@ Orkiestratory (Use Case'y) zwracają obecnie niespójne typy prymitywne w zależ
 **Komentarz Architekta:**
 Nieblokujące. Kwestia estetyki kontraktów API i ułatwienia pracy z GraphQL w przyszłości. 
 
----
-
-### [AUDYT-139] Brak wywoływania walidacji (C-01) przy operacjach `bulk_create` / `update`
-**Obszar:** `Django / ORM / Bezpieczeństwo Danych`  
-**Priorytet:** `🔴 KRYTYCZNY (Zagrożenie integralności)`  
-
-**Diagnoza Audytora:** 
-Zabezpieczenie przed powstaniem "Pętli w Klastrach" (Invariant C-01) zostało zrealizowane poprzez nadpisanie metody `clean()` oraz wywoływanie jej wewnątrz metody `save()` w modelu `TouristObject`. Audytor słusznie wskazuje, że operacje masowe w Django (takie jak `bulk_create`, `bulk_update` oraz metody `.update()` wywoływane na obiektach `QuerySet`) **całkowicie omijają wywołanie metody `save()` oraz `clean()`**. Oznacza to, że użycie np. skryptu lub akcji w panelu Admina do masowej zmiany rodzica (`parent_object`) całkowicie zignoruje naszą barierę ochronną, wprowadzając z powrotem pętle (Cykliczne Grafy) i niszcząc bazę danych.
-
-**Action Items (Do wdrożenia w Fazy SRE):**
-- [ ] Zmodyfikować plik `AGENT_SPEC.md` i `INVARIANTS.md`, aby wprowadzić twardy zakaz używania operacji masowych (takich jak `.update()`) na polu `parent_object` w `TouristObject`. Wszelkie masowe zmiany hierarchii muszą iterować po obiektach i wywoływać `save()`.
-- [ ] LUB (Rozwiązanie Docelowe): Przenieść walidację reguły "Płaskiej Gwiazdy" z kodu Pythona bezpośrednio do silnika bazy danych za pomocą mechanizmu *Constraint Trigger* w PostgreSQL, co uniemożliwi jej ominięcie niezależnie od użytej metody w ORM.
-
-**Komentarz Architekta:**
-Klasyczna ułomność wzorca Active Record (Django ORM). Dopóki tylko jeden administrator klika te powiązania pojedynczo w panelu, jesteśmy bezpieczni. Wraz ze wzrostem automatyzacji, Constraints muszą żyć w SQL.
 
 ---
 
@@ -2617,6 +2586,48 @@ Chociaż usunęliśmy wczoraj "Djangowe" dekoratory klasowe na rzecz helpera `_r
 
 **Komentarz Architekta:**
 W Fazie A odłożyliśmy CSRF "na później" dla wygody testów w Postmanie. Faza C się skończyła. Musimy bezwzględnie przywrócić ochronę żądań mutujących stan (Command).
+
+
+
+
+---
+
+### [AUDYT-139] Brak wywoływania walidacji (C-01) przy operacjach `bulk_create` / `update`
+**Obszar:** `Django / ORM / Bezpieczeństwo Danych`  
+**Priorytet:** `🔴 KRYTYCZNY` (Zagrożenie integralności) — **rozwiązywane dokumentacyjnie**
+
+**Diagnoza Audytora:** 
+Zabezpieczenie przed powstaniem "Pętli w Klastrach" (Invariant C-01) zostało zrealizowane poprzez nadpisanie metody `clean()` oraz wywoływanie jej wewnątrz metody `save()` w modelu `TouristObject`. Audytor słusznie wskazuje, że operacje masowe w Django (takie jak `bulk_create`, `bulk_update` oraz metody `.update()` wywoływane na obiektach `QuerySet`) **całkowicie omijają wywołanie metody `save()` oraz `clean()`**. Oznacza to, że użycie np. skryptu lub akcji w panelu Admina do masowej zmiany rodzica (`parent_object`) całkowicie zignoruje naszą barierę ochronną, wprowadzając z powrotem pętle (Cykliczne Grafy) i niszcząc bazę danych.
+
+**Wdrożone:**
+- [X] Dodano zakaz w `docs/Invariants.md` (sekcja C-01): operacje masowe `.update()`, `bulk_create()`, `bulk_update()` muszą omijać pole `parent_object` w `TouristObject`.
+- [X] Przeszukano kod — brak aktualnych miejsc używających `.update(parent_object=...)` ani `bulk_create`/`bulk_update` z `parent_object`.
+- [X] `django_region_cache_repo.py:79,134` używa `.update()` tylko dla pól `local_names` i `status` (nie `parent_object`).
+
+**Uzasadnienie:**
+Dokumentacja C-01 w `Invariants.md` teraz zawiera twardy zakaz. Rozwiązanie SQL-level (Constraint Trigger) jest planowane jako PR zależny (AUDYT-043). Do czasu implementacji, wszyscy deweloperzy widzą dokumentowany zakaz przed uruchomieniem `make check`.
+
+**Komentarz Architekta:**
+Poziom 1 zabezpieczenia = dokumentacja (gotowe). Poziom 2 = Constraint Trigger w PostgreSQL (AUDYT-043, otwarty).
+
+
+---
+
+### [AUDYT-125] Złamanie Idempotentności metody `GET` (Hidden Write w `VerifyBadgeUseCase`)
+**Obszar:** `Aplikacja / Use Case / REST API`  
+**Priorytet:** `🔴 KRYTYCZNY` (zrealizowany)
+
+**Diagnoza Audytora:** 
+Widok `BadgeProgressView` odbiera od turysty zapytanie `GET /api/v1/badges/{code}/progress/`. Zgodnie ze standardem HTTP, żądanie `GET` musi być bezpieczne i wolne od efektów ubocznych (Side Effects). Tymczasem, wywoływany przez niego `VerifyBadgeUseCase` posiadał ukrytą logikę zapisu: jeśli w locie wyliczy, że postęp się zmienił, zapisywał go do bazy danych (`self._progress_repo.update_domain_status(...)`). 
+
+**Wdrożone:**
+- [X] **`Already resolved / verified`** — podział na `EvaluateBadgeProgressQuery` (read-only) i `UpdateBadgeProgressCommand` (write) w `application/use_cases/verify_badge.py`.
+- [X] `BadgeProgressView.get()` (linia 344) wywołuje tylko `evaluate_badge_progress` — nie ma zapisu w ścieżce GET.
+- [X] `UpdateBadgeProgressCommand` jest zarejestrowany w DI (`bootstrap/container.py:68`) jako osobna komenda, gotowa do wywołania z event handlera `AscentLoggedEvent`.
+- [X] Dokumentacja w docstringu (`verify_badge.py:7-9`) opisuje CQRS: Query bez side-effectów, Command z zapisem.
+
+**Uzasadnienie:**
+Podział Query/Command (CQRS) rozwiązuje problem idempotency GET. `EvaluateBadgeProgressQuery` nie zapisuje stanu — wykonywa wyłącznie odczyty i czystą matematykę domenową. `UpdateBadgeProgressCommand` jest gotowy, ale nie jest jeszcze wywoływany — wymaga podłączenia jako event handler.
 
 
 ---
