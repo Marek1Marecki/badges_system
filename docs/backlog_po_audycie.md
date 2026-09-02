@@ -151,9 +151,6 @@ Zgodnie z Invariantem, że wszystko w Redis można odtworzyć z Postgresa, narzu
 
 ---
 
-
-### [AUDYT-043] Refaktoryzacja "Głębokiej Hierarchii" Regionów (Deep Hierarchy)
-
 ### [AUDYT-043] Refaktoryzacja "Głębokiej Hierarchii" Regionów (Deep Hierarchy)
 **Obszar:** `Baza Danych / Architektura`  
 **Priorytet:** `🟡 ŚREDNI` (Skalowanie Długoterminowe)
@@ -498,22 +495,6 @@ Wszystkie wcześniejsze przypuszczenia o wąskich gardłach w bazie danych (np. 
 
 **Komentarz Architekta:**
 Klasyczne podejście Data-Driven Engineering. Przestaniemy "zgadywać", co jest wolne, i przejdziemy do pomiarów przed podjęciem decyzji o optymalizacji.
-
----
-
-### [AUDYT-075] Wdrożenie zautomatyzowanego skanowania bezpieczeństwa (CVE)
-**Obszar:** `DevOps / CI/CD`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Mimo że mamy wdrożony rygor linterów (Ruff, Mypy) i chronimy się przed wstrzykiwaniem sekretów (`make secrets-check`), projekt posiada lukę w zautomatyzowanym audycie używanych bibliotek. Obecnie nie ma gwarancji, że któraś z zadeklarowanych w `pyproject.toml` paczek (np. starsza wersja `django-allauth` czy `defusedxml`) nie posiada świeżo odkrytej luki bezpieczeństwa (CVE).
-
-**Action Items (Do wdrożenia w CI/CD):**
-- [ ] Dodać do procesu CI krok uruchamiający narzędzia `pip-audit` lub `safety`, które prześwietlą paczki instalowane przez `uv`.
-- [ ] Skonfigurować narzędzie `bandit` (wbudowane w Ruffa lub działające samodzielnie) w trybie restrykcyjnym do analizy statycznej bezpieczeństwa kodu (SCA).
-
-**Komentarz Architekta:**
-Prosta integracja, która stanowi standardowy wymóg w korporacyjnych potokach wdrożeniowych (DevSecOps).
 
 ---
 
