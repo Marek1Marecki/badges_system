@@ -69,18 +69,25 @@ class EnsureTouristProfileMiddleware(MiddlewareMixin):
 
     @staticmethod
     def _ensure_profile(user: AbstractUser) -> TouristProfile | None:
-        """Tworzy profil turysty, jeśli nie istnieje."""
+        """Tworzy profil turysty, jeśli nie istnieje.
+
+        Używa ``filter().first()`` zamiast ``get_or_create(user=...)``
+        ze względu na model Konto Rodzinne — użytkownik może mieć
+        wiele profili (unique_together = user + nickname, nie na user).
+        Wybiera profil główny (``is_main_profile=True``) lub dowolny
+        pierwszy. Tworzy nowy, jeśli brak.
+        """
         nickname = user.email.split("@")[0] if user.email else f"admin_{user.id}"
 
         with transaction.atomic():
-            profile, _ = TouristProfile.objects.get_or_create(
-                user=user,
-                defaults={
-                    "nickname": nickname,
-                    "is_main_profile": True,
-                    "active_plan": "FREE",
-                    "max_photos_per_ascent": 1,
-                    "max_active_badges": 3,
-                },
-            )
+            profile = TouristProfile.objects.filter(user=user).first()
+            if profile is None:
+                profile = TouristProfile.objects.create(
+                    user=user,
+                    nickname=nickname,
+                    is_main_profile=True,
+                    active_plan="FREE",
+                    max_photos_per_ascent=1,
+                    max_active_badges=3,
+                )
         return cast("TouristProfile | None", profile)
