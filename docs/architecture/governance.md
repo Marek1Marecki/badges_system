@@ -71,7 +71,7 @@ Narzędzia znajdujące się w warstwie eksperymentalnej nie są "czarną dziurą
           ▼              ▼              ▼
        INVARIANTS     TOOLS         META
           │              │              │
-      FF-001..FF-023  pytest        ADR
+             FF-001..FF-024  pytest        ADR
           │          import-linter  Debt Register
           │          trivy          FF Registry
           │          radon
@@ -85,7 +85,7 @@ Narzędzia znajdujące się w warstwie eksperymentalnej nie są "czarną dziurą
 ```
 
 **Dwa wymiary:**
-- **INVARIANTS** — `FF-001..FF-023` w `docs/architecture/fitness-functions.md`. Odpowiadają na pytanie: „Jakiego invariant’a chcemy chronić?”
+- **INVARIANTS** — `FF-001..FF-024` w `docs/architecture/fitness-functions.md`. Odpowiadają na pytanie: „Jakiego invariant’a chcemy chronić?”
 - **TOOLS** — mechanizmy sprawdzające invariants. Odpowiadają na pytanie: „Czym sprawdzamy ten invariant?”
 - **CO-DESIGN** — jeden tool może realizować wiele FF, jedno FF może być realizowane przez więcej niż jeden tool.
 

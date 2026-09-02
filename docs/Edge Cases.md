@@ -159,6 +159,12 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 **Opis:** Funkcje renderujące własny HTML (za pomocą `format_html`) są oznaczane jako zwracające `-> str`. Jednak `format_html` pod maską zwraca obiekt `SafeString` (zabezpieczony przed XSS), co Mypy interpretuje jako `Any` i zgłasza błąd `[no-any-return]`.  
 **Rozwiązanie / workaround:** Zabrania się rzutowania na zwykły string `str(format_html(...))`, gdyż niszczy to flagę bezpieczeństwa. Należy użyć `# type: ignore[no-any-return]`.
 
+### EC-094 — Zablokowanie panelu przez dynamiczne QuerySety (`distinct()`) w formularzach Admina
+**Obszar:** `apps/badges/forms.py` (`TouristObjectAdminForm`)  
+**Status:** `resolved`  
+**Opis:** Konstruktor formularza w panelu Django Admin powoływany jest dla każdego wyświetlanego wiersza. Bezpośrednie wywołanie ciężkiej agregacji (np. `.values_list("type").distinct()`) na tabeli liczącej tysiące szczytów, w celu zbudowania listy podpowiedzi (`<datalist>`), generowało setki bezcelowych i powielonych zapytań do bazy podczas ładowania jednej strony.
+**Rozwiązanie / workaround:** Zastosowano agresywny Cache z 5-minutowym czasem życia (TTL `300s`) na wynik zapytania, wsparty *graceful fallbackiem* (ciche zwrócenie pustej listy, jeśli Redis lub baza zawiodą). Zapobiega to załamaniu wydajności (OOM/CPU Spike), jednak wprowadza akceptowalne opóźnienie (Eventual Consistency): nowe typy obiektów dodane w tle przez OSM pojawią się w panelu wyborze po maksymalnie 5 minutach.
+
 ---
 
 ## 4. Weryfikacja i Postęp Turysty (Faza C)

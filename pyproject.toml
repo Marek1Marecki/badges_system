@@ -125,13 +125,13 @@ ignore = ["D214", "D411", "D414"]
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/**" = ["D", "S101"]
+"**/tests/**" = ["D", "S101", "S603", "S607"]
 "**/domain/**" = ["S101"]
 "**/migrations/**" = ["D", "E501"]
 "**/infrastructure/**" = ["D"] # tymczasowo, do czasu pełnego wdrożenia
 "**/apps/**" = ["D"]
 "**/admin.py" = ["D"]
-"scripts/**" = ["D", "E501"]
+"scripts/**" = ["D", "E501", "S603"]
 "bootstrap/**" = ["D"]
 
 # Banned API (Contract 14 & 17)

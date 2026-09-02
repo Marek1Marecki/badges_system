@@ -11,10 +11,13 @@ Prawdziwe testy E2E realizowane są w testach Playwright (tests/e2e/).
 """
 
 import json
-from datetime import date
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+from tests.fakes.clock import FakeClock
+
+TEST_TODAY = str(FakeClock.DEFAULT_TIME.date())
 
 
 class UseCaseContainer:
@@ -110,7 +113,7 @@ class TestAscentLogView:
 
         request = factory.post(
             "/api/v1/ascents/",
-            data=json.dumps({"peak_id": 15, "ascent_date": str(date.today())}),
+            data=json.dumps({"peak_id": 15, "ascent_date": TEST_TODAY}),
             content_type="application/json",
         )
         request.user = mock_user
@@ -128,7 +131,7 @@ class TestAscentLogView:
 
         request = factory.post(
             "/api/v1/ascents/",
-            data=json.dumps({"peak_id": 15, "ascent_date": str(date.today()), "profile_id": 999}),
+            data=json.dumps({"peak_id": 15, "ascent_date": TEST_TODAY, "profile_id": 999}),
             content_type="application/json",
         )
         request.user = mock_user
@@ -147,7 +150,7 @@ class TestAscentLogView:
 
         request = factory.post(
             "/api/v1/ascents/",
-            data=json.dumps({"peak_id": 15, "ascent_date": str(date.today())}),
+            data=json.dumps({"peak_id": 15, "ascent_date": TEST_TODAY}),
             content_type="application/json",
         )
         request.user = mock_user
@@ -273,7 +276,7 @@ class TestBadgeLogisticsView:
 
         request = factory.patch(
             "/api/v1/progress/1/logistics/",
-            data=json.dumps({"logistic_status": "WAITING_FOR_VERIFICATION", "status_date": str(date.today())}),
+            data=json.dumps({"logistic_status": "WAITING_FOR_VERIFICATION", "status_date": TEST_TODAY}),
             content_type="application/json",
         )
         request.user = mock_user
@@ -292,7 +295,7 @@ class TestBadgeLogisticsView:
 
         request = factory.patch(
             "/api/v1/progress/1/logistics/",
-            data=json.dumps({"logistic_status": "ALBUM", "status_date": str(date.today())}),
+            data=json.dumps({"logistic_status": "ALBUM", "status_date": TEST_TODAY}),
             content_type="application/json",
         )
         request.user = mock_user
@@ -995,7 +998,7 @@ class TestBadgeLogisticsViewAdditional:
 
         request = factory.patch(
             "/api/v1/progress/1/logistics/",
-            data=json.dumps({"logistic_status": "ALBUM", "status_date": str(date.today())}),
+            data=json.dumps({"logistic_status": "ALBUM", "status_date": TEST_TODAY}),
             content_type="application/json",
         )
         request.user = MagicMock()
@@ -1052,7 +1055,7 @@ class TestBadgeLogisticsViewAdditional:
 
         request = factory.patch(
             "/api/v1/progress/999/logistics/",
-            data=json.dumps({"logistic_status": "ALBUM", "status_date": str(date.today())}),
+            data=json.dumps({"logistic_status": "ALBUM", "status_date": TEST_TODAY}),
             content_type="application/json",
         )
         request.user = mock_user
@@ -1095,7 +1098,7 @@ class TestAscentLogViewAdditional:
 
         request = factory.post(
             "/api/v1/ascents/",
-            data=json.dumps({"ascent_date": str(date.today())}),
+            data=json.dumps({"ascent_date": TEST_TODAY}),
             content_type="application/json",
         )
         request.user = mock_user

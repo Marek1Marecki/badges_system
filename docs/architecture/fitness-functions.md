@@ -606,9 +606,24 @@ Test weryfikuje, że każda FF wymieniona w `governance.md` ma odpowiadający wp
 
 ---
 
+### FF-024: Architecture Health Score
+
+| Pole | Wartość |
+|------|---------|
+| **Nazwa** | Architecture Health Score |
+| **Tool** | `scripts/architecture-scorecard.py` + `tests/architecture/test_scorecard_metrics.py` |
+| **Chroni** | Stopień zgodności architektury ze stylem — complexity, maintainability, layer purity, TDD ratio, security, import linter, type safety |
+| **Powiązanie** | AUDYT-058 |
+| **Status** | Diagnostic |
+
+**Opis:**
+Skrypt uruchamia `radon cc`/`radon mi`/`radon raw`, `audit_contracts.py`, `lint-imports`, `mypy`, i `ruff check`, agregując wyniki w `architecture_scorecard.json` z `health_score` (0-100). Test fitness function weryfikuje strukturę JSON, obecność wszystkich grup metryk, zakładanie pól `status`, oraz poprawność progów (np. `max_complexity` powyżej progu → `status: fail`).
+
+---
+
 ## FF Inventory Review
 
-Audyt wszystkich 23 FF według sześciu pytań:
+Audyt wszystkich 24 FF według sześciu pytań:
 
 | FF | Co chroni? | Dlaczego? | Jak? (mechanizm) | Czym? (tool) | Tier | Co powoduje zmianę tieru? |
 |----|-----------|-----------|------------------|--------------|------|---------------------------|
@@ -635,6 +650,8 @@ Audyt wszystkich 23 FF według sześciu pytań:
 | FF-021 | `uv.lock` istnieje, jest śledzony przez Git, zsynchronizowany z pyproject.toml | Bez kontroli: brak reproducible builds → "u mnie działa" problem | pytest + pre-commit hook | pytest + `uv lock --check` | Gate | Łamanie = niespójne wersje zależności; jasne remediation |
 | FF-022 | Zależności dev/test nie mieszają się z runtime `dependencies` | Bez kontroli: narzędzia deweloperskie w obrazie PROD → większy attack surface | AST w pytest | pytest | Diagnostic | Advisory: nie blokuje bezpieczeństwa, ale zwiększa risk profile |
 | FF-023 | Wszystkie FF w governance.md mają wpis w rejestre fitness-functions.md | Bez kontroli: rejestr rozjeżdża się z rzeczywistością → fałszywe poczucie bezpieczeństwa | Markdown parsing w pytest | pytest | Gate | Łamanie = governance drift; FF-023 jest meta-governance |
+| FF-024 | Architecture Health Score utrzymany powyżej progu | Bez kontroli: stopniowa degradacja jakości kodu → technical debt spiral | Skrypt scorecard + pytest | `scripts/architecture-scorecard.py` + `test_scorecard_metrics.py` | Diagnostic | Advisory: trend health_score > 90 to zdrowie, < 70 to alarm krytyczny |
+| FF-024 | Architecture Health Score utrzymany powyżej progu | Bez kontroli: stopniowa degradacja jakości kodu → technical debt spiral | Skrypt scorecard + pytest | `scripts/architecture-scorecard.py` + `test_scorecard_metrics.py` | Diagnostic | Advisory: trend health_score > 90 to zdrowie, < 70 to alarm krytyczny |
 
 ---
 

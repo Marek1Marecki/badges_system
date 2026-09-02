@@ -128,6 +128,7 @@ Zamiast mockować bazę danych narzędziami takimi jak `unittest.mock` w warstwi
 
 1.  **`FakeClock`:** Wstrzykiwany do Use Case'ów. Rozwiązuje problem niedeterminizmu testów zależnych od czasu (Limit Czasu na Odznakę, Prawa Nabyte po konkretnym roku). Posiada dedykowaną metodę `advance()`.
 2.  **`FakeBadgeRepository`:** Odtwarza stan bazy z pamięci RAM. Zwraca instancje `BadgeVersionDomain` bez żadnego zapytania SQL, co przyspiesza testy. Zawsze weryfikuj interfejs Fake'a z oryginalnym Portem!
+3.  **Współdzielenie Atrap (Mocks i Fixtures):** Kategorycznie zabrania się redefiniowania klas typu `MockUnitOfWork` lub `MockEventPublisher` wewnątrz poszczególnych plików testowych (np. `test_use_case.py`). Wszystkie atrapy weryfikujące zachowanie infrastruktury (Command/Events) muszą znajdować się w centralnym module `tests/fakes/mocks.py`. Podstawowe zależności niezbędne w niemal każdym teście (takie jak `fake_clock` czy `mock_uow`) są globalnie udostępniane przez `tests/conftest.py` jako automatyczne fiktury (Fixtures), do których test odwołuje się poprzez argument funkcji testowej.
 
 ---
 
@@ -138,6 +139,9 @@ Celem testu widoku jest sprawdzenie **wyłącznie**:
 1. Parsowania parametrów wejściowych (Pydantic DTO).
 2. Autoryzacji (`_require_auth`).
 3. Formatyzacji błędów do standardu RFC 7807 (`_handle_application_exception`).
+
+**Zasada Semantyki Plików (Nomenklatura):**
+Pliki testujące widoki API (np. `tests/apps/api/test_api_controllers.py`) nie są "Testami Integracyjnymi", ponieważ w pełni mockują warstwę aplikacji i nie uderzają do bazy danych. Służą wyłącznie do weryfikacji kontraktów HTTP, mapowania DTO i formatu RFC 7807. Kategorycznie zakazuje się nazywania tych plików `test_integration.py`, aby uniknąć fałszywego poczucia bezpieczeństwa w potoku CI (Flaw in Test Classification).
 
 **Jak testujemy:**
 - Używamy `django.test.RequestFactory` (uwaga: omija to globalne Middleware, zgodnie z EC-042).

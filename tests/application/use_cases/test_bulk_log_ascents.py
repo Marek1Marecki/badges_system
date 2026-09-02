@@ -1,11 +1,14 @@
 """Tests for BulkLogAscentsUseCase."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 from application.dto.ascent_dto import AscentInputDTO
 from application.services.bitemporal_validation_service import BitemporalValidationService
 from application.use_cases.bulk_log_ascents import BulkLogAscentsUseCase
+from tests.fakes.clock import FakeClock
 from tests.fakes.mocks import MockEventPublisher, MockUnitOfWork
+
+MOCK_CLOCK_TIME = datetime(2023, 6, 15, tzinfo=UTC)
 
 
 class MockAscentRepository:
@@ -19,14 +22,12 @@ class MockAscentRepository:
         return len(ascents)
 
 
-class MockClock:
-    def now(self):
-        from datetime import datetime
-
-        return datetime(2023, 6, 15)
+def _clock() -> FakeClock:
+    """Deterministic clock matching the original MockClock semantics."""
+    return FakeClock(fixed_time=MOCK_CLOCK_TIME)
 
 
-def _use_case(repo: MockAscentRepository, clock: MockClock) -> BulkLogAscentsUseCase:
+def _use_case(repo: MockAscentRepository, clock: FakeClock) -> BulkLogAscentsUseCase:
     """Buduje BulkLogAscentsUseCase z realnym BitemporalValidationService (AUDYT-017)."""
     return BulkLogAscentsUseCase(
         repo,
@@ -42,7 +43,7 @@ class TestBulkLogAscentsUseCase:
     def test_execute_with_empty_list(self):
         """Test execute with empty ascents list."""
         repo = MockAscentRepository()
-        clock = MockClock()
+        clock = _clock()
         use_case = _use_case(repo, clock)
 
         result = use_case.execute(1, [])
@@ -53,7 +54,7 @@ class TestBulkLogAscentsUseCase:
     def test_execute_with_valid_ascents(self):
         """Test execute with valid ascents."""
         repo = MockAscentRepository()
-        clock = MockClock()
+        clock = _clock()
         use_case = _use_case(repo, clock)
 
         ascents = [
@@ -69,7 +70,7 @@ class TestBulkLogAscentsUseCase:
     def test_execute_with_future_date(self):
         """Test execute rejects ascents with future dates."""
         repo = MockAscentRepository()
-        clock = MockClock()
+        clock = _clock()
         use_case = _use_case(repo, clock)
 
         ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2024, 1, 1))]
@@ -83,7 +84,7 @@ class TestBulkLogAscentsUseCase:
     def test_execute_with_nonexistent_object(self):
         """Test execute rejects ascents for nonexistent objects."""
         repo = MockAscentRepository()
-        clock = MockClock()
+        clock = _clock()
         use_case = _use_case(repo, clock)
 
         ascents = [AscentInputDTO(peak_id=999, ascent_date=date(2023, 1, 1))]
@@ -97,7 +98,7 @@ class TestBulkLogAscentsUseCase:
     def test_execute_with_date_before_object_creation(self):
         """Test execute rejects ascents before object creation."""
         repo = MockAscentRepository()
-        clock = MockClock()
+        clock = _clock()
         use_case = _use_case(repo, clock)
 
         ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2019, 1, 1))]
@@ -111,7 +112,7 @@ class TestBulkLogAscentsUseCase:
     def test_execute_with_date_after_object_destruction(self):
         """Test execute rejects ascents after object destruction."""
         repo = MockAscentRepository()
-        clock = MockClock()
+        clock = _clock()
         use_case = _use_case(repo, clock)
 
         ascents = [AscentInputDTO(peak_id=2, ascent_date=date(2023, 1, 1))]
@@ -125,7 +126,7 @@ class TestBulkLogAscentsUseCase:
     def test_execute_with_mixed_valid_and_invalid(self):
         """Test execute with mixed valid and invalid ascents."""
         repo = MockAscentRepository()
-        clock = MockClock()
+        clock = _clock()
         use_case = _use_case(repo, clock)
 
         ascents = [
@@ -142,7 +143,7 @@ class TestBulkLogAscentsUseCase:
     def test_execute_returns_bulk_ascent_result_dto(self):
         """Test execute returns BulkAscentResultDTO."""
         repo = MockAscentRepository()
-        clock = MockClock()
+        clock = _clock()
         use_case = _use_case(repo, clock)
 
         ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1))]

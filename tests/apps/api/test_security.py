@@ -5,7 +5,6 @@ w odpowiedziach HTTP, a nieoczekiwane błędy są logowane z pełnym tracebackie
 """
 
 import json
-from datetime import date
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,6 +19,9 @@ from apps.api.views import (
     _handle_application_exception,
     _problem_detail,
 )
+from tests.fakes.clock import FakeClock
+
+TEST_TODAY = str(FakeClock.DEFAULT_TIME.date())
 
 pytestmark = pytest.mark.integration
 
@@ -323,7 +325,7 @@ class TestBadgeLogisticsViewValidation:
         """Nieoczekiwany wyjątek nie jest maskowany jako 422."""
         request = factory.patch(
             "/api/v1/progress/1/logistics/",
-            data=json.dumps({"logistic_status": "WAITING_FOR_VERIFICATION", "status_date": str(date.today())}),
+            data=json.dumps({"logistic_status": "WAITING_FOR_VERIFICATION", "status_date": TEST_TODAY}),
             content_type="application/json",
         )
         request.user = mock_user
@@ -363,7 +365,7 @@ class TestBulkAscentLogViewValidation:
         """Nieprawidłowe wejście wędrówki zwraca bezpieczny błąd 422."""
         request = factory.post(
             "/api/v1/ascents/bulk/",
-            data=json.dumps([{"peak_id": "not_a_number", "ascent_date": str(date.today())}]),
+            data=json.dumps([{"peak_id": "not_a_number", "ascent_date": TEST_TODAY}]),
             content_type="application/json",
         )
         request.user = mock_user
@@ -383,7 +385,7 @@ class TestBulkAscentLogViewValidation:
         """Nieoczekiwany wyjątek nie jest maskowany jako 422."""
         request = factory.post(
             "/api/v1/ascents/bulk/",
-            data=json.dumps([{"peak_id": 1, "ascent_date": str(date.today())}]),
+            data=json.dumps([{"peak_id": 1, "ascent_date": TEST_TODAY}]),
             content_type="application/json",
         )
         request.user = mock_user

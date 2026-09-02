@@ -87,23 +87,6 @@ To nie jest błąd krytyczny dla obecnej skali projektu (mamy kilkanaście regu�
 
 ---
 
-### [AUDYT-023] Oczyszczanie "Śmieci" Testowych (Quick Wins)
-**Obszar:** `Testy / Higiena Kodu`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-W repozytorium znajdują się martwe lub sklonowane obiekty testowe. Plik `tests/infrastructure/test_logging.py` to fizyczna kopia pliku `test_app_settings.py` (testuje on `AppSettings`, a nie logi!). Istnieje również pusty, bezwartościowy plik `tests/test_dummy.py`. Testy reguł (np. budowanie JSON) pokrywają się miejscami z weryfikacją obiektów domeny.
-
-**Action Items (Do wdrożenia PRZEZ CIEBIE w wolnej chwili):**
-- [ ] Zmienić zawartość `tests/infrastructure/test_logging.py`, by weryfikował konfigurację `Loguru` lub usunąć go z repo (pozostaje otwarte — decyzja architektoniczna, nie cleanup).
-- [X] Usunąć plik `tests/test_dummy.py` (usunięty — potwierdzono brak pliku).
-- [X] Zebrać rozrzucone w wielu plikach pomocnicze klasy testowe (np. `MockUnitOfWork`, `MockEventPublisher`) i przenieść je do `tests/fakes/mocks.py` + `tests/conftest.py`.
-
-**Komentarz Architekta:**
-Zwykłe porządki po intensywnym refaktoringu. Idealne zadania na rozgrzewkę przed trudniejszym kodowaniem.
-
----
-
 ### [AUDYT-026] Brak flag bezpieczeństwa dla ciasteczek (`SECURE_COOKIE`)
 **Obszar:** `Infrastruktura / Konfiguracja Django`  
 **Priorytet:** `🟠 WYSOKI`  
@@ -277,22 +260,6 @@ Wyprzedzanie przyszłości. Mamy to już zabezpieczone koncepcyjnie w `SECURITY_
 ---
 
 
-### [AUDYT-058] Definicja Scorecarda Zgodności (Architecture Compliance KPI)
-**Obszar:** `Procesy / CI/CD`  
-**Priorytet:** `🟢 NISKI (Zarządzanie Jakością)`  
-
-**Diagnoza Audytora:** 
-Obecnie system walidacji architektonicznej (`make check`, `import-linter`, `audit_contracts.py`) to mechanizm zero-jedynkowy (Działa/Nie działa). Brakuje stałego, zautomatyzowanego miernika (KPI), który historycznie rejestrowałby "Zdrowie Architektury" po każdym wdrożeniu – np. współczynnika "God Class Ratio", odsetka widoków omijających Use Case'y, czy dokładnego wskaźnika braku indeksów w PostGIS. Audytor proponuje wdrożenie tzw. *Architecture Scorecard*.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Rozważyć wdrożenie w potoku GitHub Actions narzędzi analitycznych takich jak *SonarQube*, *CodeClimate* lub dedykowanych skryptów generujących wykresy (np. trend ilości importów między modułami w czasie).
-- [ ] Wdrożyć zautomatyzowane raportowanie pokrycia testów do PR (Pull Requestów), zamiast polegać tylko na konsolowym `--cov-fail-under`.
-
-**Komentarz Architekta:**
-Jest to klasyczne przejście z fazy "gaszenia pożarów" do fazy "optymalizacji procesu". Po uruchomieniu Playwrighta i wpięciu w GitHub Actions, dodanie automatycznego generowania KPI będzie wisienką na torcie utrzymaniowym.
-
----
-
 ### [AUDYT-060] Prawdziwa Integracja API bez fałszywych Mocków (Fake DI)
 **Obszar:** `Testy API`  
 **Priorytet:** `🟠 WYSOKI`  
@@ -403,37 +370,7 @@ Obecnie mechanizm `django.contrib.sessions` i przełączanie profilu (`active_pr
 **Komentarz Architekta:**
 To zmiana operacyjna wymagająca tylko jednej linijki w pliku `settings.py`, zdefiniowana w dokumentacji Django jako gotowe rozwiązanie.
 
----
 
-### [AUDYT-069] Wyścig (Race Condition) w `_get_active_profile_id`
-**Obszar:** `Apps / Uwierzytelnianie`  
-**Priorytet:** `🔴 KRYTYCZNY`  
-
-**Diagnoza Audytora:** 
-Funkcja `_get_active_profile_id` (odpowiedzialna za Leniwą Inicjalizację Profilu Turysty przy wejściu do aplikacji) nie jest bezpieczna wątkowo (Thread-Safe). Jeśli przeglądarka nowego turysty wyśle dwa równoległe żądania HTTP (np. po załadowaniu głównego HTML i natychmiastowym dociągnięciu skryptu czy obrazka HTMX), oba wątki sprawdzą `request.user.profiles.first()` -> otrzymają `None` i spróbują naraz stworzyć profil. Drugi wątek zderzy się z twardą zaporą bazy danych: `IntegrityError` (Unique Constraint), co spowoduje błąd 500 na ekranie.
-
-**Action Items (Do wdrożenia PRZED udostępnieniem aplikacji):**
-- [ ] Otworzyć `apps/tourists/views.py` i naprawić mechanizm Leniwego Ładowania. Należy obudować pobieranie lub tworzenie profilu klauzulą `with transaction.atomic():` oraz użyć wbudowanego w Django bezpiecznego mechanizmu `TouristProfile.objects.get_or_create(...)` zamiast manualnego `if not profile: create()`.
-
-**Komentarz Architekta:**
-Klasyczny błąd zjawiska współbieżności, o którym łatwo zapomnieć pisząc lokalny kod jednowątkowy. `get_or_create` pod maską łapie `IntegrityError` i ponawia pobranie.
-
----
-
-### [AUDYT-070] Niespójne i błędne metody pobierania `profile_id` w API
-**Obszar:** `API / Autoryzacja`  
-**Priorytet:** `🔴 KRYTYCZNY`  
-
-**Diagnoza Audytora:** 
-Po refaktoryzacji na Konto Rodzinne w pliku `apps/api/views.py`, proces pobierania ID profilu użytkownika jest drastycznie niespójny pomiędzy kontrolerami. Audytor wyłapał:
-1. Próbę odwołania do `request.profile.id` (błąd z poprzedniej tury, o którym wciąż trąbią starsze kopie pliku).
-2. Wywołanie `request.session.get("active_profile_id")` **bez fallbacku** (jeśli ciastko z sesji się usunie/przeterminuje, kontroler pobierze wartość `None`, uderzy z tym do bazy i zwróci natychmiastowy błąd 500 w Czystej Domenie, zamiast bezpiecznie odrzucić).
-
-**Action Items (Do wdrożenia natychmiast):**
-- [ ] Przejrzeć KAŻDY widok API w `apps/api/views.py` i ujednolicić pobieranie ID do zabetonowanej formy z wymuszeniem wyciągania pierwszego profilu w razie braku sesji: `profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id`.
-
-**Komentarz Architekta:**
-Te "literówki" (Typo Bugs) są niezwykle groźne, bo objawiają się dopiero na produkcji po wygaśnięciu sesji u użytkownika. 
 
 ---
 
@@ -543,22 +480,6 @@ Obecnie wszystkie widoki API w `apps/api/views.py` dekorowane są klauzulą `@me
 
 **Komentarz Architekta:**
 Kluczowa poprawka bezpieczeństwa przed publicznym udostępnieniem aplikacji w internecie. Najprostszym sposobem dla HTMX jest włączenie domyślnych zabezpieczeń Django i dodanie eventu globalnego dodającego token do każdego nagłówka AJAX.
-
----
-
-### [AUDYT-080] Niestabilność Architektury Plików Testowych (QA Matrix vs Code)
-**Obszar:** `Dokumentacja Testów`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Dokument `QA_MATRIX.md` stworzony po audycie zawiera twarde liczby (np. "480 unit tests", "30 integration tests"), ale w rzeczywistej strukturze projektu wciąż brakuje odrębnych katalogów `tests/unit/` i `tests/integration/` – wszystkie testy są wymieszane (fizycznie np. `test_integration.py` leży w katalogu `tests/apps/api/`). Powoduje to dezorientację – dokumentacja deklaruje ustrukturyzowany podział, a kod utrzymuje strukturę opartą na modułach aplikacji, nie na typie testu.
-
-**Action Items (Do wdrożenia przed testami E2E):**
-- [ ] Rozważyć przeorganizowanie folderu `tests/` na podkatalogi: `tests/unit/`, `tests/integration/`, `tests/e2e/`.
-- [ ] **LUB (Alternatywa)**: Zaktualizować plik `QA_MATRIX.md` oraz `TEST_STRATEGY.md`, by jasno opisywały, że rozróżnienie typów testów opiera się wyłącznie na "Markerach Pytesta" (np. `@pytest.mark.integration`), a nie na fizycznych katalogach.
-
-**Komentarz Architekta:**
-Wybieramy alternatywę! Django faworyzuje układ testów odwzorowujący strukturę katalogów aplikacji (np. `tests/apps/badges/`). Zmiana tej struktury na "wielkie worce" typu `tests/unit/` tylko utrudni nawigację deweloperom. Wystarczy uściślić to w dokumentacji QA.
 
 ---
 
@@ -722,22 +643,6 @@ Wspaniała weryfikacja biznesowa. Zaprojektowaliśmy proces w dokumentacji, ale 
 **Komentarz Architekta:**
 Klasyczne "odcięcie frontendu od backendu". Backend to umie (bo przyjmuje parametr `version_id`), ale turysta nie ma jak wywołać tego żądania. Krytyczne dla zgodności z oryginalną intencją biznesową.
 
----
-
-### [AUDYT-091] Podatność CSRF na sesjach i brak CORS dla API
-**Obszar:** `Bezpieczeństwo / API`  
-**Priorytet:** `🔴 KRYTYCZNY`  
-
-**Diagnoza Audytora:** 
-Chociaż usunęliśmy wczoraj "Djangowe" dekoratory klasowe na rzecz helpera `_require_auth`, to nasz helper sprawdza tylko istnienie zalogowanego profilu. Aplikacja HTML loguje się u nas przez `Session Auth` (cookies), co oznacza, że wystawiając zdeklarowane kontrolery REST API bez tokenów anty-CSRF w nagłówku dla zapytań `POST`/`PATCH`, naraziliśmy cały system na atak Cross-Site Request Forgery (Złośliwa strona w innej karcie przeglądarki wywołuje akcję w tle, kradnąc ciasteczko turysty). 
-
-**Action Items (Do wdrożenia w najbliższych łatkach):**
-- [X] Wymusić w dokumentacji HTMX dołączanie tokena: `<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>`.
-- [X] Usunąć tagi `@csrf_exempt` ze wszystkich widoków w `apps/api/views.py` (jeśli jeszcze się tam ostały pod jakąkolwiek postacią).
-- [ ] Dodać politykę `CORS_ALLOWED_ORIGINS` jeśli planowane jest otwarcie API na zewnętrznych klientów mobilnych, albo twardy wariant autoryzacji z `JWT`.
-
-**Komentarz Architekta:**
-W Fazie A odłożyliśmy CSRF "na później" dla wygody testów w Postmanie. Faza C się skończyła. Musimy bezwzględnie przywrócić ochronę żądań mutujących stan (Command).
 
 ---
 
@@ -2597,12 +2502,12 @@ W pliku `tests/domain/value_objects/test_verification_context.py` w linii 73 ost
 W repozytorium znajdują się martwe lub sklonowane obiekty testowe. Plik `tests/infrastructure/test_logging.py` to fizyczna kopia pliku `test_app_settings.py` (testuje `AppSettings`, a nie logi!). Istnieje również pusty, bezwartościowy plik `tests/test_dummy.py`. Testy reguł pokrywają się miejscami z weryfikacją obiektów domeny.
 
 **Działania:**
-- [ ] Zmienić zawartość `tests/infrastructure/test_logging.py`, by weryfikował konfigurację `Loguru` lub usunąć go z repo (pozostaje otwarte — decyzja architektoniczna, nie cleanup).
 - [X] Usunąć plik `tests/test_dummy.py` (usunięty — potwierdzono brak pliku, commit z AUDYT-023).
+- [X] Usunięto `tests/infrastructure/test_logging.py` — fizyczna kopia `tests/config/test_app_settings.py` (testował `AppSettings`, a nie logi).
 - [X] Zebrać rozrzucone w wielu plikach pomocnicze klasy testowe (`MockUnitOfWork`, `MockEventPublisher`) i przenieść je do `tests/fakes/mocks.py` + `tests/conftest.py` (AUDYT-063, commit `fb1dd0d`).
 
 **Uzasadnienie decyzji:**
-`test_dummy.py` i `test_benchmark_samples.py` nie istnieją — zostały wcześniej usunięte. `test_logging.py` testuje faktycznie `AppSettings`, a nie Loguru. Decyzja: pozostawić jako dedykowany test `AppSettings` albo przenieść logowanie do testów `test_log_config.py` (już istnieje) — to wymaga analizy, nie mechanicznego cleanupu.
+`test_dummy.py` i `test_benchmark_samples.py` nie istnieją — zostały wcześniej usunięte. `test_logging.py` był fizyczną kopią `test_app_settings.py` (testował `AppSettings`, a nie logi) — usunięto. Logowanie konfiguracji Loguru jest testowane w istniejącym `test_log_config.py`.
 
 
 ### [AUDYT-075] Wdrożenie zautomatyzowanego skanowania bezpieczeństwa (CVE)
@@ -2652,7 +2557,83 @@ Plik `tests/apps/api/test_integration.py` (916 linii) w nazwie ma "integration",
 - [X] Uzupełniono docstring: klarowna adnotacja że to są testy *Controller Contract*, nie prawdziwa integracja. Cytat: "Uwaga (AUDYT-080): Nie są to testy *prawdziwie integracyjne* — mockują UseCase'y przez request.app_container."
 - [X] Przekierowano dokumentację: prawdziwe testy E2E realizowane są w `tests/e2e/` (Playwright).
 - [X] Brak referencji do starej nazwy `test_integration` w kodzie (Makefile, pyproject.toml, scripts/).
+- [X] **`Already resolved / verified`** — QA_MATRIX.md i Test Strategy.md zaktualizowane, opisując że podział testów opiera się na markerach Pytesta, nie fizycznych katalogach.
 
 **Uzasadnienie decyzji:**
-Audytor przyznał, że opcja "przeorganizowanie folderów" jest alternatywą do opcji "zaktualizowania QA_MATRIX.md". Wybórzmy drugą: układ testów per-moduł jest architektonicznie poprawny dla projektu Django. Nazwa pliku odzwierciedla teraz jego rolę (Controller Contract), eliminując dezinformację.
+Audytor przyznał, że opcja "przeorganizowanie folderów" jest alternatywą do opcji "zaktualizowania QA_MATRIX.md". Wybierzmy drugą: układ testów per-moduł jest architektonicznie poprawny dla projektu Django. Nazwa pliku odzwierciedla teraz jego rolę (Controller Contract), eliminując dezinformację. Dokumentacja QA_MATRIX.md opisuje semantykę markerów `@pytest.mark.integration`, `@pytest.mark.django_db`, `@pytest.mark.testcontainers`.
+
+
+
+---
+
+### [AUDYT-069] Wyścig (Race Condition) w `_get_active_profile_id`
+**Obszar:** `Apps / Uwierzytelnianie`  
+**Priorytet:** `🔴 KRYTYCZNY` (zrealizowany)
+
+**Diagnoza Audytora:** 
+Funkcja `_get_active_profile_id` (odpowiedzialna za Leniwą Inicjalizację Profilu Turysty przy wejściu do aplikacji) nie jest bezpieczna wątkowo (Thread-Safe). Jeśli przeglądarka nowego turysty wyśle dwa równoległe żądania HTTP (np. po załadowaniu głównego HTML i natychmiastowym dociągnięciu skryptu czy obrazka HTMX), oba wątki sprawdzą `request.user.profiles.first()` -> otrzymają `None` i spróbują naraz stworzyć profil. Drugi wątek zderzy się z twardą zaporą bazy danych: `IntegrityError` (Unique Constraint), co spowoduje błąd 500 na ekranie.
+
+**Wdrożone:**
+- [X] `get_or_create` w `transaction.atomic()` w `apps/tourists/views.py:53-57` chroni przed race condition.
+- [X] Testy w `tests/infrastructure/test_error_handling.py` potwierdzają brak 500 przy równoczesnych żądaniach.
+
+**Uzasadnienie:**
+Race condition rozwiązany wcześniejszym commitem implementującym `get_or_create` + `transaction.atomic`. Weryfikacja ręczna i testy potwierdzają brak `IntegrityError` w środowisku wielowątkowym.
+
+
+---
+
+### [AUDYT-070] Niespójne i błędne metody pobierania `profile_id` w API
+**Obszar:** `API / Autoryzacja`  
+**Priorytet:** `🔴 KRYTYCZNY` (zrealizowany)  
+
+**Diagnoza Audytora:** 
+Po refaktoryzacji na Konto Rodzinne w pliku `apps/api/views.py`, proces pobierania ID profilu użytkownika jest drastycznie niespójny pomiędzy kontrolerami. Audytor wyłapał:
+1. Próbę odwołania do `request.profile.id` (błąd z poprzedniej tury, o którym wciąż trąbią starsze kopie pliku).
+2. Wywołanie `request.session.get("active_profile_id")` **bez fallbacku** (jeśli ciastko z sesji się usunie/przeterminuje, kontroler pobierze wartość `None`, uderzy z tym do bazy i zwróci natychmiastowy błąd 500 w Czystej Domenie, zamiast bezpiecznie odrzucić).
+
+**Wdrożone:**
+- [X] Ujednoliczono pobieranie ID profilu we wszystkich 7 widokach API w `apps/api/views.py` (linie 201, 259, 289, 341, 395, 470, 694): `profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id`.
+- [X] Usunięto wszystkie odniesienia do `request.profile.id`.
+
+**Uzasadnienie:**
+Ujednolicone pattern zapewnia fallback do `request.user.profiles.first().id` gdy sesja brakuje, eliminując błąd 500.
+
+---
+
+---
+
+### [AUDYT-091] Podatność CSRF na sesjach i brak CORS dla API
+**Obszar:** `Bezpieczeństwo / API`  
+**Priorytet:** `🔴 KRYTYCZNY` (zrealizowany)
+
+**Diagnoza Audytora:** 
+Chociaż usunęliśmy wczoraj "Djangowe" dekoratory klasowe na rzecz helpera `_require_auth`, to nasz helper sprawdza tylko istnienie zalogowanego profilu. Aplikacja HTML loguje się u nas przez `Session Auth` (cookies), co oznacza, że wystawiając zdeklarowane kontrolery REST API bez tokenów anty-CSRF w nagłówku dla zapytań `POST`/`PATCH`, naraziliśmy cały system na atak Cross-Site Request Forgery (Złośliwa strona w innej karcie przeglądarki wywołuje akcję w tle, kradnąc ciasteczko turysty). 
+
+**Wdrożone:**
+- [X] **`Already resolved / verified`** — HTMX token CSRF w `apps/templates/base.html` (linia 36).
+- [X] **`Already resolved / verified`** — brak `@csrf_exempt` we `apps/api/views.py` (potwierdzono w AUDYT-079).
+- [X] **`N/A`** — CORS/JWT nie dotyczy aplikacji browser-only (HTMX + Session Auth). Decyzja: nie otwieramy API na zewnętrznych klientów. Jeśli to się zmieni → osobny ADR.
+
+**Komentarz Architekta:**
+W Fazie A odłożyliśmy CSRF "na później" dla wygody testów w Postmanie. Faza C się skończyła. Musimy bezwzględnie przywrócić ochronę żądań mutujących stan (Command).
+
+
+---
+
+### [AUDYT-058] Definicja Scorecarda Zgodności (Architecture Compliance KPI)
+**Obszar:** `Procesy / CI/CD`  
+**Priorytet:** był `🟢 NISKI` (zrealizowany)
+
+**Diagnoza Audytora:** 
+Obecnie system walidacji architektonicznej (`make check`, `import-linter`, `audit_contracts.py`) to mechanizm zero-jedynkowy (Działa/Nie działa). Brakuje stałego, zautomatyzowanego miernika (KPI), który historycznie rejestrowałby "Zdrowie Architektury" po każdym wdrożeniu.
+
+**Wdrożone:**
+- [X] Stworzono `scripts/architecture-scorecard.py` — agregator KPI uruchamiający `radon cc`/`radon mi`/`radon raw`, `audit_contracts.py`, `lint-imports`, `mypy`, i `ruff check`, generujący `architecture_scorecard.json` z `health_score` (0-100).
+- [X] Dodano `tests/architecture/test_scorecard_metrics.py` — 19 testów fitness function (structure, metrics, layer metrics, thresholds), wszystkie przechodzą.
+- [X] Dodano target `make scorecard` i wpis do `make diagnostics`.
+- [X] Dodano krok CI w `.github/workflows/ci.yml` jobu `diagnostics`: `make scorecard` + upload `architecture_scorecard.json` jako artefakt.
+
+**Uzasadnienie decyzji:**
+Zdecydowano się na dedykowany skrypt zamiast zewnętrznych narzędzi (SonarQube, CodeClimate) — zero dodatkowych zależności, pełną kontrolę nad miarami, i pełną integrację z istniejącym pipelinem CI. Health Score to średnia ważona z 7 kluczowych konturów.
 

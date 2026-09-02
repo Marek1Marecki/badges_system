@@ -10,7 +10,7 @@ export PATH := /home/dominik/.local/bin:$(PATH)
 # ===============================
 # CORE
 # ===============================
-.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check diagnostics clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff secret-scan test-timings test-html docstr-coverage lint-templates experimental-schemathesis experimental-testcontainers experimental-axe experimental-factory-boy experimental-k6 experimental-zap experimental-xdist experimental-benchmark mutation
+.PHONY: help setup format lint type-check test test-all audit secrets-check graph graph-modules graph-classes graph-all arch-docs api-docs doc-format doc-check check diagnostics clean hadolint checkov infra-check docker-bench dev-up dev-down dev-reset dev-status dev-logs dev-backup dev-restore test-run verify preprod preprod-deploy preprod-status preprod-logs preprod-down e2e security-audit complexity-check complexity-trend lock test-random coverage-diff secret-scan test-timings test-html docstr-coverage lint-templates experimental-schemathesis experimental-testcontainers experimental-axe experimental-factory-boy experimental-k6 experimental-zap experimental-xdist experimental-benchmark mutation scorecard
 
 help:
 	@echo "CORE targets:"
@@ -39,6 +39,7 @@ help:
 	@echo "  docker-bench - audyt konfiguracji Dockera (CIS Docker Bench, na żądanie)"
 	@echo "  complexity-check - radon + xenon (Diagnostic: complexity + maintainability metrics)"
 	@echo "  complexity-trend - wily (Diagnostic: complexity trends over git history)"
+	@echo "  scorecard        - architecture scorecard JSON (Diagnostic: consolidated KPI report)"
 	@echo "  lock           - regeneruje uv.lock z 7-dniowym cooldownem zależności"
 	@echo "  test-random    - testy z losową kolejnością (pytest-randomly, diagnostyka)"
 	@echo "  coverage-diff  - coverage tylko dla zmienionego kodu (diff-cover, diagnostyka)"
@@ -278,7 +279,11 @@ diagnostics:
 	make test-html
 	make secret-scan
 	make docstr-coverage
+	make scorecard
 	make lint-templates
+
+scorecard:
+	uv run python scripts/architecture-scorecard.py
 
 mutation:
 	@echo "=== Mutation Testing (mutmut) ==="
