@@ -1,5 +1,7 @@
 # Backlog po Audycie (Step 3.7 Flash)
 
+> **Status:** ✅ P1 Security Hygiene — CLOSED (13/13 zrealizowanych, 0 otwartych)
+>
 > **Dokument roboczy** gromadzący zadania refaktoryzacyjne, wykryte luki w zabezpieczeniach oraz optymalizacje architektoniczne wygenerowane w serii audytów zewnętrznych. Każde zadanie po wdrożeniu powinno zostać odhaczone.
 
 ---
