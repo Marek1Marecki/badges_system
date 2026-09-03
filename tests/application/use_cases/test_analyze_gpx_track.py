@@ -76,7 +76,7 @@ class TestAnalyzeGpxTrackUseCase:
     def test_execute_calls_map_repo_with_buffer(self):
         """Test that execute calls map repo with correct buffer distance."""
         gpx_parser = MockGpxParser()
-        map_repo = MockMapRepoEmpty()
+        map_repo = MockMapRepo()
 
         use_case = AnalyzeGpxTrackUseCase(gpx_parser, map_repo)
         use_case.execute(b"valid_gpx_content")
@@ -85,15 +85,14 @@ class TestAnalyzeGpxTrackUseCase:
         assert use_case.BUFFER_METERS == 200.0
 
     def test_execute_with_no_nearby_objects(self):
-        """Test execute when no nearby objects are found."""
+        """AUDYT-092: pusta lista → UseCaseError ( nie cichy 200 )."""
         gpx_parser = MockGpxParser()
         map_repo = MockMapRepoEmpty()
 
         use_case = AnalyzeGpxTrackUseCase(gpx_parser, map_repo)
-        result = use_case.execute(b"valid_gpx_content")
 
-        assert result.nearby_peaks == []
-        assert result.suggested_date == date(2023, 1, 1)
+        with pytest.raises(UseCaseError, match="Brak obiektów PTTK"):
+            use_case.execute(b"valid_gpx_content")
 
     def test_buffer_meters_constant(self):
         """Test that BUFFER_METERS constant is set correctly."""

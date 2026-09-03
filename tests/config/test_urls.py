@@ -1,7 +1,8 @@
 """Tests for main URL configuration."""
 
+from unittest.mock import patch
 
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 from django.urls import resolve, reverse
 
 
@@ -60,3 +61,19 @@ class TestMainUrls(SimpleTestCase):
         assert data["status"] == "healthy"
         assert data["checks"]["database"] == "skipped"
         assert data["checks"]["redis"] == "skipped"
+
+    @override_settings(APP_ENV="production")
+    @patch("config.urls.connection")
+    def test_health_check_returns_503_when_database_unhealthy(self, mock_conn):
+        """AUDYT-118: DB failure → 503, nie fałszywy 200."""
+        mock_cursor = mock_conn.cursor.return_value.__enter__.return_value
+        mock_cursor.execute.side_effect = OSError("connection refused")
+
+        with patch("config.urls.cache") as mock_cache:
+            mock_cache.get.return_value = "ok"
+            response = self.client.get("/health/")
+
+        assert response.status_code == 503
+        data = response.json()
+        assert data["status"] == "unhealthy"
+        assert data["checks"]["database"] == "unhealthy"
