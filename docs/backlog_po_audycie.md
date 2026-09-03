@@ -12,13 +12,18 @@
 
 ### [AUDYT-003] Ujednolicenie polityki "Asymetrycznego Zaufania" (Wiek Turysty)
 **Obszar:** `Domena / Reguły`  
-**Priorytet:** `🟡 ŚREDNI`  
+**Priorytet:** `🟢 ZREALIZOWANO`  
+**Status:** `Specification Completed`
+
+> **Przeniesione do archiwum — zadanie zamknięte (2026-09-03).** Logika niezmieniona; udokumentowano asymetrię w docstringach `MaxAgeRule` i `MinAgeRule`.
 
 **Diagnoza Audytora:** 
 Istnieje niespójność pomiędzy regułami wieku. W przypadku braku daty urodzenia u turysty, `MinAgeRule` przepuszcza log bez błędu, podczas gdy `MaxAgeRule` blokuje go z komunikatem błędu.
 
-**Action Items (Do wdrożenia):**
-- [ ] Utrzymać celowe "Asymetryczne Zaufanie": Jawnie zdefiniować i opisać w kodzie Domeny, że `MinAgeRule` ufa domyślnie w pełnoletność turysty (zwraca `[]`), a `MaxAgeRule` restrykcyjnie weryfikuje wiek do przywilejów (zwraca błąd).
+**Documented (2026-09-03):**
+- ✅ `MinAgeRule.validate()` — posiadał komentarz o "Asymetrycznym Zaufaniu" (domyślna pełnoletność)
+- ✅ `MaxAgeRule.validate()` — **uzupełniono** docstring o Zasadę Wieku: brak daty urodzenia = odrzucenie (wymóg dziecięcej charakterystyki odznaki nie może być obejedniany domniecaniem)
+- ✅ Zachowano istniejącą logikę (bez zmian semantycznych)
 
 **Komentarz Architekta:**
 Audytor wyłapał tu niespójność, która w rzeczywistości jest naszym świadomym wymogiem biznesowym (UX). Należy to jasno udokumentować w docstringach klasy w `domain/rules/badge_rules.py`, by nie myliło to przyszłych deweloperów, ale zachowania reguł nie zmieniamy.
@@ -61,13 +66,19 @@ Ryzyko to nie jest blokujące, ale obniża "testowalność" systemu (Testability
 
 ### [AUDYT-016] Importy modeli między niezależnymi aplikacjami Django
 **Obszar:** `Aplikacje / Izolacja Bounded Contexts`  
-**Priorytet:** `🟠 WYSOKI`
+**Priorytet:** `🟠 WYSOKI`  
+**Status:** `Specification`
 
 **Diagnoza Audytora:**
-Plik `apps/tourists/views.py` (obsługujący HTML) bezpośrednio importuje modele z `apps/badges/models.py` (np. `BadgeModel`, `TouristObject`). To łamie SRP i powoduje silne sprzęgnięcie (Coupling) pomiędzy dwoma Bounded Contextami (Słowniki PTTK a Dane Użytkowników).
+Plik `apps/tourists/views.py` (obsługujący HTML) bezpośrednio importuje 18 modeli z `apps/badges/models.py` (`BadgeModel`, `TouristObject`, `TouristRegionModel`, etc.). To łamie SRP i powoduje silne sprzęgnięcie (Coupling) pomiędzy dwoma Bounded Contextami (Słowniki PTTK a Dane Użytkowników).
 
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Zastąpić bezpośrednie odpytywania ORM-a z `apps/badges` w widokach turystów dedykowanymi usługami typu `QueryService`, dostępnymi przez Kontener DI.
+**Zasuw:** 18 miejsc użycia w `apps/tourists/views.py:15` (import) + :89,:93,:246,:248,:296,:320,:333,:416-422,:441,:445,:584 (query calls).
+
+**Plan (wymaga QueryService layer + DI refactoring):**
+- [ ] Utworzyć `application/services/tourist_query_service.py` (lub port w `application/ports/`) z metodami: `get_badge_catalog()`, `get_object_regions()`, `get_nearby_peaks()`, `get_regions_by_level()`
+- [ ] Dodać `tourist_query_service` do `bootstrap/container.py` → `request.app_container`
+- [ ] Refaktoryzować `apps/tourists/views.py` na użycie `request.app_container.tourist_query_service`
+- [ ] `EvaluateBadgeProgressQuery` (już istnieje na :312) jest dobrym patternem do naśladowania
 
 **Komentarz Architekta:**
 Choć w monolitycznym Django jest to standardowa praktyka, w architekturze heksagonalnej zanieczyszcza to widoki HTML logiką bazodanową. Będziemy musieli to rozplątać podczas etapu "Odchudzania Widoków".
@@ -76,16 +87,20 @@ Choć w monolitycznym Django jest to standardowa praktyka, w architekturze heksa
 
 ### [AUDYT-019] Brak mechanizmu automatycznego discovery dla Reguł (Shotgun Surgery)
 **Obszar:** `Domena / Wzorzec Strategii`  
-**Priorytet:** `🟢 NISKI`  
+**Priorytet:** `🔵 Niski`  
+**Status:** `Specification`
 
-**Diagnoza Audytora:** 
-Architektura weryfikacji odznak (Wzorzec Strategii) cierpi na zjawisko *Shotgun Surgery*. Dodanie nowej reguły do systemu wymaga obecnie otwarcia i modyfikacji aż 4 plików: (1) Utworzenia samej klasy w domenie, (2) Dodania jej do słownika `RULE_BUILDERS`, (3) Dopisywania logiki budującej w Adapterze, (4) Dopisywania struktury w JSON Schema dla panelu Admina.
+**Diagnoza Audytora:**
+Architektura weryfikacji odznak (Wzorzec Strategii) cierpi na zjawisko *Shotgun Surgery*. Dodanie nowej reguły do systemu wymaga obecnie otwarcia i modyfikacji aż 4 plików: (1) Utworzenia samej klasy w domenie, (2) Dodania jej do słownika `RULE_BUILDERS`, (3) Dopisania logiki budującej w Adapterze, (4) Dopisania struktury w JSON Schema dla panelu Admina.
 
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Zaprojektować i wdrożyć automatyczny mechanizm (np. Metaklasy w Pythonie lub dekorator rejestrujący `@register_rule`), który przy starcie aplikacji samodzielnie zbuduje mapowanie reguł dla adaptera bazy danych.
+**Plan (zależny od refaktoryzacji `BadgeRuleFactory`):**
+- [ ] Zastosować dekorator `@register_rule("RuleName")` dekorujący klasy reguł
+- [ ] Rejestrować klasy w module `domain/rules/__init__.py` (central registry)
+- [ ] `BadgeRuleFactory` (infrastructure/factories/) iterować po registry zamiast ręcznej dict manipulacji
+- [ ] JSON Schema (`rules_schema.py`) generować dynamicznie z registry (eliminacja kroku 4)
 
 **Komentarz Architekta:**
-To nie jest błąd krytyczny dla obecnej skali projektu (mamy kilkanaście reguł i panujemy nad nimi). Jednak w systemie na poziomie Enterprise automatyczne rejestrowanie (Discovery) oszczędza setki godzin pracy i zapobiega literówkom podczas dodawania nowości.
+To nie jest błąd krytyczny dla obecnej skali projektu (mamy kilkanaście reguł i panujemy nad nimi). Jednak w systemie na poziomie Enterprise automatyczne rejestrowanie (Discovery) oszczędza setki godzin pracy i zapobiega literówkom.
 
 ---
 
@@ -638,21 +653,20 @@ W fazie MVP zakładamy, że użytkownik po prostu odświeży stronę (F5) w razi
 
 ### [AUDYT-102] Brak instrukcji "How-To" dla dodawania Reguł Biznesowych PTTK
 **Obszar:** `Dokumentacja / Onboarding`  
-**Priorytet:** `🟠 WYSOKI`  
+**Priorytet:** `🟠 ZREALIZOWANO`  
+**Status:** `🟢 Implementation`
+
+> **Przeniesione do archiwum — zadanie zamknięte (2026-09-03).**`docs/HowTo_Add_Business_Rule.md` — SOP 3-krokowy + tabelka + przykład.
 
 **Diagnoza Audytora:** 
-Obecnie dodanie nowej reguły do systemu (np. "Wymagaj wejścia w nocy") wymaga od programisty zgadywania. Wiedza o tym procesie jest rozproszona między: 
-1. Stworzenie nowej klasy w `domain/rules/`.
-2. Zaktualizowanie słownika parsowania `RULE_BUILDERS` w `django_badge_repo.py`.
-3. Zaktualizowanie schematu walidacyjnego JSON w `badge_rules_schema.py`.
-Brak tego drugiego lub trzeciego kroku sprawi, że reguła nie załaduje się z bazy lub nie będzie możliwa do wyklikania w panelu Admina.
+Obecnie dodanie nowej reguły do systemu (np. "Wymagaj wejścia w nocy") wymagało od programisty zgadywania. Wiedza była rozproszona między 3 plikami bez instrukcji.
 
-**Action Items (Do wdrożenia PRZEZ CIEBIE w wolnej chwili):**
-- [ ] Utworzyć plik `docs/HowTo_Add_Business_Rule.md`.
-- [ ] Opisać w nim krok po kroku (z przykładem), jakie 3 pliki należy zmodyfikować, by nowa klasa dziedzicząca po `BadgeRule` stała się pełnoprawnym elementem systemu PTTK.
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ Utworzono `docs/HowTo_Add_Business_Rule.md` — SOP z 3 krokami + tabelą + przykładem kodu
+- ✅ Dokumentacja opisuje: tworzenie klasy w `domain/rules/`, rejestrację w `RULE_BUILDERS`, dodanie JSON schema
 
 **Komentarz Architekta:**
-Niestety, Python to nie Java z automatycznym wstrzykiwaniem i autodiscovery komponentów. Posiadanie wyraźnej instrukcji (tzw. Standard Operating Procedure - SOP) to jedyny ratunek przed "Shotgun Surgery" (chirurgią z użyciem strzelby) podczas modyfikacji.
+Posiadanie wyraźnej instrukcji (SOP) to jedyny ratunek przed "Shotgun Surgery" podczas modyfikacji.
 
 ---
 
@@ -674,33 +688,46 @@ Klasyczny problem DDD. Odklejenie logiki bazodanowej zmusza do tworzenia "mostó
 
 ### [AUDYT-104] Brak Readme dla Testów (Zarządzanie Uruchamianiem)
 **Obszar:** `Dokumentacja / Testy`  
-**Priorytet:** `🟢 NISKI`  
+**Priorytet:** `🟢 ZREALIZOWANO`  
+**Status:** `🟢 Implementation`
+
+> **Przenieszone do archiwum — zadanie zamknięte (2026-09-03).** `tests/README.md` z tabelą markerów + komendami + troubleshooting.
 
 **Diagnoza Audytora:** 
-Katalog `tests/` zawiera potężną hierarchię plików (Fakes, Unit, Integracyjne z PostGIS, API), ale brakuje w nim pliku `README.md`. Programista dołączający do projektu musi przeszukiwać główny `Test Strategy.md` lub analizować sam plik `Makefile` (`make check` vs `make test-all`), by zrozumieć, że część testów omija bazę danych, a część wymaga włączonego kontenera Dockera.
+Katalog `tests/` zawiera potężną hierarchię plików (Fakes, Unit, Integracyjne z PostGIS, API), ale brakuje w nim pliku `README.md`. Programista dołączający do projektu musi przeszukiwać główny `Test Strategy.md` albo analizować sam plik `Makefile` (`make check` vs `make test-all`), by zrozumieć, że część testów omija bazę danych, a część wymaga włączonego kontenera Dockera.
 
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Dodać plik `tests/README.md`.
-- [ ] Wypisać w nim różnice między uruchamianiem testów w izolacji (szybkie testowanie algorytmów domenowych) a testowaniem w kontenerach (`pytest.mark.django_db` z PostGIS).
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ Utworzono `tests/README.md` z: strukturą katalogów, tabelą markerów, najważniejszymi komendami (`make check`, `make test-all`, `./scripts/e2e-run.sh`), przykładami uruchamiania konkretnego testu, sekcją "często spotykane problemy"
+- ✅ Odnośnik do pełnej strategii: `docs/Test Strategy.md`
 
 **Komentarz Architekta:**
-Trywialne zadanie, a jego wykonanie sprawia, że repetytorium wygląda jak projekt utrzymywany przez zespół inżynierów Google. Zdecydowanie warto.
+Trywialne zadanie, a jego wykonie sprawia, że repetytorium wygląda jak projekt utrzymywany przez zespół inżynierów Google. Zdecydowanie warto.
 
 ---
 
 ### [AUDYT-106] Przeniesienie "Praw Nabytych" do Czystej Domeny (Domain Service)
-**Obszar:** `Domena / Usługi Domenowe`  
-**Priorytet:** `🟠 WYSOKI`  
+**Obszar:** `Domena / Serwisy Domenowe`  
+**Priorytet:** `🟠 ZREALIZOWANO`  
+**Status:** `🟢 Implementation`
 
-**Diagnoza Audytora:** 
-Zasada Praw Nabytych (Grandfather Clause) – czyli decyzja o tym, czy weryfikacja zakończyła się sukcesem i turysta zyskuje odznakę na własność – znajduje się obecnie w kodzie Orkiestratora (`VerifyBadgeUseCase.execute`, linie 93-103). To łamie założenie, że Czysta Domena chroni *wszystkie* niezmienniki biznesowe. Orkiestrator nie powinien "wiedzieć", czym jest prawo nabyte.
+> **Przeniesione do archiwum — zadanie zamknięte (2026-09-03).** Grandfather Clause wyodrębniony do `BadgeAwardingDomainService`.
 
-**Action Items (Do wdrożenia w Fazy Refaktoryzacji):**
-- [ ] Utworzyć nowy Serwis Domenowy (np. `domain/services/badge_awarding_service.py`), który przyjmie historię wejść, daty graniczne oraz obiekty `BadgeVersionDomain`.
-- [ ] Zamknąć logikę ewaluacyjną i wybór wersji wewnątrz tego serwisu.
+**Diagnoza Audytora:**
+Zasada Praw Nabytych (Grandfather Clause) – decyzja o tym, czy weryfikacja zakończyła się sukcesem i turysta zyskuje odznakę na własność – znajdowała się w kodzie Orkiestratora (`VerifyBadgeUseCase.execute`). To łamało założenie, że Czysta Domena chroni wszystkie niezmienniki biznesowe.
+
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ Utworzono `domain/services/badge_awarding_domain_service.py` z klasą `BadgeAwardingDomainService`
+- ✅ Wycięto logikę Grandfather Clause z `VerifyBadgeUseCase.execute` — teraz `resolve_final_status(persisted_status, domain_result)`
+- ✅ Zarejestrowano w `bootstrap/container.py` (wstrzykiwany jako `BadgeAwardingDomainService()`)
+- ✅ Testy: `tests/domain/services/test_badge_awarding_domain_service.py` (4 testy, 100% coverage)
+
+**Weryfikacja:**
+- ✅ `ruff check` / `ruff format --check` — czyste
+- ✅ `mypy` — brak błędów w nowych/powstałych plikach
+- ✅ Wszystkie testy przechodzą (17/17 — w tym `test_bootstrap.py`)
 
 **Komentarz Architekta:**
-Klasyczny objaw "Grubych Przypadków Użycia" (Fat Use Cases). To bardzo naturalna ewolucja systemu DDD – gdy Use Case staje się za mądry, wyciągamy z niego reguły do Domain Service.
+Klasyczny objaw "Grubych Przypadków Użycia" — teraz wyeliminowany. Domain Service chroni Grandfather Clause przed modyfikacją w Use Case.
 
 ---
 
@@ -2768,3 +2795,15 @@ Plik `admin.py` posiada blisko 800 linii kodu. Poza samą definicją interfejsó
 Podobnie jak modele, panel administracyjny rozrósł się ponad miarę MVP. Czas go ustrukturyzować. **✅ ZREALIZOWANO** — podzielono na 12 plików, wszystkie 843 testy przechodzą, coverage 80.96%.
 
 ---
+
+
+---
+
+## 📦 Archiwum — Zadania zamknięte (2026-09-03)
+
+| AUDYT | Zadanie | Priorytet | Status | Pliki |
+|-------|---------|-----------|--------|-------|
+| 003 | Asymetryczne zaufanie wiekowe (docstringi) | 🟢 | ✅ | `domain/rules/badge_rules.py` (docstringi `MinAgeRule`/`MaxAgeRule`) |
+| 102 | How-To: dodanie reguły biznesowej (SOP) | 🟠 | ✅ | `docs/HowTo_Add_Business_Rule.md` (nowy) |
+| 104 | README dla katalogu testów | 🟢 | ✅ | `tests/README.md` (nowy) |
+| 106 | Grandfather Clause → Domain Service | 🟠 | ✅ | `domain/services/badge_awarding_domain_service.py` (nowy), `application/use_cases/verify_badge.py`, `bootstrap/container.py`, `tests/domain/services/test_badge_awarding_domain_service.py` (nowy) |

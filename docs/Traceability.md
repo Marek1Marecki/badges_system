@@ -29,6 +29,7 @@
 | Story | Aggregate / Entity | Use Case | Domain Rule / Invariant | Plik Testowy | Status |
 |:---|:---|:---|:---|:---|:---:|
 | **US-C05** | `BadgeVersion` | UC-002 `StartBadgeProgressUseCase`| P-01 (Leniwe Zakotwiczenie) | `test_start_badge_progress.py` | ✔ |
+| **US-C05** (Prawa Nabyte) | `VerificationResult` | Serwis: `BadgeAwardingDomainService` | (Zaszyte w weryfikacji) | `test_badge_awarding_domain_service.py` | ✔ |
 | **US-C06** | `BadgeVersion` | UC-004 `VerifyBadgeUseCase` | R-01 (Set Math w RAM) | `test_badge_version.py` | ✔ |
 | **US-C09** | `UserBadgeProgress`| UC-004 `VerifyBadgeUseCase` | P-02 (Zużycie Wejść / `cutoff_date`) | `test_verify_badge.py` | ✔ |
 | **(Wildcard)**| `Ascent` (VO) | UC-004 `VerifyBadgeUseCase` | R-03 (Wildcard), `RegionCountRule` | `test_badge_rules.py` | ✔ |

@@ -19,6 +19,7 @@ from application.ports.user_progress_port import (
     TouristProfileRepositoryPort,
     UserProgressRepositoryPort,
 )
+from domain.services.badge_awarding_domain_service import BadgeAwardingDomainService
 from domain.value_objects.verification_context import VerificationContext
 from domain.value_objects.verification_result import VerificationResult
 
@@ -33,6 +34,7 @@ class EvaluateBadgeProgressQuery:
         profile_repository: TouristProfileRepositoryPort,
         badge_repository: BadgeRepositoryPort,
         clock: ClockPort,
+        awarding_service: BadgeAwardingDomainService,
     ) -> None:
         """Inicjalizuje serwis odczytu i oceny postępów turysty."""
         self._progress_repo = progress_repository
@@ -40,6 +42,7 @@ class EvaluateBadgeProgressQuery:
         self._profile_repo = profile_repository
         self._badge_repo = badge_repository
         self._clock = clock
+        self._awarding_service = awarding_service
 
     def execute(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> dict[str, Any]:
         """Weryfikuje status matematyczny w locie.
@@ -95,11 +98,15 @@ class EvaluateBadgeProgressQuery:
         # 6. Matematyka w Czystej Domenie (Bez Side Effectów!)
         domain_result: VerificationResult = domain_badge_version.evaluate(ascents=domain_ascents, context=context)
 
-        # 7. Ochrona Praw Nabytych (Jeśli w bazie ma COMPLETED, nic mu tego nie zabierze)
-        final_status = "COMPLETED" if progress.domain_status == "COMPLETED" else domain_result.status
+        # 7. Ochrona Praw Nabytych — logika przeniesiona do Czystej Domeny
+        # (AUDYT-016: Use Case nie "wie", czym jest prawo nabyte)
+        final_status, is_verified = self._awarding_service.resolve_final_status(
+            persisted_status=progress.domain_status,
+            domain_result=domain_result,
+        )
 
         return {
-            "verified": domain_result.verified if final_status != "COMPLETED" else True,
+            "verified": is_verified,
             "status": final_status,
             "valid_ascents_count": domain_result.valid_ascents_count,
             "errors": domain_result.errors,

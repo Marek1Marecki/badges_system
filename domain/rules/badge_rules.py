@@ -327,6 +327,12 @@ class MaxAgeRule(BadgeRule):
     def validate(self, ascents: list[Ascent], context: VerificationContext) -> list[str]:
         """Weryfikuje, czy w dniu wejścia turysta nie przekroczył maksymalnego wieku.
 
+        Asymetryczne Zaufanie (ZASADA WIEKOWA): Gdy brak daty urodzenia,
+        ``MinAgeRule`` zakłada pełnoletność (ufa turysty), natomiast ta reguła
+        restrykcyjnie odrzuca weryfikację — wymóg maksymalnego wieku może
+        wynikać z charakteru odznaki dziecięcej i nie może być obejedniony
+        domniecaniem.
+
         Args:
           ascents: Lista wejść turysty na szczyty.
           context: Kontekst weryfikacyjny zawierający informacje o turysty.

@@ -27,6 +27,9 @@
 | [ADR-014](adrs/ADR-014%20%E2%80%94%20Separacja%20matematycznego%20post%C4%99pu%20od%20weryfikacji%20logistycznej%20(Kanban).md) | Separacja matematycznego postępu od weryfikacji logistycznej | accepted | 2026-06-01 | UX |
 | [ADR-015](adrs/ADR-015%20%E2%80%94%20Algorytm%20i%20buforowanie%20Rankingu%20Potencja%C5%82u%20Obiekt%C3%B3w%20(POI%20Scoring).md) | Algorytm i buforowanie Rankingu Potencjału Obiektów | accepted | 2026-06-01 | Algorithm |
 | [ADR-016](adrs/ADR-016%20%E2%80%94%20Rozdzielenie%20to%C5%BCsamo%C5%9Bci%20od%20autoryzacji%20(Model%20Rodzinny).md) | Rozdzielenie tożsamości od autoryzacji | accepted | 2026-06-16 | Security |
+| [ADR-017](adrs/ADR-017%20%E2%80%94%20Strategia%20Frontendu%20(HTMX%20%2B%20SSR%20zamiast%20SPA).md) | Strategia Frontendu (HTMX + SSR zamiast SPA) | accepted | 2026-08-25 | Frontend |
+| [ADR-018](adrs/ADR-018%20%E2%80%94%20Uwierzytelnienie%20i%20Zarz%C4%85dzanie%20To%C5%BEsamo%C5%9Bci%C4%85%20(Google%20OAuth%20%2B%20Model%20Rodzinny).md) | Uwierzytelnienie i Zarządzanie Tożsamością (Google OAuth + Model Rodzinny) | accepted | 2026-08-25 | Security |
+| [ADR-019](adrs/ADR-019%20%E2%80%94%20Placeholder%20dla%20numeracji.md) | Placeholder dla numeracji | accepted | 2026-08-25 | Meta |
 | [ADR-020](adrs/ADR-020%20%E2%80%94%20Architektura%20Wdro%C5%BCe%C5%84%20(Deployment%20%26%20SRE).md) | Architektura Wdrożeń (Deployment & SRE) | accepted | 2026-07-09 | Operations |
 | [ADR-021](adrs/ADR-021%20%E2%80%94%20Strategia%20Backupow%20i%20Disaster%20Recovery.md) | Strategia Backupów i Disaster Recovery | accepted | 2026-07-09 | Operations |
 | [ADR-022](adrs/ADR-022%20%E2%80%94%20Rejestr%20Wdro%C5%BCen%20(Release%20Registry).md) | Rejestr Wdrożeń (Release Registry) | accepted | 2026-07-09 | Operations |
@@ -47,10 +50,11 @@
 | Technology | 1 | ADR-001 |
 | Performance | 2 | ADR-005, ADR-011 |
 | UX | 2 | ADR-010, ADR-014 |
-| Frontend | 1 | ADR-013 |
-| Security | 1 | ADR-016 |
+| Frontend | 2 | ADR-013, ADR-017 |
+| Security | 2 | ADR-016, ADR-018 |
 | Operations | 5 | ADR-020, ADR-021, ADR-022, ADR-025, ADR-026 |
 | Database | 1 | ADR-024 |
+| Meta | 1 | ADR-019 |
 
 ---
 

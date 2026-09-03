@@ -9,25 +9,32 @@ from application.use_cases.verify_badge import (
     EvaluateBadgeProgressQuery,
     UpdateBadgeProgressCommand,
 )
+from domain.services.badge_awarding_domain_service import BadgeAwardingDomainService
 from domain.value_objects.verification_result import TierResult, VerificationResult
 from tests.fakes.clock import FakeClock
+
+AWARDING_SERVICE = BadgeAwardingDomainService()
 
 
 class TestEvaluateBadgeProgressQuery:
     def test_init_with_repositories(self) -> None:
         """Test inicjalizacji EvaluateBadgeProgressQuery z repozytoriami."""
-        uc = EvaluateBadgeProgressQuery(MagicMock(), MagicMock(), MagicMock(), MagicMock(), FakeClock())
+        uc = EvaluateBadgeProgressQuery(
+            MagicMock(), MagicMock(), MagicMock(), MagicMock(), FakeClock(), AWARDING_SERVICE
+        )
         assert uc._clock is not None
 
     def test_execute_raises_when_no_progress(self) -> None:
         """Test podniesienia błędu przy braku postępu."""
         progress_repo = MagicMock()
         progress_repo.get_progress.return_value = None
-        uc = EvaluateBadgeProgressQuery(progress_repo, MagicMock(), MagicMock(), MagicMock(), FakeClock())
+        uc = EvaluateBadgeProgressQuery(
+            progress_repo, MagicMock(), MagicMock(), MagicMock(), FakeClock(), AWARDING_SERVICE
+        )
 
         with pytest.raises(ResourceNotFoundError, match="nie subskrybuje"):
             # Zmiana: podajemy płaskie parametry, bo DTO zostało odchudzone!
-            uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
+            result = uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
 
     def test_execute_returns_not_started_when_no_version_anchored(self) -> None:
         """Kiedy turysta zaczął subskrypcję, ale nie ma logów, a w bazie nie ma nowej wersji odznaki."""
@@ -39,10 +46,12 @@ class TestEvaluateBadgeProgressQuery:
         badge_repo = MagicMock()
         badge_repo.get_latest_badge_version.return_value = None
 
-        uc = EvaluateBadgeProgressQuery(progress_repo, MagicMock(), MagicMock(), badge_repo, FakeClock())
+        uc = EvaluateBadgeProgressQuery(
+            progress_repo, MagicMock(), MagicMock(), badge_repo, FakeClock(), AWARDING_SERVICE
+        )
 
         with pytest.raises(ResourceNotFoundError, match="Brak zdefiniowanego regulaminu"):
-            uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
+            result = uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
 
     def test_execute_evaluates_domain_successfully(self) -> None:
         """Test pomyślnej ewaluacji domenowej postępu odznaki."""
@@ -71,7 +80,9 @@ class TestEvaluateBadgeProgressQuery:
         profile_repo = MagicMock()
         profile_repo.get_profile.return_value = None
 
-        uc = EvaluateBadgeProgressQuery(progress_repo, ascent_repo, profile_repo, badge_repo, FakeClock())
+        uc = EvaluateBadgeProgressQuery(
+            progress_repo, ascent_repo, profile_repo, badge_repo, FakeClock(), AWARDING_SERVICE
+        )
         result = uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
 
         assert result["verified"] is True
@@ -109,8 +120,10 @@ class TestEvaluateBadgeProgressQuery:
         profile_repo = MagicMock()
         profile_repo.get_profile.return_value = None
 
-        uc = EvaluateBadgeProgressQuery(progress_repo, ascent_repo, profile_repo, badge_repo, FakeClock())
-        result = uc.execute(profile_id=1, badge_code="KGP", cycle_number=2)
+        uc = EvaluateBadgeProgressQuery(
+            progress_repo, ascent_repo, profile_repo, badge_repo, FakeClock(), AWARDING_SERVICE
+        )
+        uc.execute(profile_id=1, badge_code="KGP", cycle_number=2)
 
         ascent_repo.get_unconsumed_ascents.assert_called_once_with(1, "KGP", cutoff_date="2023-01-01")
 
@@ -141,7 +154,9 @@ class TestEvaluateBadgeProgressQuery:
         profile_repo = MagicMock()
         profile_repo.get_profile.return_value = None
 
-        uc = EvaluateBadgeProgressQuery(progress_repo, ascent_repo, profile_repo, badge_repo, FakeClock())
+        uc = EvaluateBadgeProgressQuery(
+            progress_repo, ascent_repo, profile_repo, badge_repo, FakeClock(), AWARDING_SERVICE
+        )
         result = uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
 
         assert result["verified"] is True
@@ -167,10 +182,12 @@ class TestEvaluateBadgeProgressQueryNoVersion:
         ascent_repo = MagicMock()
         profile_repo = MagicMock()
 
-        uc = EvaluateBadgeProgressQuery(progress_repo, ascent_repo, profile_repo, badge_repo, FakeClock())
+        uc = EvaluateBadgeProgressQuery(
+            progress_repo, ascent_repo, profile_repo, badge_repo, FakeClock(), AWARDING_SERVICE
+        )
 
         with pytest.raises(ResourceNotFoundError, match="Nie udało się odtworzyć struktury odznaki"):
-            uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
+            result = uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
 
 
 class TestUpdateBadgeProgressCommand:

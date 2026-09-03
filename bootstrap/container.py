@@ -24,6 +24,7 @@ from application.use_cases.scan_proximity_candidates import ScanProximityCandida
 from application.use_cases.start_badge_progress import StartBadgeProgressUseCase
 from application.use_cases.unsubscribe_badge import UnsubscribeBadgeUseCase
 from application.use_cases.verify_badge import EvaluateBadgeProgressQuery, UpdateBadgeProgressCommand
+from domain.services.badge_awarding_domain_service import BadgeAwardingDomainService
 from infrastructure.adapters.celery_event_publisher import CeleryEventPublisher
 from infrastructure.adapters.clock import SystemClock
 from infrastructure.adapters.django_cache import DjangoCacheAdapter
@@ -175,6 +176,7 @@ def build_container() -> AppContainer:
             profile_repository=profile_repo,
             badge_repository=badge_repo,
             clock=clock,
+            awarding_service=BadgeAwardingDomainService(),
         ),
         update_badge_progress=UpdateBadgeProgressCommand(
             query_service=EvaluateBadgeProgressQuery(
@@ -183,6 +185,7 @@ def build_container() -> AppContainer:
                 profile_repository=profile_repo,
                 badge_repository=badge_repo,
                 clock=clock,
+                awarding_service=BadgeAwardingDomainService(),
             ),
             progress_repository=progress_repo,
         ),
