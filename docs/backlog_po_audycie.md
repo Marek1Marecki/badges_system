@@ -973,17 +973,26 @@ Wymusza to pamiętanie o zmianie we wszystkich tych plikach w przypadku dodania 
 ---
 
 ### [AUDYT-132] Hermetyzacja Logiki Praw Nabytych (Grandfather Clause)
-**Obszar:** `Architektura / Domain-Driven Design`  
-**Priorytet:** `🟢 NISKI`  
+**Obszar:** `Architektura / Domain-Driven Design`
+**Priorytet:** `🟢 ZREALIZOWANO`
+**Status:** `🟢 Implementation`
 
-**Diagnoza Audytora:** 
-Audytor wyłapał, że zasada "Praw Nabytych" (retroaktywne przyznawanie starego regulaminu) została zakodowana na "skróty" w dwóch osobnych Use Case'ach (`VerifyBadgeUseCase` oraz `StartBadgeProgressUseCase`). Koncept Praw Nabytych jest pojęciem z Czystej Domeny i powinien być tam wyizolowany, a nie symulowany w orkiestratorach.
+**Diagnoza Audytora:**
+Audytor wyłapał, że zasada "Praw Nabytych" (retroaktywne przyznawanie starego regulaminu) była zakodowana na "skróty" w dwóch osobnych Use Case'ach (`VerifyBadgeUseCase` oraz `StartBadgeProgressUseCase`). Koncept Praw Nabytów jest pojęciem z Czystej Domeny i powinien być tam wyizolowany, a nie symulowany w orkiestratorach.
 
-**Action Items (Do wdrożenia w Fazy Ewolucji Domeny):**
-- [ ] Stworzyć Usługę Domenową (Domain Service), np. `GrandfatheringService`, która hermetyzuje całą logikę wyboru najstarszego wejścia i decyduje o przypisaniu regulaminu.
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ `BadgeAwardingDomainService` (AUDYT-106) rozszerzony o `determine_anchor_date(oldest_ascent_date, fallback_date)` — hermetyzuje logikę wyboru najstarszego wejścia
+- ✅ `StartBadgeProgressUseCase` deleguje wybór daty zakotwiczenia do `self._awarding_service.determine_anchor_date()` (linie 70-77)
+- ✅ `StartBadgeProgressUseCase` poddany refaktoryzacji — `ancho_date: date =` zastąpiony wywołaniem Domain Service
+- ✅ Testy: `test_starts_progress_with_oldest_ascent_date_grandfathering` zaktualizowany + asercja na `determine_anchor_date` w `test_badge_awarding_domain_service.py` (6 testów, 100% coverage)
+- ✅ Wszystkie konstruktory w testach zaktualizowane o `BadgeAwardingDomainService()`
 
-**Komentarz Architekta:**
-Jest to potwierdzenie i rozbudowanie wniosku z wcześniejszego audytu (AUDYT-116). Pokazuje, że "grube Use Case'y" to aktualnie nasz główny dług architektoniczny w warstwie Aplikacyjnej.
+**Weryfikacja:**
+- ✅ 850 testów passed, 80.73% coverage (2 nowe testy)
+- ✅ `ruff check` / `ruff format --check` — czyste
+- ✅ `mypy` — `Success: no issues found in 4 source files`
+- ✅ `lint-imports` — **5 kept, 0 broken**
+- ✅ `test_bootstrap.py` — DI container kompletny
 
 ---
 
@@ -2807,3 +2816,5 @@ Podobnie jak modele, panel administracyjny rozrósł się ponad miarę MVP. Czas
 | 102 | How-To: dodanie reguły biznesowej (SOP) | 🟠 | ✅ | `docs/HowTo_Add_Business_Rule.md` (nowy) |
 | 104 | README dla katalogu testów | 🟢 | ✅ | `tests/README.md` (nowy) |
 | 106 | Grandfather Clause → Domain Service | 🟠 | ✅ | `domain/services/badge_awarding_domain_service.py` (nowy), `application/use_cases/verify_badge.py`, `bootstrap/container.py`, `tests/domain/services/test_badge_awarding_domain_service.py` (nowy) |
+
+| 132 | Hermetyzacja Praw Nabytów (Grandfather Clause) | 🟢 | ✅ | `domain/services/badge_awarding_domain_service.py`, `start_badge_progress.py`, `container.py`, `tests/domain/services/` |

@@ -236,6 +236,7 @@ digraph G {
   "application.use_cases.start_badge_progress" -> "application.ports.uow_port";
   "application.use_cases.start_badge_progress" -> "application.ports.user_progress_port";
   "application.use_cases.start_badge_progress" -> "domain.events";
+  "application.use_cases.start_badge_progress" -> "domain.services.badge_awarding_domain_service";
   "application.use_cases.unsubscribe_badge" -> "application.exceptions";
   "application.use_cases.unsubscribe_badge" -> "application.ports.event_publisher_port";
   "application.use_cases.unsubscribe_badge" -> "application.ports.uow_port";

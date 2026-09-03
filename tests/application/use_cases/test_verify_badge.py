@@ -34,7 +34,7 @@ class TestEvaluateBadgeProgressQuery:
 
         with pytest.raises(ResourceNotFoundError, match="nie subskrybuje"):
             # Zmiana: podajemy płaskie parametry, bo DTO zostało odchudzone!
-            result = uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
+            uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
 
     def test_execute_returns_not_started_when_no_version_anchored(self) -> None:
         """Kiedy turysta zaczął subskrypcję, ale nie ma logów, a w bazie nie ma nowej wersji odznaki."""
@@ -51,7 +51,7 @@ class TestEvaluateBadgeProgressQuery:
         )
 
         with pytest.raises(ResourceNotFoundError, match="Brak zdefiniowanego regulaminu"):
-            result = uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
+            uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
 
     def test_execute_evaluates_domain_successfully(self) -> None:
         """Test pomyślnej ewaluacji domenowej postępu odznaki."""
@@ -187,7 +187,7 @@ class TestEvaluateBadgeProgressQueryNoVersion:
         )
 
         with pytest.raises(ResourceNotFoundError, match="Nie udało się odtworzyć struktury odznaki"):
-            result = uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
+            uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
 
 
 class TestUpdateBadgeProgressCommand:

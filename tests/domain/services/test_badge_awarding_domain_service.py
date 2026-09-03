@@ -1,5 +1,7 @@
 """Testy jednostkowe dla BadgeAwardingDomainService (Grandfather Clause)."""
 
+from datetime import date
+
 import pytest
 
 from domain.services.badge_awarding_domain_service import BadgeAwardingDomainService
@@ -59,3 +61,19 @@ class TestBadgeAwardingDomainService:
         )
         result = service.resolve_final_status(persisted_status=None, domain_result=domain_result)
         assert result == ("NOT_STARTED", False)
+
+    def test_determine_anchor_date_uses_oldest_ascent(self, service) -> None:
+        """Grandfather Clause: najstarsze wejście staje się datą zakotwiczenia."""
+        anchor = service.determine_anchor_date(
+            oldest_ascent_date=date(2015, 6, 1),
+            fallback_date=date(2026, 9, 3),
+        )
+        assert anchor == date(2015, 6, 1)
+
+    def test_determine_anchor_date_uses_fallback_when_no_ascent(self, service) -> None:
+        """Brak wejść → data bieżąca (fallback)."""
+        anchor = service.determine_anchor_date(
+            oldest_ascent_date=None,
+            fallback_date=date(2026, 9, 3),
+        )
+        assert anchor == date(2026, 9, 3)

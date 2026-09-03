@@ -126,6 +126,8 @@ def build_container() -> AppContainer:
         clock=clock,
     )
 
+    awarding_service = BadgeAwardingDomainService()
+
     _container_instance = AppContainer(
         analyze_gpx_track=AnalyzeGpxTrackUseCase(map_repository=map_repo, gpx_parser=gpx_parser),
         advance_logistic_status=AdvanceLogisticStatusUseCase(
@@ -164,6 +166,7 @@ def build_container() -> AppContainer:
             clock=clock,
             uow=uow,
             event_publisher=event_publisher,
+            awarding_service=awarding_service,
         ),
         unsubscribe_badge=UnsubscribeBadgeUseCase(
             progress_repository=progress_repo,
@@ -176,7 +179,7 @@ def build_container() -> AppContainer:
             profile_repository=profile_repo,
             badge_repository=badge_repo,
             clock=clock,
-            awarding_service=BadgeAwardingDomainService(),
+            awarding_service=awarding_service,
         ),
         update_badge_progress=UpdateBadgeProgressCommand(
             query_service=EvaluateBadgeProgressQuery(
@@ -185,7 +188,7 @@ def build_container() -> AppContainer:
                 profile_repository=profile_repo,
                 badge_repository=badge_repo,
                 clock=clock,
-                awarding_service=BadgeAwardingDomainService(),
+                awarding_service=awarding_service,
             ),
             progress_repository=progress_repo,
         ),

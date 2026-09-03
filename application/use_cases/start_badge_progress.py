@@ -5,8 +5,6 @@ danej odznaki. Jeśli turysta wchodził na szczyty np. w 2018 roku, zostaje "zak
 niezależnie od tego, że dzisiaj mamy nowszą wersję.
 """
 
-from datetime import date
-
 from application.exceptions import UseCaseError
 from application.ports.badge_repository_port import BadgeRepositoryPort
 from application.ports.clock_port import ClockPort
@@ -18,6 +16,7 @@ from application.ports.user_progress_port import (
     UserProgressRepositoryPort,
 )
 from domain.events import UserProgressStateChanged
+from domain.services.badge_awarding_domain_service import BadgeAwardingDomainService
 
 
 class StartBadgeProgressUseCase:
@@ -32,6 +31,7 @@ class StartBadgeProgressUseCase:
         clock: ClockPort,
         uow: UnitOfWorkPort,
         event_publisher: DomainEventPublisherPort,
+        awarding_service: BadgeAwardingDomainService,
     ) -> None:
         """Inicjuje przypadek użycia usuwający subskrypcję odznaki."""
         self._progress_repo = progress_repository
@@ -41,6 +41,7 @@ class StartBadgeProgressUseCase:
         self._clock = clock
         self._uow = uow
         self._event_publisher = event_publisher
+        self._awarding_service = awarding_service
 
     def execute(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> int:
         """Rozpoczyna śledzenie postępu odznaki w 100% transakcyjnie.
@@ -66,9 +67,12 @@ class StartBadgeProgressUseCase:
                 f"Możesz zdobywać maksymalnie {profile_dto.max_active_badges} odznak jednocześnie."
             )
 
-        # 2. Prawa Nabyte
+        # 2. Prawa Nabyte (hermetyzowane w Domain Service)
         oldest_ascent_date = self._ascent_repo.get_oldest_ascent_date(profile_id, badge_code)
-        anchor_date: date = oldest_ascent_date if oldest_ascent_date else self._clock.now().date()
+        anchor_date = self._awarding_service.determine_anchor_date(
+            oldest_ascent_date=oldest_ascent_date,
+            fallback_date=self._clock.now().date(),
+        )
 
         version_id = self._badge_repo.get_version_id_for_date(badge_code, anchor_date)
         if version_id is None:
