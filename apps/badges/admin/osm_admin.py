@@ -16,6 +16,7 @@ from apps.badges.models import OsmTypeMapping, TouristObject
 from apps.badges.tasks import (
     calculate_object_regions_task,
     fetch_osm_data_task,
+    recalculate_object_regions_bulk_task,
     scan_proximity_candidates_task,
 )
 
@@ -150,19 +151,13 @@ class TouristObjectAdmin(LeafletGeoAdminMixin, ModelAdmin):
 
     @admin.action(description="[Celery] Przelicz geografię (w tle) dla zaznaczonych")
     def recalculate_regions_async(self, request, queryset):
-        """Wysyła zadania do kolejki Celery dla każdego zaznaczonego obiektu.
-
-        Args:
-          request:
-          queryset:
-
-        Returns:
-        """
-        count = 0
-        for obj in queryset:
-            calculate_object_regions_task.delay(obj.id)
-            count += 1
-        self.message_user(request, f"Wysłano {count} obiektów do asynchronicznego przeliczenia w tle.")
+        """Wysyła batch task do Celery dla zaznaczonych obiektów (AUDYT-073 batching)."""
+        object_ids = list(queryset.values_list("id", flat=True))
+        recalculate_object_regions_bulk_task.delay(object_ids)
+        self.message_user(
+            request,
+            f"Wysłano {len(object_ids)} obiektów do asynchronicznego przeliczenia w tle.",
+        )
 
     @admin.action(description="Przypnij zaznaczone obiekty do Wersji Odznaki...")
     def add_to_badge_version(self, request, queryset):

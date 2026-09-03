@@ -40,6 +40,7 @@ from application.exceptions import (
 from apps.badges.models import TouristObject
 from apps.badges.tasks import recalculate_poi_scores_task
 from apps.tourists.models import TouristProfile
+from bootstrap.rate_limiting import check_rate_limit, rate_limited_response
 
 logger = logging.getLogger(__name__)
 
@@ -509,6 +510,9 @@ class VectorTileView(View):
             204: Brak danych dla tego obszaru.
             401/404: RFC 7807 Problem Details.
         """
+        if not check_rate_limit("mvt_tiles", request, limit=120, window=60):
+            return rate_limited_response(request, window=60)
+
         try:
             use_case = request.app_container.get_mvt_tile
             # Use Case zwraca skompresowane bajty (lub None) z DB/Redis
@@ -548,6 +552,9 @@ class NearbyObjectsView(View):
             200: GeoJSON FeatureCollection z obiektami i kolorami.
             401/404: RFC 7807 Problem Details.
         """
+        if not check_rate_limit("nearby_objects", request, limit=120, window=60):
+            return rate_limited_response(request, window=60)
+
         center_obj = get_object_or_404(TouristObject, id=object_id)
 
         if not center_obj.geom:
@@ -613,8 +620,11 @@ class GpxAnalyzeView(View):
 
         Returns:
             200: Wynik analizy GPX.
-            401/422: RFC 7807 Problem Details.
+            401/429/422: RFC 7807 Problem Details.
         """
+        if not check_rate_limit("gpx_analyze", request, limit=30, window=60):
+            return rate_limited_response(request, window=60)
+
         auth_error = _require_auth(request)
         if auth_error:
             return auth_error

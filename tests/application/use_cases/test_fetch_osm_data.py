@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from application.exceptions import UseCaseError
+from application.exceptions import TransientInfrastructureError, UseCaseError
 from application.use_cases.fetch_osm_data import FetchOsmDataUseCase, RunOsmNightWatchmanUseCase
 from tests.fakes.clock import FakeClock
 
@@ -42,6 +42,17 @@ class TestFetchOsmDataUseCase:
 
         result = uc.execute(1)
         assert "Pominięto" in result
+
+    def test_fetch_infra_error_translated_to_usecase_error(self) -> None:
+        """Infrastrukturalny błąd OSM jest tłumaczony na ApplicationException (AUDYT-123)."""
+        repo = MagicMock()
+        clock = FakeClock()
+        repo.get_object_for_osm_fetch.return_value = {"id": 1, "osm_id": "node/1"}
+        repo.fetch_from_osm.side_effect = TransientInfrastructureError("Overpass timeout")
+
+        uc = FetchOsmDataUseCase(repo, clock)
+        with pytest.raises(UseCaseError, match="niedostępna"):
+            uc.execute(1)
 
 
 class TestRunOsmNightWatchmanUseCase:

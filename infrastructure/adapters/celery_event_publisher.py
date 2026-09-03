@@ -20,11 +20,6 @@ from domain.events import (
 
 
 def _persist_audit_log(action: str, target_type: str, target_id: str, payload: dict[str, Any]) -> None:
-    """Zapisuje zdarzenie do tabeli `audit_log`.
-
-    Oddzielona funkcja, by nie tworzyć zależności infrastruktury
-    wewnątrz `domain/`.
-    """
     from apps.tourists.models import AuditLog
 
     AuditLog.objects.create(
@@ -36,6 +31,16 @@ def _persist_audit_log(action: str, target_type: str, target_id: str, payload: d
     )
 
 
+def _delay_poi_recalculation(profile_id: int) -> None:
+    """Send task via Celery's string-based registry to avoid importing apps module."""
+    from celery import current_app
+
+    current_app.send_task(
+        "apps.badges.tasks.recalculate_poi_scores_task",
+        args=[profile_id],
+    )
+
+
 class CeleryEventPublisher(DomainEventPublisherPort):
     """Tłumaczy czyste zdarzenia domenowe na konkretne taski Celery.
 
@@ -43,17 +48,11 @@ class CeleryEventPublisher(DomainEventPublisherPort):
     """
 
     def publish(self, event: DomainEvent) -> None:
-        """Publikuje zdarzenie.
-
-        Gwarantuje uruchomienie po commicie DB (lub natychmiast w testach).
-        """
         if isinstance(event, UserProgressStateChanged):
-            from apps.badges.tasks import recalculate_poi_scores_task
-
             if getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
-                recalculate_poi_scores_task.delay(event.profile_id)
+                _delay_poi_recalculation(event.profile_id)
             else:
-                transaction.on_commit(lambda: recalculate_poi_scores_task.delay(event.profile_id))
+                transaction.on_commit(lambda: _delay_poi_recalculation(event.profile_id))
 
         elif isinstance(event, BadgeStatusChanged):
             _persist_audit_log(

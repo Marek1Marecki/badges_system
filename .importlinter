@@ -93,12 +93,6 @@ type = forbidden
 source_modules = infrastructure
 forbidden_modules = bootstrap
 ignore_imports =
-    # DŁUG-004: infrastructure.adapters.celery_event_publisher -> apps.badges.tasks
-    # Powód: Adapter zdarzeń importuje nazwę zadania Celery do rejestracji
-    #        w punkcie końcowym (endpoint) wiadomości.
-    # Target: Zastąpić bezpośredni import rejestracją opartą na nazwie
-    #         ciągu znaków (string-based registry) lub slug.
-    infrastructure.adapters.celery_event_publisher -> apps.badges.tasks
 unrelated_modules =
     apps.badges.tasks
 
@@ -175,8 +169,4 @@ ignore_imports =
     # Powód: Repozytorium synchronizacji OSM.
     infrastructure.adapters.osm_repository -> apps.badges.models
 
-    # DŁUG-004: infrastructure/adapters/celery_event_publisher.py -> apps.badges.tasks
-    # Powód: Zadania Celery rejestrowane przez import (patrz sekcja 4 powyżej).
-    # Target: String-based task registry.
-    infrastructure.adapters.celery_event_publisher -> apps.badges.tasks
     infrastructure.adapters.celery_event_publisher -> apps.tourists.models

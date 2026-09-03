@@ -1,5 +1,6 @@
 """Django settings for config project."""
 
+import os
 from pathlib import Path
 
 from infrastructure.config.app_settings import AppSettings
@@ -18,6 +19,24 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = app_settings_config.secret_key
 DEBUG = app_settings_config.debug
 APP_ENV = app_settings_config.app_env
+
+# ==========================================
+# SENTRY — centralny monitoring wyjątków (AUDYT-119)
+# ==========================================
+_DSN = os.getenv("SENTRY_DSN")
+if _DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=_DSN,
+        environment=APP_ENV,
+        send_default_pii=False,
+        integrations=[DjangoIntegration(), CeleryIntegration()],
+        traces_sample_rate=0.1 if APP_ENV == "production" else 0.0,
+        profiles_sample_rate=0.1 if APP_ENV == "production" else 0.0,
+    )
 
 # Twarde hosty potrzebne do działania Dockera (Healthcheck i ruch lokalny wewnątrz kontenera)
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"]
@@ -54,9 +73,8 @@ CELERY_RESULT_SERIALIZER = "json"
 # Strefa czasowa dla zadań opóźnionych
 CELERY_TIMEZONE = "Europe/Warsaw"
 # W środowiskach testowych/E2E uruchamiaj zadania synchronicznie (brak workera)
-import os as _os
 
-CELERY_TASK_ALWAYS_EAGER = _os.getenv("CELERY_TASK_ALWAYS_EAGER", "False").lower() in ("true", "1", "yes")
+CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "False").lower() in ("true", "1", "yes")
 # Mówimy Celery, by harmonogramy brało z bazy danych (Django Admin), a nie z kodu!
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
@@ -149,8 +167,6 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 SITE_ID = 1
-
-import os
 
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")

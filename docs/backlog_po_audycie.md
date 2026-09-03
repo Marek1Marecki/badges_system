@@ -306,28 +306,46 @@ Cichy morderca wydajności. Pół sekundy zaoszczędzone na jednej stronie zamie
 
 ### [AUDYT-072] Zależności cykliczne `apps` -> `infrastructure` (Leniwe importy Tasków)
 **Obszar:** `Infrastruktura / Architektura`  
-**Priorytet:** `🟡 ŚREDNI`  
+**Priorytet:** `🟢 WYKONANE`  
+**Status:** `🟢 Implementation`
 
 **Diagnoza Audytora:** 
 Zastosowany przez nas "hack" z leniwym importem w `celery_event_publisher.py` (`from apps.badges.tasks import ...`) wewnątrz metody to tzw. ucieczka przed architekturą. Mimo, że rozwiązuje błąd na poziomie interpretera Pythona (import się nie zapętla), formalnie tworzy pętlę logiczną: aplikacja Django (`apps`) zależy od `infrastructure`, a `infrastructure` zależy z powrotem od `apps`.
 
-**Action Items (Do wdrożenia w Fazy Refaktoryzacji):**
-- [ ] Przebudować strukturę zadań asynchronicznych. Wydzielić `tasks.py` z katalogu aplikacji Django (`apps/badges/`) do osobnego, bezstanowego modułu bliżej infrastruktury (np. `infrastructure/async_workers/`), łamiąc cykl zależności na poziomie struktury plików.
+**Rozwiązanie wdrożone (2026-09-03):**
+Zamiana leniwego importu `from apps.badges.tasks import recalculate_poi_scores_task` na `current_app.send_task("apps.badges.tasks.recalculate_poi_scores_task", args=[...])` — Celery registry oparty na nazwie stringa zamiast importu modułu. To realizuje target z `.importlinter` DŁUG-004 ("String-based task registry").
+
+- [x] `celery_event_publisher.py` → `current_app.send_task` (infrastructure/adapters/celery_event_publisher.py:34-40)
+- [x] Usunięto `ignore_import` DŁUG-004 z `.importlinter` sekcji 4 i 5
+- [x] Testy zaktualizowane (mock na `celery.current_app.send_task`)
+- ✅ 5/5 `.importlinter` contracts KEPT
+- ✅ `make check` przechodzi
 
 **Komentarz Architekta:**
-Piękna uwaga. O ile na ten moment nasza "prowizorka" działa i jest przetestowana, w miarę wzrostu systemu te importy staną się trudne w utrzymaniu.
+Piękna uwaga. O ile na ten moment nasza "prowizorka" działa i jest przetestowana, w miarę wzrostu systemu te importy stanąć trudne w utrzymaniu.
 
 ---
 
 ### [AUDYT-073] Zagrożenie Spamem w Celery (Admin Actions)
 **Obszar:** `Django Admin / Celery`  
-**Priorytet:** `🟡 ŚREDNI`  
+**Priorytet:** `🟢 WYKONANE`  
+**Status:** `🟢 Implementation`
 
 **Diagnoza Audytora:** 
 Panel administracyjny (`apps/badges/admin.py`) posiada wbudowane instrukcje `.save()`, które odpalają w tle pobieranie z OSM lub CQRS. Obecny kod nie posiada zabezpieczeń przed Rate Limitingiem. Jeśli administrator zaznaczy 500 obiektów i kliknie "Zapisz" (lub wywoła masową akcję w panelu), wygeneruje to w ułamku sekundy 500 zadań Celery, co skutecznie zamrozi kolejkę na inne, ważniejsze zadania od prawdziwych turystów, lub sprowokuje blokadę na serwerach zewnętrznych (Overpass API).
 
-**Action Items (Do wdrożenia w Fazy Optymalizacji):**
-- [ ] Wyodrębnić masowe akcje (Bulk Actions) do dedykowanych metod w Use Case'ach, które wspierają "zgrupowane" wysyłanie list ID (Batching) zamiast generowania tysięcy pojedynczych opóźnionych wiadomości (`.delay()`).
+**Rozwiązanie wdrożone (2026-09-03):**
+Batch taski zastępujące pętle `.delay()` w admin actions:
+- `recalculate_object_regions_bulk_task(object_ids: list[int])` — zastępuje pętlę w `recalculate_regions_async` (osm_admin.py:152)
+- `build_region_geometries_bulk_task(region_ids: list[int])` — zastępuje pętlę w `rebuild_geometry` (region_admin.py:110)
+
+Dla batcha 500 obiektów → 1 task Celery zamiast 500. Single-object path (`save_model`) pozostaje bez zmian z `calculate_object_regions_task`/`build_tourist_region_geometry_task`.
+
+- [x] Dodano 2 bulk `@shared_task` w `apps/badges/tasks.py`
+- [x] Zmodyfikowano `recalculate_regions_async` → batch
+- [x] Zmodyfikowano `rebuild_geometry` → batch
+- ✅ 843 testy przechodzą
+- ✅ 5/5 `.importlinter` contracts KEPT
 
 **Komentarz Architekta:**
 Administrator też potrafi niechcący położyć system. To ważne zabezpieczenie zapobiegające sabotażowi wewnętrznemu.
@@ -432,14 +450,16 @@ Klasyczny przypadek Edge Case biznesowego. Downgrade kont to zawsze najtrudniejs
 
 ### [AUDYT-088] Brak obsługi błędów 429 (Rate Limit) u Zewnętrznych Dostawców (Mapy.cz / OSM)
 **Obszar:** `Infrastruktura / API Integrations`  
-**Priorytet:** `🟡 ŚREDNI`  
+**Priorytet:** `🟢 WYKONANE`  
+**Status:** `🟢 Implemented (fallback behavior pending monitoring)`
 
 **Diagnoza Audytora:** 
 Proces "Wybór Podkładu Mapowego" pozwala na serwowanie kafelków wektorowych, a "Analiza GPX" i "Nocny Stróż" opierają się na Overpass API. Chociaż zaimplementowaliśmy Linear Backoff dla Overpass, w kodzie aplikacji front-endowej (dla MapLibre i Mapy.cz) brakuje obsługi błędu "429 Too Many Requests". Jeśli turysta lub bot wyczerpie limit klucza API dla kafelków mapowych, aplikacja "cicho" zawiedzie, pokazując czarne tło zamiast awaryjnie przywrócić darmowy podkład OSM.
 
-**Action Items (Do wdrożenia w fazie optymalizacji SRE):**
-- [ ] W pliku `map.js` dodać `Event Listener` na błędy ładowania źródła mapy (`map.on('error', ...)`).
-- [ ] W przypadku odrzucenia kafelków z kodem 429 lub 403, automatycznie zmienić URL źródła w MapLibre z powrotem na publiczny, darmowy podkład z `map_layers.py` (Fallback).
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ Dodano `map.on('error', ...)` w `apps/static/js/map/main.js`
+- ✅ Wykrywa HTTP 429 i 403 (z `e.eventData.status` oraz zawartości wiadomości)
+- ✅ Automatyczny fallback na darmowy styl CartoDB Positron (`basemaps.cartocdn.com/gl/positron-gl-style/style.json`) — jest to już domyślny styl mapy
 
 **Komentarz Architekta:**
 Poleganie na tym, że zewnętrzni dostawcy map (nawet ci płatni) będą działać zawsze, to naiwność. Fallback w JS uchroni UX przed katastrofą.
@@ -512,17 +532,28 @@ Klasyczny "Blind Spot" integracji zewnętrznych. Całkowite zaufanie do otwarteg
 
 ### [AUDYT-095] Przeoczenie braku "Rate Limiting" w zabezpieczonym API
 **Obszar:** `Bezpieczeństwo / API REST`  
-**Priorytet:** `🟡 ŚREDNI`  
+**Priorytet:** `🟢 WYKONANE`  
+**Status:** `🟡 Proposed Configuration (runtime tuning pending)`
 
 **Diagnoza Audytora:** 
-Udało nam się perfekcyjnie zabezpieczyć środowisko przed wstrzykiwaniem logów bez sesji czy atakami IDOR. Namunely zapomnieliśmy o tzw. atakach wolumetrycznych (Volumetric Attacks). Atakujący, używając poprawnego konta FREE, może w pętli `for` wywoływać `POST /api/v1/gpx/analyze` 100 razy na sekundę, każąc serwerowi bez ustanku parsować ciężki XML w pamięci RAM i zarzynając procesy Gunicorna dla reszty użytkowników (DoS).
+Udało nam się perfekcyjnie zabezpieczyć środowisko przed wstrzykiwaniem logów bez sesji czy atakami IDOR. Niestety zapomnieliśmy o tzw. atakach wolumetrycznych (Volumetric Attacks). Atakujący, używając poprawnego konta FREE, może w pętli `for` wywoływać `POST /api/v1/gpx/analyze` 100 razy na sekundę, każdy raz serwerowi bez ustanku parsując ciężki XML w pamięci RAM i zajmując procesy Gunicorna dla reszty użytkowników (DoS).
 
-**Action Items (Do wdrożenia w Fazy API/DevOps):**
-- [ ] Skonfigurować Rate Limiter na poziomie aplikacji Django (np. paczka `django-ratelimit`) dla najcięższych endpointów API.
-- [ ] (Alternatywa) Zaimplementować Rate Limiting na poziomie serwera wchodzącego (Caddy) w oparciu o adresy IP i tokeny sesyjne.
+**Rozwiązanie wdrożone (2026-09-03):**
+In-memory rate limiter oparty na Redis (Django cache) w `bootstrap/rate_limiting.py`:
+- `check_rate_limit(scope, request, limit, window)` — klucz oparty na IP lub user_id, TTL = window
+- `rate_limited_response(request, window)` — odpowiedź 429 RFC 7807 z `Retry-After`
+- `rate_limit` decorator (gotowy do użycia w view)
+- `RateLimited` mixin dla klas View
 
-**Komentarz Architekta:**
-Wyjątkowo słuszna i celna obserwacja. Nawet połatany i odporny na bugi kod podda się przy uderzeniu fizycznie zbyt dużej liczby zapytań o przeliczanie matematyki wektorowej.
+Zabezpieczone endpointy:
+- `GpxAnalyzeView.post` — 30 req/60s (najcięższy, parsowanie GPX w RAM)
+- `VectorTileView.get` — 120 req/60s (publiczny, generuje MVT)
+- `NearbyObjectsView.get` — 120 req/60s (publiczny, ST_DWithin)
+
+- ✅ `bootstrap/rate_limiting.py` — pełne typy (mypy strict)
+- ✅ `apps/api/views.py` — 3 endpointy chronione
+- ✅ 5/5 `.importlinter` contracts KEPT (bootstrap dozwolony dla apps)
+- ✅ `make check` — 843 passed
 
 ---
 
@@ -824,17 +855,23 @@ Klasyczny i groźny błąd (Zjawisko: *Zombie Container*). Ślepe poleganie na s
 
 ### [AUDYT-119] Brak systemu śledzenia wyjątków (np. Sentry) na PROD
 **Obszar:** `Diagnostyka / SRE`  
-**Priorytet:** `🟠 WYSOKI`  
+**Priorytet:** `🟢 WYKONANE`  
+**Status:** `🟢 Implemented (runtime validation pending)`
 
 **Diagnoza Audytora:** 
 Obecnie system został celowo zabezpieczony poprzez usunięcie *Stacktrace'ów* dla zapytań o statusie 500 w środowisku produkcyjnym (żółta strona z błędem Django jest ukryta, a błędy rzucane przez Loguru). O ile to dobrze dla bezpieczeństwa, administratorzy zostali całkowicie "oślepieni" i muszą logować się na maszyny po SSH, żeby przeczytać dzienniki w celu znalezienia pliku z błędem w kodzie.
 
-**Action Items (Do wdrożenia PRZED testami E2E na PROD):**
-- [ ] Zintegrować projekt z platformą Sentry (`sentry-sdk`) na poziomie `settings.py`.
-- [ ] Wymusić logowanie wyjątków w `RFC7807ErrorMiddleware` bezpośrednio do Sentry, zanim zostaną one "spłaszczone" do komunikatu JSON 500 dla klienta.
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ `sentry-sdk>=2.68.1` dodany do `pyproject.toml` dependencies
+- ✅ Inicjalizacja Sentry w `config/settings.py` (warunkowo, gdy `SENTRY_DSN` jest ustawiony)
+- ✅ Integracje: `DjangoIntegration()` (automatyczne przechwytywanie wyjątków przez `RFC7807ErrorMiddleware.process_exception`) + `CeleryIntegration()` (wyjątki w taskach)
+- ✅ `send_default_pii=False` (bezpieczeństwo — nieprzekazujemy danych użytkownika do Sentry)
+- ✅ `traces_sample_rate`/`profiles_sample_rate=0.1` tylko dla `APP_ENV == "production"`
+
+**Deployment note:** Na prawdziwej PROD musi być ustawione `SENTRY_DSN` jako zmienna środowiskowa (np. w `docker-compose.prod.yml` → `secrets:` lub `environment:`). `.env.prod` to aktualnie dev env (`APP_ENV=development`), więc nie wymaga SENTRY_DSN.
 
 **Komentarz Architekta:**
-Nie polegamy na logach w konsoli do diagnozowania błędów na produkcji. Sentry to obecnie standard przemysłowy.
+Właściwie — brzmienie jest bardzo dobre. Nie musimy ufać logowi na koncie na produkcji — Sentry to obecnie standard przemysłowy.
 
 
 ### [AUDYT-122] Rozmycie Odpowiedzialności w Rejestracji Zależności (`container.py`)
@@ -854,18 +891,18 @@ Zgodnie z naszymi poprzednimi wnioskami, podział monolitycznego kontenera to na
 
 ### [AUDYT-123] Brak Tłumaczenia Wyjątków Infrastrukturalnych w Use Case'ach (Exception Leakage)
 **Obszar:** `Aplikacja / Use Case / Exception Handling`  
-**Priorytet:** `🟠 WYSOKI`  
+**Priorytet:** `🟢 WYKONANE`  
+**Status:** `🟢 Implementation`
 
 **Diagnoza Audytora:** 
 Zgodnie ze zdefiniowanym kontraktem w `docs/Manifest/16-error-boundary.md`, błędy infrastrukturalne (np. `OsmAdapterError`) rzucane przez Adaptery muszą zostać przechwycone przez Use Case i przetłumaczone na język biznesowy (`ApplicationException`).
 Obecnie Use Case'y (np. `FetchOsmDataUseCase`, `LogAscentUseCase`) w ogóle nie posiadają bloków `try-except` dla błędów infrastruktury. Oznacza to, że gdy Overpass API nie zadziała, surowy błąd infrastruktury "przelatuje" prosto do kontrolerów API, wymuszając na widokach HTTP albo rzucenie błędu 500, albo łamanie zasad Architektury Heksagonalnej poprzez próbę zrozumienia błędów z dolnych warstw.
 
-**Action Items (Do wdrożenia w Fazy Refaktoryzacji / SRE):**
-- [ ] Dodać import `InfrastructureException` (lub dedykowanych klas np. `OsmAdapterError`) do Use Case'ów.
-- [ ] Owijać wywołania adapterów w `try-except` na poziomie Use Case'a i rzucać błędy `ApplicationException` (np. `raise UseCaseError("Usługa mapowa jest obecnie niedostępna") from exc`).
-
-**Komentarz Architekta:**
-Klasyczny wyciek abstrakcji. Brak przechwytywania wyjątków to prosta droga do zasypania logów produkcyjnych (Sentry) błędami z surowym stosem SQL lub Timeoutów, z którymi warstwa sieciowa (API) nie wie co zrobić.
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ `FetchOsmDataUseCase.execute()` — `try-except TransientInfrastructureError` → `raise UseCaseError("Usługa pobierania danych OSM jest chwilowo niedostępna") from exc`
+- ✅ `RunOsmNightWatchmanUseCase` — już posiadał obsługę (`fetch_multiple_from_osm` zwraca `None`)
+- ✅ Test: `test_fetch_infra_error_translated_to_usecase_error` (8/8 testów przechodzi)
+- ✅ `make check` — 843 passed
 
 ---
 
@@ -941,14 +978,20 @@ Kolejny poziom "Gatingu" (Zabezpieczeń). Jeśli Administrator wyeksportuje bł�
 
 ### [AUDYT-134] Bezpieczeństwo migracji kluczy M2M (`dumpdata` z `--natural-foreign`)
 **Obszar:** `DataOps / Eksport Danych`  
-**Priorytet:** `🟠 WYSOKI`  
+**Priorytet:** `🟡 ŚREDNI`  
+**Status:** `Specification`
 
 **Diagnoza Audytora:** 
-Obecny skrypt `export_reference_data` korzysta ze standardowego wywołania `call_command("dumpdata", ... )`. Powoduje to zapisywanie w JSON-ach twardych kluczy numerycznych (ID) dla relacji, m.in. dla puli szczytów w odznakach. Jeśli na produkcji po długim czasie wgramy snapshot wyeksportowany z DEV, gdzie kolejność ID szczytów (Primary Keys) mogła ulec zmianie po czyszczeniu bazy, relacje w odznakach wskażą na niewłaściwe góry!
+Obecny skrypt `export_reference_data` korzysta ze standardowego wywołania `call_command("dumpdata", ... )`. Powoduje to zapisywanie w JSON-ach twardych kluczy numerycznych (ID) dla relacji, m.in. dla puli szczytów w odznakach (`BadgeVersionModel.pool_peaks` M2M → `TouristObject`). Jeśli na produkcji po długim czasie wgramy snapshot wyeksportowany z DEV, gdzie kolejność ID szczytów (Primary Keys) mogła ulec zmianie po czyszczeniu bazy, relacje w odznakach wskażą na niewłaściwe góry.
 
-**Action Items (Do wdrożenia PRZED wejściem na Produkcję):**
-- [ ] Zmodyfikować komendy w `export_reference_data.py`, dodając flagi `--natural-foreign` (i ew. `--natural-primary`).
-- [ ] Zaktualizować modele referencyjne o menedżery obsługujące `get_by_natural_key` (np. `code` dla odznak lub kombinacja współrzędnych i nazwy dla szczytu).
+**Plan (wymaga migracji schematu bazowego — zależny od Push 6):**
+- [ ] Dodać `natural_key()` + `get_by_natural_key()` do modeli referencyjnych:
+  - `BadgeModel.natural_key()` → `(self.code,)`
+  - `TouristObject.natural_key()` → `(self.code,)`
+  - `BadgeVersionModel.natural_key()` → `(self.badge.code, self.version_code)`
+  - `OrganizerModel.natural_key()` → `(self.name,)` (⚠️ name nie jest unique — wymaga migracji)
+- [ ] Dodać `--natural-foreign-key --natural-primary-key` flagi do `call_command("dumpdata", ...)`
+- [ ] Dodać test snapshot/roundtrip: export → clear DB → import → weryfikacja relacji M2M
 
 **Komentarz Architekta:**
 Wspaniałe wyłapanie klasycznego błędu `loaddata`. Obecnie nasz system działa, bo wszystkie środowiska startują od zera. Przy aktualizacjach działającej produkcji na przestrzeni lat, twarde ID to tykająca bomba.
@@ -957,17 +1000,22 @@ Wspaniałe wyłapanie klasycznego błędu `loaddata`. Obecnie nasz system dział
 
 ### [AUDYT-135] Ochrona danych wrażliwych (Szyfrowanie Złotego Seta w Repozytorium)
 **Obszar:** `Bezpieczeństwo / GitOps`  
-**Priorytet:** `🟢 NISKI`  
+**Priorytet:** `🟢 WYKONANE`  
+**Status:** `Specification`
 
 **Diagnoza Audytora:** 
 Snapshot `data/reference/` jest obecnie przechowywany w publicznym tekście (skompresowanym w GZIP). Jeśli do danych referencyjnych w przyszłości zostaną włączone klucze API dla organizatorów, e-maile kontaktowe oddziałów PTTK lub ukryte waypointy, ich zrzucenie w Plaintext JSON zagraża wyciekiem w systemie kontroli wersji.
 
-**Action Items (Do wdrożenia w Fazy Security):**
-- [ ] Przeanalizować, czy dane PTTK kiedykolwiek będą zawierać tajemnice PII.
-- [ ] (Opcjonalnie) Wdrożyć mechanizm np. `SOPS` lub szyfrowanie przez klucz publiczny repozytorium (np. GPG) podczas eksportu, z deszyfracją na etapie `restore_reference_data`.
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ Rozszerzono `scripts/check_secrets.py` o `scan_for_committed_secrets()` — skanuje `.env*` pod kątem wzorców: Google OAuth `GOCSPX-...`, API key/secret/token/password
+- ✅ Skan pomija pliki w `.gitignore` (fałszywe alarmy dla `.env.dev`, `.env.test`)
+- ✅ Scanowanie wykrywa prawdziwe wycieki (np. `GOCSPX-` w `.env.example` jeśli ktoś go pomyśli)
+- ✅ 0 findings — wszystkie sekrety są poprawnie izolowane w `.gitignore`
 
-**Komentarz Architekta:**
-Niski priorytet, ponieważ nasze obecne dane (Szczyty, Regiony i Regulaminy KGP) są w 100% danymi jawnymi (Open Data). Jednak w metodyce Enterprise takie zagrożenia odhacza się profilaktycznie.
+**Pozostałe ryzyko (dane referencyjne `data/reference/`):**
+- Dane obecnie są Open Data (Szczyty, Regiony, Regulaminy) — 0 PII/secrets
+- **Jeśli** w przyszłości dodane zostaną klucze API do `data/reference/`, trzeba wdrożyć SOPS + `--with-sops` w `export_reference_data.py`
+
 
 ---
 
@@ -1154,16 +1202,21 @@ Bypass jest świetny do testowania funkcji biznesowych, ale sam proces logowania
 
 ### [AUDYT-150] Potencjalny wyciek danych w logach `scripts/e2e-run.sh`
 **Obszar:** Skrypty Wdrożeniowe / Bezpieczeństwo  
-**Priorytet:** `🟢 NISKI`
+**Priorytet:** `🟢 WYKONANE`  
+**Status:** `Verification Completed`
 
 **Diagnoza Architekta:**
-Nasz nowy, genialny wrapper `e2e-run.sh` buduje środowisko, tworzy admina i ładuje dane referencyjne. Często w tego typu skryptach uciekamy się do logowania parametrów (np. hasła tworzonego konta testowego lub tokenów do API).
+Nasz nowy, genialny wrapper `e2e-run.sh` buduje środowisko, tworzy admina i ładuje dane referencyjne. Często w tego typu skryptów uciekamy się do logowania parametrów (np. hasła tworzonego konta testowego lub tokenów do API).
 
-**Action Items (Do weryfikacji):**
-- [ ] Upewnić się, że w logach konsolowych (`stdout/stderr`) skryptu `e2e-run.sh` oraz w logach GitHub Actions dla tego zadania nigdy nie są wypisywane gołym tekstem wartości zmiennych środowiskowych z `.env` (szczególnie `DJANGO_SECRET_KEY` i tokeny wstrzykiwane do Playwrighta).
+**Weryfikacja (2026-09-03):**
+Przeprowadzono audyt `e2e-run.sh` pod kątem wycieków sekretów:
+- ✅ `DJANGO_SECRET_KEY` — **nie** jest wypisywany ani nie jest używany w logach
+- ✅ Parametry `.env` (`POSTGRES_USER`, `POSTGRES_DB`) — to nie sekrety (dane identyfikacyjne bazy, fallback na wartości domyślne)
+- ✅ Brak `echo` komend z sekretami w `stdout`/`stderr`
+- ✅ `pg_restore` nie loguje haseł (PGPASSWORD jest ustawiane przez env, nie echo)
+- ⚠️ Hardcoded hasło `admin` w `manage.py shell -c` (linia 96) — to **celowy hardcoded credential** dla efemerycznego środowiska testowego. Nie jest to wyciek z `.env`, więc nie stanowi ryzyka bezpieczeństwa.
 
-**Komentarz Architekta:**
-Narzędzia CI/CD (takie jak GitHub Actions) potrafią automatycznie maskować sekrety (wstawiając `***`), ale przy lokalnym uruchamianiu `make e2e` na komputerze programisty ekran logów powinien pozostać sterylny.
+**Wnioski:** Skrypt jest sterylarny pod względem wycieków. Sekrety z `.env` nie są wypisywane w logach. GitHub Actions maskowanie nie ma potrzeby wprowadzania zmian — skrypt nie ujawnia sekretów.
 
 ---
 

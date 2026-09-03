@@ -13,7 +13,7 @@ from apps.badges.models import (
     TouristRegionModel,
     VoivodeshipModel,
 )
-from apps.badges.tasks import build_tourist_region_geometry_task
+from apps.badges.tasks import build_region_geometries_bulk_task, build_tourist_region_geometry_task
 
 
 class ReadOnlyMapAdmin(LeafletGeoAdminMixin, ModelAdmin):
@@ -108,14 +108,7 @@ class TouristRegionAdmin(ReadOnlyMapAdmin):
 
     @admin.action(description="[Celery] Przebuduj geometrię i zaktualizuj szczyty (CQRS)")
     def rebuild_geometry(self, request, queryset):
-        """Opcja ręcznego przeliczenia na żądanie.
-
-        Args:
-          request:
-          queryset:
-
-        Returns:
-        """
-        for obj in queryset:
-            build_tourist_region_geometry_task.delay(obj.id)
-        self.message_user(request, "Wysłano zadania generowania do Celery.")
+        """Opcja ręcznego przeliczenia na żądanie — batch task (AUDYT-073)."""
+        region_ids = list(queryset.values_list("id", flat=True))
+        build_region_geometries_bulk_task.delay(region_ids)
+        self.message_user(request, f"Wysłano {len(region_ids)} regionów do Celery.")

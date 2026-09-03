@@ -190,3 +190,34 @@ def fetch_badge_news_task() -> str:
     except Exception as exc:
         logger.error(f"Nieoczekiwany błąd w fetch_badge_news_task: {exc}")
         raise
+
+
+@shared_task
+def recalculate_object_regions_bulk_task(object_ids: list[int]) -> str:
+    """Batch task: przelicza regiony dla wielu obiektów w jednej kolejce (AUDYT-073).
+
+    Zmniejsza liczbę zadań Celery z N do 1 przy masowych akcjach admina.
+    """
+    from bootstrap import get_container
+
+    use_case = get_container().calculate_object_regions
+    for object_id in object_ids:
+        try:
+            use_case.execute(object_id=object_id)
+        except Exception as exc:
+            logger.error(f"CQRS Failed for object {object_id}: {exc}")
+    return f"Sukces: Przeliczono regiony dla {len(object_ids)} obiektów."
+
+
+@shared_task
+def build_region_geometries_bulk_task(region_ids: list[int]) -> str:
+    """Batch task: buduje geometrię dla wielu regionów w jednej kolejce (AUDYT-073)."""
+    from bootstrap import get_container
+
+    use_case = get_container().build_tourist_region_geometry
+    for region_id in region_ids:
+        try:
+            use_case.execute(region_id)
+        except Exception as exc:
+            logger.error(f"Geometry build failed for region {region_id}: {exc}")
+    return f"Sukces: Zbudowano geometrię dla {len(region_ids)} regionów."

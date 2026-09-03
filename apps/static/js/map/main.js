@@ -23,6 +23,19 @@ document.addEventListener("DOMContentLoaded", function() {
     map.addControl(new LayerSwitcherControl(), 'bottom-left');
     map.addControl(new GridSwitcherControl(), 'top-left');
 
+    map.on('error', (e) => {
+        console.error('Map error:', e);
+        const isRateLimit = [429, 403].includes(e?.eventData?.status) ||
+            e?.message?.includes('429') ||
+            e?.message?.includes('403');
+        if (isRateLimit) {
+            const fallbackStyle = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+            if (map.getStyle().stylesheet.uri !== fallbackStyle) {
+                map.setStyle(fallbackStyle);
+            }
+        }
+    });
+
     map.on('load', () => {
         initRasterLayers(map);
         initGeoJsonLayers(map);

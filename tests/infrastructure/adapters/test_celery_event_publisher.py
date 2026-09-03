@@ -15,23 +15,26 @@ class TestCeleryEventPublisher:
         publisher = CeleryEventPublisher()
         event = UserProgressStateChanged(profile_id=1)
 
-        with patch("apps.badges.tasks.recalculate_poi_scores_task.delay") as mock_delay:
+        with patch("celery.current_app.send_task") as mock_send:
             with patch("django.conf.settings.CELERY_TASK_ALWAYS_EAGER", True):
                 publisher.publish(event)
 
-        mock_delay.assert_called_once_with(1)
+        mock_send.assert_called_once_with(
+            "apps.badges.tasks.recalculate_poi_scores_task", args=[1]
+        )
 
     def test_publishes_user_progress_event_on_commit(self) -> None:
         """Publikuje zdarzenie po commicie gdy CELERY_TASK_ALWAYS_EAGER=False."""
         publisher = CeleryEventPublisher()
         event = UserProgressStateChanged(profile_id=42)
 
-        with patch("apps.badges.tasks.recalculate_poi_scores_task.delay") as mock_delay:
+        with patch("celery.current_app.send_task") as mock_send:
             with patch("django.db.transaction.on_commit") as mock_on_commit:
                 with patch("django.conf.settings.CELERY_TASK_ALWAYS_EAGER", False):
                     publisher.publish(event)
 
         mock_on_commit.assert_called_once()
+        mock_send.assert_not_called()
 
     def test_non_user_progress_event_is_ignored(self) -> None:
         """Inne zdarzenia niż UserProgressStateChanged są ignorowane."""

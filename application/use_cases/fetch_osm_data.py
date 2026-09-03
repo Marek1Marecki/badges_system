@@ -4,7 +4,7 @@ Zgodnie z 14-domain-purity.md — zero importów apps/, django/, infrastructure/
 czas wstrzykiwany przez ClockPort.
 """
 
-from application.exceptions import UseCaseError
+from application.exceptions import TransientInfrastructureError, UseCaseError
 from application.ports.clock_port import ClockPort
 from application.ports.osm_port import OsmRepositoryPort
 
@@ -45,8 +45,13 @@ class FetchOsmDataUseCase:
         if not osm_id:
             return "Pominięto: Brak OSM ID."
 
-        osm_node = self._repo.fetch_from_osm(osm_id)
-        self._repo.update_object_from_osm(object_id, osm_node, obj)
+        try:
+            osm_node = self._repo.fetch_from_osm(osm_id)
+            self._repo.update_object_from_osm(object_id, osm_node, obj)
+        except TransientInfrastructureError as exc:
+            raise UseCaseError(
+                f"Usługa pobierania danych OSM jest chwilowo niedostępna dla obiektu {object_id}."
+            ) from exc
 
         return f"Sukces: Pobrano dane OSM dla {osm_id}."
 
