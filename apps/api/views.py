@@ -347,7 +347,7 @@ class BadgeProgressView(View):
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
 
-        return JsonResponse(result, status=200)
+        return JsonResponse(result.model_dump(), status=200)
 
 
 class MapObjectsView(View):

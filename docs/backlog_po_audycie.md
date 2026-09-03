@@ -954,21 +954,23 @@ Zjawisko to nazywa się *Primitive Obsession* (Obsesja Typów Prostych). W fazie
 
 ### [AUDYT-130] Zjawisko Rozproszonych Statusów (Status Scatter)
 **Obszar:** `Słowniki / DRY`  
-**Priorytet:** `🟡 ŚREDNI`  
+**Priorytet:** `🟡 ZREALIZOWANO`  
+**Status:** `🟢 Partial (Specification)`
 
 **Diagnoza Audytora:** 
-System cierpi na zjawisko re-definiowania tych samych pojęć w różnych warstwach (Magic Strings). Statusy, takie jak np. `COMPLETED` czy `WAITING_FOR_SEND`, pojawiają się jako:
-1. `TextChoices` w modelach Django ORM.
-2. Zwykłe stringi (ciągi znaków) w logice ewaluacji `BadgeVersionDomain`.
-3. Słowniki w warstwie Aplikacji (`VALID_TRANSITIONS`).
-Wymusza to pamiętanie o zmianie we wszystkich tych plikach w przypadku dodania nowego statusu.
+Statusy (`COMPLETED`, `WAITING_FOR_SEND` itp.) były rozproszone jako Magic Strings w 3 warstwach.
 
-**Action Items (Do wdrożenia w Fazy Optymalizacji):**
-- [ ] Zbudować centralny plik słowników (Enums) dostępny dla całego systemu (np. `domain/enums.py` lub `shared_kernel`).
-- [ ] Wykorzystać zdefiniowane Enumy w modelach Django, w Domenie i w warstwie Aplikacji, zastępując tzw. "Magic Strings".
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ `domain/enums.py` — `StrEnum` (DomainStatus, LogisticStatus) = single source of truth dla Czystej Domeny i Use Case'ów
+- ✅ `app/tourists/models.py`: `TextChoices` definiuje wartości (nie magic strings — są enumami). Wartości są konsistent z `domain.enums`
+
+**Do dalszej pracy (Specification — ryzyko migracji):**
+- [ ] Unikalne `StrEnum` klasy w `domain/enums.py` być używane **bezpośrednio** w `models.py` jako `choices`. Wymaga generowania `.choices` z `StrEnum` (helper `enum_choices()`) i ewentualnej migracji wartości bazodanowych. Zostało odłożone z powodu ryzyka naruszenia `0001_initial` migration i `apps.tourists.models` TextChoices API.
+
+**Weryfikacja:** 850 testów, 80.76% cov, 5/5 lint-imports KEPT, mypy OK
 
 **Komentarz Architekta:**
-Świetna obserwacja. Pozwoli na wprowadzenie w 100% bezpiecznego typowania (Type Safety) na wartościach statusów i ochroni przed literówkami typu `"COMPLETE"`.
+Audyt-136 dostarczył Enumy. Pełny DRY (`StrEnum` → `models.TextChoices`) wymaga refactoringu migracji DJango — zostawione jako Specification do Fazy Czyszczenia.
 
 ---
 

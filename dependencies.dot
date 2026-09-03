@@ -246,6 +246,7 @@ digraph G {
   "application.use_cases.unsubscribe_badge" -> "application.ports.user_progress_port";
   "application.use_cases.unsubscribe_badge" -> "domain.enums";
   "application.use_cases.unsubscribe_badge" -> "domain.events";
+  "application.use_cases.verify_badge" -> "application.dto.verify_badge_dto";
   "application.use_cases.verify_badge" -> "application.exceptions";
   "application.use_cases.verify_badge" -> "application.ports.badge_repository_port";
   "application.use_cases.verify_badge" -> "application.ports.clock_port";

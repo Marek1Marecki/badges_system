@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from application.dto.verify_badge_dto import VerifyBadgeResponseDTO
 from application.exceptions import ResourceNotFoundError
 from application.use_cases.verify_badge import (
     EvaluateBadgeProgressQuery,
@@ -85,8 +86,8 @@ class TestEvaluateBadgeProgressQuery:
         )
         result = uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
 
-        assert result["verified"] is True
-        assert result["status"] == "COMPLETED"
+        assert result.verified is True
+        assert result.status == "COMPLETED"
         # Ochrona CQS: Query absolutnie NICZEGO nie zapisuje! Aktualizuje stan UpdateBadgeProgressCommand.
         progress_repo.update_domain_status.assert_not_called()
 
@@ -159,10 +160,10 @@ class TestEvaluateBadgeProgressQuery:
         )
         result = uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
 
-        assert result["verified"] is True
-        assert result["status"] == "COMPLETED"
-        assert result["errors"] == ["Wiek nie spełnia wymogów"]
-        assert result["tiers"][0]["status"] == "IN_PROGRESS"
+        assert result.verified is True
+        assert result.status == "COMPLETED"
+        assert result.errors == ["Wiek nie spełnia wymogów"]
+        assert result.tiers[0].status == "IN_PROGRESS"
 
 
 class TestEvaluateBadgeProgressQueryNoVersion:
@@ -217,7 +218,9 @@ class TestUpdateBadgeProgressCommand:
         progress_repo.get_progress.return_value = progress
 
         query_service = MagicMock()
-        query_service.execute.return_value = {"status": "COMPLETED"}
+        query_service.execute.return_value = VerifyBadgeResponseDTO(
+            verified=True, status="COMPLETED", valid_ascents_count=5, errors=[], tiers=[]
+        )
 
         cmd = UpdateBadgeProgressCommand(query_service, progress_repo)
         cmd.execute(profile_id=1, badge_code="KGP", cycle_number=1)
@@ -234,7 +237,9 @@ class TestUpdateBadgeProgressCommand:
         progress_repo.get_progress.return_value = progress
 
         query_service = MagicMock()
-        query_service.execute.return_value = {"status": "IN_PROGRESS"}
+        query_service.execute.return_value = VerifyBadgeResponseDTO(
+            verified=False, status="IN_PROGRESS", valid_ascents_count=2, errors=[], tiers=[]
+        )
 
         cmd = UpdateBadgeProgressCommand(query_service, progress_repo)
         cmd.execute(profile_id=1, badge_code="KGP", cycle_number=1)

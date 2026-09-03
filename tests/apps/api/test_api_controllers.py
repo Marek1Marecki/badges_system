@@ -225,14 +225,15 @@ class TestBadgeProgressView:
 
     def test_progress_200_returns_evaluation_result(self, factory, mock_user, use_cases) -> None:
         """Zwraca 200 z wynikiem ewaluacji postępu odznaki."""
+        from application.dto.verify_badge_dto import VerifyBadgeResponseDTO
         from apps.api.views import BadgeProgressView
 
-        use_cases["evaluate_badge_progress"].execute.return_value = {
-            "verified": False,
-            "status": "IN_PROGRESS",
-            "errors": [],
-            "valid_ascents_count": 12,
-        }
+        use_cases["evaluate_badge_progress"].execute.return_value = VerifyBadgeResponseDTO(
+            verified=False,
+            status="IN_PROGRESS",
+            errors=[],
+            valid_ascents_count=12,
+        )
 
         request = factory.get("/api/v1/badges/KGP/progress/")
         request.user = mock_user

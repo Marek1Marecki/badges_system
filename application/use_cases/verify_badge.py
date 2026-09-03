@@ -9,8 +9,7 @@ Zawiera rozdzielone ścieżki (Command/Query Responsibility Segregation):
 2. UpdateBadgeProgressCommand - Wymuszenie fizycznego zapisu do bazy.
 """
 
-from typing import Any
-
+from application.dto.verify_badge_dto import TierResultResponseDTO, VerifyBadgeResponseDTO
 from application.exceptions import ResourceNotFoundError
 from application.ports.badge_repository_port import BadgeRepositoryPort
 from application.ports.clock_port import ClockPort
@@ -44,7 +43,7 @@ class EvaluateBadgeProgressQuery:
         self._clock = clock
         self._awarding_service = awarding_service
 
-    def execute(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> dict[str, Any]:
+    def execute(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> VerifyBadgeResponseDTO:
         """Weryfikuje status matematyczny w locie.
 
         Args:
@@ -105,21 +104,21 @@ class EvaluateBadgeProgressQuery:
             domain_result=domain_result,
         )
 
-        return {
-            "verified": is_verified,
-            "status": final_status,
-            "valid_ascents_count": domain_result.valid_ascents_count,
-            "errors": domain_result.errors,
-            "tiers": [
-                {
-                    "tier_id": t.tier_id,
-                    "name": t.name,
-                    "status": t.status,
-                    "required_count": t.required_count,
-                }
+        return VerifyBadgeResponseDTO(
+            verified=is_verified,
+            status=final_status,
+            valid_ascents_count=domain_result.valid_ascents_count,
+            errors=domain_result.errors,
+            tiers=[
+                TierResultResponseDTO(
+                    tier_id=t.tier_id,
+                    name=t.name,
+                    status=t.status,
+                    required_count=t.required_count,
+                )
                 for t in domain_result.tiers
             ],
-        }
+        )
 
 
 class UpdateBadgeProgressCommand:
@@ -149,5 +148,5 @@ class UpdateBadgeProgressCommand:
 
         result = self._query_service.execute(profile_id, badge_code, cycle_number)
 
-        if result["status"] != progress.domain_status:
-            self._progress_repo.update_domain_status(progress.progress_id, result["status"])
+        if result.status != progress.domain_status:
+            self._progress_repo.update_domain_status(progress.progress_id, result.status)
