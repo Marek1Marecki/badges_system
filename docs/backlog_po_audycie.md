@@ -1581,11 +1581,19 @@ Główna metoda weryfikująca odznaki (`BadgeVersionDomain.evaluate()`) urosła 
   - `_validate_rules()` — walidacja reguł biznesowych (Strategie)
   - `_evaluate_tiers()` — ewaluacja progów stopni (Tiers) + zwraca tuple `(tier_results, all_completed, global_status)`
   - `evaluate()` — 35 linii → głównie orkiestracja
-- [X] Naprawiono bug: oryginalny kod obliczał `errors` ale nigdy ich nie zwracał (`errors=[]` w return). Test `test_evaluate_with_multiple_rule_errors` zaktualizowany, by asercja sprawdzała faktyczną wartość `result.errors`.
-- [X] 8 testy w `test_badge_version.py` + 24 testy w `test_badge_rules.py` przechodzą.
+
+**Defect fix (wykryty podczas realizacji AUDYT-131):**
+- [X] **Bug:** Oryginalny kod obliczył `errors` (wynik `rule.validate()`), ale w `return` twardo zakodowano `errors=[]`, **nigdy nie zwracając rzeczywistych błędów reguł**.
+- [X] **Naprawa:** `evaluate()` teraz zwraca `errors=errors` (faktyczną listę).
+- [X] **Test:** `test_evaluate_with_multiple_rule_errors` zaktualizowany — zamiast asercji `result.errors == []`, teraz weryfikuje `len(result.errors) == 2` z treściami `"Błąd 1"` i `"Błąd 2"`.
+
+**Walidacja:**
+- `tests/domain/entities/test_badge_version.py`: 8 testów pass
+- `tests/domain/rules/test_badge_rules.py`: 24 testy pass
+- `make check`: ruff PASS, mypy PASS (132 files)
 
 **Uzasadnienie:**
-Podział na mniejsze metody spełnia SRP, poprawia czytelność i testowalność. Naprawa buga (brak zwracania errors) zwiększa integralność wyników weryfikacji.
+Refactoring (80→35 linii) ma sens semantyczny — metody odpowiadają kolejnym etapom procesu domenowego. Nie powtarzałbym go tylko po to, by zejść z 80 do 35 linii — struktura ma semantyczną motywację i jest zabezpieczona testami. Bug fix (errors=[] → errors) zwiększa integralność wyników weryfikacji — jest bardziej wartościowy niż sam refactoring.
 
 ---
 
