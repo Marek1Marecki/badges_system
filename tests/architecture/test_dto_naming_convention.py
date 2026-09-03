@@ -18,6 +18,10 @@ LEGACY_DTOS = {
     "ObjectRegionDTO",
     "TouristObjectGeoDTO",
     "BadgeNewsDTO",
+    # Nie-root DTO (AUDYT-124): klasy zagnieżdżone w ResponseDTO są
+    # częścią modelu wewnętrznego, nie górnopoziomowymi OutputDTO
+    "GeoJSONFeatureDTO",
+    "TierResultResponseDTO",
 }
 
 

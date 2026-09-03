@@ -4,6 +4,8 @@ Zgodnie z ADR-013, chroni Czystą Domenę przed typami GIS z PostGIS. Współrz�
 zmiennoprzecinkowe (float).
 """
 
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -38,3 +40,22 @@ class TouristObjectGeoDTO(BaseModel):
     type: str
     lon: float
     lat: float
+
+
+class GeoJSONFeatureDTO(BaseModel):
+    """Pojedynczy obiekt GeoJSON (Feature) dla mapy eksploracji."""
+
+    type: str = "Feature"
+    geometry: dict[str, Any]
+    properties: dict[str, Any]
+
+
+class MapExploreResponseDTO(BaseModel):
+    """Typowany wynik `ExploreMapUseCase` (AUDYT-124: brak dict[str, Any]).
+
+    Zastępuje luźny słownik GeoJSON — zapewnia Mypy i Swagger widzą
+    kształt odpowiedzi mapowej.
+    """
+
+    type: str = "FeatureCollection"
+    features: list[GeoJSONFeatureDTO]

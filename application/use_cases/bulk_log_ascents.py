@@ -11,7 +11,7 @@ oraz unika błędu N+1 odpytując ramy bitemporalne grupowo.
 Gwarantuje tzw. Partial Success - zwraca co się udało zapisać, a co odrzucono.
 """
 
-from application.dto.ascent_dto import AscentInputDTO
+from application.dto.ascent_dto import AscentInputDTO, BulkAscentResultDTO
 from application.ports.event_publisher_port import DomainEventPublisherPort
 from application.ports.uow_port import UnitOfWorkPort
 from application.ports.user_progress_port import AscentLogRepositoryPort
@@ -38,7 +38,7 @@ class BulkLogAscentsUseCase:
         self._uow = uow
         self._event_publisher = event_publisher
 
-    def execute(self, profile_id: int, ascents: list[AscentInputDTO]) -> dict[str, int | list[dict[str, str]]]:
+    def execute(self, profile_id: int, ascents: list[AscentInputDTO]) -> BulkAscentResultDTO:
         """Przetwarza listę wejść, blokując nieistniejące obiekty (T-01, T-03).
 
         Zapisuje tylko poprawne logi i zwraca raport w trybie Partial Success.
@@ -69,9 +69,9 @@ class BulkLogAscentsUseCase:
         else:
             saved = 0
 
-        # Wymuszamy typowanie list[dict[str,str]] żeby oszukać Pydantica w DTO zwrotnej
+        # Wymuszamy typowanie (AUDYT-124: brak dict[str, Any])
         typed_errors: list[dict[str, str]] = [
             {"peak_id": str(e["peak_id"]), "reason": str(e["reason"])} for e in errors
         ]
 
-        return {"saved_count": saved, "errors": typed_errors}
+        return BulkAscentResultDTO(saved_count=saved, errors=typed_errors)

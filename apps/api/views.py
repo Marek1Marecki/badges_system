@@ -722,7 +722,7 @@ class BulkAscentLogView(View):
             # WPISUJEMY TYLKO TO:
             result = use_case.execute(profile_id=profile_id, ascents=ascents)
 
-            return JsonResponse(result, status=200)
+            return JsonResponse(result.model_dump(), status=200)
 
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)

@@ -4,9 +4,11 @@ Zgodnie z ADR-011 i ADR-013: Łączy szybkie zapytanie przestrzenne (BBox) z pre
 (Kolor i Punktacja POI).
 """
 
-from typing import Any
-
-from application.dto.map_dto import MapExploreRequestDTO
+from application.dto.map_dto import (
+    GeoJSONFeatureDTO,
+    MapExploreRequestDTO,
+    MapExploreResponseDTO,
+)
 from application.ports.cache_port import CachePort
 from application.ports.map_port import MapRepositoryPort
 
@@ -19,8 +21,8 @@ class ExploreMapUseCase:
         self._map_repo = map_repository
         self._cache = cache
 
-    def execute(self, request: MapExploreRequestDTO) -> dict[str, Any]:
-        """Zwraca gotowy do wyświetlenia słownik w formacie GeoJSON.
+    def execute(self, request: MapExploreRequestDTO) -> MapExploreResponseDTO:
+        """Zwraca gotowy do wyświetlenia obiekt GeoJSON (FeatureCollection).
 
         Args:
           request: Żądanie eksploracji mapy z parametrami widoku.
@@ -48,30 +50,23 @@ class ExploreMapUseCase:
         scores = cached_data.get("scores", {})
 
         # 3. Złożenie formatu GeoJSON (FeatureCollection)
-        features = []
+        features: list[GeoJSONFeatureDTO] = []
         for obj in objects:
-            # Jeśli obiektu nie ma w cache (bo np. turysta nie subskrybuje jego odznaki),
-            # staje się dla niego wizualnie "szary" i nie przynosi punktów.
-            # POPRAWKA: Szukamy najpierw po int (natywny Cache Django),
-            # a awaryjnie po str (czysty JSON). Jeśli brak trafień -> GRAY / 0.
             color = colors.get(obj.id, colors.get(str(obj.id), "GRAY"))
             score = scores.get(obj.id, scores.get(str(obj.id), 0))
 
             features.append(
-                {
-                    "type": "Feature",
-                    "geometry": {
-                        "type": "Point",
-                        "coordinates": [obj.lon, obj.lat],  # GeoJSON wymusza [Lon, Lat]
-                    },
-                    "properties": {
+                GeoJSONFeatureDTO(
+                    type="Feature",
+                    geometry={"type": "Point", "coordinates": [obj.lon, obj.lat]},
+                    properties={
                         "id": obj.id,
                         "name": obj.name,
                         "type": obj.type,
                         "peak_color": color,
                         "potential_score": score,
                     },
-                }
+                )
             )
 
-        return {"type": "FeatureCollection", "features": features}
+        return MapExploreResponseDTO(type="FeatureCollection", features=features)

@@ -92,10 +92,10 @@ class TestExploreMapUseCase:
         dto = MapExploreRequestDTO(profile_id=1, min_lon=0, min_lat=0, max_lon=1, max_lat=1)
 
         result = uc.execute(dto)
-        assert result["type"] == "FeatureCollection"
-        assert len(result["features"]) == 1
-        assert result["features"][0]["properties"]["peak_color"] == "RED"
-        assert result["features"][0]["properties"]["potential_score"] == 100
+        assert result.type == "FeatureCollection"
+        assert len(result.features) == 1
+        assert result.features[0].properties["peak_color"] == "RED"
+        assert result.features[0].properties["potential_score"] == 100
 
     def test_defaults_to_gray_when_no_cache(self) -> None:
         """Domyślnie szary kolor i zerowy wynik gdy brak cache."""
@@ -107,8 +107,8 @@ class TestExploreMapUseCase:
         uc = ExploreMapUseCase(repo, cache)
         result = uc.execute(MapExploreRequestDTO(profile_id=1, min_lon=0, min_lat=0, max_lon=1, max_lat=1))
 
-        assert result["features"][0]["properties"]["peak_color"] == "GRAY"
-        assert result["features"][0]["properties"]["potential_score"] == 0
+        assert result.features[0].properties["peak_color"] == "GRAY"
+        assert result.features[0].properties["potential_score"] == 0
 
 
 # 3. KAFELKI WEKTOROWE (MVT)
