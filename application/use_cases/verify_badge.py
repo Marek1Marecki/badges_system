@@ -18,6 +18,7 @@ from application.ports.user_progress_port import (
     TouristProfileRepositoryPort,
     UserProgressRepositoryPort,
 )
+from domain.enums import DomainStatus
 from domain.services.badge_awarding_domain_service import BadgeAwardingDomainService
 from domain.value_objects.verification_context import VerificationContext
 from domain.value_objects.verification_result import VerificationResult
@@ -104,11 +105,22 @@ class EvaluateBadgeProgressQuery:
             domain_result=domain_result,
         )
 
+        # 8. Walidacja limitów Freemium (AUDYT-087)
+        # Jeśli turysta downgrade'ował i przekracza limit IN_PROGRESS,
+        # odznaka jest "zamrożona" — ewaluacja nie może dawać COMPLETED.
+        final_errors = list(domain_result.errors)
+        if final_status != DomainStatus.COMPLETED and profile_dto:
+            active_progresses = self._progress_repo.get_active_progresses(profile_id)
+            active_count = len([p for p in active_progresses if p.domain_status != DomainStatus.COMPLETED])
+            if active_count > profile_dto.max_active_badges:
+                is_verified = False
+                final_errors.append("Odznaka zamrożona: limit pakietu został przekroczony po downgrade.")
+
         return VerifyBadgeResponseDTO(
             verified=is_verified,
             status=final_status,
             valid_ascents_count=domain_result.valid_ascents_count,
-            errors=domain_result.errors,
+            errors=final_errors,
             tiers=[
                 TierResultResponseDTO(
                     tier_id=t.tier_id,

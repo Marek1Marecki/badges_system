@@ -165,6 +165,49 @@ class TestEvaluateBadgeProgressQuery:
         assert result.errors == ["Wiek nie spełnia wymogów"]
         assert result.tiers[0].status == "IN_PROGRESS"
 
+    def test_freeze_in_progress_badge_when_freemium_limit_exceeded(self) -> None:
+        """AUDYT-087: Downgrade limitu → IN_PROGRESS odznaka zamrażana."""
+        progress_repo = MagicMock()
+        progress = MagicMock()
+        progress.version_id = 99
+        progress.progress_id = 123
+        progress.domain_status = "IN_PROGRESS"
+        progress_repo.get_progress.return_value = progress
+        progress_repo.get_completed_badge_codes.return_value = frozenset()
+
+        # 2 aktywne IN_PROGRESS > limit FREE (1)
+        p1 = MagicMock()
+        p1.domain_status = "IN_PROGRESS"
+        p2 = MagicMock()
+        p2.domain_status = "IN_PROGRESS"
+        progress_repo.get_active_progresses.return_value = [p1, p2]
+
+        badge_repo = MagicMock()
+        badge_version = MagicMock()
+        badge_version.evaluate.return_value = VerificationResult(
+            verified=True,
+            status="IN_PROGRESS",
+            valid_ascents_count=3,
+            tiers=[TierResult(tier_id=1, name="Standard", status="IN_PROGRESS", required_count=5)],
+        )
+        badge_repo.get_badge_version_by_id.return_value = badge_version
+
+        ascent_repo = MagicMock()
+        ascent_repo.get_unconsumed_ascents.return_value = []
+
+        profile_repo = MagicMock()
+        profile_dto = MagicMock()
+        profile_dto.max_active_badges = 1
+        profile_repo.get_profile.return_value = profile_dto
+
+        uc = EvaluateBadgeProgressQuery(
+            progress_repo, ascent_repo, profile_repo, badge_repo, FakeClock(), AWARDING_SERVICE
+        )
+        result = uc.execute(profile_id=1, badge_code="KGP", cycle_number=1)
+
+        assert result.verified is False
+        assert "zamrożona" in result.errors[0].lower()
+
 
 class TestEvaluateBadgeProgressQueryNoVersion:
     """Testy EvaluateBadgeProgressQuery gdy brakuje wersji odznaki."""
