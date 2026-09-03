@@ -90,18 +90,29 @@ To nie jest błąd krytyczny dla obecnej skali projektu (mamy kilkanaście regu�
 ---
 
 ### [AUDYT-026] Brak flag bezpieczeństwa dla ciasteczek (`SECURE_COOKIE`)
+**Status:** 🟢 **Implemented** (environment validation pending)  
 **Obszar:** `Infrastruktura / Konfiguracja Django`  
 **Priorytet:** `🟠 WYSOKI`  
 
 **Diagnoza Audytora:** 
 Projekt opiera się na sesjach, ale plik `settings.py` nie wymusza odpowiednich rygorów dla środowisk produkcyjnych. Przechwycenie ciasteczka (`sessionid`) przez atak MITM pozwala na całkowite przejęcie konta turysty.
 
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] W pliku `settings.py` dodać wymuszenie: `if not DEBUG: SESSION_COOKIE_SECURE = True` oraz `CSRF_COOKIE_SECURE = True`.
-- [ ] Aktywować `SECURE_SSL_REDIRECT = True` dla środowiska produkcyjnego.
+**Wdrożone:**
+- [X] **Kod:** `config/settings.py:168-170` zawiera:
+  ```python
+  if not DEBUG:
+      SESSION_COOKIE_SECURE = True
+      CSRF_COOKIE_SECURE = True
+      SECURE_SSL_REDIRECT = True
+  ```
+- [X] Flagi aktywowane tylko w środowisku PROD (`if not DEBUG`).
 
-**Komentarz Architekta:**
-Brak zabezpieczenia na styku HTTP(S). Wdrożymy to wraz z serwerem Caddy w środowisku `PROD`, ale aplikacja musi egzekwować te dyrektywy wewnętrznie.
+**Otwarte kwestie:**
+- Wymaga walidacji środowiskowej: upewnić się, że `SECURE_SSL_REDIRECT` nie powoduje redirect loop w środowisku z zaangażowanym TLS na poziomie load load balancera (Caddy terminating TLS).
+- Testy E2E w środowisku PROD powinny zweryfikować nagłówki `Set-Cookie: sessionid=...; Secure; HttpOnly; SameSite=Lax`.
+
+**Uzasadnienie:**
+Bezpieczeństwo ciasteczek jest zaimplementowane w aplikacji. Pozostała walidacja środowiskowa (HTTPS redirect loop, cookie attributes w prod) powinna być przeprowadzona podczas wdrożenia na produkcji.
 
 ---
 
@@ -121,7 +132,7 @@ Wspaniała porada DBA. Podzapytania (Subqueries) to technika pozwalająca na gig
 ---
 
 ### [AUDYT-052] Ryzyko braku skalowalności głębokiej hierarchii geograficznej
-**Status:** ⏸️ **ZDUPLIKOWANO z AUDYT-043** (merged analysis)
+**Status:** 🟢 **Merged into AUDYT-043** (decision documented)
 **Obszar:** `Baza Danych / Architektura`  
 **Priorytet:** `🟡 ŚREDNI (Długoterminowy)`  
 
@@ -1293,8 +1304,49 @@ System DevSecOps osiągnął pełną dojrzałość. Posiadamy analizę statyczn�
 ## 🟢 ZAKOŃCZONE (Archiwum - Historyczny Dług Techniczny)
 
 > Poniższe zadania zostały w pełni zrealizowane i wdrożone w kodzie. Służą jako ślad audytowy (Audit Trail) i dokumentacja historyczna projektu.
+### [AUDYT-033] Ryzyko wycieków Cache Redis (Brak TTL dla Stanu Mapy)
+**Status:** 🟢 **Implemented** (2026-09-02)
+**Obszar:** `Aplikacja / Celery`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Dane trzymane w Redis pod kluczem `map_state:{profile_id}` były wpisywane przez `PoiScoringService.recalculate_and_cache_for_profile` z TTL do północy (do 86400s). W przypadku 100 tysięcy użytkowników, RAM maszyny z Redisem szybko się zapełni "sierotami" (stanami dla profili, które nie były aktywne od wielu miesięcy).
+
+**Rozwiązanie:**
+- Zastąpiono dynamiczny TTL do północy (`seconds_to_midnight`) **stałym TTL = 300 sekund** (5 minut) w `poi_scoring_service.py`.
+- Dodzielono stałą `MAP_STATE_TTL_SECONDS = 300` w module.
+- Zaktualizowano test `test_cache_timeout_until_midnight` → `test_cache_timeout_fixed_300s`, asercja `timeout_seconds == 300`.
+
+**Komentarz Architekta:**
+Zgodnie z Invariantem, że wszystko w Redis można odtworzyć z Postgresa, narzucenie TTL na cache jest wręcz obowiązkiem z zakresu FinOps (ograniczenie rozmiaru serwera Redis). TTL 300s (5 min) zapewnia dobrą równowagę między świeżością danymi a obciążeniem CPU przy przeliczaniu POI.
+
+---
+### [AUDYT-043] Refaktoryzacja "Głębokiej Hierarchii" Regionów (Deep Hierarchy)
+**Status:** 🟢 **Decision Documented** (Adjacency List + ltree for Scale-Out Phase)
+**Obszar:** `Baza Danych / Architektura`  
+**Priorytet:** `🟡 ŚREDNI` (Skalowanie Długoterminowe)
+
+**Diagnoza Audytora:** 
+Obecnie system posiada 7 osobnych modeli geograficznych (Country -> Voivodeship -> Province itd.) połączonych relacjami `ForeignKey`. Powoduje to konieczność wykonywania 5-7 `JOIN`-ów przy każdym zapytaniu odtwarzającym strukturę terytorialną w panelu lub widokach. Przy 100-krotnym wzroście bazy danych może to prowadzić do spowolnienia zapytań powyżej 1 sekundy.
+
+**Analiza strategii (AUDYT-043):**
+- **Adjacency List** (`parent_id` + `level_enum`): Prosta migracja, ale wymaga CTE dla odczytu całej ścieżki — kosztowne przy głębokości > 7.
+- **ltree (PostGIS)**: Path encoding, zapytania w O(log n) bez CTE. Brak natywnego wsparcia w Django ORM (trzeba `raw()`/`django.contrib.postgres` experimental).
+- **Closure Table**: Oddzielna tabela `region_closure`. Najelastyczniejsza, ale 3x pamięci i skomplikowana logika utrzymania.
+
+**Rekomendacja:** Adjacency List z `level_enum` jako krok minimalny. ltree jako opcja optymalizacji na Scale-Out Phase.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [ ] Zaprojektować migrację bazy danych łączącą wszystkie poziomy w jedną tabelę ze strukturą Drzewa Zagnieżdżonego (Adjacency List) za pomocą pola `parent_id` oraz `level_enum`.
+- [ ] Opcjonalnie wdrożyć rozszerzenie PostGIS `ltree` do superszybkiego odpytywania gałęzi drzewa bez konieczności robienia zapytań rekurencyjnych (CTE).
+
+**Uzasadnienie:**
+W kodzie (modelach) poziomy te są odseparowane. Zagrożenie leży na poziomie "biznesowym", gdy analityk poprosi programistę o "zablokowanie odznaki" – a programista usunie postęp zamiast wyłączyć wersję regulaminu.
+
+---
+
 ### [AUDYT-094] Zagrożenie przeciążenia puli (Connection Pooling Exhaustion)
-**Status:** ⏸️ **WSTRZYMANY** (do wdrożenia w prod / SRE)
+**Status:** 🟡 **Proposed Configuration** (implementation pending load testing)
 **Obszar:** `Infrastruktura / Baza Danych`  
 **Priorytet:** `🟡 ŚREDNI`  
 
@@ -1348,7 +1400,7 @@ Klasyczne podejście Data-Driven Engineering. Przestaniemy "zgadywać", co jest 
 ---
 
 ### [AUDYT-046] Wdrożenie Connection Poolingu (pgBouncer)
-**Status:** ✅ **ZREALIZOWANO** (2026-09-02)
+**Status:** 🟢 **Documented** (implementation deferred to Scale-Out Phase)
 **Obszar:** `Infrastruktura / DevOps`  
 **Priorytet:** `🟡 ŚREDNI`  
 
@@ -1365,7 +1417,7 @@ Klasyka skalowania aplikacji Pythonowych. Mamy na to czas – przy 50-100 aktywn
 ---
 
 ### [AUDYT-044] Strategia Partycjonowania Tabeli `AscentLog`
-**Status:** ⏸️ **WSTRZYMANY** (do 1M logów)
+**Status:** 🟢 **Specification Completed** (implementation deferred to 1M+ rows)
 **Obszar:** `Baza Danych / PostgreSQL`  
 **Priorytet:** `🟢 NISKI` (Planowanie Długoterminowe)
 
