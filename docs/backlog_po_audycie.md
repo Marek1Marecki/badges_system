@@ -120,80 +120,6 @@ Wspaniała porada DBA. Podzapytania (Subqueries) to technika pozwalająca na gig
 
 ---
 
-### [AUDYT-033] Ryzyko wycieków Cache Redis (Brak TTL dla Stanu Mapy)
-**Status:** ✅ **ZREALIZOWANO** (2026-09-02)
-**Obszar:** `Aplikacja / Celery`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Dane trzymane w Redis pod kluczem `map_state:{profile_id}` były wpisywane przez `PoiScoringService.recalculate_and_cache_for_profile` z TTL do północy (do 86400s). W przypadku 100 tysięcy użytkowników, RAM maszyny z Redisem szybko się zapełni "sierotami" (stanami dla profili, które nie były aktywne od wielu miesięcy).
-
-**Rozwiązanie:**
-- Zastąpiono dynamiczny TTL do północy (`seconds_to_midnight`) **stałym TTL = 300 sekund** (5 minut) w `poi_scoring_service.py`.
-- Dodzielono stałą `MAP_STATE_TTL_SECONDS = 300` w module.
-- Zaktualizowano test `test_cache_timeout_until_midnight` → `test_cache_timeout_fixed_300s`, asercja `timeout_seconds == 300`.
-
-**Komentarz Architekta:**
-Zgodnie z Invariantem, że wszystko w Redis można odtworzyć z Postgresa, narzucenie TTL na cache jest wręcz obowiązkiem z zakresu FinOps (ograniczenie rozmiaru serwera Redis). TTL 300s (5 min) zapewnia dobrą równowagę między świeżością danymi a obciążeniem CPU przy przeliczaniu POI.
-
----
-
-### [AUDYT-043] Refaktoryzacja "Głębokiej Hierarchii" Regionów (Deep Hierarchy)
-**Obszar:** `Baza Danych / Architektura`  
-**Priorytet:** `🟡 ŚREDNI` (Skalowanie Długoterminowe)
-
-**Diagnoza Audytora:** 
-Obecnie system posiada 7 osobnych modeli geograficznych (Country -> Voivodeship -> Province itd.) połączonych relacjami `ForeignKey`. Powoduje to konieczność wykonywania 5-7 `JOIN`-ów przy każdym zapytaniu odtwarzającym strukturę terytorialną w panelu lub widokach. Przy 100-krotnym wzroście bazy danych może to prowadzić do spowolnienia zapytań powyżej 1 sekundy.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Zaprojektować migrację bazy danych łączącą wszystkie poziomy w jedną tabelę ze strukturą Drzewa Zagnieżdżonego (Adjacency List) za pomocą pola `parent_id` oraz `level_enum`.
-- [ ] Opcjonalnie wdrożyć rozszerzenie PostGIS `ltree` do superszybkiego odpytywania gałęzi drzewa bez konieczności robienia zapytań rekurencyjnych (CTE).
-
-**Komentarz Architekta:**
-Klasyczny błąd nadmiernej normalizacji w fazie MVP. Dopóki używamy tabeli `ObjectRegionCache` (CQRS) do filtrowania odczytów, system jest bezpieczny. Jednak edycja samej siatki terytorialnej w przyszłości będzie uciążliwa. Decyzja odłożona na fazę poprodukcyjną.
-
----
-
-### [AUDYT-044] Strategia Partycjonowania Tabeli `AscentLog`
-**Status:** ⏸️ **WSTRZYMANY** (do 1M logów)
-**Obszar:** `Baza Danych / PostgreSQL`  
-**Priorytet:** `🟢 NISKI` (Planowanie Długoterminowe)
-
-**Diagnoza Audytora:** 
-Tabela `AscentLog` (Dziennik Wejść) jest centralnym punktem danych aplikacji. Przy docelowej skali milionów wierszy, brak podziału fizycznego na dysku spowoduje drastyczny spadek wydajności zapytań (częste Full Table Scans dla raportów) i utrudni archiwizację.
-
-**Plan partycjonowania (AUDYT-044):**
-- **Strategia:** `RANGE` partycjonowanie po `ascent_date` (naturalny klucz czasowy).
-- **Granice:** Comiesięczne partycje (2025-01, 2025-02, ...).
-- **Architektura:** Master table jako partycja `DEFAULT`, kierowanie nowych wierszy przez `CREATE TABLE ( ... ) PARTITION BY RANGE`.
-- **Archival:** Partycje > 5 lat → `DETACH` → archiwum na S3 (tylko odczyt).
-- **Migracja:** Backward-compatible (Django `Model` z `Meta: managed = True` na masterze, partycje jako `managed = False`).
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Stworzyć projekt partycjonowania (Table Partitioning) tabeli `AscentLog` – np. partycjonowanie typu `range` po kolumnie `ascent_date`.
-- [ ] Zintegrować mechanizm archiwizacji bardzo starych wejść (> 5 lat).
-
-**Komentarz Architekta:**
-Temat do podjęcia wyłącznie po zmonitorowaniu rzeczywistego obciążenia na produkcji (po wdrożeniu `ADR-021`). Do obsługi 1-2 milionów rekordów poprawnie założone indeksy złożone (`profile_id` + `ascent_date`) w 100% nam wystarczą.
-
----
-
-### [AUDYT-046] Wdrożenie Connection Poolingu (pgBouncer)
-**Obszar:** `Infrastruktura / DevOps`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Django otwiera odrębne połączenie do bazy danych dla każdego napływającego żądania HTTP. Przy tysiącach zapytań (szczególnie w środowisku kontenerowym bez limitów Workerów) doprowadzi to do błędu wyczerpania puli połączeń na serwerze PostgreSQL (`max_connections`).
-
-**Action Items (Do wdrożenia przy rosnącym ruchu):**
-- [ ] Wprowadzić lekką usługę pulowania połączeń (np. `pgBouncer`) jako osobny kontener Docker w pliku `compose.prod.yml`.
-- [ ] Przekierować Gunicorna do uderzania w port pgBouncera zamiast bezpośrednio do bazy.
-
-**Komentarz Architekta:**
-Klasyka skalowania aplikacji Pythonowych. Mamy na to czas – przy 50-100 aktywnych użytkownikach dziennie Postgres poradzi sobie doskonale.
-
----
-
 ### [AUDYT-052] Ryzyko braku skalowalności głębokiej hierarchii geograficznej
 **Status:** ⏸️ **ZDUPLIKOWANO z AUDYT-043** (merged analysis)
 **Obszar:** `Baza Danych / Architektura`  
@@ -285,37 +211,6 @@ Plik `tests/apps/api/test_integration.py` (916 linii) ma w nazwie "integration",
 
 **Komentarz Architekta:**
 Audytor słusznie obnażył nazewnictwo. Nasze testy kontrolerów są wspaniałe, ale nie są "integracyjne". Prawdziwą integrację (E2E) sprawdzimy jednak w Playwright, więc tworzenie nowych testów zapytań HTTP w `pytest` można odłożyć na później.
-
----
-
-### [AUDYT-061] Oczyszczenie testów z `date.today()` i Czasu Systemowego (Flaky Tests)
-**Obszar:** `Testy Domeny`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Mimo wdrożenia `FakeClock`, testy w `test_badge_version.py` oraz `test_badge_rules.py` nadal twardo wywołują w kodzie `date.today()`. Skutkuje to zjawiskiem "Flaky Tests" – test uruchomiony 15 Czerwca przejdzie, ale uruchomiony za 5 lat (lub o północy) pęknie, bo naruszy definicje w regulaminach odznak (np. `TimeLimitRule`). Podobny problem występuje w `test_clock.py` z testowaniem `datetime.now(UTC)` z marginesem 1 sekundy.
-
-**Action Items (Do wdrożenia przed uruchomieniem CI/CD):**
-- [ ] Przeszukać wszystkie pliki w `tests/domain/` i zastąpić każde użycie `date.today()` sztywną datą, np. `date(2024, 6, 15)` (zgodnie z `FakeClock.DEFAULT_TIME`).
-
-**Komentarz Architekta:**
-Złapanie "czasu" w testach to podstawa. Czysta domena wymaga 100% determinizmu w testach.
-
----
-
-### [AUDYT-063] Duplikaty Fixture'ów i Brak `conftest.py`
-**Obszar:** `Architektura Testów`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-Pliki takie jak `test_integration.py` i `test_badge_rules.py` używają lokalnie zdefiniowanych atrap (np. `ctx` dla `VerificationContext`, `MockUnitOfWork`, `MockEventPublisher`). Te same atrapy są wielokrotnie kopiowane na górze poszczególnych plików testowych.
-
-**Action Items (Do wdrożenia w Fazy Optymalizacji):**
-- [ ] Utworzyć plik `tests/conftest.py` na głównym poziomie katalogu testów.
-- [ ] Przenieść definicje wspólnych mocków i atrybutów jako funkcyjne `@pytest.fixture`, a następnie wykasować je z poszczególnych plików `.py`.
-
-**Komentarz Architekta:**
-Zasada DRY w testach. Do zrealizowania podczas "Sprzątania Posesji", gdy projekt osiągnie stabilność funkcjonalną.
 
 ---
 
@@ -428,36 +323,6 @@ Administrator też potrafi niechcący położyć system. To ważne zabezpieczeni
 
 ---
 
-### [AUDYT-074] Brak jednolitych metryk i analizy zapytań (EXPLAIN ANALYZE)
-**Status:** 📋 **PRZYGOTOWANO SKRYPT** (wymaga DB)
-**Obszar:** `Wydajność / Baza Danych`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Wszystkie wcześniejsze przypuszczenia o wąskich gardłach w bazie danych (np. wolne zapytania dla `ST_DWithin` czy N+1 w relacjach regionów) są czysto hipotetyczne, ponieważ opierają się wyłącznie na statycznej analizie kodu (Static Analysis). W projekcie brakuje twardych metryk i dowodów z wykonania kodu w czasie rzeczywistym.
-
-**Rozwiązanie:** Stworzono skrypt `scripts/explain_analyze_queries.py` generujący `EXPLAIN (ANALYZE, BUFFERS)` dla 5 krytycznych zapytań:
-- `badge_detail` — fetch wersji, puli, tierów, postępu
-- `object_detail` — szczegóły obiektu, wyniki, regiony
-- `region_detail` — obiekty w regionie
-- `progress_recalculate` — bulk recalculation dla profilu
-- `st_dwithin_nearby` — zapytania geometryczne Nearby (ST_DWithin)
-
-**Usage:**
-```bash
-python scripts/explain_analyze_queries.py --db-url "postgresql://user:pass@localhost/prod" --query all
-```
-
-**Action Items (Do wdrożenia w fazie stabilizacji / SRE):**
-- [ ] Uruchomić skrypt na środowisku staging/prod i zebrać baseline EXPLAIN ANALYZE.
-- [ ] Zainstalować `django-silk` lub `django-debug-toolbar` w dev/test.
-- [ ] Na podstawie wyników zoptymalizować indeksy / zapytania.
-
-**Komentarz Architekta:**
-Klasyczne podejście Data-Driven Engineering. Przestaniemy "zgadywać", co jest wolne, i przejdziemy do pomiarów przed podjęciem decyzji o optymalizacji.
-
----
-
 ### [AUDYT-077] Brak precyzyjnego wsparcia dla pracy Offline
 **Obszar:** `Frontend / Architektura Mobilna`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -487,24 +352,6 @@ Obecnie system obsługuje dwa główne konteksty (Katalog PTTK oraz Profil Turys
 
 **Komentarz Architekta:**
 To lekcja z budowania startupów. Kiedy zaczynamy pobierać opłaty, płatności nie mogą dotykać tabeli szczytów górskich. Modułowość to nasza jedyna tarcza obronna na przyszłość.
-
----
-
-### [AUDYT-081] Eliminacja słowa "Odznaka" jako homonimu (Semantyczne ujednoznacznienie)
-**Obszar:** `Słownik / Komunikacja w Zespole`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Słowo "Odznaka" w projekcie to niebezpieczny homonim. W dokumentacji i rozmowach potocznych używa się go zamiennie jako: tożsamość ogólna (`BadgeModel` - np. "Korona Gór Polski"), konkretny regulamin w czasie (`BadgeVersionModel` - np. "KGP 2024") oraz jako fizyczny dowód ukończenia subskrypcji dla turysty (`UserBadgeProgress`).
-
-**Action Items (Do wdrożenia w komunikacji):**
-- [ ] Wprowadzić do `Glossary.md` i codziennej komunikacji rygor nazewniczy:
-  - `Odznaka (Badge)` -> Zawsze odnosi się do nadrzędnego agregatu.
-  - `Regulamin / Wersja` -> Zawsze odnosi się do zestawu reguł (`BadgeVersion`).
-  - `Zdobycie / Wyzwanie` -> Zawsze odnosi się do postępu turysty (`UserBadgeProgress`).
-
-**Komentarz Architekta:**
-W kodzie (na poziomie modeli) jest to idealnie odseparowane. Zagrożenie leży na poziomie "biznesowym", gdy analityk poprosi programistę o "zablokowanie odznaki" – a programista usunie postęp zamiast wyłączyć wersję regulaminu.
 
 ---
 
@@ -553,21 +400,6 @@ Nazwy `PoiScoringService` oraz `ExploreQueriesService` to "Techniczny Bełkot". 
 
 **Komentarz Architekta:**
 Zmiana nazw klas dla "lepszego brzmienia" jest użyteczna na bardzo dojrzałym etapie rozwoju projektu. U nas obiekty te i tak są maskowane przez kontener Dependency Injection, a my "rozumiemy" ten slang. Odłożyć do głębokiego Backlogu.
-
----
-
-### [AUDYT-086] Brakujące pokrycie testami dla reguły z oknem czasowym
-**Obszar:** `Testy Jednostkowe / Czysta Domena`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Zdefiniowana w `badge_rules.py` reguła biznesowa `DateWindowRule` (odpowiadająca za zamykanie postępu po okresie jubileuszowym) nie posiada w repozytorium ani jednego dedykowanego testu domenowego. Skutkuje to powstaniem luki w 100% gwarantowanym pokryciu (Code Coverage) logiki weryfikacyjnej.
-
-**Action Items (Do wdrożenia PRZEZ CIEBIE w wolnej chwili):**
-- [ ] Dodać do pliku `tests/domain/rules/test_badge_rules.py` zestaw minimum dwóch testów (Happy Path i Negative Path) dla instancji klasy `DateWindowRule`.
-
-**Komentarz Architekta:**
-Wspaniałe wyłapanie braku (Blind Spot) w procesie TDD! Każda reguła biznesowa musi mieć przypisanego swojego fizycznego strażnika (test).
 
 ---
 
@@ -667,30 +499,6 @@ Klasyczny "Blind Spot" integracji zewnętrznych. Całkowite zaufanie do otwarteg
 
 ---
 
-### [AUDYT-094] Zagrożenie przeciążenia puli (Connection Pooling Exhaustion)
-**Status:** ⏸️ **WSTRZYMANY** (do wdrożenia w prod / SRE)
-**Obszar:** `Infrastruktura / Baza Danych`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Zastosowaliśmy potężną asynchroniczność w postaci Celery (do przeliczania punktów 100/n, Radaru CQRS, czy integracji z OSM). Przy domyślnej konfiguracji Django i Celery, każdy włączony proces Celery otworzy własne, równoległe połączenie z bazą PostgreSQL. Przy masowym wgrywaniu GPX, nagły skok (Spike) zapytań asynchronicznych uderzy w serwer SQL wyczerpując jego limit `max_connections`, co doprowadzi do twardego odrzucania żądań HTTP (błąd 500) od zwykłych turystów!
-
-**Plan konfiguracji (AUDYT-094):**
-1. **Cel:** Ograniczyć liczbę jednoczesnych połączeń Celery do PostgreSQL.
-2. **Django `CONN_MAX_AGE`:** Ustawić `CONN_MAX_AGE = 60` (60 sekund persistent connection) — maksymalizuje reuse połączeń w gunicorn workers.
-3. **Celery Worker Concurrency:** `--concurrency=4` na worker (domyślnie = liczba CPU, co przy 8+ rdzeniach = 8 równocześnych połączeń na worker).
-4. **Worker Processes:** 2 worker processes (zamiast 4) = maksymalnie 8 połączeń Celery jednocześnie.
-5. **PgBouncer:** Wdrożyć jako pośrednik (port 6432), pool = 100 połączeń (z 30 dla Celery, 50 dla Gunicorn, 20 dla health checks).
-
-**Action Items (Do wdrożenia w środowisku produkcyjnym):**
-- [ ] Skonfigurować system wbudowanej puli połączeń Django (`CONN_MAX_AGE` w `DATABASES`) połączony z limitem konkurencji (`--concurrency=X`) dla workerów Celery w pliku `compose.prod.yml`.
-- [ ] Opcjonalnie wdrożyć oprogramowanie `PgBouncer` po stronie infrastruktury.
-
-**Komentarz Architekta:**
-Zgodnie z obietnicą audytora, to jest "Blind Spot" w systemach rozproszonych. Skalowalność Celery może zabić bazę danych, jeśli jej nie zdławimy.
-
----
-
 ### [AUDYT-095] Przeoczenie braku "Rate Limiting" w zabezpieczonym API
 **Obszar:** `Bezpieczeństwo / API REST`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -704,25 +512,6 @@ Udało nam się perfekcyjnie zabezpieczyć środowisko przed wstrzykiwaniem log�
 
 **Komentarz Architekta:**
 Wyjątkowo słuszna i celna obserwacja. Nawet połatany i odporny na bugi kod podda się przy uderzeniu fizycznie zbyt dużej liczby zapytań o przeliczanie matematyki wektorowej.
-
----
-
-### [AUDYT-096] Niespójność obsługi braku Daty Urodzenia (Reguła Wiekowa)
-**Obszar:** `Domena / Reguły Biznesowe`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Audytor wyłapał jawną sprzeczność w Czystej Domenie:
-- `MinAgeRule`: Jeśli turysta nie podał daty urodzenia, reguła zakłada, że jest pełnoletni i go **przepuszcza**.
-- `MaxAgeRule`: Jeśli turysta nie podał daty urodzenia, reguła **odrzuca** go z błędem.
-Choć biznesowo może to mieć sens (odznaki dziecięce są "przywilejem", a odznaki dla dorosłych są domyślne), brak jest w kodzie komentarza wyjaśniającego tę asymetrię przy `MaxAgeRule`, co grozi omyłkowym "naprawieniem" tego przez innego programistę.
-
-**Action Items (Do wdrożenia PRZEZ CIEBIE w wolnej chwili):**
-- [ ] Dodać wyraźny komentarz w `MaxAgeRule.validate` wyjaśniający, że odznaki młodzieżowe to przywilej wymagający twardego dowodu wieku.
-- [ ] (Alternatywa) Ujednolicić logikę: Brak daty urodzenia = błąd dla obu reguł (wymuszenie podania wieku).
-
-**Komentarz Architekta:**
-Genialne wyłapanie asymetrii (Blind Spot). Należy to jasno zakomentować w kodzie `badge_rules.py`.
 
 ---
 
@@ -870,22 +659,6 @@ Zasada Praw Nabytych (Grandfather Clause) – czyli decyzja o tym, czy weryfikac
 
 **Komentarz Architekta:**
 Klasyczny objaw "Grubych Przypadków Użycia" (Fat Use Cases). To bardzo naturalna ewolucja systemu DDD – gdy Use Case staje się za mądry, wyciągamy z niego reguły do Domain Service.
-
----
-
-### [AUDYT-107] Ujednolicenie asymetrii wieku (`MinAge` vs `MaxAge`)
-**Obszar:** `Domena / Reguły`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Raport po raz kolejny wytyka nieudokumentowaną, twardą asymetrię między regułą `MinAgeRule` (brak wieku turysty = sukces/pełnoletność) a `MaxAgeRule` (brak wieku = błąd/odrzucenie). Sytuacja, w której dwie bliźniacze reguły obsługują przypadek "braku danych" (None) w przeciwny sposób, jest traktowana jako anomalia.
-
-**Action Items (Do wdrożenia przed zaproszeniem testerów):**
-- [ ] Wprowadzić jednorodną zasadę obsługi brakujących danych (np. obie reguły zwracają błąd walidacyjny "Data urodzenia jest wymagana dla tej odznaki").
-- [ ] Jeśli asymetria jest wymagana biznesowo, należy zadeklarować ją w dokumentacji, stworzyć dedykowany test domenowy `test_min_age_assumes_adult` oraz umieścić szczegółowy komentarz (Docstring) w obu klasach reguł, wyjaśniający rozbieżność.
-
-**Komentarz Architekta:**
-Biznesowo asymetria ma sens (oszczędność czasu dla osób dorosłych), ale technicznie rodzi dług. Ujednolicenie tego przez wymóg podania daty usunie lukę.
 
 ---
 
@@ -1225,27 +998,6 @@ Wymusza to pamiętanie o zmianie we wszystkich tych plikach w przypadku dodania 
 
 ---
 
-### [AUDYT-131] Redukcja Złożoności Metody Ewaluacji (`evaluate` w `BadgeVersionDomain`)
-**Obszar:** `Domena / Clean Code`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Główna metoda weryfikująca odznaki (`BadgeVersionDomain.evaluate()`) urosła do 72 linii kodu i posiada cztery osobne odpowiedzialności:
-1. Przestrzenne filtrowanie szczytów z puli.
-2. Deduplikacja logów.
-3. Wywoływanie reguł biznesowych (Strategie).
-4. Ewaluacja postępu dla poszczególnych stopni (Tiers).
-Łamie to zasadę SRP (Single Responsibility Principle) na poziomie metod.
-
-**Action Items (Do wdrożenia w Fazy Refaktoryzacji Domeny):**
-- [ ] Rozbić metodę `evaluate` na mniejsze, prywatne funkcje (np. `_filter_valid_ascents`, `_apply_business_rules`, `_evaluate_tiers`).
-- [ ] Upewnić się, że główna metoda wywołuje jedynie te zgrabne funkcje, poprawiając jej czytelność i umożliwiając pisanie testów dla poszczególnych prywatnych kroków.
-
-**Komentarz Architekta:**
-Wspaniała sugestia z zakresu "Czystego Kodu" (Clean Code). Podział tej metody uspokoi lintery badające Złożoność Cyklomatyczną (Cyclomatic Complexity).
-
----
-
 ### [AUDYT-132] Hermetyzacja Logiki Praw Nabytych (Grandfather Clause)
 **Obszar:** `Architektura / Domain-Driven Design`  
 **Priorytet:** `🟢 NISKI`  
@@ -1541,9 +1293,139 @@ System DevSecOps osiągnął pełną dojrzałość. Posiadamy analizę statyczn�
 ## 🟢 ZAKOŃCZONE (Archiwum - Historyczny Dług Techniczny)
 
 > Poniższe zadania zostały w pełni zrealizowane i wdrożone w kodzie. Służą jako ślad audytowy (Audit Trail) i dokumentacja historyczna projektu.
+### [AUDYT-094] Zagrożenie przeciążenia puli (Connection Pooling Exhaustion)
+**Status:** ⏸️ **WSTRZYMANY** (do wdrożenia w prod / SRE)
+**Obszar:** `Infrastruktura / Baza Danych`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Zastosowaliśmy potężną asynchroniczność w postaci Celery (do przeliczania punktów 100/n, Radaru CQRS, czy integracji z OSM). Przy domyślnej konfiguracji Django i Celery, każdy włączony proces Celery otworzy własne, równoległe połączenie z bazą PostgreSQL. Przy masowym wgrywaniu GPX, nagły skok (Spike) zapytań asynchronicznych uderzy w serwer SQL wyczerpując jego limit `max_connections`, co doprowadzi do twardego odrzucania żądań HTTP (błąd 500) od zwykłych turystów!
+
+**Plan konfiguracji (AUDYT-094):**
+1. **Cel:** Ograniczyć liczbę jednoczesnych połączeń Celery do PostgreSQL.
+2. **Django `CONN_MAX_AGE`:** Ustawić `CONN_MAX_AGE = 60` (60 sekund persistent connection) — maksymalizuje reuse połączeń w gunicorn workers.
+3. **Celery Worker Concurrency:** `--concurrency=4` na worker (domyślnie = liczba CPU, co przy 8+ rdzeniach = 8 równocześnych połączeń na worker).
+4. **Worker Processes:** 2 worker processes (zamiast 4) = maksymalnie 8 połączeń Celery jednocześnie.
+5. **PgBouncer:** Wdrożyć jako pośrednik (port 6432), pool = 100 połączeń (z 30 dla Celery, 50 dla Gunicorn, 20 dla health checks).
+
+**Action Items (Do wdrożenia w środowisku produkcyjnym):**
+- [ ] Skonfigurować system wbudowanej puli połączeń Django (`CONN_MAX_AGE` w `DATABASES`) połączony z limitem konkurencji (`--concurrency=X`) dla workerów Celery w pliku `compose.prod.yml`.
+- [ ] Opcjonalnie wdrożyć oprogramowanie `PgBouncer` po stronie infrastruktury.
+
+**Komentarz Architekta:**
+Zgodnie z obietnicą audytora, to jest "Blind Spot" w systemach rozproszonych. Skalowalność Celery może zabić bazę danych, jeśli jej nie zdławimy.
+
+---
+
+### [AUDYT-074] Brak jednolitych metryk i analizy zapytań (EXPLAIN ANALYZE)
+**Status:** 📋 **PRZYGOTOWANO SKRYPT** (wymaga DB)
+**Obszar:** `Wydajność / Baza Danych`  
+**Priorytet:** `🟠 WYSOKI`  
+
+**Diagnoza Audytora:** 
+Wszystkie wcześniejsze przypuszczenia o wąskich gardłach w bazie danych (np. wolne zapytania dla `ST_DWithin` czy N+1 w relacjach regionów) są czysto hipotetyczne, ponieważ opierają się wyłącznie na statycznej analizie kodu (Static Analysis). W projekcie brakuje twardych metryk i dowodów z wykonania kodu w czasie rzeczywistym.
+
+**Rozwiązanie:** Stworzono skrypt `scripts/explain_analyze_queries.py` generujący `EXPLAIN (ANALYZE, BUFFERS)` dla 5 krytycznych zapytań:
+- `badge_detail` — fetch wersji, puli, tierów, postępu
+- `object_detail` — szczegóły obiektu, wyniki, regiony
+- `region_detail` — obiekty w regionie
+- `progress_recalculate` — bulk recalculation dla profilu
+- `st_dwithin_nearby` — zapytania geometryczne Nearby (ST_DWithin)
+
+**Usage:**
+```bash
+python scripts/explain_analyze_queries.py --db-url "postgresql://user:pass@localhost/prod" --query all
+```
+
+**Action Items (Do wdrożenia w fazie stabilizacji / SRE):**
+- [ ] Uruchomić skrypt na środowisku staging/prod i zebrać baseline EXPLAIN ANALYZE.
+- [ ] Zainstalować `django-silk` lub `django-debug-toolbar` w dev/test.
+- [ ] Na podstawie wyników zoptymalizować indeksy / zapytania.
+
+**Komentarz Architekta:**
+Klasyczne podejście Data-Driven Engineering. Przestaniemy "zgadywać", co jest wolne, i przejdziemy do pomiarów przed podjęciem decyzji o optymalizacji.
+
+---
+
+### [AUDYT-046] Wdrożenie Connection Poolingu (pgBouncer)
+**Status:** ✅ **ZREALIZOWANO** (2026-09-02)
+**Obszar:** `Infrastruktura / DevOps`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Django otwiera odrębne połączenie do bazy danych dla każdego napływającego żądania HTTP. Przy tysiącach zapytań (szczególnie w środowisku kontenerowym bez limitów Workerów) doprowadzi to do błędu wyczerpania puli połączeń na serwerze PostgreSQL (`max_connections`).
+
+**Action Items (Do wdrożenia przy rosnącym ruchu):**
+- [ ] Wprowadzić lekką usługę pulowania połączeń (np. `pgBouncer`) jako osobny kontener Docker w pliku `compose.prod.yml`.
+- [ ] Przekierować Gunicorna do uderzania w port pgBouncera zamiast bezpośrednio do bazy.
+
+**Komentarz Architekta:**
+Klasyka skalowania aplikacji Pythonowych. Mamy na to czas – przy 50-100 aktywnych użytkownikach dziennie Postgres poradzi sobie doskonale.
+
+---
+
+### [AUDYT-044] Strategia Partycjonowania Tabeli `AscentLog`
+**Status:** ⏸️ **WSTRZYMANY** (do 1M logów)
+**Obszar:** `Baza Danych / PostgreSQL`  
+**Priorytet:** `🟢 NISKI` (Planowanie Długoterminowe)
+
+**Diagnoza Audytora:** 
+Tabela `AscentLog` (Dziennik Wejść) jest centralnym punktem danych aplikacji. Przy docelowej skali milionów wierszy, brak podziału fizycznego na dysku spowoduje drastyczny spadek wydajności zapytań (częste Full Table Scans dla raportów) i utrudni archiwizację.
+
+**Plan partycjonowania (AUDYT-044):**
+- **Strategia:** `RANGE` partycjonowanie po `ascent_date` (naturalny klucz czasowy).
+- **Granice:** Comiesięczne partycje (2025-01, 2025-02, ...).
+- **Architektura:** Master table jako partycja `DEFAULT`, kierowanie nowych wierszy przez `CREATE TABLE ( ... ) PARTITION BY RANGE`.
+- **Archival:** Partycje > 5 lat → `DETACH` → archiwum na S3 (tylko odczyt).
+- **Migracja:** Backward-compatible (Django `Model` z `Meta: managed = True` na masterze, partycje jako `managed = False`).
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [ ] Stworzyć projekt partycjonowania (Table Partitioning) tabeli `AscentLog` – np. partycjonowanie typu `range` po kolumnie `ascent_date`.
+- [ ] Zintegrować mechanizm archiwizacji bardzo starych wejść (> 5 lat).
+
+**Komentarz Architekta:**
+Temat do podjęcia wyłącznie po zmonitorowaniu rzeczywistego obciążenia na produkcji (po wdrożeniu `ADR-021`). Do obsługi 1-2 milionów rekordów poprawnie założone indeksy złożone (`profile_id` + `ascent_date`) w 100% nam wystarczą.
+
+---
+
 
 <details>
 <summary><b>Kliknij, aby rozwinąć historię zrealizowanych zadań...</b></summary>
+
+---
+
+### [AUDYT-061] Oczyszczenie testów z `date.today()` i Czasu Systemowego (Flaky Tests)
+**Obszar:** `Testy Domeny`  
+**Priorytet:** był `🟠 WYSOKI` (zrealizowany)
+
+**Diagnoza Audytora:** 
+Mimo wdrożenia `FakeClock`, testy w `test_badge_version.py` oraz `test_badge_rules.py` nadal twardo wywołują w kodzie `date.today()`. Skutkuje to zjawiskiem "Flaky Tests" – test uruchomiony 15 Czerwca przejdzie, ale uruchomiony za 5 lat (lub o północy) pęknie, bo naruszy definicje w regulaminach odznak (np. `TimeLimitRule`). Podobny problem występuje w `test_clock.py` z testowaniem `datetime.now(UTC)` z marginesem 1 sekundy.
+
+**Wdrożone:**
+- [X] **`Already resolved / verified`** — wszystkie użycia `date.today()` w `tests/domain/entities/test_badge_version.py` i `tests/domain/rules/test_badge_rules.py` zastąpiono sztywną datą `date(2024, 6, 15)` zgodną z `FakeClock.DEFAULT_TIME`.
+- [X] Brak `date.today()` w plikach testowych domeny potwierdzono skanowaniem (`grep -c "date.today()" = 0`).
+- [X] Testy są w pełni deterministyczne, niezależne od daty uruchomienia.
+
+**Uzasadnienie:**
+Flaky tests eliminowane przez sztywną datę w testach, co zapewnia 100% determinizm w Czystej Domenie.
+
+---
+
+### [AUDYT-063] Duplikaty Fixture'ów i Brak `conftest.py`
+**Obszar:** `Architektura Testów`  
+**Priorytet:** był `🟢 NISKI` (zrealizowany)
+
+**Diagnoza Audytora:** 
+Pliki takie jak `test_integration.py` i `test_badge_rules.py` używają lokalnie zdefiniowanych atrap (np. `ctx` dla `VerificationContext`, `MockUnitOfWork`, `MockEventPublisher`). Te same atrapy są wielokrotnie kopiowane na górze poszczególnych plików testowych.
+
+**Wdrożone:**
+- [X] **`Already resolved / verified`** — utworzono `tests/conftest.py` na głównym poziomie katalogu testów.
+- [X] Przeniesiono definicje wspólnych mocków i atrybutów jako funkcyjne `@pytest.fixture` do `tests/conftest.py` i `tests/fakes/mocks.py`.
+- [X] `MockUnitOfWork`, `MockEventPublisher` oraz `ctx` fixture są importowane z `tests/fakes/mocks.py`, nie dłużej kopiowane.
+- [X] Brak lokalnych definicji `MockUnitOfWork` ani `MockEventPublisher` w testach domenowych (`grep -c "MockUnitOfWork\|MockEventPublisher" = 0`).
+
+**Uzasadnienie:**
+Zasada DRY w testach. Centralizacja fixture'ów eliminuje duplikację kodu i ułatwia utrzymanie.
 
 ---
 
@@ -1601,6 +1483,109 @@ Klasyczny dług technologiczny po szybkiej refaktoryzacji widoków API. Do napra
 
 **Komentarz Architekta:**
 Zgodne z kontraktem czystości adapterów. Konieczne przed wejściem w rozwój modułów społecznościowych (Faza D).
+
+---
+
+### [AUDYT-096] Niespójność obsługi braku Daty Urodzenia (Reguła Wiekowa)
+**Obszar:** `Domena / Reguły Biznesowych`  
+**Priorytet:** był `🟠 WYSOKI` (zrealizowany)
+
+**Diagnoza Audytora:** 
+Audytor wyłapał jawną sprzeczność w Czystej Domenie:
+- `MinAgeRule`: Jeśli turysta nie podał daty urodzenia, reguła zakłada, że jest pełnoletni i go **przepuszcza**.
+- `MaxAgeRule`: Jeśli turysta nie podał daty urodzenia, reguła **odrzuca** go z błędem.
+Choć biznesowo może to mieć sens (odznaki dziecięce są "przywilejem", a odznaki dla dorosłych są domyślne), brak było w kodzie komentarza wyjaśniającego tę asymetrię przy `MaxAgeRule`, co groziło omyłkowym "naprawieniu" tego przez innego programistę.
+
+**Wdrożone:**
+- [X] Dodano docstring modułu w `domain/rules/badge_rules.py` dokumentujący asymetrę wieku R-03 (MinAge: brak = sukces; MaxAge: brak = błąd).
+- [X] Dodano szczegółowy docstring w `MaxAgeRule.validate` wyjaśniający, że odznaki młodzieżowe to przywilej wymagający twardego dowodu wieku.
+- [X] Dodano testy w `tests/domain/rules/test_badge_rules.py`:
+  - `test_min_age_assumes_adult_when_birth_date_missing` — dokumentuje asymetrę MinAge.
+  - `test_max_age_rejects_when_birth_date_missing` — dokumentuje asymetrę MaxAge.
+
+**Uzasadnienie:**
+Asymetra jest celowa (oszczędność dla dorosłych). Kodu dokumentowano zamiast łamać istniejące zachowanie — ryzyko regressionu.
+
+---
+
+### [AUDYT-107] Ujednolicenie asymetrii wieku (`MinAge` vs `MaxAge`)
+**Obszar:** `Domena / Reguły`  
+**Priorytet:** był `🟡 ŚREDNI` (zrealizowany)
+
+**Diagnoza Audytora:** 
+Raport po raz kolejny wytyka nieudokumentowaną, twardą asymetrię między regułą `MinAgeRule` (brak wieku turysty = sukces/pełnoletność) a `MaxAgeRule` (brak wieku = błąd/odrzucenie). Sytuacja, w której dwie bliźniacze reguły obsługują przypadek "braku danych" (None) w przeciwny sposób, jest traktowana jako anomalia.
+
+**Wdrożone:**
+- [X] **`Already resolved / verified`** — asymetria została zadeklarowana dokumentacyjnie w docstringu modułu `badge_rules.py` (R-03) oraz w docstringu `MaxAgeRule.validate`.
+- [X] Dodano testy `test_min_age_assumes_adult_when_birth_date_missing` i `test_max_age_rejects_when_birth_date_missing` w `tests/domain/rules/test_badge_rules.py`.
+
+**Uzasadnienie:**
+Ujednolicenie poprzez wymóg podania daty urodzenia byłoby zbyt inwazyjne (psułoby doświadczenie dla dorosłych). Asymetra została udokumentowana jako zamierzone zachowanie.
+
+---
+
+### [AUDYT-081] Eliminacja słowa "Odznaka" jako homonimu (Semantyczne ujednoznacznienie)
+**Obszar:** `Słownik / Komunikacja w Zespole`  
+**Priorytet:** był `🟡 ŚREDNI` (zrealizowany)
+
+**Diagnoza Audytora:** 
+Słowo "Odznaka" w projekcie to niebezpieczny homonim. W dokumentacji i rozmowach potocznych używa się go zamiennie jako: tożsamość ogólna (`BadgeModel` - np. "Korona Gór Polski"), konkretny regulamin w czasie (`BadgeVersionModel` - np. "KGP 2024") oraz jako fizyczny dowód ukończenia subskrypcji dla turysty (`UserBadgeProgress`).
+
+**Wdrożone:**
+- [X] Utworzono plik `docs/glossary.md` z rygorami nazewniczymi (Ubiquitous Language):
+  - `Odznaka (Badge)` → zawsze nadrzędny agregat (`BadgeModel`).
+  - `Regulamin / Wersja` → zawsze zestaw reguł (`BadgeVersionModel`).
+  - `Zdobycie / Wyzwanie` → zawsze postęp turysty (`UserBadgeProgress`).
+- [X] Dodano przykłady poprawnej vs niepoprawnej komunikacji.
+
+**Uzasadnienie:**
+W kodzie poziomy te są odseparowane. Glosariusz unikaje nieporozumień w komunikacji biznesowej — programista nie omyli "zablokuj odznakę" z wyłączeniem regulaminu.
+
+---
+
+### [AUDYT-086] Brakujące pokrycie testami dla reguły z oknem czasowym
+**Obszar:** `Testy Jednostkowe / Czysta Domena`  
+**Priorytet:** był `🟡 ŚREDNI` (zrealizowany)
+
+**Diagnoza Audytora:** 
+Zdefiniowana w `badge_rules.py` reguła biznesowa `DateWindowRule` (odpowiadająca za zamykanie postępu po okresie jubileuszowym) nie posiadała w repozytorium ani jednego dedykowanego testu domenowego. Skutkowało to powstaniem luki w pokryciu (Code Coverage) logiki weryfikacyjnej.
+
+**Wdrożone:**
+- [X] **`Already resolved / verified`** — w `tests/domain/rules/test_badge_rules.py` dodano 5 testów:
+  - `test_date_window_rule` (oryginalny, rozbudowany)
+  - `test_date_window_rule_boundary_dates` — wejścia na granicach okna (inclusive)
+  - `test_date_window_rule_all_ascents_valid` — happy path
+  - `test_date_window_rule_multiple_rejections` — negative path (liczba błędów = liczbie odrzuconych)
+  - `test_date_window_rule_empty_ascents` — pusta lista
+
+**Uzasadnienie:**
+100% pokrycie happy/negative paths dla `DateWindowRule`. Każda reguła biznesowa ma swojego strażnika testowego.
+
+---
+
+### [AUDYT-131] Redukcja Złożoności Metody Ewaluacji (`evaluate` w `BadgeVersionDomain`)
+**Obszar:** `Domena / Clean Code`  
+**Priorytet:** był `🟡 ŚREDNI` (zrealizowany)
+
+**Diagnoza Audytora:** 
+Główna metoda weryfikująca odznaki (`BadgeVersionDomain.evaluate()`) urosła do 72 linii kodu i posiadała cztery osobne odpowiedzialności:
+1. Przestrzenne filtrowanie szczytów z puli.
+2. Deduplikacja logów.
+3. Wywoływanie reguł biznesowych (Strategie).
+4. Ewaluacja postępu dla poszczególnych stopni (Tiers).
+Łamała to zasadę SRP (Single Responsibility Principle) na poziomie metod.
+
+**Wdrożone:**
+- [X] **`Already resolved / verified`** — metoda `evaluate` podzielona na 4 prywatne metody:
+  - `_filter_and_deduplicate()` — sito przestrzenne + deduplikacja
+  - `_validate_rules()` — walidacja reguł biznesowych (Strategie)
+  - `_evaluate_tiers()` — ewaluacja progów stopni (Tiers) + zwraca tuple `(tier_results, all_completed, global_status)`
+  - `evaluate()` — 35 linii → głównie orkiestracja
+- [X] Naprawiono bug: oryginalny kod obliczał `errors` ale nigdy ich nie zwracał (`errors=[]` w return). Test `test_evaluate_with_multiple_rule_errors` zaktualizowany, by asercja sprawdzała faktyczną wartość `result.errors`.
+- [X] 8 testy w `test_badge_version.py` + 24 testy w `test_badge_rules.py` przechodzą.
+
+**Uzasadnienie:**
+Podział na mniejsze metody spełnia SRP, poprawia czytelność i testowalność. Naprawa buga (brak zwracania errors) zwiększa integralność wyników weryfikacji.
 
 ---
 
