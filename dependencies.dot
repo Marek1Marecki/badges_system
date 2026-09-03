@@ -10,6 +10,7 @@ digraph G {
     "domain.entities" [fillcolor="lightblue"];
     "domain.entities.badge_version" [fillcolor="lightblue"];
     "domain.entities.tourist_profile" [fillcolor="lightblue"];
+    "domain.enums" [fillcolor="lightblue"];
     "domain.events" [fillcolor="lightblue"];
     "domain.exceptions" [fillcolor="lightblue"];
     "domain.rules" [fillcolor="lightblue"];
@@ -190,11 +191,13 @@ digraph G {
   "application.services.poi_scoring_service" -> "application.ports.cache_port";
   "application.services.poi_scoring_service" -> "application.ports.clock_port";
   "application.services.poi_scoring_service" -> "application.ports.user_progress_port";
+  "application.services.poi_scoring_service" -> "domain.enums";
   "application.services.poi_scoring_service" -> "domain.services.badge_eligibility_domain_service";
   "application.services.poi_scoring_service" -> "domain.value_objects.verification_context";
   "application.use_cases.advance_logistic_status" -> "application.exceptions";
   "application.use_cases.advance_logistic_status" -> "application.ports.event_publisher_port";
   "application.use_cases.advance_logistic_status" -> "application.ports.user_progress_port";
+  "application.use_cases.advance_logistic_status" -> "domain.enums";
   "application.use_cases.advance_logistic_status" -> "domain.events";
   "application.use_cases.analyze_gpx_track" -> "application.dto.ascent_dto";
   "application.use_cases.analyze_gpx_track" -> "application.exceptions";
@@ -241,6 +244,7 @@ digraph G {
   "application.use_cases.unsubscribe_badge" -> "application.ports.event_publisher_port";
   "application.use_cases.unsubscribe_badge" -> "application.ports.uow_port";
   "application.use_cases.unsubscribe_badge" -> "application.ports.user_progress_port";
+  "application.use_cases.unsubscribe_badge" -> "domain.enums";
   "application.use_cases.unsubscribe_badge" -> "domain.events";
   "application.use_cases.verify_badge" -> "application.exceptions";
   "application.use_cases.verify_badge" -> "application.ports.badge_repository_port";

@@ -4,6 +4,7 @@ from application.exceptions import ConflictError, UseCaseError
 from application.ports.event_publisher_port import DomainEventPublisherPort
 from application.ports.uow_port import UnitOfWorkPort
 from application.ports.user_progress_port import UserProgressRepositoryPort
+from domain.enums import DomainStatus
 from domain.events import UserProgressStateChanged
 
 
@@ -35,7 +36,7 @@ class UnsubscribeBadgeUseCase:
         if not progress:
             raise UseCaseError(f"Nie subskrybujesz odznaki {badge_code}.")
 
-        if progress.domain_status == "COMPLETED" or progress.logistic_status is not None:
+        if progress.domain_status == DomainStatus.COMPLETED or progress.logistic_status is not None:
             raise ConflictError("Nie można porzucić odznaki, która została ukończona.")
 
         # Atomowa transakcja

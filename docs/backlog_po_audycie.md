@@ -1057,18 +1057,23 @@ Snapshot `data/reference/` jest obecnie przechowywany w publicznym tekście (sko
 
 ### [AUDYT-136] Eliminacja "Magic Strings" i Konsolidacja Statusów (Enums)
 **Obszar:** `Domena / Słowniki`  
-**Priorytet:** `🟠 WYSOKI`  
+**Priorytet:** `🟠 ZREALIZOWANO`  
+**Status:** `🟢 Implementation`
 
 **Diagnoza Audytora:** 
-Stan odznaki (`NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`) oraz stan logistyczny (`WAITING_FOR_SEND`, `ALBUM` itp.) funkcjonują obecnie w kodzie jako zwykłe ciągi znaków (Magic Strings) i to w trzech różnych miejscach: jako `TextChoices` w modelach Django, jako stringi w agregacie `BadgeVersionDomain` oraz jako słownik przejść w `AdvanceLogisticStatusUseCase`. Zmiana nazwy jednego ze statusów wymusi jednoczesną edycję w wielu plikach.
+Stan odznaki (`NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`) oraz stan logistyczny (`WAITING_FOR_SEND`, `ALBUM` itp.) funkcjonowały w kodzie jako Magic Strings.
 
-**Action Items (Do wdrożenia w Fazy Refaktoryzacji):**
-- [ ] Utworzyć centralny plik `domain/enums.py` (lub `shared_kernel/enums.py`) zawierający twardo typowane klasy `Enum` dla statusów biznesowych.
-- [ ] Podmienić wywołania tekstowe w całej Czystej Domenie i Use Case'ach na odwołania do Enuma (np. `DomainStatus.COMPLETED.value`).
-- [ ] Zmodyfikować modele w `apps/tourists/models.py`, by korzystały z centralnych Enumów jako `choices`.
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ Utworzono `domain/enums.py` z `DomainStatus(StrEnum)` i `LogisticStatus(StrEnum)` — single source of truth
+- ✅ `AdvanceLogisticStatusUseCase`: `VALID_TRANSITIONS` dict → Enumy; parametr `new_logistic_status: LogisticStatus`; konwersja dla mypy
+- ✅ `PoiScoringService`: porównania na `DomainStatus.COMPLETED`
+- ✅ `VerifyBadgeUseCase`, `UnsubscribeBadgeUseCase` — enumy
+- ✅ `apps/tourists/models.py`: `TextChoices` zachowane (wartości == enum values, kompatybilne z DB)
+
+**Weryfikacja:** 850 testów, 80.76% cov, mypy OK, 5/5 lint-imports KEPT
 
 **Komentarz Architekta:**
-Wspaniałe wyłapanie braku (DRY - Don't Repeat Yourself) na poziomie definicji. W Czystej Architekturze Enumy domenowe to "złoty standard". Zlikwiduje to ryzyko literówek (Typo) na poziomie kompilacji.
+W Czystej Architekturze Enumy domenowe to "złoty standard". Zlikwidowano ryzyko literówek na etapie kompilacji.
 
 ---
 
@@ -2818,3 +2823,4 @@ Podobnie jak modele, panel administracyjny rozrósł się ponad miarę MVP. Czas
 | 106 | Grandfather Clause → Domain Service | 🟠 | ✅ | `domain/services/badge_awarding_domain_service.py` (nowy), `application/use_cases/verify_badge.py`, `bootstrap/container.py`, `tests/domain/services/test_badge_awarding_domain_service.py` (nowy) |
 
 | 132 | Hermetyzacja Praw Nabytów (Grandfather Clause) | 🟢 | ✅ | `domain/services/badge_awarding_domain_service.py`, `start_badge_progress.py`, `container.py`, `tests/domain/services/` |
+| 136 | Eliminacja Magic Strings → Enums | 🟠 | ✅ | `domain/enums.py` (nowy), `advance_logistic_status.py`, `poi_scoring_service.py`, `unsubscribe_badge.py` |

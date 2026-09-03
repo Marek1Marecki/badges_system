@@ -9,17 +9,20 @@ from datetime import date
 from application.exceptions import IllegalStateTransitionError, UseCaseError
 from application.ports.event_publisher_port import DomainEventPublisherPort
 from application.ports.user_progress_port import UserProgressRepositoryPort
+from domain.enums import DomainStatus, LogisticStatus
 from domain.events import BadgeStatusChanged
 
 # Definicja dozwolonych przejść (Maszyna stanów Trackera B2C)
-VALID_TRANSITIONS = {
-    None: ["WAITING_FOR_SEND", "WAITING_FOR_VERIFICATION"],
-    "WAITING_FOR_SEND": ["WAITING_FOR_VERIFICATION"],
-    # Turysta może cofnąć pomyłkowe kliknięcie "Wysłano"
-    "WAITING_FOR_VERIFICATION": ["WAITING_FOR_RECEIVING", "WAITING_FOR_SEND"],
-    # Turysta może cofnąć pomyłkowe kliknięcie "Odebrano z PTTK"
-    "WAITING_FOR_RECEIVING": ["ALBUM", "WAITING_FOR_VERIFICATION"],
-    "ALBUM": ["WAITING_FOR_RECEIVING"],  # Opcjonalne wycofanie z albumu
+# Klucze i wartości używają centralnych Enumów (AUDYT-136: brak magic strings)
+VALID_TRANSITIONS: dict[LogisticStatus | None, list[LogisticStatus]] = {
+    None: [LogisticStatus.WAITING_FOR_SEND, LogisticStatus.WAITING_FOR_VERIFICATION],
+    LogisticStatus.WAITING_FOR_SEND: [LogisticStatus.WAITING_FOR_VERIFICATION],
+    LogisticStatus.WAITING_FOR_VERIFICATION: [
+        LogisticStatus.WAITING_FOR_RECEIVING,
+        LogisticStatus.WAITING_FOR_SEND,
+    ],
+    LogisticStatus.WAITING_FOR_RECEIVING: [LogisticStatus.ALBUM, LogisticStatus.WAITING_FOR_VERIFICATION],
+    LogisticStatus.ALBUM: [LogisticStatus.WAITING_FOR_RECEIVING],
 }
 
 
@@ -39,7 +42,7 @@ class AdvanceLogisticStatusUseCase:
         self,
         profile_id: int,
         progress_id: int,
-        new_logistic_status: str,
+        new_logistic_status: LogisticStatus,
         status_date: date,
         actor_user_id: int,
     ) -> None:
@@ -48,7 +51,7 @@ class AdvanceLogisticStatusUseCase:
         Args:
           profile_id: ID profilu turysty.
           progress_id: ID postępu odznaki.
-          new_logistic_status: Nowy status logistyczny.
+          new_logistic_status: Nowy status logistyczny (enum).
           status_date: Data zmiany statusu.
           actor_user_id: ID użytkownika (User) wykonującego akcję — dla audit trailu.
 
@@ -60,20 +63,20 @@ class AdvanceLogisticStatusUseCase:
           IllegalStateTransitionError: Gdy domena nie jest COMPLETED (S-03)
             lub przejście FSM jest nielegalne (Kanban). AUDYT-018.
         """
-        # 1. Weryfikacja tożsamości i istnienia zasobu
         progress = self._progress_repo.get_progress_by_id(profile_id=profile_id, progress_id=progress_id)
         if not progress:
             raise UseCaseError(f"Postęp odznaki (ID: {progress_id}) nie istnieje lub brak dostępu.")
 
         # 2. Invariant S-03: Logistyka dostępna TYLKO dla matematycznie zdobytych odznak
-        if progress.domain_status != "COMPLETED":
+        if progress.domain_status != DomainStatus.COMPLETED:
             raise IllegalStateTransitionError(
                 "Nie można aktualizować logistyki dla odznaki, "
                 "która nie spełniła jeszcze wymagań regulaminowych (Czysta Domena)."
             )
 
         # 3. Walidacja FSM (Maszyny Stanów)
-        allowed_next = VALID_TRANSITIONS.get(progress.logistic_status, [])
+        current_status = LogisticStatus(progress.logistic_status) if progress.logistic_status else None
+        allowed_next = VALID_TRANSITIONS.get(current_status, [])
         if new_logistic_status not in allowed_next:
             raise IllegalStateTransitionError(
                 f"Niedozwolone przejście stanu logistycznego. "

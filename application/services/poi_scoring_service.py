@@ -25,6 +25,7 @@ from application.ports.user_progress_port import (
 
 # AUDYT-035: backward-compat re-export — testy importują COLOR_PRIORITY
 # z tego modułu. Przekierowujemy do Czystej Dziedziny.
+from domain.enums import DomainStatus
 from domain.services.badge_eligibility_domain_service import (  # noqa: F401
     COLOR_PRIORITY,
     BadgeEligibilityDomainService,
@@ -78,7 +79,9 @@ class PoiScoringService:
 
         active_progresses = self._progress_repo.get_active_progresses(profile_id)
 
-        completed_badges = frozenset([p.badge_code for p in active_progresses if p.domain_status == "COMPLETED"])
+        completed_badges = frozenset(
+            p.badge_code for p in active_progresses if p.domain_status == DomainStatus.COMPLETED
+        )
 
         context = VerificationContext(
             evaluation_time=now,
@@ -94,7 +97,7 @@ class PoiScoringService:
         final_colors: dict[int, str] = {}
 
         for prog in active_progresses:
-            if prog.domain_status == "COMPLETED":
+            if prog.domain_status == DomainStatus.COMPLETED:
                 continue
 
             # MAGIA WIZUALIZACJI: Rozwiązanie Leniwego Zakotwiczenia
