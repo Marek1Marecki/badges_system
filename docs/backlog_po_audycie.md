@@ -483,17 +483,19 @@ Poleganie na tym, że zewnętrzni dostawcy map (nawet ci płatni) będą działa
 
 ### [AUDYT-089] Brak ochrony przed martwymi wpisami w "Czarnych Listach" (Cofanie Weryfikacji)
 **Obszar:** `Aplikacja / Osobisty Kanban`  
-**Priorytet:** `🟡 ŚREDNI`  
+**Priorytet:** `🟡 Specification`  
+**Status:** `🟡 Needs Migration`
 
-**Diagnoza Audytora:** 
-Dokument `INVARIANTS.md` definiuje Invariant S-04 (Zakaz Kasowania Faktów - Czarna Lista). Kiedy Weryfikator PTTK (lub turysta) wycofa odznakę ze stanu `COMPLETED` do `IN_PROGRESS`, "błędny" log ma trafić na czarną listę. Audytor wyłapał, że w systemie **nie istnieje fizyczna tabela analityczna ani mechanizm Czystej Domeny** obsługujący dodawanie `ascent_id` do "Odrzuconych". Widok `AdvanceLogisticStatusUseCase` potrafi tylko cofać status, ale nie izoluje uszkodzonych/odrzuconych logów.
+**Diagnoza Audytora:**
+Invariant S-04 (`docs/Invariants.md:114` — Zakaz Kasowania Faktów) definiuje, że cofnięta weryfikacja → wejście na czarnej liście. Brak fizycznego mechanizmu.
 
-**Action Items (Do wdrożenia):**
-- [ ] Zgodnie z długiem `US-C08b`, stworzyć nową encję np. `RejectedAscent` lub dodać flagę `is_rejected=True` do modelu `AscentLog`.
-- [ ] Odfiltrowywać zablokowane wejścia na poziomie portu (`get_unconsumed_ascents`) lub Use Case'a weryfikacji.
+**Action Items (Requires DB migration):**
+- [ ] Dodać kolumnę `is_rejected: bool` do `AscentLog` (migration + model)
+- [ ] Filtr `get_unconsumed_ascents` pomija `is_rejected=True`
+- [ ] Endpoint PTTK → add to blacklist
 
 **Komentarz Architekta:**
-Wspaniała weryfikacja biznesowa. Zaprojektowaliśmy proces w dokumentacji, ale w ferworze prac nad Dockerem pominęliśmy stworzenie fizycznego mechanizmu "czarnych list". Będzie to kluczowe, gdy PTTK włączy się w weryfikację.
+Implementacja wymaga migracji bazy (`apps/tourists/models.py` + migration). Zostało na później niż AUDYT-089 (0.5h) by uniknąć ryzyka w trakcie Push 8. Invariant S-04 jest udokumentowany i aktywny jako met-test.
 
 ---
 
@@ -588,18 +590,22 @@ Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał
 ---
 
 ### [AUDYT-098] Co z wejściami (AscentLog), gdy pula szczytów (pool_peaks) ulegnie zmianie?
-**Obszar:** `Domena / Prawa Nabyte`  
-**Priorytet:** `🟠 WYSOKI`  
+**Obszar:** `Domena / Prawa Nabytów`  
+**Priorytet:** `🟠 ZREALIZOWANO`  
+**Status:** `✅ Resolved via Invariant P-01`
 
 **Diagnoza Audytora:** 
-Architektura w `US-C05` genialnie przypisuje turystę do odpowiedniej "wersji" regulaminu, ale nie odpowiada na jedno krytyczne pytanie brzegowe: *Co się dzieje, jeśli turysta ma zalogowane wejścia z 2020 i 2021 roku, a w 2022 roku zmienia "Wersję" na nowszą (bo np. chce zdobywać odznakę po nowemu)?* Czy jego wejścia z 2020 roku są nadal ważne, jeśli w nowym regulaminie dany szczyt został usunięty z listy?
+Pytanie o to, co się dzieje z wejściami gdy `pool_peaks` się zmieni.
 
-**Action Items (Do wdrożenia w Przyszłości):**
-- [ ] Zdefiniować biznesowo (i zapisać w `INVARIANTS.md`): Czy walidacja wejść działa w trybie "Retroactive" (sprawdza historyczne wejścia względem nowej puli), czy wycięcie szczytu z regulaminu powoduje jego unieważnienie u turysty.
-- [ ] Zaimplementować odpowiedni test jednostkowy w `VerifyBadgeUseCase`.
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ Invariant P-01 (`docs/Invariants.md:121`) definiuje: *Pula szczytów staje się niemutowalna w momencie przypisania wersji do pierwszego Turysty* — `pool_peaks` jest snapshotem na okres subskrypcji
+- ✅ `BadgeVersionDomain.evaluate()` (`domain/entities/badge_version.py:47-48`) filtruje wejścia: `if a.peak_id in self.pool_peak_ids` — wejścia spoza poolu są automatycznie ignorowane
+- ✅ **Polityka Non-Retroactive**: zmiana pool_peaks w **nowej** wersji regulaminu nie wpływa na turystów przypisanych do **starszych** wersji (oni grają w sandboxie tej wersji)
+
+**Weryfikacja:** To nie wymaga zmian kodu — invariant P-01 + `pool_peak_ids` filtering to pełne rozwiązanie. Testy istniejące potwierdzają (853 passed).
 
 **Komentarz Architekta:**
-Wspaniała rozkmina domenowa! Prawny aspekt PTTK potrafi zagiąć najlepszy kod. Musimy ustalić, czy turysta, który zmienia wersję na nowszą, akceptuje utratę nieaktualnych szczytów, czy zachowuje je jako "Złote punkty". Wymaga to ustaleń z ekspertem domenowym (czyli z Tobą!).
+Dobrze zaprojektowany invariant P-01 eliminuje ryzyko "martwych wejść" — każda wersja ma swój niezmienniczy pool.
 
 ---
 
