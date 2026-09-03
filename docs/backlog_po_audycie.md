@@ -836,55 +836,6 @@ Obecnie system został celowo zabezpieczony poprzez usunięcie *Stacktrace'ów* 
 **Komentarz Architekta:**
 Nie polegamy na logach w konsoli do diagnozowania błędów na produkcji. Sentry to obecnie standard przemysłowy.
 
----
-
-### [AUDYT-120] Brak audytowania zmian operacyjnych (Data Audit Trail)
-**Obszar:** `Baza Danych / Compliance`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Jeśli administrator (lub złośliwy skrypt) w systemie testowym zmieni definicję regulaminu lub wiek turysty w `TouristProfile`, nie zostawi to w systemie żadnego śladu – nadpisany rekord nie ma historii wersji na poziomie relacyjnym. Rodzi to potężne problemy z rozstrzyganiem sporów (Dlaczego odznaka została cofnięta?).
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Wdrożyć bibliotekę `django-simple-history` dla kluczowych modeli biznesowych (np. `UserBadgeProgress`, `TouristProfile`), która automatycznie archiwizuje i wiąże zmianę rekordu z użytkownikiem wykonującym operację (`history_user`).
-
-**Komentarz Architekta:**
-W MVP to niepotrzebny koszt optymalizacyjny, jednak z chwilą wejścia w produkcję i wpuszczenia moderatorów (Weryfikatorów PTTK) będzie to obligatoryjna warstwa zabezpieczająca (Non-Repudiation / Niezaprzeczalność).
-
----
-
-### [AUDYT-119] Cykliczna zależność między `apps/` a `infrastructure/`
-**Obszar:** `Architektura Heksagonalna / Granice Modułów`  
-**Priorytet:** `🔴 KRYTYCZNY`  
-
-**Diagnoza Audytora:** 
-Analiza statyczna importów wykazała pętlę zależności (Circular Dependency). Warstwa dostarczania (`apps/badges/models.py`) importuje bezpośrednio schemat z warstwy infrastruktury (`infrastructure/schemas/badge_rules_schema.py`), podczas gdy adaptery z `infrastructure/` importują modele i zadania z `apps/`. Łamie to reguły Enkapsulacji i zamienia modularny monolit w spaghetti.
-
-**Action Items (Do wdrożenia):**
-- [X] Przenieść `RULES_SCHEMA` z `infrastructure/schemas/` → `apps/badges/rules_schema.py` (AUDYT-085).
-- [X] Dodać `TransientInfrastructureError` do `application/exceptions.py`; `InfrastructureException` dziedziczy po nim, co pozwala taskom Celery łapać błędy infrastruktury na poziomie aplikacji bez importowania warstwy infrastruktury (AUDYT-119).
-- [X] Konfiguracja `import-linter` w `.importlinter` ma kontrakt `hexagonal-layers` blokujący apps → infrastructure.
-
-**Komentarz Architekta:**
-To jest najpoważniejsze naruszenie granic heksagonalnych w całym kodzie. Modele Django w `apps/badges/models/` powinny być "głupie" i nie wiedzieć nic o specyficznych schematach walidacyjnych formularzy Admina z infrastruktury. **✅ ZREALIZOWANO** — AUDYT-085 przeniósł `RULES_SCHEMA`, AUDYT-119 usunął import `OsmAdapterError` z warstwy infrastruktury w taskach, a AUDYT-121 dodał kontrakt `hexagonal-layers` do `.importlinter`.
-
----
-
-### [AUDYT-121] Nieszczelność lintera importów (Brak kontraktu dla `apps` ↔ `infrastructure`)
-**Obszar:** `Architektura / CI/CD (Import Linter)`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Narzędzie `.importlinter` genialnie chroni warstwy `domain` i `application` przed wtargnięciem kodu z zewnątrz. Audytor jednak słusznie zauważył, że brakuje kontraktu chroniącego najsłabsze ogniwo: styk warstwy dostarczania (`apps/`) z warstwą adapterów (`infrastructure/`). Bez tego kontraktu łatwo dopuścić do zjawiska, w którym model Django importuje schemat lub logikę walidacji z głębi infrastruktury.
-
-**Action Items (Do wdrożenia PRZEZ CIEBIE przed startem Playwright):**
-- [X] Dodać do pliku `.importlinter` nowy blok kontraktu zakazujący importowania czegokolwiek z `infrastructure/` wewnątrz katalogu `apps/` (z ewentualnymi, twardo zdefiniowanymi wyjątkami dla wstrzykiwania `bootstrap` lub logów).
-- [X] Dodać zasady ograniczające import z `apps/` wewnątrz `infrastructure/`.
-
-**Komentarz Architekta:**
-Złapano nas na połowicznym wdrożeniu Lintera. Zabezpieczyliśmy serce (Domenę), ale zapomnieliśmy ogrodzić murem przedpola.
-
----
 
 ### [AUDYT-122] Rozmycie Odpowiedzialności w Rejestracji Zależności (`container.py`)
 **Obszar:** `Architektura / Bootstrap`  
@@ -936,58 +887,6 @@ Zwracanie słowników osłabia działanie narzędzia `Mypy` i ukrywa kształt od
 **Komentarz Architekta:**
 Zjawisko to nazywa się *Primitive Obsession* (Obsesja Typów Prostych). W fazie szybkiego dowożenia funkcji (Faza C) słowniki pozwalały na błyskawiczne renderowanie `JsonResponse`. Na dłuższą metę, aby dokumentacja API (np. Swagger/OpenAPI) generowała się automatycznie, wyjścia muszą być równie rygorystyczne co wejścia.
 
----
-
-### [AUDYT-127] Brak egzekwowania walidacji (C-01) przy operacjach masowych
-**Obszar:** `Django / ORM`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Zabezpieczenie przed powstaniem "Pętli Klastrów" (Invariant C-01) zrealizowaliśmy poprzez nadpisanie metod `clean()` oraz `save()` w modelu `TouristObject`. Niestety, Django ORM wywołując instrukcje masowe (takie jak `TouristObject.objects.filter(...).update(...)` lub `bulk_create`) całkowicie ignoruje metody `save()` poszczególnych obiektów, przez co logika "Płaskiej Gwiazdy" może zostać złamana podczas masowych aktualizacji.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] W plikach `AGENT_SPEC.md` i `EDGE_CASES.md` dodać twardy zakaz używania operacji `.update()` na polu `parent_object`.
-- [ ] (Opcjonalnie) Przenieść walidację "Płaskiej Gwiazdy" bezpośrednio do bazy PostgreSQL jako funkcję `CONSTRAINT TRIGGER`.
-
-**Komentarz Architekta:**
-Bardzo głębokie zrozumienie ułomności frameworka (Active Record). W 99% przypadków łączymy klastry pojedynczo przez panel admina, więc ryzyko jest minimalne, ale luka techniczna istnieje.
-
----
-
-### [AUDYT-128] Dekompozycja pliku modeli (`apps/badges/models.py`)
-**Obszar:** `Django / ORM / Architektura Plików`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Plik `apps/badges/models.py` osiągnął rozmiar 750 linii i zawiera 17 modeli Django. Skupia on w sobie całkowicie różne byty: hierarchię geograficzną (6 poziomów regionów), definicje odznak, konfigurację OSM oraz obiekty turystyczne z ich cyklem życia. Stanowi to klasyczny antywzorzec "God File", drastycznie utrudniając nawigację po kodzie i przeglądy (Code Review).
-
-**Action Items (Do wdrożenia w nadchodzącym sprincie):**
-- [X] Przekształcić plik `models.py` w moduł (utworzyć katalog `models/` z plikiem `__init__.py`).
-- [X] Wydzielić modele do logicznych plików (region.py, organizer.py, osm.py, badge.py, proximity.py, news.py, read_model.py).
-- [X] Zaktualizować importy w reszcie systemu (`__init__.py` re-eksportuje wszystkie 25 nazw klas dla kompatybilności wstecznej).
-
-**Komentarz Architekta:**
-Bardzo prosta operacja, która radykalnie obniży "Złożoność Poznawczą" (Cognitive Load) u programistów wchodzących do projektu. **✅ ZREALIZOWANO** — przekształcono `models.py` (827 linii) w pakiet `models/` z 7 podmodułami: `region.py`, `organizer.py`, `osm.py`, `badge.py`, `proximity.py`, `news.py`, `read_model.py`. Plik `__init__.py` re-eksportuje wszystkie 25 nazw klas dla pełnej kompatybilności wstecznej.
-
----
-
-### [AUDYT-129] Dekompozycja panelu administracyjnego (`apps/badges/admin.py`)
-**Obszar:** `Django Admin / Architektura Plików`  
-**Priorytet:** `🟠 WYSOKI`  
-**Status:** ✅ ZREALIZOWANO  
-
-**Diagnoza Audytora:** 
-Plik `admin.py` posiada blisko 800 linii kodu. Poza samą definicją interfejsów (UI) zawiera on potężną logikę biznesową w postaci "Akcji Admina" (np. rozwiązywanie par klastrów, akceptacja zmian OSM). Zmiana logiki wyświetlania jednej tabeli naraża na konflikty scalania kod dla pozostałych 8 modeli.
-
-**Action Items (Do wdrożenia w nadchodzącym sprincie):**
-- [X] Przekształcić plik `admin.py` w moduł (katalog `admin/` z plikiem `__init__.py`).
-- [X] Wydzielić klasy paneli do mniejszych plików: `forms.py`, `filters.py`, `inlines.py`, `region_admin.py`, `organizer_admin.py`, `osm_admin.py`, `badge_admin.py`, `proximity_admin.py`, `sync_conflict_admin.py`, `news_admin.py`, `celery_admin.py`.
-- [X] Uzupełnić `__init__.py` o re-eksport wszystkich klas oraz modelu `ObjectRegionCache` dla kompatybilności ze starszymi importami i testami.
-
-**Komentarz Architekta:**
-Podobnie jak modele, panel administracyjny rozrósł się ponad miarę MVP. Czas go ustrukturyzować. **✅ ZREALIZOWANO** — podzielono na 12 plików, wszystkie 843 testy przechodzą, coverage 80.96%.
-
----
 
 ### [AUDYT-130] Zjawisko Rozproszonych Statusów (Status Scatter)
 **Obszar:** `Słowniki / DRY`  
@@ -2698,3 +2597,121 @@ Obecnie system walidacji architektonicznej (`make check`, `import-linter`, `audi
 **Uzasadnienie decyzji:**
 Zdecydowano się na dedykowany skrypt zamiast zewnętrznych narzędzi (SonarQube, CodeClimate) — zero dodatkowych zależności, pełną kontrolę nad miarami, i pełną integrację z istniejącym pipelinem CI. Health Score to średnia ważona z 7 kluczowych konturów.
 
+
+---
+
+---
+
+### [AUDYT-119] Cykliczna zależność między `apps/` a `infrastructure/`
+**Status:** ✅ **ZREALIZOWANO**
+**Obszar:** `Architektura Heksagonalna / Granice Modułów`  
+**Priorytet:** `🔴 KRYTYCZNY`  
+**Obszar:** `Architektura Heksagonalna / Granice Modułów`  
+**Priorytet:** `🔴 KRYTYCZNY`  
+
+**Diagnoza Audytora:** 
+Analiza statyczna importów wykazała pętlę zależności (Circular Dependency). Warstwa dostarczania (`apps/badges/models.py`) importuje bezpośrednio schemat z warstwy infrastruktury (`infrastructure/schemas/badge_rules_schema.py`), podczas gdy adaptery z `infrastructure/` importują modele i zadania z `apps/`. Łamie to reguły Enkapsulacji i zamienia modularny monolit w spaghetti.
+
+**Action Items (Do wdrożenia):**
+- [X] Przenieść `RULES_SCHEMA` z `infrastructure/schemas/` → `apps/badges/rules_schema.py` (AUDYT-085).
+- [X] Dodać `TransientInfrastructureError` do `application/exceptions.py`; `InfrastructureException` dziedziczy po nim, co pozwala taskom Celery łapać błędy infrastruktury na poziomie aplikacji bez importowania warstwy infrastruktury (AUDYT-119).
+- [X] Konfiguracja `import-linter` w `.importlinter` ma kontrakt `hexagonal-layers` blokujący apps → infrastructure.
+
+**Komentarz Architekta:**
+To jest najpoważniejsze naruszenie granic heksagonalnych w całym kodzie. Modele Django w `apps/badges/models/` powinny być "głupie" i nie wiedzieć nic o specyficznych schematach walidacyjnych formularzy Admina z infrastruktury. **✅ ZREALIZOWANO** — AUDYT-085 przeniósł `RULES_SCHEMA`, AUDYT-119 usunął import `OsmAdapterError` z warstwy infrastruktury w taskach, a AUDYT-121 dodał kontrakt `hexagonal-layers` do `.importlinter`.
+
+---
+
+---
+
+---
+
+### [AUDYT-120] Brak audytowania zmian operacyjnych (Data Audit Trail)
+**Obszar:** `Baza Danych / Compliance`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Jeśli administrator (lub złośliwy skrypt) w systemie testowym zmieni definicję regulaminu lub wiek turysty w `TouristProfile`, nie zostawi to w systemie żadnego śladu – nadpisany rekord nie ma historii wersji na poziomie relacyjnym. Rodzi to potężne problemy z rozstrzyganiem sporów (Dlaczego odznaka została cofnięta?).
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [ ] Wdrożyć bibliotekę `django-simple-history` dla kluczowych modeli biznesowych (np. `UserBadgeProgress`, `TouristProfile`), która automatycznie archiwizuje i wiąże zmianę rekordu z użytkownikiem wykonującym operację (`history_user`).
+
+**Komentarz Architekta:**
+W MVP to niepotrzebny koszt optymalizacyjny, jednak z chwilą wejścia w produkcję i wpuszczenia moderatorów (Weryfikatorów PTTK) będzie to obligatoryjna warstwa zabezpieczająca (Non-Repudiation / Niezaprzeczalność).
+
+
+### [AUDYT-121] Nieszczelność lintera importów (Brak kontraktu dla `apps` ↔ `infrastructure`)
+**Status:** ✅ **ZREALIZOWANO**
+**Obszar:** `Architektura / CI/CD (Import Linter)`  
+**Priorytet:** `🟠 WYSOKI`  
+
+**Diagnoza Audytora:** 
+Narzędzie `.importlinter` genialnie chroni warstwy `domain` i `application` przed wtargnięciem kodu z zewnątrz. Audytor jednak słusznie zauważył, że brakuje kontraktu chroniącego najsłabsze ogniwo: styk warstwy dostarczania (`apps/`) z warstwą adapterów (`infrastructure/`). Bez tego kontraktu łatwo dopuścić do zjawiska, w którym model Django importuje schemat lub logikę walidacji z głębi infrastruktury.
+
+**Action Items (Do wdrożenia PRZEZ CIEBIE przed startem Playwright):**
+- [X] Dodać do pliku `.importlinter` nowy blok kontraktu zakazujący importowania czegokolwiek z `infrastructure/` wewnątrz katalogu `apps/` (z ewentualnymi, twardo zdefiniowanymi wyjątkami dla wstrzykiwania `bootstrap` lub logów).
+- [X] Dodać zasady ograniczające import z `apps/` wewnątrz `infrastructure/`.
+
+**Komentarz Architekta:**
+Złapano nas na połowicznym wdrożeniu Lintera. Zabezpieczyliśmy serce (Domenę), ale zapomnieliśmy ogrodzić murem przedpola.
+
+---
+
+---
+
+---
+
+### [AUDYT-128] Dekompozycja pliku modeli (`apps/badges/models.py`)
+**Status:** ✅ **ZREALIZOWANO**
+**Obszar:** `Django / ORM / Architektura Plików`  
+**Priorytet:** `🟠 WYSOKI`  
+
+**Diagnoza Audytora:** 
+Plik `apps/badges/models.py` osiągnął rozmiar 750 linii i zawiera 17 modeli Django. Skupia on w sobie całkowicie różne byty: hierarchię geograficzną (6 poziomów regionów), definicje odznak, konfigurację OSM oraz obiekty turystyczne z ich cyklem życia. Stanowi to klasyczny antywzorzec "God File", drastycznie utrudniając nawigację po kodzie i przeglądy (Code Review).
+
+**Action Items (Do wdrożenia w nadchodzącym sprincie):**
+- [X] Przekształcić plik `models.py` w moduł (utworzyć katalog `models/` z plikiem `__init__.py`).
+- [X] Wydzielić modele do logicznych plików (region.py, organizer.py, osm.py, badge.py, proximity.py, news.py, read_model.py).
+- [X] Zaktualizować importy w reszcie systemu (`__init__.py` re-eksportuje wszystkie 25 nazw klas dla kompatybilności wstecznej).
+
+**Komentarz Architekta:**
+Bardzo prosta operacja, która radykalnie obniży "Złożoność Poznawczą" (Cognitive Load) u programistów wchodzących do projektu. **✅ ZREALIZOWANO** — przekształcono `models.py` (827 linii) w pakiet `models/` z 7 podmodułami: `region.py`, `organizer.py`, `osm.py`, `badge.py`, `proximity.py`, `news.py`, `read_model.py`. Plik `__init__.py` re-eksportuje wszystkie 25 nazw klas dla pełnej kompatybilności wstecznej.
+
+---
+
+---
+
+---
+
+### [AUDYT-127] Brak egzekwowania walidacji (C-01) przy operacjach masowych
+**Obszar:** `Django / ORM`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Zabezpieczenie przed powstaniem "Pętli Klastrów" (Invariant C-01) zrealizowaliśmy poprzez nadpisanie metod `clean()` oraz `save()` w modelu `TouristObject`. Niestety, Django ORM wywołując instrukcje masowe (takie jak `TouristObject.objects.filter(...).update(...)` lub `bulk_create`) całkowicie ignoruje metody `save()` poszczególnych obiektów, przez co logika "Płaskiej Gwiazdy" może zostać złamana podczas masowych aktualizacji.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [ ] W plikach `AGENT_SPEC.md` i `EDGE_CASES.md` dodać twardy zakaz używania operacji `.update()` na polu `parent_object`.
+- [ ] (Opcjonalnie) Przenieść walidację "Płaskiej Gwiazdy" bezpośrednio do bazy PostgreSQL jako funkcję `CONSTRAINT TRIGGER`.
+
+**Komentarz Architekta:**
+Bardzo głębokie zrozumienie ułomności frameworka (Active Record). W 99% przypadków łączymy klastry pojedynczo przez panel admina, więc ryzyko jest minimalne, ale luka techniczna istnieje.
+
+
+### [AUDYT-129] Dekompozycja panelu administracyjnego (`apps/badges/admin.py`)
+**Obszar:** `Django Admin / Architektura Plików`  
+**Priorytet:** `🟠 WYSOKI`  
+**Status:** ✅ ZREALIZOWANO  
+
+**Diagnoza Audytora:** 
+Plik `admin.py` posiada blisko 800 linii kodu. Poza samą definicją interfejsów (UI) zawiera on potężną logikę biznesową w postaci "Akcji Admina" (np. rozwiązywanie par klastrów, akceptacja zmian OSM). Zmiana logiki wyświetlania jednej tabeli naraża na konflikty scalania kod dla pozostałych 8 modeli.
+
+**Action Items (Do wdrożenia w nadchodzącym sprincie):**
+- [X] Przekształcić plik `admin.py` w moduł (katalog `admin/` z plikiem `__init__.py`).
+- [X] Wydzielić klasy paneli do mniejszych plików: `forms.py`, `filters.py`, `inlines.py`, `region_admin.py`, `organizer_admin.py`, `osm_admin.py`, `badge_admin.py`, `proximity_admin.py`, `sync_conflict_admin.py`, `news_admin.py`, `celery_admin.py`.
+- [X] Uzupełnić `__init__.py` o re-eksport wszystkich klas oraz modelu `ObjectRegionCache` dla kompatybilności ze starszymi importami i testami.
+
+**Komentarz Architekta:**
+Podobnie jak modele, panel administracyjny rozrósł się ponad miarę MVP. Czas go ustrukturyzować. **✅ ZREALIZOWANO** — podzielono na 12 plików, wszystkie 843 testy przechodzą, coverage 80.96%.
+
+---
