@@ -6,6 +6,8 @@ regulaminu oraz progów stopni.
 
 from dataclasses import dataclass
 
+from typing import cast
+
 from domain.enums import DomainStatus
 from domain.rules.badge_rules import BadgeRule
 from domain.value_objects.ascent import Ascent
@@ -21,6 +23,17 @@ class BadgeTierDomain:
     name: str
     required_count: int
     order: int
+
+    def status_for(self, climbed_count: int) -> DomainStatus:
+        """Ocenia status tego stopnia dla danej liczby wejść.
+
+        Chronologiczna ścieżka: NOT_STARTED → IN_PROGRESS → COMPLETED.
+        """
+        if climbed_count >= self.required_count:
+            return DomainStatus.COMPLETED
+        if climbed_count > 0:
+            return DomainStatus.IN_PROGRESS
+        return DomainStatus.NOT_STARTED
 
 
 @dataclass(frozen=True)
@@ -74,17 +87,15 @@ class BadgeVersionDomain:
 
         if sorted_tiers:
             for t in sorted_tiers:
-                t_completed = climbed_count >= t.required_count
-                if not t_completed:
+                t_status = t.status_for(climbed_count)
+                if t_status != DomainStatus.COMPLETED:
                     all_completed = False
 
                 evaluated_tiers.append(
                     {
                         "tier_id": t.tier_id,
                         "name": t.name,
-                        "status": DomainStatus.COMPLETED
-                        if t_completed
-                        else (DomainStatus.IN_PROGRESS if climbed_count > 0 else DomainStatus.NOT_STARTED),
+                        "status": t_status,
                         "required_count": t.required_count,
                     }
                 )
@@ -105,7 +116,7 @@ class BadgeVersionDomain:
             # Wymuszamy typowanie dla poszczególnych elementów przed przekazaniem
             t_id = int(str(tier_dict["tier_id"]))
             t_name = str(tier_dict["name"])
-            t_status = str(tier_dict["status"])
+            t_status = cast(DomainStatus, tier_dict["status"])
             t_req = int(str(tier_dict["required_count"]))
 
             tier_results.append(TierResult(tier_id=t_id, name=t_name, status=t_status, required_count=t_req))

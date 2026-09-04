@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from domain.entities.badge_version import BadgeTierDomain, BadgeVersionDomain
+from domain.enums import DomainStatus
 from domain.value_objects.ascent import Ascent
 from domain.value_objects.verification_context import VerificationContext
 
@@ -84,7 +85,7 @@ class TestBadgeVersionDomain:
         assert result.status == "NOT_STARTED"
 
     def test_evaluate_with_duplicate_peaks(self, ctx: VerificationContext) -> None:
-        """Ignoruje duplikaty szczyców."""
+        """Ignoruje duplikaty szczytów."""
         domain = BadgeVersionDomain(version_id="v1", rules=[], pool_peak_ids=frozenset([1]), tiers=_tiers(2))
         ascents = [Ascent(peak_id=1, ascent_date=date(2024, 6, 15)), Ascent(peak_id=1, ascent_date=date(2024, 6, 15))]
 
@@ -92,3 +93,23 @@ class TestBadgeVersionDomain:
 
         assert result.verified is False
         assert result.valid_ascents_count == 1
+
+
+class TestBadgeTierDomain:
+    """Testy enrichmetu anemicznego modelu BadgeTierDomain (AUDYT-144)."""
+
+    def test_status_for_completed_when_count_meets_threshold(self) -> None:
+        """COMPLETED gdy climbed_count >= required_count."""
+        tier = BadgeTierDomain(tier_id=1, name="Standard", required_count=3, order=1)
+        assert tier.status_for(3) == DomainStatus.COMPLETED
+        assert tier.status_for(4) == DomainStatus.COMPLETED
+
+    def test_status_for_in_progress_when_partial(self) -> None:
+        """IN_PROGRESS gdy climbed_count > 0, ale < required_count."""
+        tier = BadgeTierDomain(tier_id=1, name="Standard", required_count=5, order=1)
+        assert tier.status_for(2) == DomainStatus.IN_PROGRESS
+
+    def test_status_for_not_started_when_zero(self) -> None:
+        """NOT_STARTED gdy climbed_count == 0."""
+        tier = BadgeTierDomain(tier_id=1, name="Standard", required_count=5, order=1)
+        assert tier.status_for(0) == DomainStatus.NOT_STARTED

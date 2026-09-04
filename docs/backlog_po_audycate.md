@@ -853,10 +853,14 @@ Audytor wyłapał fundamentalny rozjazd między filozofią DDD a obecną realiza
 2. Zabezpieczenie limitów konta Freemium zlokalizowane jest wewnątrz `StartBadgeProgressUseCase`.
 3. Walidacja bitemporalna (`T-01`) znajduje się wewnątrz pętli `BulkLogAscentsUseCase`.
 
-**Action Items (Do wdrożenia w Fazy Refaktoryzacji Domeny):**
-- [ ] Przenieść logikę oceny "Praw Nabytych" do nowej, Czystej Usługi Domenowej (np. `domain/services/grandfathering_service.py`).
-- [ ] Zbudować agregat `TouristProfile` (w Czystej Domenie), do którego przeniesiona zostanie odpowiedzialność za weryfikację limitów subskrypcji.
-- [ ] Oczyścić Use Case'y z warunkowych logik `if/else`, pozostawiając im wyłącznie odpowiedzialność za pobieranie z bazy, wywoływanie Czystej Domeny i zapis.
+**Solution wdrożone (2026-09-03—04):**
+- [X] `BadgeAwardingDomainService.resolve_final_status()` (grandfather clause) w `domain/services/` — commit 4e532ad (AUDYT-106)
+- [X] `TouristProfileDomain` (`domain/entities/tourist_profile.py`) — limity Freemium (`can_log_ascent`, `can_track_new_badge`, `with_upgraded_plan`) — commit 92b14ba (AUDYT-087)
+- [X] `BadgeTierDomain.status_for()` — enrichment stopnia odznaki (AUDYT-144), `BadgeVersionDomain.evaluate()` używa `DomainStatus` enumów (AUDYT-136)
+- [X] `StartBadgeProgressUseCase` refaktoryzowany na `determine_anchor_date()` w `BadgeAwardingDomainService` — commit 4e532ad (AUDYT-132)
+
+**Pozostałe (dalszy tech debt):**
+- [ ] `BulkLogAscentsUseCase` — walidacja bitemporalna (`T-01`) wciąż w Use Case (wymaga `domain/services/ascent_validation_service.py`)
 
 **Komentarz Architekta:**
 Jest to klasyczne zjawisko "grubych orkiestratorów" powstające w pośpiechu budowy MVP. Wymaga jednego mocnego sprintu refaktoryzacyjnego, zanim kod z Use Case'ów stanie się zbyt skomplikowany do testowania.
