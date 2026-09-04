@@ -74,7 +74,5 @@ def test_fitness_functions_have_required_fields() -> None:
         section = content[section_start:next_heading]
         missing_fields = [field for field in required_fields if field not in section]
         if missing_fields:
-            violations.append(
-                f"{ff_id} ({ff_name}): brakuje pól: {', '.join(missing_fields)}"
-            )
+            violations.append(f"{ff_id} ({ff_name}): brakuje pól: {', '.join(missing_fields)}")
     assert not violations, "FF bez wymaganych pól:\n" + "\n".join(violations)

@@ -89,4 +89,3 @@ urlpatterns = [
     path("organizer/<int:organizer_id>/", organizer_detail_view, name="organizer_detail"),
     path("region/<str:region_level>/<int:region_id>/", region_detail_view, name="region_detail"),
 ]
-

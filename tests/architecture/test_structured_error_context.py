@@ -55,9 +55,15 @@ def test_api_exception_handlers_have_request_id_context(api_exception_blocks: li
                                     if isinstance(stmt, ast.Return):
                                         if isinstance(stmt.value, ast.Call):
                                             func = stmt.value.func
-                                            if isinstance(func, ast.Name) and func.id in {"_problem_detail", "_handle_application_exception"}:
+                                            if isinstance(func, ast.Name) and func.id in {
+                                                "_problem_detail",
+                                                "_handle_application_exception",
+                                            }:
                                                 has_request_id = True
-                                            elif isinstance(func, ast.Attribute) and func.attr in {"_problem_detail", "_handle_application_exception"}:
+                                            elif isinstance(func, ast.Attribute) and func.attr in {
+                                                "_problem_detail",
+                                                "_handle_application_exception",
+                                            }:
                                                 has_request_id = True
                                 if not has_request_id:
                                     violations.append(

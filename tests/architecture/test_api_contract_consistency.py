@@ -42,6 +42,7 @@ def _extract_django_api_paths() -> set[str]:
                 # To jest leaf URLPattern
                 # Zamień Django path converters na OpenAPI placeholders
                 import re
+
                 path = re.sub(r"<\w+:(?P<name>\w+)>", r"{\g<name>}", full_pattern)
                 # Nie dodawaj trailing slash jeśli pattern kończy się rozszerzeniem pliku
                 if not path.endswith("/") and not re.search(r"\.[a-z0-9]+$", path):
@@ -78,8 +79,7 @@ def test_django_api_paths_are_subset_of_openapi():
     missing = django_paths - openapi_paths
     assert not missing, (
         "Następujące ścieżki API istnieją w Django urls.py, "
-        "ale brakuje ich w config/openapi.json:\n"
-        + "\n".join(f"  - {p}" for p in sorted(missing))
+        "ale brakuje ich w config/openapi.json:\n" + "\n".join(f"  - {p}" for p in sorted(missing))
     )
 
 
@@ -94,8 +94,7 @@ def test_openapi_paths_are_subset_of_django():
     extra = openapi_paths - django_paths
     assert not extra, (
         "Następujące ścieżki istnieją w config/openapi.json, "
-        "ale nie ma ich w Django urls.py:\n"
-        + "\n".join(f"  - {p}" for p in sorted(extra))
+        "ale nie ma ich w Django urls.py:\n" + "\n".join(f"  - {p}" for p in sorted(extra))
     )
 
 
@@ -139,7 +138,4 @@ def test_api_endpoints_have_security_requirement():
     # Na razie tylko logujemy - nie blokujemy testu, bo to advisory
     # Można później zmienić na assertion jeśli zdefiniujemy listę publicznych endpointów
     if public_paths:
-        pytest.skip(
-            "Publiczne endpointy (security: []):\n"
-            + "\n".join(f"  - {p}" for p in public_paths)
-        )
+        pytest.skip("Publiczne endpointy (security: []):\n" + "\n".join(f"  - {p}" for p in public_paths))

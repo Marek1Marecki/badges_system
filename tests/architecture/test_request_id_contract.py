@@ -1,6 +1,5 @@
 """Testy architektury: kontrakt request_id / correlation ID."""
 
-
 from django.test import RequestFactory, SimpleTestCase
 
 from infrastructure.middleware.error_handling import RFC7807ErrorMiddleware

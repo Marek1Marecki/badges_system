@@ -321,6 +321,7 @@ digraph G {
   "apps.tourists.signals" -> "apps.tourists.models";
   "apps.tourists.views" -> "apps.badges.models";
   "apps.tourists.views" -> "apps.tourists.models";
+  "domain.entities.badge_version" -> "domain.enums";
   "domain.entities.badge_version" -> "domain.rules.badge_rules";
   "domain.entities.badge_version" -> "domain.value_objects.ascent";
   "domain.entities.badge_version" -> "domain.value_objects.verification_context";

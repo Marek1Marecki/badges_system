@@ -57,9 +57,7 @@ def test_all_usecases_registered_in_container() -> None:
     """Wszystkie UseCase'y muszą być zarejestrowane w AppContainer."""
     usecases = _get_usecase_classes()
     container_fields = _get_container_fields()
-    missing = {
-        uc for uc in usecases if _camel_to_snake(uc) not in container_fields
-    }
+    missing = {uc for uc in usecases if _camel_to_snake(uc) not in container_fields}
     assert not missing, f"UseCase'y nie zarejestrowane w kontenerze: {sorted(missing)}"
 
 
@@ -67,9 +65,7 @@ def test_all_services_registered_in_container() -> None:
     """Wszystkie Serwisy muszą być zarejestrowane w AppContainer."""
     services = _get_service_classes()
     container_fields = _get_container_fields()
-    missing = {
-        svc for svc in services if _camel_to_snake(svc) not in container_fields
-    }
+    missing = {svc for svc in services if _camel_to_snake(svc) not in container_fields}
     assert not missing, f"Serwisy nie zarejestrowane w kontenerze: {sorted(missing)}"
 
 

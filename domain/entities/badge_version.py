@@ -5,7 +5,6 @@ regulaminu oraz progów stopni.
 """
 
 from dataclasses import dataclass
-
 from typing import cast
 
 from domain.enums import DomainStatus

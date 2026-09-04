@@ -19,9 +19,7 @@ class TestCeleryEventPublisher:
             with patch("django.conf.settings.CELERY_TASK_ALWAYS_EAGER", True):
                 publisher.publish(event)
 
-        mock_send.assert_called_once_with(
-            "apps.badges.tasks.recalculate_poi_scores_task", args=[1]
-        )
+        mock_send.assert_called_once_with("apps.badges.tasks.recalculate_poi_scores_task", args=[1])
 
     def test_publishes_user_progress_event_on_commit(self) -> None:
         """Publikuje zdarzenie po commicie gdy CELERY_TASK_ALWAYS_EAGER=False."""

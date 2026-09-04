@@ -28,7 +28,9 @@ class NightAscentRule(BadgeRule):
         night_count = sum(1 for a in ascents if a.ascent_time and a.ascent_time.hour >= 18)
         return RuleResult(
             passed=night_count >= self.min_night_ascents,
-            errors=[] if night_count >= self.min_night_ascents else [f"Brak wejść w nocy (minimum {self.min_night_ascents})"],
+            errors=[]
+            if night_count >= self.min_night_ascents
+            else [f"Brak wejść w nocy (minimum {self.min_night_ascents})"],
         )
 ```
 
@@ -56,14 +58,16 @@ Plik: `apps/badges/rules_schema.py`
 Dodaj nowy wpis `oneOf` w liście `items`, aby reguła była dostępna w UI django-jsonform:
 
 ```python
-{
-    "type": "dict",
-    "title": "Wejścia w nocy",
-    "keys": {
-        "type": {"type": "string", "widget": "hidden", "default": "NightAscentRule"},
-        "min_night_ascents": {"type": "integer", "title": "Minimum wejść nocnych", "default": 1},
+(
+    {
+        "type": "dict",
+        "title": "Wejścia w nocy",
+        "keys": {
+            "type": {"type": "string", "widget": "hidden", "default": "NightAscentRule"},
+            "min_night_ascents": {"type": "integer", "title": "Minimum wejść nocnych", "default": 1},
+        },
     },
-},
+)
 ```
 
 > **Uwaga:** Bez tego kroku reguła nie będzie możliwa do skonfigurowania w panelu

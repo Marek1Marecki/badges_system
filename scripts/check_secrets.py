@@ -98,7 +98,9 @@ def check_secrets() -> None:
     if committed:
         print("\n⚠️  Wykryto potencjalne sekrety w zatwierdzonych plikach .env*:")
         for finding in committed:
-            print(f"   - {finding}")  # pragma: allowlist secret — finding is masked ([:20] chars, see scan_for_committed_secrets)
+            print(
+                f"   - {finding}"
+            )  # pragma: allowlist secret — finding is masked ([:20] chars, see scan_for_committed_secrets)
         print("\n💡 Rozważ: 1) usunięcie sekretów z historii Git, 2) wdrożenie SOPS dla .env.prod")
         sys.exit(1)
 

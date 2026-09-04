@@ -64,7 +64,5 @@ def test_repository_adapters_implement_ports(port_methods_by_file: dict[Path, di
             adapter_methods = _get_adapter_methods(adapter_file)
             missing = port_methods - adapter_methods
             if missing:
-                violations.append(
-                    f"{adapter_file}: brakuje metod z {protocol_name}: {sorted(missing)}"
-                )
+                violations.append(f"{adapter_file}: brakuje metod z {protocol_name}: {sorted(missing)}")
     assert not violations, "Adaptery nie implementują portów:\n" + "\n".join(violations)

@@ -7,8 +7,14 @@ import pytest
 
 MIGRATIONS_DIR = Path("apps")
 CONFLICTING_OPERATIONS = {
-    "AddField", "RemoveField", "RenameField", "AlterField",
-    "AddIndex", "RemoveIndex", "AddConstraint", "RemoveConstraint",
+    "AddField",
+    "RemoveField",
+    "RenameField",
+    "AlterField",
+    "AddIndex",
+    "RemoveIndex",
+    "AddConstraint",
+    "RemoveConstraint",
 }
 
 
