@@ -816,9 +816,12 @@ Bardzo mądre spojrzenie na bezpieczeństwo kodu z perspektywy ludzkiej (Human R
 **Diagnoza Audytora:** 
 Obecny system traktuje pamięć podręczną (Redis) jako "Twardą Zależność" (Hard Dependency). Jeśli usługa Redis ulegnie awarii (np. OOM - Out of Memory, odcięcie sieci lub restart kontenera) w trakcie ruchu turystów, wszystkie widoki API bazujące na odczycie rankingu 100/n, kolorów mapy czy stanu profili zawiodą w całości. Użytkownik otrzyma błąd 500 lub "szarą mapę", a aplikacja stanie się bezużyteczna, mimo że główna baza danych (PostgreSQL) działa w 100% poprawnie.
 
-**Action Items (Do wdrożenia w Fazy SRE / Produkcji):**
-- [ ] Zmodyfikować warstwę zapytań (np. `ExploreMapUseCase` lub nowo powołane `QueryServices`), aby w przypadku błędu połączenia z buforem (`RedisConnectionError`) aplikacja "cicho" wracała do stanu domyślnego lub awaryjnie przeliczała podstawowe dane bezpośrednio z PostgreSQL (Graceful Degradation).
-- [ ] Dodać zabezpieczenia bloku `try-except` w adapterze `DjangoCacheAdapter`, aby chronić wyższe warstwy przed padem usługi.
+**Solution wdrożone (2026-09-04) — commit fa26990:**
+- [X] `DjangoCacheAdapter` (`infrastructure/adapters/django_cache.py`) — `get/set/delete` łapią `ConnectionError`/`TimeoutError`/`ImproperlyConfigured`, logują `logger.warning(...)`, i degrade gracefully (cache miss zamiast crash)
+- [X] Wszystkie warstwy używające `CachePort` (`ExploreMapUseCase`, `PoiScoringService`, `GetMvtTileUseCase`, `ExploreQueriesService`, widoki Django) automatycznie otrzymują graceful degradation dzięki adapterowi
+- [X] 5 nowych testów w `tests/infrastructure/test_django_cache.py` (ConnectionError + TimeoutError dla get/set/delete)
+
+**Weryfikacja:** 861 tests pass, 5/5 lint-imports KEPT, mypy OK (154 source files)
 
 **Komentarz Architekta:**
 Klasyczny błąd zaufania do infrastruktury w środowiskach rozproszonych. Każdy zewnętrzny klocek w Dockerze kiedyś padnie. Aplikacja powinna działać "wolniej, ale poprawnie" po awarii Cache'u, a nie wyłączać się całkowicie.
