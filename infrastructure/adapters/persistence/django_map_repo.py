@@ -2,10 +2,11 @@
 
 from typing import Any
 
-from django.contrib.gis.geos import GEOSGeometry, Polygon
+from django.contrib.gis.geos import GEOSException, GEOSGeometry, Polygon
 from django.contrib.gis.measure import D
 
 from application.dto.map_dto import TouristObjectGeoDTO
+from application.exceptions import SpatialCalculationError
 from application.ports.map_port import MapRepositoryPort
 
 
@@ -92,8 +93,8 @@ class DjangoMapRepository(MapRepositoryPort):
 
         try:
             line_geom = GEOSGeometry(line_wkt, srid=4326)
-        except Exception:
-            return []
+        except (GEOSException, ValueError) as exc:
+            raise SpatialCalculationError(f"Nieprawidłowa geometria WKT: {exc}") from exc
 
         # Szybki filtr PostGIS z użyciem D() - chroni CPU przed ST_DistanceSpheroid
         qs = TouristObject.objects.filter(

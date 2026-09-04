@@ -357,6 +357,7 @@ digraph G {
   "infrastructure.adapters.persistence.django_explore_queries_repo" -> "application.ports.explore_queries_port";
   "infrastructure.adapters.persistence.django_explore_queries_repo" -> "apps.badges.models";
   "infrastructure.adapters.persistence.django_map_repo" -> "application.dto.map_dto";
+  "infrastructure.adapters.persistence.django_map_repo" -> "application.exceptions";
   "infrastructure.adapters.persistence.django_map_repo" -> "application.ports.map_port";
   "infrastructure.adapters.persistence.django_map_repo" -> "apps.badges.models";
   "infrastructure.adapters.persistence.django_mvt_repo" -> "application.ports.mvt_port";

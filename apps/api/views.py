@@ -35,6 +35,7 @@ from application.exceptions import (
     ConflictError,
     IllegalStateTransitionError,
     ResourceNotFoundError,
+    SpatialCalculationError,
     UseCaseError,
 )
 from apps.badges.models import TouristObject
@@ -148,6 +149,16 @@ def _handle_application_exception(request, exc: ApplicationException) -> JsonRes
     if isinstance(exc, UseCaseError):
         logger.info("validation_failed", extra={"request_id": request_id})
         return _problem_detail(request, "validation-failed", "Błąd Walidacji", 422, "Błąd walidacji.")
+
+    if isinstance(exc, SpatialCalculationError):
+        logger.warning("spatial_calculation_error", extra={"request_id": request_id})
+        return _problem_detail(
+            request,
+            "spatial-calculation-error",
+            "Błąd Obliczeń Przestrzennych",
+            422,
+            "Wystąpił błąd podczas analizy geometrii trasy (np. uszkodzony plik GPX).",
+        )
 
     logger.error(
         "unhandled_application_exception",

@@ -95,7 +95,9 @@ class TestDjangoMapRepository:
         assert result[0]["name"] == "Line Peak"
         assert result[0]["altitude"] == 1000
 
-    def test_get_objects_along_line_returns_empty_on_invalid_wkt(self):
-        """Zwraca pustą listę przy nieprawidłowym WKT."""
-        result = self.repo.get_objects_along_line("invalid", 1000)
-        assert result == []
+    def test_get_objects_along_line_raises_on_invalid_wkt(self):
+        """Invalid WKT raises SpatialCalculationError (AUDYT-142)."""
+        from application.exceptions import SpatialCalculationError
+
+        with pytest.raises(SpatialCalculationError):
+            self.repo.get_objects_along_line("invalid", 1000)

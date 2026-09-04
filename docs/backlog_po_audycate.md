@@ -931,6 +931,7 @@ Właściwie — brzmienie jest bardzo dobre. Nie musimy ufać logowi na koncie n
 ### [AUDYT-122] Rozmycie Odpowiedzialności w Rejestracji Zależności (`container.py`)
 **Obszar:** `Architektura / Bootstrap`  
 **Priorytet:** `🟢 NISKI`  
+**Status:** `🟢 Deferred (post-Push 8)`  
 
 **Diagnoza Audytora:** 
 Plik `bootstrap/container.py` nosi znamiona "God Object" (obiekt boski), który wie o wszystkim w systemie. Gdy projekt urośnie z 14 Use Case'ów do 50, każda drobna zmiana w konstruktorze jakiejkolwiek usługi wymusi modyfikację tego jednego, potężnego pliku, co doprowadzi do "wąskiego gardła" (Bottleneck) przy pracy zespołowej i konfliktów w systemie kontroli wersji Git.

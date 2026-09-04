@@ -39,6 +39,16 @@ class ResourceNotFoundError(ApplicationException):
     """
 
 
+class SpatialCalculationError(ApplicationException):
+    """Błąd obliczeń przestrzennych (GIS / PostGIS).
+
+    Używany dla: nieprawidłowych geometrii WKT, uszkodzonych danych GPX,
+    czy awarii PostGIS podczas `get_objects_along_line`.
+    Mapuje na: 422 Unprocessable Entity (turysta dostaje komunikat,
+    a nie ciche ''brak szczytów'' — AUDYT-142).
+    """
+
+
 class BitemporalTimeError(ApplicationException):
     """Naruszenie bitemporalnego cyklu życia obiektu turystycznego.
 
