@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 from django.contrib.auth import get_user_model
 
-from application.dto.ascent_dto import AscentInputDTO
+from application.dto.ascent_dto import AscentRequestDTO
 from application.dto.user_context_dto import TouristProfileDTO
 from infrastructure.adapters.persistence.django_tourist_repo import DjangoTouristRepository
 
@@ -129,7 +129,7 @@ class TestDjangoTouristRepository:
 
         obj = TouristObject.objects.create(name="P5", type="Szczyt", is_active=True, status="READY")
 
-        dtos = [AscentInputDTO(peak_id=obj.id, ascent_date=date(2023, 1, 1)) for _ in range(3)]
+        dtos = [AscentRequestDTO(peak_id=obj.id, ascent_date=date(2023, 1, 1)) for _ in range(3)]
         self.repo.bulk_save_ascents(profile.id, dtos)
 
         from apps.tourists.models import AscentLog

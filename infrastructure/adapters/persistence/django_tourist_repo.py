@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, cast
 
 from django.db.models import Min
 
-from application.dto.ascent_dto import AscentDTO, AscentInputDTO
+from application.dto.ascent_dto import AscentDTO, AscentRequestDTO
 from application.dto.user_context_dto import BadgeProgressDTO, TouristProfileDTO
 from application.ports.user_progress_port import (
     AscentLogRepositoryPort,
@@ -240,15 +240,15 @@ class DjangoAscentLogRepository(AscentLogRepositoryPort):
         qs = TouristObject.objects.filter(id__in=peak_ids).values_list("id", "existence_start", "existence_end")
         return {row[0]: (row[1], row[2]) for row in qs}
 
-    def bulk_save_ascents(self, profile_id: int, ascents: list[AscentInputDTO]) -> int:
+    def bulk_save_ascents(self, profile_id: int, ascents: list[AscentRequestDTO]) -> int:
         """Masowo zapisuje wejścia.
 
         Ignoruje duplikaty (Idempotentność D-04).
         Args:
           profile_id: int:
-          ascents: list[AscentInputDTO]:
+          ascents: list[AscentRequestDTO]:
           profile_id: int:
-          ascents: list[AscentInputDTO]:
+          ascents: list[AscentRequestDTO]:
 
         Returns:
         """

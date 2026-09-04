@@ -393,7 +393,7 @@ class TestBulkAscentLogViewValidation:
         request.request_id = "sec-bulk-3"
         request.path = "/api/v1/ascents/bulk/"
 
-        with patch("apps.api.views.AscentInputDTO", side_effect=RuntimeError("DTO boom")):
+        with patch("apps.api.views.AscentRequestDTO", side_effect=RuntimeError("DTO boom")):
             with pytest.raises(RuntimeError, match="DTO boom"):
                 BulkAscentLogView.as_view()(request)
 

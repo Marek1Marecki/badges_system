@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from application.dto.ascent_dto import GpxAnalysisResultDTO
+from application.dto.ascent_dto import GpxAnalysisResponseDTO
 from application.exceptions import UseCaseError
 from application.use_cases.analyze_gpx_track import AnalyzeGpxTrackUseCase
 
@@ -45,7 +45,7 @@ class TestAnalyzeGpxTrackUseCase:
         use_case = AnalyzeGpxTrackUseCase(gpx_parser, map_repo)
         result = use_case.execute(b"valid_gpx_content")
 
-        assert isinstance(result, GpxAnalysisResultDTO)
+        assert isinstance(result, GpxAnalysisResponseDTO)
         assert result.suggested_date == date(2023, 1, 1)
         assert result.nearby_peaks == [{"id": 1, "name": "peak1"}, {"id": 2, "name": "peak2"}]
 

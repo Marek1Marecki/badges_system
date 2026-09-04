@@ -4,7 +4,7 @@ Zgodnie z US-C17: Wczytuje ślad w pamięci (bez zapisu), redukuje liczbę wierz
 propozycje zaliczeń w strefie buforowej.
 """
 
-from application.dto.ascent_dto import GpxAnalysisResultDTO
+from application.dto.ascent_dto import GpxAnalysisResponseDTO
 from application.exceptions import UseCaseError
 from application.ports.gpx_port import GpxParserPort
 from application.ports.map_port import MapRepositoryPort
@@ -21,7 +21,7 @@ class AnalyzeGpxTrackUseCase:
         self._gpx_parser = gpx_parser
         self._map_repo = map_repository
 
-    def execute(self, file_content: bytes) -> GpxAnalysisResultDTO:
+    def execute(self, file_content: bytes) -> GpxAnalysisResponseDTO:
         """Parsuje plik, generuje linię i odpytuje bazę GIS o sąsiadów.
 
         Args:
@@ -45,7 +45,7 @@ class AnalyzeGpxTrackUseCase:
                 "Upewnij się, że ślad mieści się w polskich górach."
             )
 
-        return GpxAnalysisResultDTO(
+        return GpxAnalysisResponseDTO(
             suggested_date=suggested_date,
             nearby_peaks=nearby_objects,
         )

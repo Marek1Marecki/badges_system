@@ -523,7 +523,8 @@ class TestBadgeUnsubscribeView:
         response = BadgeSubscribeView.as_view()(request, badge_code="KGP")
 
         assert response.status_code == 200
-        assert response.json()["badge_code"] == "KGP"
+        data = json.loads(response.content)
+        assert data["badge_code"] == "KGP"
         use_cases["unsubscribe_badge"].execute.assert_called_once_with(profile_id=1, badge_code="KGP")
 
     def test_unsubscribe_handles_conflict_error(self, factory, mock_user, use_cases) -> None:

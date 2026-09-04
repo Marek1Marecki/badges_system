@@ -19,7 +19,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 
-from application.dto.ascent_dto import AscentInputDTO
+from application.dto.ascent_dto import AscentRequestDTO
 from application.exceptions import BitemporalTimeError, UseCaseError
 from application.ports.clock_port import ClockPort
 from application.ports.user_progress_port import AscentLogRepositoryPort
@@ -41,7 +41,7 @@ class BitemporalViolation:
 class BitemporalValidationResult:
     """Wynik walidacji batch: co przeszło, a co odrzucono."""
 
-    accepted: list[AscentInputDTO]
+    accepted: list[AscentRequestDTO]
     violations: list[BitemporalViolation]
 
     @property
@@ -85,7 +85,7 @@ class BitemporalValidationService:
         existence_start, existence_end = lifespan
         self._check_window(ascent_date, existence_start, existence_end)
 
-    def validate_batch(self, ascents: Sequence[AscentInputDTO]) -> BitemporalValidationResult:
+    def validate_batch(self, ascents: Sequence[AscentRequestDTO]) -> BitemporalValidationResult:
         """Walidacja T-01 + T-03 dla wielu wejść (optymalizacja N+1).
 
         Pobiera ramy bitemporalne grupowo w jednym zapytaniu SQL,
@@ -100,7 +100,7 @@ class BitemporalValidationService:
         peak_ids = {a.peak_id for a in ascents}
         lifespans = self._ascent_repo.get_objects_lifespans(peak_ids)
 
-        accepted: list[AscentInputDTO] = []
+        accepted: list[AscentRequestDTO] = []
         violations: list[BitemporalViolation] = []
 
         for ascent in ascents:

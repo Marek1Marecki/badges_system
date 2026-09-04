@@ -30,7 +30,7 @@ class AscentDTO(BaseModel):
         )
 
 
-class AscentInputDTO(BaseModel):
+class AscentRequestDTO(BaseModel):
     """Waliduje dane logu wejścia pochodzące z zewnątrz (np.
 
     formularza/API).
@@ -47,7 +47,7 @@ class AscentInputDTO(BaseModel):
         )
 
 
-class GpxAnalysisResultDTO(BaseModel):
+class GpxAnalysisResponseDTO(BaseModel):
     """Zwraca wynik analizy pliku GPX."""
 
     suggested_date: date | None

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from application.dto.ascent_dto import AscentInputDTO
+from application.dto.ascent_dto import AscentRequestDTO
 from application.exceptions import BitemporalTimeError, ConflictError, UseCaseError
 from application.services.bitemporal_validation_service import BitemporalValidationService
 from application.use_cases.log_ascent import LogAscentUseCase
@@ -17,9 +17,9 @@ class MockPoiScoringService:
     pass
 
 
-def _dto(ascent_date: date) -> AscentInputDTO:
+def _dto(ascent_date: date) -> AscentRequestDTO:
     """Buduje DTO logu wejścia."""
-    return AscentInputDTO(peak_id=42, ascent_date=ascent_date)
+    return AscentRequestDTO(peak_id=42, ascent_date=ascent_date)
 
 
 def _use_case(

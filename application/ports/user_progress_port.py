@@ -7,7 +7,7 @@ application/use_cases/. Nie zawierają importów z Django.
 from datetime import date
 from typing import Protocol
 
-from application.dto.ascent_dto import AscentDTO, AscentInputDTO
+from application.dto.ascent_dto import AscentDTO, AscentRequestDTO
 from application.dto.user_context_dto import BadgeProgressDTO, TouristProfileDTO
 
 
@@ -56,7 +56,7 @@ class AscentLogRepositoryPort(Protocol):
         Zwraca słownik: {peak_id: (existence_start, existence_end)}
         """
 
-    def bulk_save_ascents(self, profile_id: int, ascents: list[AscentInputDTO]) -> int:
+    def bulk_save_ascents(self, profile_id: int, ascents: list[AscentRequestDTO]) -> int:
         """Masowo zapisuje wejścia.
 
         Ignoruje duplikaty (Idempotentność D-04). Zwraca liczbę faktycznie dodanych nowych rekordów.

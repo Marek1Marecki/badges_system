@@ -5,7 +5,7 @@ Invariantem T-03: Odrzuca wejścia z przyszłości. Zgodnie z Invariantem D-04: 
 dnia.
 """
 
-from application.dto.ascent_dto import AscentInputDTO
+from application.dto.ascent_dto import AscentRequestDTO
 from application.exceptions import ConflictError
 from application.ports.clock_port import ClockPort
 from application.ports.event_publisher_port import DomainEventPublisherPort
@@ -38,16 +38,16 @@ class LogAscentUseCase:
         self._uow = uow
         self._event_publisher = event_publisher
 
-    def execute(self, profile_id: int, dto: AscentInputDTO) -> int:
+    def execute(self, profile_id: int, dto: AscentRequestDTO) -> int:
         """Wykonuje operację logowania wejścia.
 
         Args:
           profile_id: ID turysty z kontekstu sesji (API).
           dto: Zwalidowane dane wejściowe.
           profile_id: int:
-          dto: AscentInputDTO:
+          dto: AscentRequestDTO:
           profile_id: int:
-          dto: AscentInputDTO:
+          dto: AscentRequestDTO:
 
         Returns:
           : ID utworzonego logu wejścia.

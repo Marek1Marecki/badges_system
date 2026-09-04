@@ -23,7 +23,7 @@ from django.shortcuts import get_object_or_404
 from django.views import View
 from pydantic import ValidationError
 
-from application.dto.ascent_dto import AscentInputDTO
+from application.dto.ascent_dto import AscentRequestDTO
 from application.dto.map_dto import MapExploreRequestDTO
 from application.dto.user_context_dto import (
     LogisticStatusUpdateDTO,
@@ -203,7 +203,7 @@ class AscentLogView(View):
 
         try:
             body = json.loads(request.body)
-            ascent_input = AscentInputDTO(**body)
+            ascent_input = AscentRequestDTO(**body)
         except (json.JSONDecodeError, ValueError):
             logger.warning(
                 "invalid_ascent_payload",
@@ -707,7 +707,7 @@ class BulkAscentLogView(View):
             body = json.loads(request.body)
             if not isinstance(body, list):
                 raise ValueError("Payload musi być listą obiektów JSON.")
-            ascents = [AscentInputDTO(**item) for item in body]
+            ascents = [AscentRequestDTO(**item) for item in body]
         except (json.JSONDecodeError, ValueError, ValidationError):
             return _problem_detail(
                 request=request,

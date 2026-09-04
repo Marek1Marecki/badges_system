@@ -2,7 +2,7 @@
 
 from datetime import UTC, date, datetime
 
-from application.dto.ascent_dto import AscentInputDTO, BulkAscentResultDTO
+from application.dto.ascent_dto import AscentRequestDTO, BulkAscentResultDTO
 from application.services.bitemporal_validation_service import BitemporalValidationService
 from application.use_cases.bulk_log_ascents import BulkLogAscentsUseCase
 from tests.fakes.clock import FakeClock
@@ -58,8 +58,8 @@ class TestBulkLogAscentsUseCase:
         use_case = _use_case(repo, clock)
 
         ascents = [
-            AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1)),
-            AscentInputDTO(peak_id=1, ascent_date=date(2023, 2, 1)),
+            AscentRequestDTO(peak_id=1, ascent_date=date(2023, 1, 1)),
+            AscentRequestDTO(peak_id=1, ascent_date=date(2023, 2, 1)),
         ]
 
         result = use_case.execute(1, ascents)
@@ -73,7 +73,7 @@ class TestBulkLogAscentsUseCase:
         clock = _clock()
         use_case = _use_case(repo, clock)
 
-        ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2024, 1, 1))]
+        ascents = [AscentRequestDTO(peak_id=1, ascent_date=date(2024, 1, 1))]
 
         result = use_case.execute(1, ascents)
 
@@ -87,7 +87,7 @@ class TestBulkLogAscentsUseCase:
         clock = _clock()
         use_case = _use_case(repo, clock)
 
-        ascents = [AscentInputDTO(peak_id=999, ascent_date=date(2023, 1, 1))]
+        ascents = [AscentRequestDTO(peak_id=999, ascent_date=date(2023, 1, 1))]
 
         result = use_case.execute(1, ascents)
 
@@ -101,7 +101,7 @@ class TestBulkLogAscentsUseCase:
         clock = _clock()
         use_case = _use_case(repo, clock)
 
-        ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2019, 1, 1))]
+        ascents = [AscentRequestDTO(peak_id=1, ascent_date=date(2019, 1, 1))]
 
         result = use_case.execute(1, ascents)
 
@@ -115,7 +115,7 @@ class TestBulkLogAscentsUseCase:
         clock = _clock()
         use_case = _use_case(repo, clock)
 
-        ascents = [AscentInputDTO(peak_id=2, ascent_date=date(2023, 1, 1))]
+        ascents = [AscentRequestDTO(peak_id=2, ascent_date=date(2023, 1, 1))]
 
         result = use_case.execute(1, ascents)
 
@@ -130,9 +130,9 @@ class TestBulkLogAscentsUseCase:
         use_case = _use_case(repo, clock)
 
         ascents = [
-            AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1)),  # Valid
-            AscentInputDTO(peak_id=999, ascent_date=date(2023, 1, 1)),  # Nonexistent
-            AscentInputDTO(peak_id=1, ascent_date=date(2024, 1, 1)),  # Future
+            AscentRequestDTO(peak_id=1, ascent_date=date(2023, 1, 1)),  # Valid
+            AscentRequestDTO(peak_id=999, ascent_date=date(2023, 1, 1)),  # Nonexistent
+            AscentRequestDTO(peak_id=1, ascent_date=date(2024, 1, 1)),  # Future
         ]
 
         result = use_case.execute(1, ascents)
@@ -146,7 +146,7 @@ class TestBulkLogAscentsUseCase:
         clock = _clock()
         use_case = _use_case(repo, clock)
 
-        ascents = [AscentInputDTO(peak_id=1, ascent_date=date(2023, 1, 1))]
+        ascents = [AscentRequestDTO(peak_id=1, ascent_date=date(2023, 1, 1))]
 
         result = use_case.execute(1, ascents)
 
