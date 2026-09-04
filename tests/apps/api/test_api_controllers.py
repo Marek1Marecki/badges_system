@@ -515,6 +515,7 @@ class TestBadgeUnsubscribeView:
         from apps.api.views import BadgeSubscribeView
 
         use_cases["unsubscribe_badge"] = MagicMock()
+        use_cases["unsubscribe_badge"].execute.return_value = "KGP"
 
         request = factory.delete("/api/v1/badges/KGP/subscribe/")
         request.user = mock_user
@@ -522,6 +523,7 @@ class TestBadgeUnsubscribeView:
         response = BadgeSubscribeView.as_view()(request, badge_code="KGP")
 
         assert response.status_code == 200
+        assert response.json()["badge_code"] == "KGP"
         use_cases["unsubscribe_badge"].execute.assert_called_once_with(profile_id=1, badge_code="KGP")
 
     def test_unsubscribe_handles_conflict_error(self, factory, mock_user, use_cases) -> None:
@@ -1214,8 +1216,8 @@ class TestBulkAscentLogViewAdditional:
 
     def test_skips_cache_when_no_ascents_saved(self, factory, mock_user, use_cases) -> None:
         """Pomija cache gdy nie zapisano żadnych wejść wędrówek."""
-        from apps.api.views import BulkAscentLogView
         from application.dto.ascent_dto import BulkAscentResultDTO
+        from apps.api.views import BulkAscentLogView
 
         use_cases["bulk_log_ascents"] = MagicMock()
         use_cases["bulk_log_ascents"].execute.return_value = BulkAscentResultDTO(saved_count=0, errors=[])

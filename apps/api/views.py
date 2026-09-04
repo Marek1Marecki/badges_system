@@ -280,7 +280,7 @@ class BadgeSubscribeView(View):
             badge_code: Kod odznaki do wyrejestrowania.
 
         Returns:
-            200: {"status": "UNSUBSCRIBED"}
+            200: {"status": "UNSUBSCRIBED", "badge_code": <code>}
             401/404: RFC 7807 Problem Details
         """
         auth_error = _require_auth(request)
@@ -291,9 +291,9 @@ class BadgeSubscribeView(View):
 
         try:
             use_case = request.app_container.unsubscribe_badge
-            use_case.execute(profile_id=profile_id, badge_code=badge_code)
+            result = use_case.execute(profile_id=profile_id, badge_code=badge_code)
 
-            return JsonResponse({"status": "UNSUBSCRIBED"}, status=200)
+            return JsonResponse({"status": "UNSUBSCRIBED", "badge_code": result}, status=200)
 
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)

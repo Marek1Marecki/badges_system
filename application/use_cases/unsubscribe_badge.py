@@ -22,15 +22,15 @@ class UnsubscribeBadgeUseCase:
         self._uow = uow
         self._event_publisher = event_publisher
 
-    def execute(self, profile_id: int, badge_code: str) -> None:
+    def execute(self, profile_id: int, badge_code: str) -> str:
         """Kasuje subskrypcję i inwaliduje cache mapy.
 
         Args:
-          profile_id: ID profilu turysty.
-          badge_code: Kod odznaki do usunięcia.
+            profile_id: ID profilu turysty.
+            badge_code: Kod odznaki do usunięcia.
 
         Returns:
-          None.
+            badge_code odsubskrybowanej odznaki.
         """
         progress = self._progress_repo.get_progress(profile_id, badge_code, 1)
         if not progress:
@@ -44,3 +44,5 @@ class UnsubscribeBadgeUseCase:
             self._progress_repo.delete_progress(profile_id, badge_code)
             # System sam dowie się, że postęp się zmienił (zniknął) i wyczyści kolory
             self._event_publisher.publish(UserProgressStateChanged(profile_id=profile_id))
+
+        return badge_code
