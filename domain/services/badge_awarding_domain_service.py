@@ -6,14 +6,18 @@ Dziedziny.
 
 AUDYT-132: Logika "Praw Nabytów" hermetyzowana w jednej usłudze —
 `StartBadgeProgressUseCase` używa `determine_anchor_date()` zamiast
-tternarnego operatora `date`.
+ternarnego operatora `date`.
+
+AUDYT-136: `resolve_final_status` używa `DomainStatus.StrEnum` zamiast
+magic stringów — typowana domena.
 
 Zgodnie z TD-02: Czysta Domena chroni wszystkie niezmienniki biznesowe.
-Use Case nie powinien "wiedzieć", czym jest prawo nabyte.
+Use Case nie powinien "wiedzieć", czym jest prawo nabytego.
 """
 
 from datetime import date
 
+from domain.enums import DomainStatus
 from domain.value_objects.verification_result import VerificationResult
 
 
@@ -34,9 +38,9 @@ class BadgeAwardingDomainService:
 
     def resolve_final_status(
         self,
-        persisted_status: str | None,
+        persisted_status: DomainStatus | None,
         domain_result: VerificationResult,
-    ) -> tuple[str, bool]:
+    ) -> tuple[DomainStatus, bool]:
         """Rozdziela status końcowy i flagę weryfikacji.
 
         Args:
@@ -45,13 +49,13 @@ class BadgeAwardingDomainService:
             domain_result: Wynik czystej weryfikacji matymatycznej.
 
         Returns:
-            Para: (status, verified). Gdy ``persisted_status == "COMPLETED"``
-            zawsze zwraca ``("COMPLETED", True)`` — prawo nabytych chroni
+            Para: (status, verified). Gdy ``persisted_status == COMPLETED``
+            zawsze zwraca ``(COMPLETED, True)`` — prawo nabytych chroni
             turystę przed utratą odznaki.
         """
-        if persisted_status == "COMPLETED":
-            return "COMPLETED", True
-        return domain_result.status, domain_result.verified
+        if persisted_status == DomainStatus.COMPLETED:
+            return DomainStatus.COMPLETED, True
+        return DomainStatus(domain_result.status), domain_result.verified
 
     def determine_anchor_date(
         self,

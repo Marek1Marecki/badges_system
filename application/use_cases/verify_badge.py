@@ -101,7 +101,7 @@ class EvaluateBadgeProgressQuery:
         # 7. Ochrona Praw Nabytych — logika przeniesiona do Czystej Domeny
         # (AUDYT-016: Use Case nie "wie", czym jest prawo nabyte)
         final_status, is_verified = self._awarding_service.resolve_final_status(
-            persisted_status=progress.domain_status,
+            persisted_status=DomainStatus(progress.domain_status) if progress.domain_status else None,
             domain_result=domain_result,
         )
 

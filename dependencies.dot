@@ -329,6 +329,7 @@ digraph G {
   "domain.entities.tourist_profile" -> "domain.events";
   "domain.rules.badge_rules" -> "domain.value_objects.ascent";
   "domain.rules.badge_rules" -> "domain.value_objects.verification_context";
+  "domain.services.badge_awarding_domain_service" -> "domain.enums";
   "domain.services.badge_awarding_domain_service" -> "domain.value_objects.verification_result";
   "domain.services.badge_eligibility_domain_service" -> "domain.entities.badge_version";
   "domain.services.badge_eligibility_domain_service" -> "domain.value_objects.ascent";
