@@ -6,6 +6,7 @@ regulaminu oraz progów stopni.
 
 from dataclasses import dataclass
 
+from domain.enums import DomainStatus
 from domain.rules.badge_rules import BadgeRule
 from domain.value_objects.ascent import Ascent
 from domain.value_objects.verification_context import VerificationContext
@@ -81,9 +82,9 @@ class BadgeVersionDomain:
                     {
                         "tier_id": t.tier_id,
                         "name": t.name,
-                        "status": "COMPLETED"
+                        "status": DomainStatus.COMPLETED
                         if t_completed
-                        else ("IN_PROGRESS" if climbed_count > 0 else "NOT_STARTED"),
+                        else (DomainStatus.IN_PROGRESS if climbed_count > 0 else DomainStatus.NOT_STARTED),
                         "required_count": t.required_count,
                     }
                 )
@@ -92,7 +93,11 @@ class BadgeVersionDomain:
             target = len(self.pool_peak_ids)
             all_completed = climbed_count >= target
 
-        global_status = "COMPLETED" if all_completed else ("IN_PROGRESS" if climbed_count > 0 else "NOT_STARTED")
+        global_status = (
+            DomainStatus.COMPLETED
+            if all_completed
+            else (DomainStatus.IN_PROGRESS if climbed_count > 0 else DomainStatus.NOT_STARTED)
+        )
 
         # Transformacja wyników stopni na nowe obiekty
         tier_results = []
