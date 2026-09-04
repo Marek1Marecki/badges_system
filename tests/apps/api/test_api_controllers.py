@@ -1215,9 +1215,10 @@ class TestBulkAscentLogViewAdditional:
     def test_skips_cache_when_no_ascents_saved(self, factory, mock_user, use_cases) -> None:
         """Pomija cache gdy nie zapisano żadnych wejść wędrówek."""
         from apps.api.views import BulkAscentLogView
+        from application.dto.ascent_dto import BulkAscentResultDTO
 
         use_cases["bulk_log_ascents"] = MagicMock()
-        use_cases["bulk_log_ascents"].execute.return_value = {"saved_count": 0}
+        use_cases["bulk_log_ascents"].execute.return_value = BulkAscentResultDTO(saved_count=0, errors=[])
 
         request = factory.post(
             "/api/v1/ascents/bulk/",
