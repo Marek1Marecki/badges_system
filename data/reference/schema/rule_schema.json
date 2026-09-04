@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BadgeVersion rules validation (AUDYT-133)",
+  "description": "Walidacja semantyczna pola 'rules' w BadgeversionModel \u2014 musi by\u0107 niepusta list\u0105 s\u0142ownik\u00f3w z kluczem 'type'.",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": [
+      "type"
+    ],
+    "properties": {
+      "type": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "additionalProperties": true
+  }
+}

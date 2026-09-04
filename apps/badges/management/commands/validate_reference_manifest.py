@@ -8,10 +8,12 @@ Weryfikuje:
   manifeście (`checksums`).
 """
 
+import gzip
 import hashlib
 import json
 from pathlib import Path
 
+import jsonschema
 from django.core.management.base import BaseCommand, CommandError
 
 REFERENCE_DATA_SCHEMA_VERSION = "1.0"
@@ -22,6 +24,11 @@ REQUIRED_MANIFEST_FIELDS = {
     "statistics": dict,
     "compatible_schema": str,
 }
+
+# AUDYT-133: JSON Schema walidujący pola semantyczne w reference data.
+_BADGE_VERSION_SCHEMA_PATH = (
+    Path(__file__).resolve().parent.parent.parent.parent.parent / "data" / "reference" / "schema" / "rule_schema.json"
+)
 
 
 class Command(BaseCommand):
@@ -76,6 +83,7 @@ class Command(BaseCommand):
         self._validate_schema_version(manifest)
         self._validate_files_exist(manifest, data_dir)
         self._validate_checksums(manifest, data_dir)
+        self._validate_json_schema(manifest, data_dir)  # AUDYT-133
 
         self.stdout.write(
             self.style.SUCCESS(
@@ -203,6 +211,55 @@ class Command(BaseCommand):
 
         if errors:
             raise CommandError("Błąd walidacji sum kontrolnych:\n" + "\n".join(f"  - {e}" for e in errors))
+
+    def _validate_json_schema(self, manifest: dict, data_dir: Path) -> None:
+        """AUDYT-133: Walidacja semantyczna plików referencyjnych JSON Schema.
+
+        Dla plików z ``badgeversionmodel`` sprawdza, że pole ``rules``
+        jest niepustą listą słowników z kluczem ``type``. Zapobiega
+        wgraniu pustych/niepoprawnych reguł, które unicestwią
+        ``BadgeVersionDomain`` podczas hydracji.
+        """
+        try:
+            with open(_BADGE_VERSION_SCHEMA_PATH, encoding="utf-8") as f:
+                schema = json.load(f)
+        except FileNotFoundError:
+            self.stderr.write(
+                self.style.WARNING(
+                    f"Schema file not found ({_BADGE_VERSION_SCHEMA_PATH}); skipping JSON schema validation."
+                )
+            )
+            return
+
+        files_with_rules = [f for f in manifest["files"] if f.endswith("03_badges.json.gz")]
+        errors: list[str] = []
+
+        for filename in files_with_rules:
+            file_path = data_dir / filename
+            if not file_path.exists():
+                continue
+            entries = self._load_gzipped_json(file_path)
+            badgevers = [e for e in entries if e.get("model") == "badges.badgeversionmodel"]
+
+            for entry in badgevers:
+                try:
+                    rules = entry["fields"]["rules"]
+                except (KeyError, TypeError):
+                    errors.append(f"{filename} pk={entry.get('pk')}: brak pola rules")
+                    continue
+                try:
+                    jsonschema.validate(rules, schema)
+                except jsonschema.ValidationError as exc:
+                    errors.append(f"{filename} pk={entry['pk']}: reguły nie przechodzą JSON Schema — {exc.message}")
+
+        if errors:
+            raise CommandError("Błędy walidacji JSON Schema:\n" + "\n".join(f"  - {e}" for e in errors))
+
+    @staticmethod
+    def _load_gzipped_json(file_path: Path) -> list[dict]:
+        """Wczytuje skompresowany JSON (.json.gz) jako listę słowników (loaddata format)."""
+        with gzip.open(file_path, "rt", encoding="utf-8") as f:
+            return json.load(f)  # type: ignore[no-any-return]
 
     @staticmethod
     def _sha256(file_path: Path) -> str:
