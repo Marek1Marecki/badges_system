@@ -462,9 +462,18 @@ Zmiana nazw klas dla "lepszego brzmienia" jest użyteczna na bardzo dojrzałym e
 **Diagnoza Audytora:** 
 Proces "Pakiety Freemium" posiada niezaadresowaną ścieżkę krytyczną. Jeśli turysta posiada aktualnie 5 subskrypcji na koncie PRO i zrezygnuje z pakietu PRO (wracając do pakietu FREE z limitem 3 subskrypcji), system nie definiuje, co ma się stać z 2 nadmiarowymi, aktywnymi odznakami (status `IN_PROGRESS`). Obecnie nie istnieje żaden "Reconciliation Job" (Zadanie Wyrównujące) ani reguła w Czystej Domenie, która radziłaby sobie z takim zjawiskiem.
 
-**Action Items (Do wdrożenia przed udostępnieniem subskrypcji B2C):**
-- [ ] Zaprojektować i udokumentować (np. w `UI_GUIDELINES.md` lub `STORIES.md`) politykę "Downgrade'u" konta: czy nadmiarowe odznaki zostają zamrożone (Read-Only), czy turysta musi ręcznie wybrać, z których dwóch odznak zrezygnować, by móc logować wejścia.
-- [ ] Zaimplementować walidację w `VerifyBadgeUseCase`, która zablokuje przeliczanie postępu na zamrożonych odznakach, jeśli limit jest przekroczony.
+**Rozwiązanie wdrożone (2026-09-04 — częściowe):**
+- [X] Polityka downgradu udokumentowana w `docs/stories/freemium_downgrade_policy.md`
+- [X] `EvaluateBadgeProgressQuery.execute()` waliduje limit (l. 108-117): gdy
+  `active_count > max_active_badges` i status ≠ COMPLETED → `is_verified=False`
+  + błąd "Odznaka zamrożona"
+- [X] `TouristProfileDomain.can_track_new_badge()` / `can_log_ascent()`
+  w domenie — limity Freemium (AUDYT-116 + AUDYT-087)
+
+**Pozostałe (tech debt):**
+- [ ] Brak "Reconciliation Job" — odznaki w `IN_PROGRESS` przy przekroczonym limicie
+  nie są automatycznie zamrażane na poziomie `StartBadgeProgressUseCase`. Wymaga
+  konsensusu biznesowego (automatyczna zamrażalnia vs ręczny wybór).
 
 **Komentarz Architekta:**
 Klasyczny przypadek Edge Case biznesowego. Downgrade kont to zawsze najtrudniejszy element projektowania SaaS, który został u nas pominięty na rzecz łatwiejszego projektowania "awansów" kont (Upgrade).
