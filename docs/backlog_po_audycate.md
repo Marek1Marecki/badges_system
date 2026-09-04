@@ -314,8 +314,12 @@ To zmiana operacyjna wymagająca tylko jednej linijki w pliku `settings.py`, zde
 **Diagnoza Audytora:** 
 W pliku `apps/badges/forms.py` konstruktor formularza (`__init__`) wywołuje `.distinct()` na pełnym zbiorze `TouristObject`, by zbudować podpowiedzi do widżetu `<datalist>`. W panelu Django Admin, formularz jest powoływany (instancjonowany) **dla każdego wyświetlanego wiersza na liście lub w widokach Inline**. Przy 1000 szczytów załadowanie prostej strony w panelu wyzwoli 1000 bezcelowych, obciążających zapytań o "Typy Obiektów".
 
-**Action Items (Do wdrożenia w Fazy Optymalizacji SRE):**
-- [ ] Przebudować zapytanie dla `<datalist>`. Zamiast dociągać dane w konstruktorze `__init__`, zastosować `cache.get_or_set` (z Redis) lub wstrzykiwać te wartości w locie do widoku/szablonu, odcinając złączenie z procesem budowania pojedynczego formularza.
+**Solution wdrożone (2026-09-04):**
+- [X] `apps/badges/forms.py:80-93` — `__init__` używa `cache.get(cache_key)` + fallback `try/except` na zapytaniu `.values_list("type", flat=True).distinct()` — unika N+1 przy cache hit, nie blokuje przy Redis down
+- [X] `cache.set(cache_key, existing_types, timeout=300)` — 5-min TTL, cache write łapie wyjątki i loguje `logger.warning`
+
+**Pozostałe (tech debt):**
+- [ ] Ukryte zapytanie wciąż istnieje (cache miss) — idealne rozwiązanie to wstrzyknięcie `all_types` do formularza z poziomu View/Szablonu, aby całkowicie odciąć DB od `__init__`.
 
 **Komentarz Architekta:**
 Cichy morderca wydajności. Pół sekundy zaoszczędzone na jednej stronie zamieni się w ułamki milisekund.
@@ -506,7 +510,7 @@ Implementacja wymaga migracji bazy (`apps/tourists/models.py` + migration). Zost
 ### [AUDYT-090] Brakujący Interfejs (UX) do Przełączania Praw Nabytych
 **Obszar:** `API / UX`  
 **Priorytet:** `🟠 WYSOKI`  
-**Status:** `🟢 ZREALIZOWANO`  
+**Status:** `🟡 Partial`  
 
 **Diagnoza Audytora:** 
 `US-C05` gwarantuje turyście "Świadomy wybór Regulaminu". Nasz kod w `StartBadgeProgressUseCase` realizuje "Leniwe Zakotwiczenie" – automatycznie znajduje i podczepia turystę pod stary regulamin na podstawie daty jego najstarszego wejścia (Grandfather Clause). Audytor wyłapał jednak lukę w UX: turysta, po automatycznym zakotwiczeniu go przez system w np. regulaminie z 2018 roku, **nie posiada na ekranie przycisku (Switch Version)**, który pozwoliłby mu dobrowolnie zrezygnować ze starych praw i przejść na najnowszą, obecną wersję odznaki, jeśli woli zdobywać ją po nowemu!
@@ -618,7 +622,7 @@ Dobrze zaprojektowany invariant P-01 eliminuje ryzyko "martwych wejść" — ka�
 ### [AUDYT-099] Niezdefiniowany proces wygasania starych wersji regulaminów
 **Obszar:** `Biznes / Prawa Nabyte`  
 **Priorytet:** `🟠 WYSOKI`  
-**Status:** `🟢 ZREALIZOWANO`  
+**Status:** `🔴 Open`  
 
 **Diagnoza Audytora:** 
 Obecny model Praw Nabytych (`US-C05`) opiera się na polu `valid_to` w `BadgeVersionModel`. Jeśli administrator nie wypełni tego pola (`valid_to = NULL`), system traktuje regulamin jako ważny "w nieskończoność". Problem polega na tym, że jeśli PTTK wyda nową wersję odznaki w 2026 roku, ale administrator zapomni ręcznie ustawić datę końcową dla wersji z 2020 roku, nowi turyści bez historii logów będą automatycznie zakotwiczani w **obu** wersjach, lub system wybierze starą z powodu błędnego sortowania w kodzie wybierającym.
