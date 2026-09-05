@@ -15,6 +15,8 @@ digraph G {
     "domain.exceptions" [fillcolor="lightblue"];
     "domain.rules" [fillcolor="lightblue"];
     "domain.rules.badge_rules" [fillcolor="lightblue"];
+    "domain.rules.builders" [fillcolor="lightblue"];
+    "domain.rules.registry" [fillcolor="lightblue"];
     "domain.services" [fillcolor="lightblue"];
     "domain.services.badge_awarding_domain_service" [fillcolor="lightblue"];
     "domain.services.badge_eligibility_domain_service" [fillcolor="lightblue"];
@@ -34,6 +36,7 @@ digraph G {
     "application.dto.map_dto" [fillcolor="lightgreen"];
     "application.dto.news_dto" [fillcolor="lightgreen"];
     "application.dto.region_cache_dto" [fillcolor="lightgreen"];
+    "application.dto.tourist_views_dto" [fillcolor="lightgreen"];
     "application.dto.user_context_dto" [fillcolor="lightgreen"];
     "application.dto.verify_badge_dto" [fillcolor="lightgreen"];
     "application.exceptions" [fillcolor="lightgreen"];
@@ -144,6 +147,7 @@ digraph G {
     "apps.badges.migrations" [fillcolor="pink"];
     "apps.badges.migrations.0001_initial" [fillcolor="pink"];
     "apps.badges.migrations.0002_alter_organizermodel_has_publication_consent_and_more" [fillcolor="pink"];
+    "apps.badges.migrations.0003_alter_touristobject_existence_end_and_more" [fillcolor="pink"];
     "apps.badges.models" [fillcolor="pink"];
     "apps.badges.models.badge" [fillcolor="pink"];
     "apps.badges.models.news" [fillcolor="pink"];
@@ -175,6 +179,7 @@ digraph G {
   "application.dto.ascent_dto" -> "domain.value_objects.ascent";
   "application.ports.badge_repository_port" -> "domain.entities.badge_version";
   "application.ports.event_publisher_port" -> "domain.events";
+  "application.ports.explore_queries_port" -> "application.dto.tourist_views_dto";
   "application.ports.map_port" -> "application.dto.map_dto";
   "application.ports.news_port" -> "application.dto.news_dto";
   "application.ports.user_progress_port" -> "application.dto.ascent_dto";
@@ -184,6 +189,7 @@ digraph G {
   "application.services.bitemporal_validation_service" -> "application.ports.clock_port";
   "application.services.bitemporal_validation_service" -> "application.ports.user_progress_port";
   "application.services.explore_queries_service" -> "application.dto.explore_queries_dto";
+  "application.services.explore_queries_service" -> "application.dto.tourist_views_dto";
   "application.services.explore_queries_service" -> "application.ports.cache_port";
   "application.services.explore_queries_service" -> "application.ports.explore_queries_port";
   "application.services.explore_queries_service" -> "application.ports.user_progress_port";
@@ -310,6 +316,8 @@ digraph G {
   "apps.badges.models.badge" -> "apps.badges.rules_schema";
   "apps.badges.models.proximity" -> "apps.badges.models.osm";
   "apps.badges.models.read_model" -> "apps.badges.models.osm";
+  "apps.badges.rules_schema" -> "domain.rules.builders";
+  "apps.badges.rules_schema" -> "domain.rules.registry";
   "apps.badges.tasks" -> "application.exceptions";
   "apps.tourists.admin" -> "apps.tourists.models";
   "apps.tourists.apps" -> "apps.tourists.signals";
@@ -318,8 +326,8 @@ digraph G {
   "apps.tourists.migrations.0001_initial" -> "apps.tourists.models";
   "apps.tourists.migrations.0004_alter_ascentlog_souvenir_image_auditlog" -> "apps.tourists.models";
   "apps.tourists.models" -> "apps.badges.models";
+  "apps.tourists.models" -> "domain.enums";
   "apps.tourists.signals" -> "apps.tourists.models";
-  "apps.tourists.views" -> "apps.badges.models";
   "apps.tourists.views" -> "apps.tourists.models";
   "domain.entities.badge_version" -> "domain.enums";
   "domain.entities.badge_version" -> "domain.rules.badge_rules";
@@ -329,6 +337,8 @@ digraph G {
   "domain.entities.tourist_profile" -> "domain.events";
   "domain.rules.badge_rules" -> "domain.value_objects.ascent";
   "domain.rules.badge_rules" -> "domain.value_objects.verification_context";
+  "domain.rules.builders" -> "domain.rules.badge_rules";
+  "domain.rules.builders" -> "domain.rules.registry";
   "domain.services.badge_awarding_domain_service" -> "domain.enums";
   "domain.services.badge_awarding_domain_service" -> "domain.value_objects.verification_result";
   "domain.services.badge_eligibility_domain_service" -> "domain.entities.badge_version";
@@ -354,8 +364,10 @@ digraph G {
   "infrastructure.adapters.persistence.django_badge_repo" -> "domain.entities.badge_version";
   "infrastructure.adapters.persistence.django_badge_repo" -> "domain.rules.badge_rules";
   "infrastructure.adapters.persistence.django_badge_repo" -> "infrastructure.factories.badge_rule_factory";
+  "infrastructure.adapters.persistence.django_explore_queries_repo" -> "application.dto.tourist_views_dto";
   "infrastructure.adapters.persistence.django_explore_queries_repo" -> "application.ports.explore_queries_port";
   "infrastructure.adapters.persistence.django_explore_queries_repo" -> "apps.badges.models";
+  "infrastructure.adapters.persistence.django_explore_queries_repo" -> "apps.tourists.models";
   "infrastructure.adapters.persistence.django_map_repo" -> "application.dto.map_dto";
   "infrastructure.adapters.persistence.django_map_repo" -> "application.exceptions";
   "infrastructure.adapters.persistence.django_map_repo" -> "application.ports.map_port";
@@ -381,5 +393,7 @@ digraph G {
   "infrastructure.config" -> "infrastructure.config.app_settings";
   "infrastructure.exceptions" -> "application.exceptions";
   "infrastructure.factories.badge_rule_factory" -> "domain.rules.badge_rules";
+  "infrastructure.factories.badge_rule_factory" -> "domain.rules.builders";
+  "infrastructure.factories.badge_rule_factory" -> "domain.rules.registry";
   "infrastructure.logging" -> "infrastructure.logging.log_config";
 }

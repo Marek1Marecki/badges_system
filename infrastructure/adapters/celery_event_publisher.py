@@ -72,10 +72,10 @@ class CeleryEventPublisher(DomainEventPublisherPort):
             _persist_audit_log(
                 action="AscentLogged",
                 target_type="AscentLog",
-                target_id=f"profile={event.actor_profile_id}/peak={event.peak_id}",
+                target_id=f"profile={event.actor_profile_id}/object={event.object_id}",
                 payload={
                     "actor_profile_id": event.actor_profile_id,
-                    "peak_id": event.peak_id,
+                    "peak_id": event.object_id,
                     "ascent_date": str(event.ascent_date),
                 },
             )

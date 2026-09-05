@@ -17,14 +17,14 @@ class AscentDTO(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    peak_id: int = Field(gt=0)
+    object_id: int = Field(gt=0)
     ascent_date: date
     region_ids: frozenset[int] = Field(default_factory=frozenset)
 
     def to_domain(self) -> Ascent:
         """Konwertuje snapshot na Value Object rozumiany przez obecną domenę."""
         return Ascent(
-            peak_id=self.peak_id,
+            object_id=self.object_id,
             ascent_date=self.ascent_date,
             region_ids=self.region_ids,  # <--- DODANO PRZEKAZYWANIE REGIONÓW
         )
@@ -42,7 +42,7 @@ class AscentRequestDTO(BaseModel):
     def to_domain(self) -> Ascent:
         """Konwertuje zwalidowane DTO na Value Object z warstwy domeny."""
         return Ascent(
-            peak_id=self.peak_id,
+            object_id=self.peak_id,
             ascent_date=self.ascent_date,
         )
 

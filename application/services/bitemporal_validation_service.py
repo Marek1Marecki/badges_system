@@ -29,11 +29,11 @@ from application.ports.user_progress_port import AscentLogRepositoryPort
 class BitemporalViolation:
     """Jedna przyczyna odrzucenia wejścia w trybie batch.
 
-    `peak_id` + `reason` — nie podnosimy własnego wyjątku, bo w batch
+    `object_id` + `reason` — nie podnosimy własnego wyjątku, bo w batch
     chcemy gromadzić wszystkie odrzucenia (Partial Success).
     """
 
-    peak_id: int
+    object_id: int
     reason: str
 
 
@@ -67,20 +67,20 @@ class BitemporalValidationService:
         self._ascent_repo = ascent_repo
         self._clock = clock
 
-    def validate_single(self, peak_id: int, ascent_date: date) -> None:
+    def validate_single(self, object_id: int, ascent_date: date) -> None:
         """Walidacja T-01 + T-03 dla jednego wejścia.
 
         Raises:
-            UseCaseError: Gdy peak nie istnieje (T-01 brak lifespan)
+            UseCaseError: Gdy obiekt nie istnieje (T-01 brak lifespan)
                 albo data jest z przyszłości (T-03).
             BitemporalTimeError: Gdy wejście wykracza poza okno życia
                 obiektu (T-01).
         """
         self._assert_not_future(ascent_date)
 
-        lifespan = self._ascent_repo.get_object_lifespan(peak_id)
+        lifespan = self._ascent_repo.get_object_lifespan(object_id)
         if lifespan is None:
-            raise UseCaseError(f"Obiekt o ID {peak_id} nie istnieje w bazie.")
+            raise UseCaseError(f"Obiekt o ID {object_id} nie istnieje w bazie.")
 
         existence_start, existence_end = lifespan
         self._check_window(ascent_date, existence_start, existence_end)
@@ -97,8 +97,8 @@ class BitemporalValidationService:
         """
         today = self._clock.now().date()
 
-        peak_ids = {a.peak_id for a in ascents}
-        lifespans = self._ascent_repo.get_objects_lifespans(peak_ids)
+        object_ids = {a.peak_id for a in ascents}
+        lifespans = self._ascent_repo.get_objects_lifespans(object_ids)
 
         accepted: list[AscentRequestDTO] = []
         violations: list[BitemporalViolation] = []
@@ -106,21 +106,21 @@ class BitemporalValidationService:
         for ascent in ascents:
             if ascent.ascent_date > today:
                 violations.append(
-                    BitemporalViolation(peak_id=ascent.peak_id, reason="Data wejścia jest z przyszłości (T-03).")
+                    BitemporalViolation(object_id=ascent.peak_id, reason="Data wejścia jest z przyszłości (T-03).")
                 )
                 continue
 
             lifespan = lifespans.get(ascent.peak_id)
             if lifespan is None:
                 violations.append(
-                    BitemporalViolation(peak_id=ascent.peak_id, reason="Obiekt nie istnieje w bazie (T-01).")
+                    BitemporalViolation(object_id=ascent.peak_id, reason="Obiekt nie istnieje w bazie (T-01).")
                 )
                 continue
 
             existence_start, existence_end = lifespan
             window_error = self._check_window_error(ascent.ascent_date, existence_start, existence_end)
             if window_error is not None:
-                violations.append(BitemporalViolation(peak_id=ascent.peak_id, reason=window_error))
+                violations.append(BitemporalViolation(object_id=ascent.peak_id, reason=window_error))
                 continue
 
             accepted.append(ascent)

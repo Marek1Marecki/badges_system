@@ -284,5 +284,5 @@ class TestDjangoTouristRepository:
         ascents = self.repo.get_all_ascents_for_user(profile.id)
 
         assert len(ascents) == 1
-        assert ascents[0].peak_id == obj.id
+        assert ascents[0].object_id == obj.id
         assert ascents[0].region_ids == frozenset({1})

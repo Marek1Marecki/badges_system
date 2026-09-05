@@ -55,8 +55,8 @@ def ascents_strategy() -> st.SearchStrategy[list[Ascent]]:
     """Generuje listę obiektów Ascent z losowymi danymi."""
     return st.lists(
         st.builds(
-            Ascent,
-            peak_id=PEAK_IDS,
+             Ascent,
+            object_id=PEAK_IDS,
             ascent_date=DATES,
             region_ids=st.frozensets(REGION_IDS, max_size=5),
         ),
@@ -143,7 +143,7 @@ class TestMandatoryObjectsRuleHypothesis:
 
         rule = MandatoryObjectsRule(mandatory_peak_ids=mandatory)
         errors = rule.validate(
-            [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed],
+            [Ascent(object_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed],
             ctx,
         )
         assert len(errors) >= 1
@@ -168,7 +168,7 @@ class TestStartDateRuleHypothesis:
         assume(ascent_date >= start_date)
 
         rule = StartDateRule(start_date=start_date)
-        assert rule.validate([Ascent(peak_id=1, ascent_date=ascent_date)], ctx) == []
+        assert rule.validate([Ascent(object_id=1, ascent_date=ascent_date)], ctx) == []
 
     @given(start_date=DATES, ascent_date=DATES)
     @settings(
@@ -181,7 +181,7 @@ class TestStartDateRuleHypothesis:
         assume(ascent_date < start_date)
 
         rule = StartDateRule(start_date=start_date)
-        errors = rule.validate([Ascent(peak_id=1, ascent_date=ascent_date)], ctx)
+        errors = rule.validate([Ascent(object_id=1, ascent_date=ascent_date)], ctx)
         assert len(errors) >= 1
 
 
@@ -213,7 +213,7 @@ class TestDateWindowRuleHypothesis:
         assume(start_date <= ascent_date <= end_date)
 
         rule = DateWindowRule(start_date=start_date, end_date=end_date)
-        assert rule.validate([Ascent(peak_id=1, ascent_date=ascent_date)], ctx) == []
+        assert rule.validate([Ascent(object_id=1, ascent_date=ascent_date)], ctx) == []
 
     @given(
         start_date=DATES,
@@ -235,7 +235,7 @@ class TestDateWindowRuleHypothesis:
         assume(ascent_date < start_date or ascent_date > end_date)
 
         rule = DateWindowRule(start_date=start_date, end_date=end_date)
-        errors = rule.validate([Ascent(peak_id=1, ascent_date=ascent_date)], ctx)
+        errors = rule.validate([Ascent(object_id=1, ascent_date=ascent_date)], ctx)
         assert len(errors) >= 1
 
 
@@ -269,7 +269,7 @@ class TestRegionCountRuleHypothesis:
 
         region_ids_list = [region_id] * matching_count + non_matching_region_ids
         ascents = [
-            Ascent(peak_id=i, ascent_date=date(2023, 1, 1), region_ids=frozenset([rid]))
+            Ascent(object_id=i, ascent_date=date(2023, 1, 1), region_ids=frozenset([rid]))
             for i, rid in enumerate(region_ids_list)
         ]
         rule = RegionCountRule(region_id=region_id, required_count=required_count)
@@ -295,7 +295,7 @@ class TestRegionCountRuleHypothesis:
         assume(count < required_count)
 
         ascents = [
-            Ascent(peak_id=i, ascent_date=date(2023, 1, 1), region_ids=frozenset([rid]))
+            Ascent(object_id=i, ascent_date=date(2023, 1, 1), region_ids=frozenset([rid]))
             for i, rid in enumerate(ascent_region_ids)
         ]
         rule = RegionCountRule(region_id=region_id, required_count=required_count)
@@ -336,7 +336,7 @@ class TestRequiresClubJoinDateRuleHypothesis:
             completed_badge_codes=ctx.completed_badge_codes,
         )
         rule = RequiresClubJoinDateRule()
-        errors = rule.validate([Ascent(peak_id=1, ascent_date=ascent_date)], ctx_override)
+        errors = rule.validate([Ascent(object_id=1, ascent_date=ascent_date)], ctx_override)
         assert len(errors) >= 1
 
     @given(
@@ -361,7 +361,7 @@ class TestRequiresClubJoinDateRuleHypothesis:
             completed_badge_codes=ctx.completed_badge_codes,
         )
         rule = RequiresClubJoinDateRule()
-        assert rule.validate([Ascent(peak_id=1, ascent_date=ascent_date)], ctx_override) == []
+        assert rule.validate([Ascent(object_id=1, ascent_date=ascent_date)], ctx_override) == []
 
     @given(
         club_join_dates=CLUB_JOIN_DATES,
@@ -385,7 +385,7 @@ class TestRequiresClubJoinDateRuleHypothesis:
             completed_badge_codes=ctx.completed_badge_codes,
         )
         rule = RequiresClubJoinDateRule()
-        errors = rule.validate([Ascent(peak_id=1, ascent_date=ascent_date)], ctx_override)
+        errors = rule.validate([Ascent(object_id=1, ascent_date=ascent_date)], ctx_override)
         assert len(errors) >= 1
 
 
@@ -410,7 +410,7 @@ class TestMinAgeRuleHypothesis:
             completed_badge_codes=ctx.completed_badge_codes,
         )
         rule = MinAgeRule(min_age=min_age)
-        assert rule.validate([Ascent(peak_id=1, ascent_date=date(2023, 1, 1))], ctx_override) == []
+        assert rule.validate([Ascent(object_id=1, ascent_date=date(2023, 1, 1))], ctx_override) == []
 
     @given(
         min_age=st.integers(min_value=0, max_value=120),
@@ -436,7 +436,7 @@ class TestMinAgeRuleHypothesis:
             completed_badge_codes=ctx.completed_badge_codes,
         )
         rule = MinAgeRule(min_age=min_age)
-        assert rule.validate([Ascent(peak_id=1, ascent_date=ascent_date)], ctx_override) == []
+        assert rule.validate([Ascent(object_id=1, ascent_date=ascent_date)], ctx_override) == []
 
     @given(
         min_age=st.integers(min_value=1, max_value=120),
@@ -464,7 +464,7 @@ class TestMinAgeRuleHypothesis:
             completed_badge_codes=ctx.completed_badge_codes,
         )
         rule = MinAgeRule(min_age=min_age)
-        errors = rule.validate([Ascent(peak_id=1, ascent_date=ascent_date)], ctx_override)
+        errors = rule.validate([Ascent(object_id=1, ascent_date=ascent_date)], ctx_override)
         assert len(errors) >= 1
 
 
@@ -484,7 +484,7 @@ class TestMaxAgeRuleHypothesis:
             completed_badge_codes=ctx.completed_badge_codes,
         )
         rule = MaxAgeRule(max_age=max_age)
-        errors = rule.validate([Ascent(peak_id=1, ascent_date=date(2023, 1, 1))], ctx_override)
+        errors = rule.validate([Ascent(object_id=1, ascent_date=date(2023, 1, 1))], ctx_override)
         assert len(errors) >= 1
 
     @given(
@@ -511,7 +511,7 @@ class TestMaxAgeRuleHypothesis:
             completed_badge_codes=ctx.completed_badge_codes,
         )
         rule = MaxAgeRule(max_age=max_age)
-        assert rule.validate([Ascent(peak_id=1, ascent_date=ascent_date)], ctx_override) == []
+        assert rule.validate([Ascent(object_id=1, ascent_date=ascent_date)], ctx_override) == []
 
     @given(
         max_age=st.integers(min_value=0, max_value=119),
@@ -539,7 +539,7 @@ class TestMaxAgeRuleHypothesis:
             completed_badge_codes=ctx.completed_badge_codes,
         )
         rule = MaxAgeRule(max_age=max_age)
-        errors = rule.validate([Ascent(peak_id=1, ascent_date=ascent_date)], ctx_override)
+        errors = rule.validate([Ascent(object_id=1, ascent_date=ascent_date)], ctx_override)
         assert len(errors) >= 1
 
 
@@ -599,7 +599,7 @@ class TestGroupedAlternativesRuleHypothesis:
         assume(completed >= min_groups_required)
 
         rule = GroupedAlternativesRule(groups=tuple(groups), min_groups_required=min_groups_required)
-        ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed_peak_ids]
+        ascents = [Ascent(object_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed_peak_ids]
         assert rule.validate(ascents, ctx) == []
 
     @given(
@@ -625,7 +625,7 @@ class TestGroupedAlternativesRuleHypothesis:
         assume(min_groups_required <= len(groups))
 
         rule = GroupedAlternativesRule(groups=tuple(groups), min_groups_required=min_groups_required)
-        ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed_peak_ids]
+        ascents = [Ascent(object_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed_peak_ids]
         errors = rule.validate(ascents, ctx)
         assert len(errors) >= 1
 
@@ -715,7 +715,7 @@ class TestMultiPoolRequirementRuleHypothesis:
 
         climbed_peak_ids = frozenset(all_peak_ids)
         rule = MultiPoolRequirementRule(pools=tuple(pools))
-        ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed_peak_ids]
+        ascents = [Ascent(object_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed_peak_ids]
         assert rule.validate(ascents, ctx) == []
 
     @given(
@@ -745,7 +745,7 @@ class TestMultiPoolRequirementRuleHypothesis:
         assume(unsatisfied)
 
         rule = MultiPoolRequirementRule(pools=tuple(pools))
-        ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed_peak_ids]
+        ascents = [Ascent(object_id=pid, ascent_date=date(2023, 1, 1)) for pid in climbed_peak_ids]
         errors = rule.validate(ascents, ctx)
         assert len(errors) >= len(unsatisfied)
 
@@ -762,7 +762,7 @@ class TestCompositeRulesHypothesis:
         ascents=st.lists(
             st.builds(
                 Ascent,
-                peak_id=PEAK_IDS,
+                object_id=PEAK_IDS,
                 ascent_date=DATES,
                 region_ids=st.frozensets(REGION_IDS, max_size=3),
             ),
@@ -800,7 +800,7 @@ class TestCompositeRulesHypothesis:
         ascents=st.lists(
             st.builds(
                 Ascent,
-                peak_id=PEAK_IDS,
+                object_id=PEAK_IDS,
                 ascent_date=DATES,
                 region_ids=st.frozensets(REGION_IDS, max_size=3),
             ),
@@ -829,7 +829,7 @@ class TestCompositeRulesHypothesis:
         ascents=st.lists(
             st.builds(
                 Ascent,
-                peak_id=PEAK_IDS,
+                object_id=PEAK_IDS,
                 ascent_date=DATES,
                 region_ids=st.frozensets(REGION_IDS, max_size=3),
             ),
@@ -855,7 +855,7 @@ class TestCompositeRulesHypothesis:
         errors = rule.validate(ascents, ctx)
         assert len(errors) <= 1
         if errors:
-            climbed = {a.peak_id for a in ascents}
+            climbed = {a.object_id for a in ascents}
             missing = sorted(mandatory - climbed)
             assert str(missing) in errors[0]
 
@@ -950,7 +950,7 @@ class TestAgeRulesMonthDayHypothesis:
             completed_badge_codes=ctx.completed_badge_codes,
         )
         rule = MinAgeRule(min_age=min_age)
-        errors = rule.validate([Ascent(peak_id=1, ascent_date=ascent_date)], ctx_override)
+        errors = rule.validate([Ascent(object_id=1, ascent_date=ascent_date)], ctx_override)
 
         if age >= min_age:
             assert errors == []
@@ -970,7 +970,7 @@ class TestAscentListInvariantsHypothesis:
         ascents=st.lists(
             st.builds(
                 Ascent,
-                peak_id=PEAK_IDS,
+                object_id=PEAK_IDS,
                 ascent_date=DATES,
                 region_ids=st.frozensets(REGION_IDS, max_size=3),
             ),
@@ -993,7 +993,7 @@ class TestAscentListInvariantsHypothesis:
             return
 
         deduped = [
-            Ascent(peak_id=a.peak_id, ascent_date=a.ascent_date, region_ids=a.region_ids)
+            Ascent(object_id=a.object_id, ascent_date=a.ascent_date, region_ids=a.region_ids)
             for a in dict.fromkeys(ascents)
         ]
         rule = MandatoryObjectsRule(mandatory_peak_ids=mandatory)
@@ -1005,7 +1005,7 @@ class TestAscentListInvariantsHypothesis:
         ascents=st.lists(
             st.builds(
                 Ascent,
-                peak_id=PEAK_IDS,
+                object_id=PEAK_IDS,
                 ascent_date=DATES,
                 region_ids=st.frozensets(REGION_IDS, max_size=3),
             ),
@@ -1054,7 +1054,7 @@ class TestRuleIdempotencyHypothesis:
         ascents=st.lists(
             st.builds(
                 Ascent,
-                peak_id=PEAK_IDS,
+                object_id=PEAK_IDS,
                 ascent_date=DATES,
                 region_ids=st.frozensets(REGION_IDS, max_size=3),
             ),
@@ -1082,7 +1082,7 @@ class TestRuleIdempotencyHypothesis:
         ascents=st.lists(
             st.builds(
                 Ascent,
-                peak_id=PEAK_IDS,
+                object_id=PEAK_IDS,
                 ascent_date=DATES,
                 region_ids=st.frozensets(REGION_IDS, max_size=3),
             ),
@@ -1122,7 +1122,7 @@ class TestDateWindowRuleEdgeCasesHypothesis:
     def test_single_day_window_passes_for_exact_date(self, ctx: VerificationContext, ascent_date: date) -> None:
         """Okno jedno-dniowe akceptuje wejście w dokładnie tej dacie."""
         rule = DateWindowRule(start_date=ascent_date, end_date=ascent_date)
-        assert rule.validate([Ascent(peak_id=1, ascent_date=ascent_date)], ctx) == []
+        assert rule.validate([Ascent(object_id=1, ascent_date=ascent_date)], ctx) == []
 
     @given(
         start_date=DATES,
@@ -1138,7 +1138,7 @@ class TestDateWindowRuleEdgeCasesHypothesis:
         assume(start_date == end_date)
         other_date = start_date.replace(year=start_date.year + 1)
         rule = DateWindowRule(start_date=start_date, end_date=end_date)
-        errors = rule.validate([Ascent(peak_id=1, ascent_date=other_date)], ctx)
+        errors = rule.validate([Ascent(object_id=1, ascent_date=other_date)], ctx)
         assert len(errors) >= 1
 
 
@@ -1165,7 +1165,7 @@ class TestRegionCountRuleEdgeCasesHypothesis:
     ) -> None:
         """Liczba wejść dokładnie równa required_count przechodzi."""
         ascents = [
-            Ascent(peak_id=i, ascent_date=date(2023, 1, 1), region_ids=frozenset([region_id]))
+            Ascent(object_id=i, ascent_date=date(2023, 1, 1), region_ids=frozenset([region_id]))
             for i in range(matching_count)
         ]
         rule = RegionCountRule(region_id=region_id, required_count=matching_count)
@@ -1225,7 +1225,7 @@ class TestMultiPoolRequirementRuleEdgeCasesHypothesis:
         assume(len(peak_ids) >= required_count)
         pool = SubPoolRequirement(required_count=required_count, peak_ids=peak_ids, name="test")
         rule = MultiPoolRequirementRule(pools=(pool,))
-        ascents = [Ascent(peak_id=pid, ascent_date=date(2023, 1, 1)) for pid in peak_ids]
+        ascents = [Ascent(object_id=pid, ascent_date=date(2023, 1, 1)) for pid in peak_ids]
         assert rule.validate(ascents, ctx) == []
 
 
@@ -1262,9 +1262,9 @@ class TestRequiresClubJoinDateRuleEdgeCasesHypothesis:
         rule = RequiresClubJoinDateRule()
 
         if ascent_date >= earliest:
-            assert rule.validate([Ascent(peak_id=1, ascent_date=ascent_date)], ctx_override) == []
+            assert rule.validate([Ascent(object_id=1, ascent_date=ascent_date)], ctx_override) == []
         else:
-            assert len(rule.validate([Ascent(peak_id=1, ascent_date=ascent_date)], ctx_override)) >= 1
+            assert len(rule.validate([Ascent(object_id=1, ascent_date=ascent_date)], ctx_override)) >= 1
 
 
 # ---------------------------------------------------------------------------
@@ -1289,7 +1289,7 @@ class TestErrorMessageFormatHypothesis:
         """Komunikat błędu StartDateRule zawiera ID szczytu i datę."""
         assume(ascent_date < start_date)
         rule = StartDateRule(start_date=start_date)
-        errors = rule.validate([Ascent(peak_id=peak_id, ascent_date=ascent_date)], ctx)
+        errors = rule.validate([Ascent(object_id=peak_id, ascent_date=ascent_date)], ctx)
         assert errors
         assert str(peak_id) in errors[0]
         assert str(ascent_date) in errors[0]
@@ -1322,6 +1322,6 @@ class TestErrorMessageFormatHypothesis:
             completed_badge_codes=ctx.completed_badge_codes,
         )
         rule = MinAgeRule(min_age=min_age)
-        errors = rule.validate([Ascent(peak_id=peak_id, ascent_date=ascent_date)], ctx_override)
+        errors = rule.validate([Ascent(object_id=peak_id, ascent_date=ascent_date)], ctx_override)
         assert errors
         assert "lat" in errors[0]

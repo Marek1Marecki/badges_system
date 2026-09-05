@@ -136,6 +136,14 @@ ignore_imports =
     # Powód: Ten sam wzorzec — repozytorium dostępu do odznak.
     infrastructure.adapters.persistence.django_badge_repo -> apps.badges.models
 
+    # DŁUG-011: infrastructure/adapters/persistence/django_explore_queries_repo.py -> apps.*
+    # Powód: Zapytania eksploracyjne dla mapy.
+    infrastructure.adapters.persistence.django_explore_queries_repo -> apps.badges.models
+    # BINDING-016-ext: django_explore_queries_repo importuje UserBadgeProgress i AscentLog
+    # z apps.tourists.models dla zapytań o subskrypcji i logach wejść.
+    # To nie "dług", lecz nieodzowne powiązanie (binding) adaptera ORM z modelem Django.
+    infrastructure.adapters.persistence.django_explore_queries_repo -> apps.tourists.models
+
     # DŁUG-008: infrastructure/adapters/persistence/django_region_cache_repo.py -> apps.badges.models
     # Powód: Adaptery regionów i cache używają modeli turystycznych (ObjectRegionCache,
     #        TouristObject, TouristRegionModel) do zapytań GIS.
@@ -149,9 +157,13 @@ ignore_imports =
     # Powód: Repozytorium proximity candidateów.
     infrastructure.adapters.persistence.django_proximity_repo -> apps.badges.models
 
-    # DŁUG-011: infrastructure/adapters/persistence/django_explore_queries_repo.py -> apps.badges.models
+    # DŁUG-011: infrastructure/adapters/persistence/django_explore_queries_repo.py -> apps.*
     # Powód: Zapytania eksploracyjne dla mapy.
     infrastructure.adapters.persistence.django_explore_queries_repo -> apps.badges.models
+    # BINDING-016-ext: django_explore_queries_repo importuje UserBadgeProgress i AscentLog
+    # z apps.tourists.models dla zapytań o subskrypcji i logach wejść.
+    # To nie "dług", lecz nieodzowne powiązanie (binding) adaptera ORM z modelem Django.
+    infrastructure.adapters.persistence.django_explore_queries_repo -> apps.tourists.models
 
     # DŁUG-012: infrastructure/adapters/persistence/django_mvt_repo.py -> apps.badges.models
     # Powód: Repozytorium MVT (Map Vector Tiles) dla renderowania map.

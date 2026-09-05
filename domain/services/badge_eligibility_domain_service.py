@@ -99,7 +99,7 @@ class BadgeEligibilityDomainService:
             return PeakSimulationResult(color="BLUE", score=0)
 
         # Symulacja: "A co, gdyby turysta wszedł tu dzisiaj?"
-        sim_ascent = Ascent(peak_id=peak_id, ascent_date=today_date, region_ids=frozenset())
+        sim_ascent = Ascent(object_id=peak_id, ascent_date=today_date, region_ids=frozenset())
         sim_eval = version.evaluate(domain_ascents + [sim_ascent], context)
         sim_valid_count = sim_eval.valid_ascents_count
 

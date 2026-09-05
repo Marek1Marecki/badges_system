@@ -76,12 +76,12 @@ class DjangoAscentLogRepository(AscentLogRepositoryPort):
     strumieniowanie i masowe zapisy).
     """
 
-    def get_object_lifespan(self, peak_id: int) -> tuple[date | None, date | None] | None:
+    def get_object_lifespan(self, object_id: int) -> tuple[date | None, date | None] | None:
         """
 
         Args:
-          peak_id: int:
-          peak_id: int:
+          object_id: int:
+          object_id: int:
 
         Returns:
 
@@ -89,21 +89,21 @@ class DjangoAscentLogRepository(AscentLogRepositoryPort):
         from apps.badges.models import TouristObject
 
         try:
-            obj = TouristObject.objects.get(id=peak_id)
+            obj = TouristObject.objects.get(id=object_id)
         except TouristObject.DoesNotExist:
             return None
 
         return (obj.existence_start, obj.existence_end)
 
-    def ascent_exists(self, profile_id: int, peak_id: int, ascent_date: date) -> bool:
+    def ascent_exists(self, profile_id: int, object_id: int, ascent_date: date) -> bool:
         """
 
         Args:
           profile_id: int:
-          peak_id: int:
+          object_id: int:
           ascent_date: date:
           profile_id: int:
-          peak_id: int:
+          object_id: int:
           ascent_date: date:
 
         Returns:
@@ -111,7 +111,7 @@ class DjangoAscentLogRepository(AscentLogRepositoryPort):
         """
         from apps.tourists.models import AscentLog
 
-        qs = AscentLog.objects.filter(profile_id=profile_id, peak_id=peak_id, ascent_date=ascent_date)
+        qs = AscentLog.objects.filter(profile_id=profile_id, peak_id=object_id, ascent_date=ascent_date)
         return bool(qs.exists())
 
     def get_oldest_ascent_date(self, profile_id: int, badge_code: str) -> date | None:
@@ -139,15 +139,15 @@ class DjangoAscentLogRepository(AscentLogRepositoryPort):
         )
         return cast(date | None, result["oldest"])
 
-    def save_ascent(self, profile_id: int, peak_id: int, ascent_date: date) -> int:
+    def save_ascent(self, profile_id: int, object_id: int, ascent_date: date) -> int:
         """
 
         Args:
           profile_id: int:
-          peak_id: int:
+          object_id: int:
           ascent_date: date:
           profile_id: int:
-          peak_id: int:
+          object_id: int:
           ascent_date: date:
 
         Returns:
@@ -159,7 +159,7 @@ class DjangoAscentLogRepository(AscentLogRepositoryPort):
         # API uderzy tu dwa razy, get_or_create nie wyrzuci błędu bazy z UniqueConstraint.
         log, _ = AscentLog.objects.get_or_create(
             profile_id=profile_id,
-            peak_id=peak_id,
+            peak_id=object_id,
             ascent_date=ascent_date,
             defaults={},
         )
@@ -218,26 +218,26 @@ class DjangoAscentLogRepository(AscentLogRepositoryPort):
         for ascent in qs.only("peak_id", "ascent_date").iterator(chunk_size=2000):
             ascents.append(
                 AscentDTO(
-                    peak_id=ascent.peak_id,
+                    object_id=ascent.peak_id,
                     ascent_date=ascent.ascent_date,
                     region_ids=frozenset(region_map.get(ascent.peak_id, set())),
                 )
             )
         return ascents
 
-    def get_objects_lifespans(self, peak_ids: set[int]) -> dict[int, tuple[date | None, date | None]]:
+    def get_objects_lifespans(self, object_ids: set[int]) -> dict[int, tuple[date | None, date | None]]:
         """Pobiera bitemporalne ramy życia dla wielu obiektów naraz (Optymalizacja N+1).
 
         Args:
-          peak_ids: set[int]:
-          peak_ids: set[int]:
+          object_ids: set[int]:
+          object_ids: set[int]:
 
         Returns:
         """
         from apps.badges.models import TouristObject
 
         # Pobieramy tylko niezbędne 3 kolumny
-        qs = TouristObject.objects.filter(id__in=peak_ids).values_list("id", "existence_start", "existence_end")
+        qs = TouristObject.objects.filter(id__in=object_ids).values_list("id", "existence_start", "existence_end")
         return {row[0]: (row[1], row[2]) for row in qs}
 
     def bulk_save_ascents(self, profile_id: int, ascents: list[AscentRequestDTO]) -> int:
@@ -312,7 +312,7 @@ class DjangoAscentLogRepository(AscentLogRepositoryPort):
         for ascent in ascent_qs.only("peak_id", "ascent_date").iterator(chunk_size=2000):
             ascents.append(
                 AscentDTO(
-                    peak_id=ascent.peak_id,
+                    object_id=ascent.peak_id,
                     ascent_date=ascent.ascent_date,
                     region_ids=frozenset(region_map.get(ascent.peak_id, set())),
                 )

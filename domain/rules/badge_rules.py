@@ -36,7 +36,7 @@ class BadgeRule(ABC):
         Returns:
           Komunikat o odrzuceniu wejścia.
         """
-        return f"Wejście na obiekt (ID: {ascent.peak_id}, Data: {ascent.ascent_date}) odrzucone: {reason}."
+        return f"Wejście na obiekt (ID: {ascent.object_id}, Data: {ascent.ascent_date}) odrzucone: {reason}."
 
 
 @dataclass(frozen=True)
@@ -204,7 +204,7 @@ class MandatoryObjectsRule(BadgeRule):
           Lista komunikatów o brakujących obowiązkowych szczytach lub pusta lista.
         """
         # Zbieramy ID wszystkich szczytów zdobytych przez turystę
-        climbed_peak_ids = {ascent.peak_id for ascent in ascents}
+        climbed_peak_ids = {ascent.object_id for ascent in ascents}
 
         # Wyliczamy różnicę zbiorów: Obowiązkowe MINUS Zdobyte
         missing_mandatory_peaks = self.mandatory_peak_ids - climbed_peak_ids
@@ -241,7 +241,7 @@ class GroupedAlternativesRule(BadgeRule):
         Returns:
           Lista błędów lub pusta lista jeśli wymogi spełnione.
         """
-        climbed_peak_ids = {ascent.peak_id for ascent in ascents}
+        climbed_peak_ids = {ascent.object_id for ascent in ascents}
 
         groups_completed = sum(1 for group in self.groups if group.intersection(climbed_peak_ids))
 
@@ -399,7 +399,7 @@ class MultiPoolRequirementRule(BadgeRule):
           lub pusta lista, jeśli wszystkie wymogi zostały spełnione.
         """
         errors = []
-        climbed_peak_ids = {a.peak_id for a in ascents}
+        climbed_peak_ids = {a.object_id for a in ascents}
         for pool in self.pools:
             climbed_in_pool = climbed_peak_ids.intersection(pool.peak_ids)
             if len(climbed_in_pool) < pool.required_count:

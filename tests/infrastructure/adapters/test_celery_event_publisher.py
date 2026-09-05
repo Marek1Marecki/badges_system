@@ -76,7 +76,7 @@ class TestCeleryEventPublisher:
         publisher = CeleryEventPublisher()
         event = AscentLogged(
             actor_profile_id=3,
-            peak_id=42,
+            object_id=42,
             ascent_date=date(2024, 6, 15),
         )
 
@@ -87,7 +87,7 @@ class TestCeleryEventPublisher:
             actor_id=None,
             action="AscentLogged",
             target_type="AscentLog",
-            target_id="profile=3/peak=42",
+            target_id="profile=3/object=42",
             payload={
                 "actor_profile_id": 3,
                 "peak_id": 42,

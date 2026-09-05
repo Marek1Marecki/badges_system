@@ -174,7 +174,7 @@ class TestPoiScoringService:
         ascent_repo = MagicMock()
         ascent_repo.get_all_ascents_for_user.return_value = []
         ascent_repo.get_unconsumed_ascents.return_value = [
-            AscentDTO(peak_id=1, ascent_date=date(2026, 1, 1), region_ids=frozenset())
+            AscentDTO(object_id=1, ascent_date=date(2026, 1, 1), region_ids=frozenset())
         ]
         profile_repo = MagicMock()
         profile_repo.get_profile.return_value = TouristProfileDTO(
@@ -224,7 +224,7 @@ class TestPoiScoringService:
             )
         ]
         ascent_repo = MagicMock()
-        ascent_repo.get_all_ascents_for_user.return_value = [Ascent(peak_id=1, ascent_date=date(2025, 1, 1))]
+        ascent_repo.get_all_ascents_for_user.return_value = [Ascent(object_id=1, ascent_date=date(2025, 1, 1))]
         ascent_repo.get_unconsumed_ascents.return_value = []
         profile_repo = MagicMock()
         profile_repo.get_profile.return_value = TouristProfileDTO(
@@ -375,7 +375,7 @@ class TestPoiScoringService:
             )
         ]
         ascent_repo = MagicMock()
-        ascent_repo.get_all_ascents_for_user.return_value = [Ascent(peak_id=1, ascent_date=date(2025, 1, 8))]
+        ascent_repo.get_all_ascents_for_user.return_value = [Ascent(object_id=1, ascent_date=date(2025, 1, 8))]
         ascent_repo.get_unconsumed_ascents.return_value = []
         profile_repo = MagicMock()
         profile_repo.get_profile.return_value = TouristProfileDTO(

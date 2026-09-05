@@ -91,7 +91,7 @@ class PoiScoringService:
         )
 
         all_ascents = self._ascent_repo.get_all_ascents_for_user(profile_id)
-        all_climbed_peak_ids = frozenset(a.peak_id for a in all_ascents)
+        all_climbed_peak_ids = frozenset(a.object_id for a in all_ascents)
 
         final_scores: dict[int, int] = defaultdict(int)
         final_colors: dict[int, str] = {}
@@ -125,7 +125,7 @@ class PoiScoringService:
             current_eval = badge_version.evaluate(domain_ascents, context)
             curr_valid_count = current_eval.valid_ascents_count
 
-            current_cycle_peak_ids = frozenset(a.peak_id for a in domain_ascents)
+            current_cycle_peak_ids = frozenset(a.object_id for a in domain_ascents)
 
             # PERF (Performance Warning): O(pool_size * reguły).
             # Ewaluacja całego agregatu dla każdego szczytu "na sucho".

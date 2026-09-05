@@ -35,13 +35,13 @@ class TestFakeTouristRepository:
         repo = FakeTouristRepository()
 
         assert repo.get_object_lifespan(15) == (None, None)
-        assert repo.ascent_exists(profile_id=1, peak_id=15, ascent_date=date(2025, 1, 1)) is False
+        assert repo.ascent_exists(profile_id=1, object_id=15, ascent_date=date(2025, 1, 1)) is False
         assert repo.get_oldest_ascent_date(profile_id=1, badge_code="KGP") is None
 
         # Zapiszmy wejście
-        ascent_id = repo.save_ascent(profile_id=1, peak_id=15, ascent_date=date(2025, 1, 1))
+        ascent_id = repo.save_ascent(profile_id=1, object_id=15, ascent_date=date(2025, 1, 1))
         assert ascent_id == 1
-        assert repo.ascent_exists(profile_id=1, peak_id=15, ascent_date=date(2025, 1, 1)) is True
+        assert repo.ascent_exists(profile_id=1, object_id=15, ascent_date=date(2025, 1, 1)) is True
         assert repo.get_oldest_ascent_date(profile_id=1, badge_code="KGP") == date(2025, 1, 1)
 
         # Pobieranie niezużytych logów
@@ -55,7 +55,7 @@ class TestFakeTouristRepository:
         # Pobieranie wszystkich wejść dla użytkownika
         all_ascents = repo.get_all_ascents_for_user(profile_id=1)
         assert len(all_ascents) == 1
-        assert all_ascents[0].peak_id == 15
+        assert all_ascents[0].object_id == 15
 
     def test_user_progress_methods(self) -> None:
         """Test zarządzania postępami odznak."""

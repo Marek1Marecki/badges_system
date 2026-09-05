@@ -358,8 +358,8 @@ class TestPoiScoringServiceMissingCoverage:
         badge_repo.get_badge_version_by_id.side_effect = [badge_version1, badge_version1]
 
         ascent_dto = MagicMock()
-        ascent_dto.peak_id = 1
-        ascent_dto.to_domain.return_value = MagicMock(peak_id=1)
+        ascent_dto.object_id = 1
+        ascent_dto.to_domain.return_value = MagicMock(object_id=1)
         ascent_repo.get_all_ascents_for_user.return_value = []
         ascent_repo.get_unconsumed_ascents.return_value = [ascent_dto]
 

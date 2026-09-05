@@ -21,6 +21,10 @@ LEGACY_DTOS = {
     # częścią modelu wewnętrznego, nie górnopoziomowymi OutputDTO
     "GeoJSONFeatureDTO",
     "TierResultResponseDTO",
+    # Sub-DTO (AUDYT-016): komponenty składowe większych ResponseDTO
+    "BadgeTierInfoDTO",
+    "BadgeObjectDTO",
+    "RegionRankingEntryDTO",
 }
 
 

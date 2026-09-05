@@ -30,7 +30,7 @@ class TestRulesSchema:
         assert "oneOf" in items
 
         oneOf = items["oneOf"]
-        assert len(oneOf) == 10
+        assert len(oneOf) == 11
 
         # Check that each rule type has the expected structure
         for rule_def in oneOf:

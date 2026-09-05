@@ -55,7 +55,7 @@ class BulkLogAscentsUseCase:
         # BitemporalValidationService — single source of truth.
         validation_result = self._bitemporal_service.validate_batch(ascents)
 
-        errors = [{"peak_id": str(v.peak_id), "reason": v.reason} for v in validation_result.violations]
+        errors = [{"peak_id": str(v.object_id), "reason": v.reason} for v in validation_result.violations]
         valid_ascents = validation_result.accepted
 
         # 3. Zapis i Publikacja (Unit Of Work)
@@ -70,6 +70,8 @@ class BulkLogAscentsUseCase:
             saved = 0
 
         # Wymuszamy typowanie (AUDYT-124: brak dict[str, Any])
+        # UWAGA: API zachowuje "peak_id" w output JSON (publiczny kontrakt),
+        # mimo że wewnętrzna nazwa pola to object_id (AUDYT-082).
         typed_errors: list[dict[str, str]] = [
             {"peak_id": str(e["peak_id"]), "reason": str(e["reason"])} for e in errors
         ]

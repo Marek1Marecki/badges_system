@@ -1,12 +1,24 @@
 """Usługa odczytu (Query Service) odpowiedzialna za budowanie rankingów."""
 
 from collections import defaultdict
+from collections.abc import Sequence
 
 from application.dto.explore_queries_dto import (
     PoiRankingResponseDTO,
     RankingItemDTO,
     RegionRankingItemDTO,
     RegionRankingResponseDTO,
+)
+from application.dto.tourist_views_dto import (
+    BadgeCatalogEntryResponseDTO,
+    BadgeDetailResponseDTO,
+    BadgeObjectDTO,
+    BadgeTierInfoDTO,
+    ObjectDetailResponseDTO,
+    ObjectRegionDTO,
+    OrganizerDetailResponseDTO,
+    RegionContextResponseDTO,
+    RegionRankingEntryDTO,
 )
 from application.ports.cache_port import CachePort
 from application.ports.explore_queries_port import ExploreQueriesRepositoryPort
@@ -147,3 +159,192 @@ class ExploreQueriesService:
             level=level,
             ranking=ranking_data,
         )
+
+    def get_catalog_badges(self, profile_id: int) -> Sequence[BadgeCatalogEntryResponseDTO]:
+        """Pobiera katalog odznak z danymi subskrypcji i statusu dla profilu.
+
+        Delegowanie do adaptera — serwis nie importuje modeli Django (AUDYT-016).
+
+        Args:
+          profile_id: int:
+
+        Returns:
+          Sequence[BadgeCatalogEntryResponseDTO]: Lista wpisów katalogu odznak.
+        """
+        return self._query_repo.get_catalog_badges(profile_id)
+
+    def get_badge_details(
+        self, badge_code: str, profile_id: int, evaluation: dict[str, object] | None = None
+    ) -> BadgeDetailResponseDTO:
+        """Buduje szczegóły odznaki dla widoku badge_detail.
+
+        Args:
+          badge_code: str:
+          profile_id: int:
+          evaluation: dict[str, object] | None:
+
+        Returns:
+          BadgeDetailDTO: Szczegóły odznaki z danymi dla HTML.
+        """
+        raw = self._query_repo.get_badge_detail_data(badge_code, profile_id)
+
+        # Map state for scores/colors
+        map_state = self._cache.get(f"map_state:{profile_id}") or {}
+        scores = map_state.get("scores", {})
+        colors = map_state.get("colors", {})
+
+        objects_list = []
+        for obj in raw["objects"]:
+            obj_score = int(scores.get(obj.id, scores.get(str(obj.id), 0)))
+            obj_color = colors.get(obj.id, colors.get(str(obj.id), "GRAY"))
+            objects_list.append(
+                BadgeObjectDTO(
+                    id=obj.id,
+                    name=obj.name,
+                    altitude=obj.altitude,
+                    score=obj_score,
+                    color=obj_color,
+                )
+            )
+
+        tiers_info = []
+        for tier in raw["tiers"]:
+            tiers_info.append(
+                BadgeTierInfoDTO(
+                    name=tier.name,
+                    required_count=tier.required_peaks_count if tier.required_peaks_count else 0,
+                    status="",
+                    image_url=tier.badge_image.url if tier.badge_image else None,
+                )
+            )
+
+        return BadgeDetailResponseDTO(
+            badge=raw["badge"],
+            progress=raw["progress"],
+            evaluation=evaluation,
+            objects_list=objects_list,
+            target_version=raw["target_version"],
+            tiers_info=tiers_info,
+            has_consent=raw["badge"].organizer.has_publication_consent,
+        )
+
+    def get_object_details(self, object_id: int, profile_id: int) -> ObjectDetailResponseDTO:
+        """Buduje szczegóły obiektu turystycznego dla widoku object_detail.
+
+        Args:
+          object_id: int:
+          profile_id: int:
+
+        Returns:
+          ObjectDetailDTO: Szczegóły obiektu z danymi dla HTML.
+        """
+        raw = self._query_repo.get_object_detail_data(object_id, profile_id)
+        obj = raw["obj"]
+
+        # Map state for score/color
+        map_state = self._cache.get(f"map_state:{profile_id}") or {}
+        scores = map_state.get("scores", {})
+        colors = map_state.get("colors", {})
+
+        obj_score = int(scores.get(obj.id, scores.get(str(obj.id), 0)))
+        obj_color = colors.get(obj.id, colors.get(str(obj.id), "GRAY"))
+
+        regions = [ObjectRegionDTO(level=level, name=name) for level, name in raw["regions"]]
+
+        badges_list = [{"code": b.badge.code, "name": b.badge.name} for b in raw["badges"]]
+
+        return ObjectDetailResponseDTO(
+            obj=obj,
+            regions=regions,
+            badges_list=badges_list,
+            score=obj_score,
+            color=obj_color,
+            ascents=raw["ascents"],
+            parent=raw["parent"],
+            children=raw["children"],
+            subscribed_badge_codes=raw["subscribed_badge_codes"],
+        )
+
+    def get_region_context(self, region_level: str, region_id: int, profile_id: int) -> RegionContextResponseDTO:
+        """Buduje kontekst geograficzny regionu dla widoku region_detail.
+
+        Args:
+          region_level: str:
+          region_id: int:
+          profile_id: int:
+
+        Returns:
+          RegionContextDTO: Kontekst regionu z rankingiem obiektów.
+        """
+        raw = self._query_repo.get_region_context_data(region_level, region_id, profile_id)
+
+        if raw is None:
+            raise ValueError(f"Nieobsługiwany poziom regionu: {region_level}")
+
+        map_state = self._cache.get(f"map_state:{profile_id}") or {}
+        scores = map_state.get("scores", {})
+        colors = map_state.get("colors", {})
+
+        objects = raw["objects"]
+        ranking_data: list[RegionRankingEntryDTO] = []
+        for obj in objects:
+            obj_score = int(scores.get(obj.id, scores.get(str(obj.id), 0)))
+            obj_color = colors.get(obj.id, colors.get(str(obj.id), "GRAY"))
+            ranking_data.append(
+                RegionRankingEntryDTO(
+                    id=obj.id,
+                    name=obj.name,
+                    type=obj.type,
+                    score=obj_score,
+                    color=obj_color,
+                )
+            )
+        ranking_data.sort(key=lambda x: x.score, reverse=True)
+
+        # Extent from region geometry
+        extent = None
+        region = raw["region"]
+        if hasattr(region, "shape") and region.shape:
+            extent = (
+                float(region.shape.extent[0]),
+                float(region.shape.extent[1]),
+                float(region.shape.extent[2]),
+                float(region.shape.extent[3]),
+            )
+
+        return RegionContextResponseDTO(
+            region=region,
+            region_level=region_level,
+            region_id=region_id,
+            extent=extent,
+            ranking_data=ranking_data,
+            total_objects=len(ranking_data),
+            parent_region=raw["parent_region"],
+            parent_level=raw["parent_level"],
+            children_regions=raw["children_regions"],
+            children_level=raw["children_level"],
+            neighbors=raw["neighbors"],
+        )
+
+    def get_organizer_detail(self, organizer_id: int) -> OrganizerDetailResponseDTO:
+        """Pobiera organizatora z odznakami dla widoku organizer_detail.
+
+        Args:
+          organizer_id: int:
+
+        Returns:
+          OrganizerDetailDTO: DTO otaczające model organizatora.
+        """
+        organizer = self._query_repo.get_organizer_detail(organizer_id)
+        return OrganizerDetailResponseDTO(organizer=organizer)
+
+    def get_subscribed_badge_ids(self, profile_id: int) -> list[int]:
+        """Pobiera ID odznak subskrybowanych przez profil.
+
+        Args:
+          profile_id: int:
+
+        Returns:
+          list[int]: Lista ID subskrybowanych odznak.
+        """
+        return self._query_repo.get_subscribed_badge_ids(profile_id)

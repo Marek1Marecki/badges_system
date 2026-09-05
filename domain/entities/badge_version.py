@@ -58,7 +58,7 @@ class BadgeVersionDomain:
         """
         # 1. Sito przestrzenne (Odrzucenie szczytów spoza Menu)
         if self.pool_peak_ids:
-            valid_ascents = [a for a in ascents if a.peak_id in self.pool_peak_ids]
+            valid_ascents = [a for a in ascents if a.object_id in self.pool_peak_ids]
         else:
             valid_ascents = ascents.copy()
 
@@ -66,9 +66,9 @@ class BadgeVersionDomain:
         unique_ascents = []
         seen_peaks = set()
         for a in sorted(valid_ascents, key=lambda x: x.ascent_date):
-            if a.peak_id not in seen_peaks:
+            if a.object_id not in seen_peaks:
                 unique_ascents.append(a)
-                seen_peaks.add(a.peak_id)
+                seen_peaks.add(a.object_id)
 
         errors = []
 

@@ -8,6 +8,8 @@ from django.conf import settings
 from django.db import models  # <--- TEGO ZABRAKŁO!
 
 from apps.badges.models import BadgeModel, BadgeVersionModel, TouristObject
+from domain.enums import DomainStatus as DomainStatusEnum
+from domain.enums import LogisticStatus as LogisticStatusEnum
 
 
 def profile_directory_path(instance, filename: str) -> str:
@@ -111,20 +113,26 @@ class AscentLog(models.Model):
 
 
 class DomainStatus(models.TextChoices):
-    """Status domeny obiektu turystycznego."""
+    """Status domenowy postępu w odznance (Czysta Domena).
 
-    NOT_STARTED = "NOT_STARTED", "Subskrybowana (Czeka na logi)"
-    IN_PROGRESS = "IN_PROGRESS", "W trakcie zdobywania"
-    COMPLETED = "COMPLETED", "Skompletowana matematycznie"
+    Wartości bazują na `domain.enums.DomainStatus` (SOT, AUDYT-136).
+    """
+
+    NOT_STARTED = DomainStatusEnum.NOT_STARTED, "Subskrybowana (Czeka na logi)"
+    IN_PROGRESS = DomainStatusEnum.IN_PROGRESS, "W trakcie zdobywania"
+    COMPLETED = DomainStatusEnum.COMPLETED, "Skompletowana matematycznie"
 
 
 class LogisticStatus(models.TextChoices):
-    """Status logistyczny obiektu turystycznego."""
+    """Status logistyczny — ścieżka wysyłki do albumu (US-C07/US-C08).
 
-    WAITING_FOR_SEND = "WAITING_FOR_SEND", "Gotowa do wysyłki (Skompletowana)"
-    WAITING_FOR_VERIFICATION = "WAITING_FOR_VERIFICATION", "Wysłana do PTTK (Weryfikacja)"
-    WAITING_FOR_RECEIVING = "WAITING_FOR_RECEIVING", "Zatwierdzona (Czeka na listonosza)"
-    ALBUM = "ALBUM", "Wpięta do albumu (Zakończone)"
+    Wartości bazują na `domain.enums.LogisticStatus` (SOT, AUDYT-136).
+    """
+
+    WAITING_FOR_SEND = LogisticStatusEnum.WAITING_FOR_SEND, "Gotowa do wysyłki (Skompletowana)"
+    WAITING_FOR_VERIFICATION = LogisticStatusEnum.WAITING_FOR_VERIFICATION, "Wysłana do PTTK (Weryfikacja)"
+    WAITING_FOR_RECEIVING = LogisticStatusEnum.WAITING_FOR_RECEIVING, "Zatwierdzona (Czeka na listonosza)"
+    ALBUM = LogisticStatusEnum.ALBUM, "Wpięta do albumu (Zakończone)"
 
 
 class UserBadgeProgress(models.Model):
@@ -145,8 +153,17 @@ class UserBadgeProgress(models.Model):
 
     cycle_number = models.IntegerField(default=1, verbose_name="Cykl / Edycja")
 
-    domain_status = models.CharField(max_length=20, choices=DomainStatus.choices, default=DomainStatus.NOT_STARTED)
-    logistic_status = models.CharField(max_length=30, choices=LogisticStatus.choices, null=True, blank=True)
+    domain_status = models.CharField(
+        max_length=20,
+        choices=DomainStatus.choices,
+        default=DomainStatus.NOT_STARTED,  # type: ignore[attr-defined]
+    )
+    logistic_status = models.CharField(
+        max_length=30,
+        choices=LogisticStatus.choices,
+        null=True,
+        blank=True,  # type: ignore[attr-defined]
+    )
     logistic_status_date = models.DateField(null=True, blank=True, verbose_name="Data zmiany logistyki")
 
     created_at = models.DateTimeField(auto_now_add=True)

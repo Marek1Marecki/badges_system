@@ -6,9 +6,8 @@ from datetime import date
 
 @dataclass(frozen=True)
 class Ascent:
-    """Fakt historyczny: Reprezentuje pojedyncze wejście na szczyt (wycieczkę)."""
+    """Fakt historyczny: Reprezentuje pojedyncze wejście na obiekt turystyczny (wejście)."""
 
-    peak_id: int
+    object_id: int
     ascent_date: date
-    # Zgodnie z ADR-012 i R-03: płaskie ID regionów z CQRS
     region_ids: frozenset[int] = field(default_factory=frozenset)

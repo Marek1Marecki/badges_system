@@ -6,7 +6,7 @@ from pathlib import Path
 
 USECASES_DIR = Path("application/use_cases")
 SERVICES_DIR = Path("application/services")
-CONTAINER_FILE = Path("bootstrap/container.py")
+CONTAINER_FILE = Path("bootstrap/app_container.py")
 
 
 def _get_classes_from_dir(directory: Path, suffixes: tuple[str, ...]) -> set[str]:

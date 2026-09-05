@@ -1,40 +1,26 @@
 """Widoki HTML dla obszaru Turysty (Faza C - Frontend)."""
 
 import logging
-from typing import Any
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
-from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 
-from apps.badges.models import (
-    BadgeModel,
-    BadgeTierModel,
-    BadgeVersionModel,
-    CountryModel,
-    MacroregionModel,
-    MesoregionModel,
-    ObjectRegionCache,
-    OrganizerModel,
-    ProvinceModel,
-    SubprovinceModel,
-    TouristObject,
-    TouristRegionModel,
-    VoivodeshipModel,
-)
 from apps.tourists.models import (
-    AscentLog,
     DomainStatus,
     TouristProfile,
     UserBadgeProgress,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _get_queries(request):
+    """Pobiera ExploreQueriesService z kontenera DI (AUDYT-016)."""
+    return request.app_container.explore_queries_service
 
 
 def _get_active_profile_id(request) -> int:
@@ -85,32 +71,11 @@ def badge_catalog_view(request):
     """
     profile_id = _get_active_profile_id(request)
 
-    # 1. Pobieramy wszystkie odznaki
-    badges = list(BadgeModel.objects.select_related("organizer").all().order_by("name"))
+    entries = _get_queries(request).get_catalog_badges(profile_id)
 
-    # 2. Pobieramy najnowsze (obowiązujące) wersje regulaminów i ich szczyty w jednym zapytaniu
-    current_versions_qs = (
-        BadgeVersionModel.objects.filter(valid_from__lte=timezone.now().date())
-        .prefetch_related("pool_peaks")
-        .order_by("-valid_from")
-    )
-
-    # 3. Złoty środek: Zamiast męczyć ORM z `related_name`, mapujemy to w szybkim słowniku Pythona
-    version_map = {}
-    for version in current_versions_qs:
-        # Ponieważ posortowaliśmy malejąco po dacie, pierwsza wersja jaka wpadnie do słownika jest najnowszą
-        if version.badge_id not in version_map:
-            version_map[version.badge_id] = version
-
-    # Wstrzykujemy wersję bezpośrenio do obiektu odznaki (jako tymczasowy atrybut dla HTML)
-    for badge in badges:
-        badge.current_version = version_map.get(badge.id)
-
-    # 4. Sprawdzanie subskrypcji z podziałem na statusy
-    progresses = UserBadgeProgress.objects.filter(profile_id=profile_id)
-
-    active_ids = [p.badge_id for p in progresses if p.domain_status != "COMPLETED"]
-    completed_ids = [p.badge_id for p in progresses if p.domain_status == "COMPLETED"]
+    badges = [e.badge for e in entries]
+    active_ids = [e.id for e in entries if e.domain_status != "COMPLETED"]
+    completed_ids = [e.id for e in entries if e.domain_status == "COMPLETED"]
 
     return render(
         request,
@@ -238,45 +203,22 @@ def object_detail_view(request, object_id: int):
     """
     profile_id = _get_active_profile_id(request)
 
-    # NOWE: Pobieramy kody odznak subskrybowanych przez ten profil
-    subscribed_badge_codes = list(
-        UserBadgeProgress.objects.filter(profile_id=profile_id).values_list("badge__code", flat=True)
-    )
-
-    obj = get_object_or_404(TouristObject, id=object_id)
-
-    regions = ObjectRegionCache.objects.filter(tourist_object=obj).order_by("region_level")
-
-    unique_badges = {bv.badge.code: bv.badge.name for bv in obj.badgeversionmodel_set.select_related("badge").all()}
-    badges_list = [{"code": code, "name": name} for code, name in unique_badges.items()]
-    badges_list.sort(key=lambda x: x["name"])
-
-    cache_key = f"map_state:{profile_id}"
-    cached_data = cache.get(cache_key) or {}
-    scores = cached_data.get("scores", {})
-    colors = cached_data.get("colors", {})
-
-    score = scores.get(obj.id, scores.get(str(obj.id), 0))
-    color = colors.get(obj.id, colors.get(str(obj.id), "GRAY"))
-
-    ascents = AscentLog.objects.filter(profile_id=profile_id, peak=obj).order_by("-ascent_date")
-
-    parent = obj.parent_object
-    children = obj.child_objects.all() if hasattr(obj, "child_objects") else []
+    query = _get_queries(request)
+    dto = query.get_object_details(object_id, profile_id)
 
     return render(
         request,
         "tourists/object_detail.html",
         {
-            "obj": obj,
-            "regions": regions,
-            "badges": badges_list,
-            "score": score,
-            "color": color,
-            "ascents": ascents,
-            "parent": parent,
-            "children": children,
-            "subscribed_badge_codes": subscribed_badge_codes,
+            "obj": dto.obj,
+            "regions": dto.regions,
+            "badges": dto.badges_list,
+            "score": dto.score,
+            "color": dto.color,
+            "ascents": dto.ascents,
+            "parent": dto.parent,
+            "children": dto.children,
+            "subscribed_badge_codes": dto.subscribed_badge_codes,
         },
     )
 
@@ -293,105 +235,35 @@ def badge_detail_view(request, badge_code: str):
     Returns:
     """
     profile_id = _get_active_profile_id(request)
-    badge = get_object_or_404(BadgeModel.objects.select_related("organizer"), code=badge_code)
 
-    progress = (
-        UserBadgeProgress.objects.filter(profile_id=profile_id, badge=badge)
-        .select_related("version")
-        .prefetch_related("version__pool_peaks")
-        .order_by("-cycle_number")
-        .first()
-    )
+    # EvaluateBadgeProgressQuery (US-C06) — evaluation on-demand;
+    # failure degrades gracefully (no evaluation shown)
+    evaluation: dict[str, object] | None = None
+    try:
+        query_service = request.app_container.evaluate_badge_progress
+        evaluation = query_service.execute(profile_id=profile_id, badge_code=badge_code)
+    except Exception:
+        evaluation = None
 
-    evaluation = None
-    target_version = None
-
-    if progress and progress.version_id:
-        target_version = progress.version
-        try:
-            query_service = request.app_container.evaluate_badge_progress
-            # Zmienna w szablonie nazywa się 'evaluation'
-            evaluation = query_service.execute(profile_id=profile_id, badge_code=badge.code)
-        except Exception:
-            evaluation = None
-    else:
-        today = timezone.now().date()
-        target_version = (
-            BadgeVersionModel.objects.filter(
-                badge=badge,
-                valid_from__lte=today,
-            )
-            .prefetch_related("pool_peaks")
-            .order_by("-valid_from")
-            .first()
-        )
-
-    has_consent = badge.organizer.has_publication_consent
-    tiers_info = []
-
-    if target_version:
-        all_db_tiers = BadgeTierModel.objects.filter(version=target_version).order_by("order")
-        db_tiers = {t.name: t for t in all_db_tiers}
-
-        if evaluation and "tiers" in evaluation:
-            for eval_tier in evaluation["tiers"]:
-                db_tier = db_tiers.get(eval_tier["name"])
-                img_url = (
-                    db_tier.badge_image.url
-                    if (db_tier and getattr(db_tier, "badge_image", None) and has_consent)
-                    else None
-                )
-
-                tiers_info.append(
-                    {
-                        "name": eval_tier["name"],
-                        "required_count": eval_tier["required_count"],
-                        "status": eval_tier["status"],
-                        "image_url": img_url,
-                    }
-                )
-        else:
-            for db_tier in all_db_tiers:
-                img_url = db_tier.badge_image.url if (getattr(db_tier, "badge_image", None) and has_consent) else None
-                req_count = (
-                    db_tier.required_peaks_count
-                    if db_tier.required_peaks_count is not None
-                    else len(target_version.pool_peaks.all())
-                )
-                tiers_info.append(
-                    {
-                        "name": db_tier.name,
-                        "required_count": req_count,
-                        "status": "NOT_STARTED",
-                        "image_url": img_url,
-                    }
-                )
-
-    objects_list = []
-    if target_version:
-        cache_key = f"map_state:{profile_id}"
-        cached_data = cache.get(cache_key) or {}
-        scores = cached_data.get("scores", {})
-        colors = cached_data.get("colors", {})
-
-        for peak in target_version.pool_peaks.all().order_by("name"):
-            score = scores.get(peak.id, scores.get(str(peak.id), 0))
-            color = colors.get(peak.id, colors.get(str(peak.id), "GRAY"))
-            objects_list.append(
-                {"id": peak.id, "name": peak.name, "altitude": peak.altitude, "score": score, "color": color}
-            )
+    dto = _get_queries(request).get_badge_details(badge_code=badge_code, profile_id=profile_id, evaluation=evaluation)
 
     return render(
         request,
         "tourists/badge_detail.html",
         {
-            "badge": badge,
-            "progress": progress,
-            "evaluation": evaluation,
-            "objects_list": objects_list,
-            "target_version": target_version,
-            "tiers_info": tiers_info,
-            "has_consent": has_consent,
+            "badge": dto.badge,
+            "progress": dto.progress,
+            "evaluation": dto.evaluation,
+            "objects_list": [
+                {"id": o.id, "name": o.name, "altitude": o.altitude, "score": o.score, "color": o.color}
+                for o in dto.objects_list
+            ],
+            "target_version": dto.target_version,
+            "tiers_info": [
+                {"name": t.name, "required_count": t.required_count, "status": t.status, "image_url": t.image_url}
+                for t in dto.tiers_info
+            ],
+            "has_consent": dto.has_consent,
         },
     )
 
@@ -411,110 +283,23 @@ def region_detail_view(request, region_level: str, region_id: int):
     """
     profile_id = _get_active_profile_id(request)
 
-    # Mapowanie typu regionu na konkretny model Django
-    MODELS_MAP = {
-        "country": CountryModel,
-        "voivodeship": VoivodeshipModel,
-        "province": ProvinceModel,
-        "subprovince": SubprovinceModel,
-        "macroregion": MacroregionModel,
-        "mesoregion": MesoregionModel,
-        "tourist_region": TouristRegionModel,
-    }
-
-    ModelClass = MODELS_MAP.get(region_level.lower())
-    if not ModelClass:
-        raise Http404("Nieznany typ regionu geograficznego.")
-
-    region = get_object_or_404(ModelClass, id=region_id)
-
-    # Pobranie Extent (Bounding Boxa) geometrii regionu, by mapa wiedziała gdzie się przybliżyć!
-    extent = region.shape.extent if hasattr(region, "shape") and region.shape else None
-
-    # 1. Pobieramy ranking 100/n z Redis
-    cache_key = f"map_state:{profile_id}"
-    cached_data = cache.get(cache_key) or {}
-    scores = cached_data.get("scores", {})
-    colors = cached_data.get("colors", {})
-
-    # 2. Pobieramy obiekty w tym regionie za pomocą CQRS
-    obj_ids = ObjectRegionCache.objects.filter(region_level=region_level, region_id=region_id).values_list(
-        "tourist_object_id", flat=True
-    )
-
-    peaks = TouristObject.objects.filter(id__in=obj_ids, is_active=True, status="READY")
-
-    # 3. Zestawiamy obiekty z ich rankingiem
-    ranking_data = []
-    for peak in peaks:
-        score = scores.get(peak.id, scores.get(str(peak.id), 0))
-        color = colors.get(peak.id, colors.get(str(peak.id), "GRAY"))
-
-        ranking_data.append(
-            {
-                "id": peak.id,
-                "name": peak.name,
-                "type": peak.type,
-                "score": score,
-                "color": color,
-            }
-        )
-
-    # Sortujemy od najbardziej zyskownych
-    ranking_data.sort(key=lambda x: x["score"], reverse=True)
-
-    # =================================================================
-    # NAWIGACJA TERYTORIALNA (Drzewo i Sąsiedzi)
-    # =================================================================
-    parent_region = None
-    parent_level = None
-    children_regions: list[Any] = []
-    children_level = None
-
-    lvl = region_level.upper()
-
-    # Hierarchia pionowa (Góra / Dół) - oparta o relacje ORM
-    if lvl == "MESOREGION":
-        parent_region = getattr(region, "macroregion", None)
-        parent_level = "MACROREGION"
-    elif lvl == "MACROREGION":
-        parent_region = getattr(region, "subprovince", None)
-        parent_level = "SUBPROVINCE"
-        children_regions = list(region.mesoregionmodel_set.all()) if hasattr(region, "mesoregionmodel_set") else []
-        children_level = "MESOREGION"
-    elif lvl == "SUBPROVINCE":
-        parent_region = getattr(region, "province", None)
-        parent_level = "PROVINCE"
-        children_regions = list(region.macroregionmodel_set.all()) if hasattr(region, "macroregionmodel_set") else []
-        children_level = "MACROREGION"
-    elif lvl == "PROVINCE":
-        children_regions = list(region.subprovincemodel_set.all()) if hasattr(region, "subprovincemodel_set") else []
-        children_level = "SUBPROVINCE"
-    elif lvl == "TOURIST_REGION":
-        children_regions = list(region.mesoregions.all()) if hasattr(region, "mesoregions") else []
-        children_level = "MESOREGION"
-
-    # 2. Relacje poziome (Sąsiedzi) - Błyskawiczny odczyt pre-kalkulowanej relacji M2M
-    neighbors: list[Any] = []
-    if hasattr(region, "neighbors"):
-        # Brak obciążenia procesora – zwykły odczyt JOIN z bazy
-        neighbors = list(region.neighbors.all().order_by("name"))
+    ctx = _get_queries(request).get_region_context(region_level, region_id, profile_id)
 
     return render(
         request,
         "tourists/region_detail.html",
         {
-            "region": region,
-            "region_level": region_level,
-            "region_id": region_id,
-            "extent": extent,
-            "top_objects": ranking_data[:20],
-            "total_objects": len(ranking_data),
-            "parent_region": parent_region,
-            "parent_level": parent_level,
-            "children_regions": children_regions,
-            "children_level": children_level,
-            "neighbors": neighbors,
+            "region": ctx.region,
+            "region_level": ctx.region_level,
+            "region_id": ctx.region_id,
+            "extent": ctx.extent,
+            "top_objects": ctx.ranking_data,
+            "total_objects": ctx.total_objects,
+            "parent_region": ctx.parent_region,
+            "parent_level": ctx.parent_level,
+            "children_regions": ctx.children_regions,
+            "children_level": ctx.children_level,
+            "neighbors": ctx.neighbors,
         },
     )
 
@@ -581,17 +366,18 @@ def organizer_detail_view(request, organizer_id: int):
     Returns:
     """
     profile_id = _get_active_profile_id(request)
-    organizer = get_object_or_404(OrganizerModel, id=organizer_id)
 
-    badges = organizer.badges.all().order_by("name")
-    subscribed_ids = UserBadgeProgress.objects.filter(profile_id=profile_id).values_list("badge_id", flat=True)
+    query = _get_queries(request)
+    organizer_dto = query.get_organizer_detail(organizer_id)
+    organizer = organizer_dto.organizer
+    subscribed_ids = query.get_subscribed_badge_ids(profile_id)
 
     return render(
         request,
         "tourists/organizer_detail.html",
         {
             "organizer": organizer,
-            "badges": badges,
+            "badges": organizer.badges.all().order_by("name"),
             "subscribed_ids": subscribed_ids,
         },
     )

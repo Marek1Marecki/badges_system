@@ -12,7 +12,7 @@ MOCK_CLOCK_TIME = datetime(2023, 6, 15, tzinfo=UTC)
 
 
 class MockAscentRepository:
-    def get_objects_lifespans(self, peak_ids):
+    def get_objects_lifespans(self, object_ids):
         return {
             1: (date(2020, 1, 1), None),
             2: (date(2021, 1, 1), date(2022, 1, 1)),

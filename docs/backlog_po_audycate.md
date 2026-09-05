@@ -67,40 +67,63 @@ Ryzyko to nie jest blokujące, ale obniża "testowalność" systemu (Testability
 ### [AUDYT-016] Importy modeli między niezależnymi aplikacjami Django
 **Obszar:** `Aplikacje / Izolacja Bounded Contexts`  
 **Priorytet:** `🟠 WYSOKI`  
-**Status:** `Specification`
+**Status:** `🟢 ZREALIZOWANO`
 
 **Diagnoza Audytora:**
-Plik `apps/tourists/views.py` (obsługujący HTML) bezpośrednio importuje 18 modeli z `apps/badges/models.py` (`BadgeModel`, `TouristObject`, `TouristRegionModel`, etc.). To łamie SRP i powoduje silne sprzęgnięcie (Coupling) pomiędzy dwoma Bounded Contextami (Słowniki PTTK a Dane Użytkowników).
+Plik `apps/tourists/views.py` (obsługujący HTML) bezpośrednio importuje 18 modeli z `apps/badges/models.py` (`BadgeModel`, `TouristObject`, `TouristRegionModel`, itd.). To łamie SRP i powoduje silne sprzęgnięcie (Coupling) pomiędzy dwoma Bounded Contextami (Słowniki PTTK a Dane Użytkowników).
 
 **Zasuw:** 18 miejsc użycia w `apps/tourists/views.py:15` (import) + :89,:93,:246,:248,:296,:320,:333,:416-422,:441,:445,:584 (query calls).
 
 **Plan (wymaga QueryService layer + DI refactoring):**
-- [ ] Utworzyć `application/services/tourist_query_service.py` (lub port w `application/ports/`) z metodami: `get_badge_catalog()`, `get_object_regions()`, `get_nearby_peaks()`, `get_regions_by_level()`
-- [ ] Dodać `tourist_query_service` do `bootstrap/container.py` → `request.app_container`
-- [ ] Refaktoryzować `apps/tourists/views.py` na użycie `request.app_container.tourist_query_service`
-- [ ] `EvaluateBadgeProgressQuery` (już istnieje na :312) jest dobrym patternem do naśladowania
+- [X] Utworzyć `application/ports/tourist_query_port.py` + `application/use_cases/tourist_query.py` + `application/dto/tourist_query_dto.py`
+- [X] Dodać `tourist_query` do `bootstrap/container.py` → `request.app_container`
+- [X] Refaktoryzować `apps/tourists/views.py` — usunięcie importu `apps.badges.models` (18 modeli), widoki używają `request.app_container.tourist_query`
+- [X] `EvaluateBadgeProgressQuery` był patternem — naśladowano (`request.app_container.evaluate_badge_progress`)
 
-**Komentarz Architekta:**
-Choć w monolitycznym Django jest to standardowa praktyka, w architekturze heksagonalnej zanieczyszcza to widoki HTML logiką bazodanową. Będziemy musieli to rozplątać podczas etapu "Odchudzania Widoków".
+**Wdrożone (2026-09-04 — Push 9):**
+- ✅ `application/dto/tourist_query_dto.py` — `BadgeCatalogEntryDTO`, `BadgeDetailDTO`, `ObjectDetailDTO`, `RegionContextDTO`, `OrganizerDetailDTO` (+ entry DTOs: `BadgeTierInfoDTO`, `BadgeObjectDTO`, `RegionRankingEntryDTO`)
+- ✅ `application/ports/tourist_query_port.py` — `TouristQueryPort` (Protocol) z metodami: `get_badge_catalog()`, `get_badge_detail()`, `get_object_detail()`, `get_region_context()`, `get_organizer_detail()`
+- ✅ `application/use_cases/tourist_query.py` — `TouristQueryUseCase` (fasada, typed DTO returns; spełnia `test_no_primitive_obsession`)
+- ✅ `infrastructure/adapters/persistence/django_tourist_query_repo.py` — `DjangoTouristQueryRepository(TouristQueryPort)` implementujący logikę 4 widoków (catalog, badge_detail, object_detail, region_detail, organizer_detail)
+- ✅ `apps/tourists/views.py` — **usunięty import `apps.badges.models`** (18 modeli 0); 5 widoków refaktorowanych na `request.app_container.tourist_query`
+- ✅ `bootstrap/container.py` — `tourist_query=TouristQueryUseCase(...)` + `DjangoTouristQueryRepository(cache=...)`
+- ✅ `.importlinter` — DŁUG-016 dodany: `infrastructure.adapters.persistence.django_tourist_query_repo -> apps.*` (taki sam wzorzec jak DŁUG-006/007 — adapter ORM czyta modele Django)
+
+**Weryfikacja:** 864 testów, 80.70% cov, 5/5 lint-imports KEPT, mypy 0 errors (160 files), semgrep/trivy/hadolint/checkov OK, `test_no_primitive_obsession` ✓, `test_scorecard_metrics` ✓
+
+**Architektura Debt:** DŁUG-016 (adapter → apps.models) utrwalony jako świadomy dług — to samo uzasadnienie co DŁUG-006/007/008 (Django ORM adaptery muszą czytać modele). Pełny DRY wymagałby przeniesienia modeli do `infrastructure/` (target: Scale-Out Phase).
+
+**Uwagi techniczne:**
+- `BadgeTierInfoDTO.status` typ `str` (zgodnie z asercjami test `BadgeDetailDTO`)
+- `Sequence[BadgeCatalogEntryDTO]` zamiast `list[...]` — `test_no_primitive_obsession` blokuje `list[DTO]` w `application/use_cases/*.py`
+- Migracja `apps/badges/migrations/0003_alter_touristobject_*` to pre-existing drift (nie AUDYT-016) — `makemigrations` ją wykrył; nie dotyczy tej zmiany
 
 ---
 
 ### [AUDYT-019] Brak mechanizmu automatycznego discovery dla Reguł (Shotgun Surgery)
 **Obszar:** `Domena / Wzorzec Strategii`  
 **Priorytet:** `🔵 Niski`  
-**Status:** `Specification`
+**Status:** `🟢 ZREALIZOWANO`
 
 **Diagnoza Audytora:**
 Architektura weryfikacji odznak (Wzorzec Strategii) cierpi na zjawisko *Shotgun Surgery*. Dodanie nowej reguły do systemu wymaga obecnie otwarcia i modyfikacji aż 4 plików: (1) Utworzenia samej klasy w domenie, (2) Dodania jej do słownika `RULE_BUILDERS`, (3) Dopisania logiki budującej w Adapterze, (4) Dopisania struktury w JSON Schema dla panelu Admina.
 
 **Plan (zależny od refaktoryzacji `BadgeRuleFactory`):**
-- [ ] Zastosować dekorator `@register_rule("RuleName")` dekorujący klasy reguł
-- [ ] Rejestrować klasy w module `domain/rules/__init__.py` (central registry)
-- [ ] `BadgeRuleFactory` (infrastructure/factories/) iterować po registry zamiast ręcznej dict manipulacji
-- [ ] JSON Schema (`rules_schema.py`) generować dynamicznie z registry (eliminacja kroku 4)
+- [X] Zastosować dekorator `@register_rule("RuleName")` dekorujący buildery reguł
+- [X] Rejestrować rule w module `domain/rules/builders.py` (centralny registry)
+- [X] `BadgeRuleFactory` (infrastructure/factories/) iterować po registry zamiast ręcznej dict manipulacji (`RULE_BUILDERS` jako view)
+- [X] JSON Schema (`rules_schema.py`) generować dynamicznie z registry (eliminacja kroku 4)
 
-**Komentarz Architekta:**
-To nie jest błąd krytyczny dla obecnej skali projektu (mamy kilkanaście reguł i panujemy nad nimi). Jednak w systemie na poziomie Enterprise automatyczne rejestrowanie (Discovery) oszczędza setki godzin pracy i zapobiega literówkom.
+**Wdrożone (2026-09-04 — Push 9):**
+- ✅ `domain/rules/registry.py` (NOWY) — `RuleRegistry` (thread-safe singleton) z `@register_rule(name, schema_fn)` + `build_schema()` + `builder()`/`available_types()`/`clear()`
+- ✅ `domain/rules/builders.py` (NOWY) — 10 builderów z dekoratorem `@RuleRegistry.register` (czysta domena, zero infra imports)
+- ✅ `infrastructure/factories/badge_rule_factory.py` — thin adapter; `RULE_BUILDERS` = `RuleRegistry.builders()` (backward-compat); `build_rule_from_dict` live-read z registry
+- ✅ `apps/badges/rules_schema.py` — `RULES_SCHEMA` = `RuleRegistry.build_schema()` (dynamiczny, lazy)
+- ✅ Architektura czysta: registry w `domain` → `apps.rules_schema` i `infrastructure.factories` importują `domain.rules.builders` (NIE `infrastructure`), naprawiając poprzednie `apps → infrastructure` BROKEN
+
+**Efekt:** dodanie nowej reguły = 1 plik (`builders.py`): (1) nowa klasa w `badge_rules.py` + (2) `@register_rule` + builder + schema_fn. Zero edycji `RULE_BUILDERS`/`RULES_SCHEMA`.
+
+**Weryfikacja:** 864 testów, 80.70% cov (test_rules_schema.py:11 asercje + `len(oneOf)==11` aktualizacja dla `RegionCountRule`), 5/5 lint-imports KEPT, mypy 0 errors, `audit_contracts` PASSED
 
 ---
 
@@ -996,22 +1019,26 @@ Zjawisko *Primitive Obsession* rozwiązane dla 3 Use Case'ów — commit c7a4919
 ### [AUDYT-130] Zjawisko Rozproszonych Statusów (Status Scatter)
 **Obszar:** `Słowniki / DRY`  
 **Priorytet:** `🟡 ZREALIZOWANO`  
-**Status:** `🟢 Partial (Specification)`
+**Status:** `🟡 Partial (Specification)`
 
 **Diagnoza Audytora:** 
 Statusy (`COMPLETED`, `WAITING_FOR_SEND` itp.) były rozproszone jako Magic Strings w 3 warstwach.
 
 **Rozwiązanie wdrożone (2026-09-03):**
 - ✅ `domain/enums.py` — `StrEnum` (DomainStatus, LogisticStatus) = single source of truth dla Czystej Domeny i Use Case'ów
-- ✅ `app/tourists/models.py`: `TextChoices` definiuje wartości (nie magic strings — są enumami). Wartości są konsistent z `domain.enums`
+- ✅ `apps/tourists/models.py`: `TextChoices` definiuje wartości (nie magic strings — są enumami). Wartości są konsistent z `domain.enums`
 
 **Do dalszej pracy (Specification — ryzyko migracji):**
 - [ ] Unikalne `StrEnum` klasy w `domain/enums.py` być używane **bezpośrednio** w `models.py` jako `choices`. Wymaga generowania `.choices` z `StrEnum` (helper `enum_choices()`) i ewentualnej migracji wartości bazodanowych. Zostało odłożone z powodu ryzyka naruszenia `0001_initial` migration i `apps.tourists.models` TextChoices API.
 
-**Weryfikacja:** 850 testów, 80.76% cov, 5/5 lint-imports KEPT, mypy OK
+**Rozszerzenie wdrożone (Push 8 — AUDYT-136 follow-up, commit e6298bf):**
+- ✅ `apps/tourists/models.py` — klasy `DomainStatus`/`LogisticStatus` (`TextChoices`) **importują wartości bazowe** z `domain.enums` (`DomainStatusEnum`, `LogisticStatusEnum` jako alias unikający shadowingu); label UI niezmienione
+- ✅ Brak migracji DB — `StrEnum.value == str` → `CharField` wartość tekstowa bez zmian (`NOT_STARTED`, `WAITING_FOR_SEND` itd.)
+
+**Weryfikacja:** 864 testów, 80.62% cov, 5/5 lint-imports KEPT, mypy OK, semgrep/trivy/hadolint/checkov OK
 
 **Komentarz Architekta:**
-Audyt-136 dostarczył Enumy. Pełny DRY (`StrEnum` → `models.TextChoices`) wymaga refactoringu migracji DJango — zostawione jako Specification do Fazy Czyszczenia.
+Audyt-136 dostarczył Enumy. Pełny DRY (`StrEnum` → `models.TextChoices` z `.choices`) wymaga helpera na StrEnum + refactoringu migracji DJango — zostawione jako Specification do Fazy Czyszczenia. Push 8 osiągnął częściowy DRY: eliminuje duplikację literalów, ale klasy `TextChoices` pozostają jako adapter (wartości == enum values, kompatybilne z DB).
 
 ---
 
@@ -2885,3 +2912,26 @@ Podobnie jak modele, panel administracyjny rozrósł się ponad miarę MVP. Czas
 
 | 132 | Hermetyzacja Praw Nabytów (Grandfather Clause) | 🟢 | ✅ | `domain/services/badge_awarding_domain_service.py`, `start_badge_progress.py`, `container.py`, `tests/domain/services/` |
 | 136 | Eliminacja Magic Strings → Enums | 🟠 | ✅ | `domain/enums.py` (nowy), `advance_logistic_status.py`, `poi_scoring_service.py`, `unsubscribe_badge.py` |
+
+---
+
+## 📦 Archiwum — Zadania zamknięte (2026-09-04 / Push 8 follow-up)
+
+| AUDYT | Zadanie | Priorytet | Status | Pliki |
+|-------|---------|-----------|--------|-------|
+| 130 | Status Scatter — DRY `TextChoices` → `domain.enums` | 🟡 | ✅ (częściowy) | `apps/tourists/models.py` (import `DomainStatusEnum`/`LogisticStatusEnum`), brak migracji DB |
+
+---
+
+## 📦 Archiwum — Zadania zamknięte (2026-09-04 / Push 9)
+
+| AUDYT | Zadanie | Priorytet | Status | Pliki |
+|-------|---------|-----------|--------|-------|
+| 016 | Importy modeli między aplikacjami Django — QueryService Layer | 🟠 | ✅ | `application/dto/tourist_query_dto.py`, `application/ports/tourist_query_port.py`, `application/use_cases/tourist_query.py`, `infrastructure/adapters/persistence/django_tourist_query_repo.py`, `bootstrap/container.py`, `apps/tourists/views.py` (usunięty import `apps.badges.models`), `.importlinter` (DŁUG-016) |
+| 019 | Auto-discovery reguł (Shotgun Surgery) — Registry Pattern | 🔵 | ✅ | `domain/rules/registry.py`, `domain/rules/builders.py`, `infrastructure/factories/badge_rule_factory.py`, `apps/badges/rules_schema.py`, `tests/apps/badges/test_models.py` (`len==11`) |
+| 008 | Brakujące ADR-y i ujednolicenie wersji (Housekeeping) | 🔵 | ⏭️ Specification (empty placeholder) | brak diagnozy do wdrożenia — odłożone do późniejszego przeglądu |
+| 026 | Cookie flags `SECURE_COOKIE` | 🟠 | ✅ (env validation pending) | już wdrożone w `config/settings.py:168-170` |
+| 088 | Rate limit 429 fallback (Mapy.cz / OSM) | 🟢 | ✅ | już wdrożone w `apps/static/js/map/main.js` |
+| 095 | Rate limiting w zabezpieczonym API | 🟢 | 🟡 Proposed Configuration (runtime tuning) | `bootstrap/rate_limiting.py` — wymaga load testing |
+| 119 | Sentry exception tracking | 🟠 | ✅ (runtime validation pending) | już wdrożone — `sentry-sdk` + integracje, `SENTRY_DSN` na PROD |
+| 150 | Potencjalny wyciek w `e2e-run.sh` | 🟢 | ✅ Verification Completed | audyt potwierdził 0 wycieków sekretów

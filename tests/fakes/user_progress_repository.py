@@ -31,12 +31,12 @@ class FakeTouristRepository(
         return self.profiles.get(profile_id)
 
     # --- AscentLogRepositoryPort ---
-    def get_object_lifespan(self, peak_id: int) -> tuple[date | None, date | None] | None:
+    def get_object_lifespan(self, object_id: int) -> tuple[date | None, date | None] | None:
         return (None, None)  # W testach domyślnie obiekt żyje wiecznie
 
-    def ascent_exists(self, profile_id: int, peak_id: int, ascent_date: date) -> bool:
+    def ascent_exists(self, profile_id: int, object_id: int, ascent_date: date) -> bool:
         for a in self.ascents:
-            if a["profile_id"] == profile_id and a["peak_id"] == peak_id and a["ascent_date"] == ascent_date:
+            if a["profile_id"] == profile_id and a["peak_id"] == object_id and a["ascent_date"] == ascent_date:
                 return True
         return False
 
@@ -46,14 +46,14 @@ class FakeTouristRepository(
             return min(profile_ascents)
         return None
 
-    def save_ascent(self, profile_id: int, peak_id: int, ascent_date: date) -> int:
+    def save_ascent(self, profile_id: int, object_id: int, ascent_date: date) -> int:
         ascent_id = self._next_ascent_id
         self._next_ascent_id += 1
         self.ascents.append(
             {
                 "id": ascent_id,
                 "profile_id": profile_id,
-                "peak_id": peak_id,
+                "peak_id": object_id,
                 "ascent_date": ascent_date,
             }
         )
@@ -65,14 +65,14 @@ class FakeTouristRepository(
             if a["profile_id"] == profile_id:
                 if cutoff_date and a["ascent_date"] <= cutoff_date:
                     continue
-                result.append(AscentDTO(peak_id=a["peak_id"], ascent_date=a["ascent_date"], region_ids=frozenset()))
+                result.append(AscentDTO(object_id=a["peak_id"], ascent_date=a["ascent_date"], region_ids=frozenset()))
         return result
 
     def get_all_ascents_for_user(self, profile_id: int) -> list[AscentDTO]:
         result = []
         for a in self.ascents:
             if a["profile_id"] == profile_id:
-                result.append(AscentDTO(peak_id=a["peak_id"], ascent_date=a["ascent_date"], region_ids=frozenset()))
+                result.append(AscentDTO(object_id=a["peak_id"], ascent_date=a["ascent_date"], region_ids=frozenset()))
         return result
 
     # --- UserProgressRepositoryPort ---

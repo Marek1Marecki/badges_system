@@ -33,7 +33,7 @@ class AscentLogged(DomainEvent):
     """
 
     actor_profile_id: int
-    peak_id: int
+    object_id: int
     ascent_date: date
 
 

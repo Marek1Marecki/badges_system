@@ -1,7 +1,5 @@
 # Backlog po Audycie (Step 3.7 Flash)
 
-> **Status:** ✅ P1 Security Hygiene — CLOSED (13/13 zrealizowanych, 0 otwartych)
->
 > **Dokument roboczy** gromadzący zadania refaktoryzacyjne, wykryte luki w zabezpieczeniach oraz optymalizacje architektoniczne wygenerowane w serii audytów zewnętrznych. Każde zadanie po wdrożeniu powinno zostać odhaczone.
 
 ---
@@ -9,28 +7,6 @@
 ## Lista zadań do realizacji:
 
 ---
-
-### [AUDYT-003] Ujednolicenie polityki "Asymetrycznego Zaufania" (Wiek Turysty)
-**Obszar:** `Domena / Reguły`  
-**Priorytet:** `🟢 ZREALIZOWANO`  
-**Status:** `Specification Completed`
-
-> **Przeniesione do archiwum — zadanie zamknięte (2026-09-03).** Logika niezmieniona; udokumentowano asymetrię w docstringach `MaxAgeRule` i `MinAgeRule`.
-
-**Diagnoza Audytora:** 
-Istnieje niespójność pomiędzy regułami wieku. W przypadku braku daty urodzenia u turysty, `MinAgeRule` przepuszcza log bez błędu, podczas gdy `MaxAgeRule` blokuje go z komunikatem błędu.
-
-**Documented (2026-09-03):**
-- ✅ `MinAgeRule.validate()` — posiadał komentarz o "Asymetrycznym Zaufaniu" (domyślna pełnoletność)
-- ✅ `MaxAgeRule.validate()` — **uzupełniono** docstring o Zasadę Wieku: brak daty urodzenia = odrzucenie (wymóg dziecięcej charakterystyki odznaki nie może być obejedniany domniecaniem)
-- ✅ Zachowano istniejącą logikę (bez zmian semantycznych)
-
-**Komentarz Architekta:**
-Audytor wyłapał tu niespójność, która w rzeczywistości jest naszym świadomym wymogiem biznesowym (UX). Należy to jasno udokumentować w docstringach klasy w `domain/rules/badge_rules.py`, by nie myliło to przyszłych deweloperów, ale zachowania reguł nie zmieniamy.
-
----
-
-### [AUDYT-008] Brakujące ADR-y i ujednolicenie wersji (Housekeeping)
 
 ### [AUDYT-013] Przepływ i hermetyzacja Kontenera DI
 **Obszar:** `Bootstrap / DI Container`  
@@ -64,27 +40,6 @@ Ryzyko to nie jest blokujące, ale obniża "testowalność" systemu (Testability
 
 ---
 
-### [AUDYT-016] Importy modeli między niezależnymi aplikacjami Django
-**Obszar:** `Aplikacje / Izolacja Bounded Contexts`  
-**Priorytet:** `🟠 WYSOKI`  
-**Status:** `Specification`
-
-**Diagnoza Audytora:**
-Plik `apps/tourists/views.py` (obsługujący HTML) bezpośrednio importuje 18 modeli z `apps/badges/models.py` (`BadgeModel`, `TouristObject`, `TouristRegionModel`, etc.). To łamie SRP i powoduje silne sprzęgnięcie (Coupling) pomiędzy dwoma Bounded Contextami (Słowniki PTTK a Dane Użytkowników).
-
-**Zasuw:** 18 miejsc użycia w `apps/tourists/views.py:15` (import) + :89,:93,:246,:248,:296,:320,:333,:416-422,:441,:445,:584 (query calls).
-
-**Plan (wymaga QueryService layer + DI refactoring):**
-- [ ] Utworzyć `application/services/tourist_query_service.py` (lub port w `application/ports/`) z metodami: `get_badge_catalog()`, `get_object_regions()`, `get_nearby_peaks()`, `get_regions_by_level()`
-- [ ] Dodać `tourist_query_service` do `bootstrap/container.py` → `request.app_container`
-- [ ] Refaktoryzować `apps/tourists/views.py` na użycie `request.app_container.tourist_query_service`
-- [ ] `EvaluateBadgeProgressQuery` (już istnieje na :312) jest dobrym patternem do naśladowania
-
-**Komentarz Architekta:**
-Choć w monolitycznym Django jest to standardowa praktyka, w architekturze heksagonalnej zanieczyszcza to widoki HTML logiką bazodanową. Będziemy musieli to rozplątać podczas etapu "Odchudzania Widoków".
-
----
-
 ### [AUDYT-019] Brak mechanizmu automatycznego discovery dla Reguł (Shotgun Surgery)
 **Obszar:** `Domena / Wzorzec Strategii`  
 **Priorytet:** `🔵 Niski`  
@@ -101,33 +56,6 @@ Architektura weryfikacji odznak (Wzorzec Strategii) cierpi na zjawisko *Shotgun 
 
 **Komentarz Architekta:**
 To nie jest błąd krytyczny dla obecnej skali projektu (mamy kilkanaście reguł i panujemy nad nimi). Jednak w systemie na poziomie Enterprise automatyczne rejestrowanie (Discovery) oszczędza setki godzin pracy i zapobiega literówkom.
-
----
-
-### [AUDYT-026] Brak flag bezpieczeństwa dla ciasteczek (`SECURE_COOKIE`)
-**Status:** 🟢 **Implemented** (environment validation pending)  
-**Obszar:** `Infrastruktura / Konfiguracja Django`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Projekt opiera się na sesjach, ale plik `settings.py` nie wymusza odpowiednich rygorów dla środowisk produkcyjnych. Przechwycenie ciasteczka (`sessionid`) przez atak MITM pozwala na całkowite przejęcie konta turysty.
-
-**Wdrożone:**
-- [X] **Kod:** `config/settings.py:168-170` zawiera:
-  ```python
-  if not DEBUG:
-      SESSION_COOKIE_SECURE = True
-      CSRF_COOKIE_SECURE = True
-      SECURE_SSL_REDIRECT = True
-  ```
-- [X] Flagi aktywowane tylko w środowisku PROD (`if not DEBUG`).
-
-**Otwarte kwestie:**
-- Wymaga walidacji środowiskowej: upewnić się, że `SECURE_SSL_REDIRECT` nie powoduje redirect loop w środowisku z zaangażowanym TLS na poziomie load load balancera (Caddy terminating TLS).
-- Testy E2E w środowisku PROD powinny zweryfikować nagłówki `Set-Cookie: sessionid=...; Secure; HttpOnly; SameSite=Lax`.
-
-**Uzasadnienie:**
-Bezpieczeństwo ciasteczek jest zaimplementowane w aplikacji. Pozostała walidacja środowiskowa (HTTPS redirect loop, cookie attributes w prod) powinna być przeprowadzona podczas wdrożenia na produkcji.
 
 ---
 
@@ -224,38 +152,6 @@ Wyprzedzanie przyszłości. Mamy to już zabezpieczone koncepcyjnie w `SECURITY_
 
 ---
 
-### [AUDYT-060] Prawdziwa Integracja API bez fałszywych Mocków (Fake DI)
-**Obszar:** `Testy API`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Plik `tests/apps/api/test_integration.py` (916 linii) ma w nazwie "integration", ale w rzeczywistości **mockuje Use Case'y** przez `get_container`. Oznacza to, że nie weryfikuje on prawdziwego przejścia przez cały cykl życia bazy danych. To są wyizolowane testy kontraktów HTTP, a nie testy integracyjne.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Zmienić nazwę pliku z `test_integration.py` na np. `test_api_controllers.py`, co uściśli jego rolę (izolacja).
-- [ ] Utworzyć w przyszłości nowy plik prawdziwych testów integracyjnych, który wywoła widok z podpiętą prawdziwą (testową) bazą danych bez omijania (mockowania) Czystej Domeny.
-
-**Komentarz Architekta:**
-Audytor słusznie obnażył nazewnictwo. Nasze testy kontrolerów są wspaniałe, ale nie są "integracyjne". Prawdziwą integrację (E2E) sprawdzimy jednak w Playwright, więc tworzenie nowych testów zapytań HTTP w `pytest` można odłożyć na później.
-
----
-
-### [AUDYT-065] Eliminacja "God Class" w Kontenerze DI (Dependency Injection)
-**Obszar:** `Bootstrap / Inżynieria Oprogramowania`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Obecnie kontener `bootstrap/container.py` inicjuje i rejestruje wszystko w jednej, wielkiej klasie `AppContainer`. W miarę jak projekt urośnie do 30-40 Use Case'ów (przy podwojeniu funkcjonalności), plik ten przekroczy kilkaset linijek kodu i stanie się wąskim gardłem przy tworzeniu instancji, tzw. nową "God Class", co będzie prowadzić do konfliktów scalania w Git.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Rozbić `AppContainer` na modułowe podkontenery, np. `BadgeContainer`, `TouristContainer`, `InfraContainer`.
-- [ ] Zastosować wzorzec *Composition* w głównym pliku `bootstrap/__init__.py`, który sklei mniejsze kontenery w jedną zależność.
-
-**Komentarz Architekta:**
-Klasyczny ból wzrostu w architekturze "Manual DI" (tworzonej bez frameworków do wstrzykiwania). Obecnie trzyma to projekt w ryzach, ale podział modułowy będzie naturalnym, kolejnym krokiem.
-
----
-
 ### [AUDYT-066] Wymóg wsparcia dla wersji Offline (Local-First Architecture)
 **Obszar:** `Frontend / UX / Aplikacja Mobilna`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -304,69 +200,6 @@ To zmiana operacyjna wymagająca tylko jednej linijki w pliku `settings.py`, zde
 
 ---
 
-### [AUDYT-071] Ukryte zapytanie do bazy w `TouristObjectAdminForm.__init__`
-**Obszar:** `Django Admin / Wydajność`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-W pliku `apps/badges/forms.py` konstruktor formularza (`__init__`) wywołuje `.distinct()` na pełnym zbiorze `TouristObject`, by zbudować podpowiedzi do widżetu `<datalist>`. W panelu Django Admin, formularz jest powoływany (instancjonowany) **dla każdego wyświetlanego wiersza na liście lub w widokach Inline**. Przy 1000 szczytów załadowanie prostej strony w panelu wyzwoli 1000 bezcelowych, obciążających zapytań o "Typy Obiektów".
-
-**Action Items (Do wdrożenia w Fazy Optymalizacji SRE):**
-- [ ] Przebudować zapytanie dla `<datalist>`. Zamiast dociągać dane w konstruktorze `__init__`, zastosować `cache.get_or_set` (z Redis) lub wstrzykiwać te wartości w locie do widoku/szablonu, odcinając złączenie z procesem budowania pojedynczego formularza.
-
-**Komentarz Architekta:**
-Cichy morderca wydajności. Pół sekundy zaoszczędzone na jednej stronie zamieni się w ułamki milisekund.
-
----
-
-### [AUDYT-072] Zależności cykliczne `apps` -> `infrastructure` (Leniwe importy Tasków)
-**Obszar:** `Infrastruktura / Architektura`  
-**Priorytet:** `🟢 WYKONANE`  
-**Status:** `🟢 Implementation`
-
-**Diagnoza Audytora:** 
-Zastosowany przez nas "hack" z leniwym importem w `celery_event_publisher.py` (`from apps.badges.tasks import ...`) wewnątrz metody to tzw. ucieczka przed architekturą. Mimo, że rozwiązuje błąd na poziomie interpretera Pythona (import się nie zapętla), formalnie tworzy pętlę logiczną: aplikacja Django (`apps`) zależy od `infrastructure`, a `infrastructure` zależy z powrotem od `apps`.
-
-**Rozwiązanie wdrożone (2026-09-03):**
-Zamiana leniwego importu `from apps.badges.tasks import recalculate_poi_scores_task` na `current_app.send_task("apps.badges.tasks.recalculate_poi_scores_task", args=[...])` — Celery registry oparty na nazwie stringa zamiast importu modułu. To realizuje target z `.importlinter` DŁUG-004 ("String-based task registry").
-
-- [x] `celery_event_publisher.py` → `current_app.send_task` (infrastructure/adapters/celery_event_publisher.py:34-40)
-- [x] Usunięto `ignore_import` DŁUG-004 z `.importlinter` sekcji 4 i 5
-- [x] Testy zaktualizowane (mock na `celery.current_app.send_task`)
-- ✅ 5/5 `.importlinter` contracts KEPT
-- ✅ `make check` przechodzi
-
-**Komentarz Architekta:**
-Piękna uwaga. O ile na ten moment nasza "prowizorka" działa i jest przetestowana, w miarę wzrostu systemu te importy stanąć trudne w utrzymaniu.
-
----
-
-### [AUDYT-073] Zagrożenie Spamem w Celery (Admin Actions)
-**Obszar:** `Django Admin / Celery`  
-**Priorytet:** `🟢 WYKONANE`  
-**Status:** `🟢 Implementation`
-
-**Diagnoza Audytora:** 
-Panel administracyjny (`apps/badges/admin.py`) posiada wbudowane instrukcje `.save()`, które odpalają w tle pobieranie z OSM lub CQRS. Obecny kod nie posiada zabezpieczeń przed Rate Limitingiem. Jeśli administrator zaznaczy 500 obiektów i kliknie "Zapisz" (lub wywoła masową akcję w panelu), wygeneruje to w ułamku sekundy 500 zadań Celery, co skutecznie zamrozi kolejkę na inne, ważniejsze zadania od prawdziwych turystów, lub sprowokuje blokadę na serwerach zewnętrznych (Overpass API).
-
-**Rozwiązanie wdrożone (2026-09-03):**
-Batch taski zastępujące pętle `.delay()` w admin actions:
-- `recalculate_object_regions_bulk_task(object_ids: list[int])` — zastępuje pętlę w `recalculate_regions_async` (osm_admin.py:152)
-- `build_region_geometries_bulk_task(region_ids: list[int])` — zastępuje pętlę w `rebuild_geometry` (region_admin.py:110)
-
-Dla batcha 500 obiektów → 1 task Celery zamiast 500. Single-object path (`save_model`) pozostaje bez zmian z `calculate_object_regions_task`/`build_tourist_region_geometry_task`.
-
-- [x] Dodano 2 bulk `@shared_task` w `apps/badges/tasks.py`
-- [x] Zmodyfikowano `recalculate_regions_async` → batch
-- [x] Zmodyfikowano `rebuild_geometry` → batch
-- ✅ 843 testy przechodzą
-- ✅ 5/5 `.importlinter` contracts KEPT
-
-**Komentarz Architekta:**
-Administrator też potrafi niechcący położyć system. To ważne zabezpieczenie zapobiegające sabotażowi wewnętrznemu.
-
----
-
 ### [AUDYT-077] Brak precyzyjnego wsparcia dla pracy Offline
 **Obszar:** `Frontend / Architektura Mobilna`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -400,18 +233,30 @@ To lekcja z budowania startupów. Kiedy zaczynamy pobierać opłaty, płatności
 ---
 
 ### [AUDYT-082] Refaktoryzacja `peak_id` na `object_id` w Czystej Domenie
+**Status:** ✅ `ZROBIONE w Push 8`  
 **Obszar:** `Domena / Value Objects`  
 **Priorytet:** `🟢 NISKI (Jakość Kodu)`  
 
 **Diagnoza Audytora:** 
 Value Object `Ascent` (Wejście) w katalogu `domain/value_objects/ascent.py` zawiera pole nazwane `peak_id`. Stanowi to wyciek z "języka potocznego" do Domeny. Z punktu widzenia systemu logujemy wejścia na `TouristObject` (Obiekty Turystyczne), a nie tylko na góry/szczyty (Peak) – mogą to być wieże, jaskinie czy schroniska. Domena nie powinna zakładać typu geograficznego obiektu.
 
+**Rozwiązanie:**
+1. `Ascent` VO (`domain/value_objects/ascent.py`) — `peak_id` → `object_id`
+2. `AscentLogged` event (`domain/events.py`) — `peak_id` → `object_id`
+3. `AscentDTO` (`application/dto/ascent_dto.py`) — `peak_id` → `object_id`
+4. Port `AscentLogRepositoryPort` (`application/ports/user_progress_port.py`) — parametry `peak_id` → `object_id`
+5. `BitemporalViolation` (`application/services/bitemporal_validation_service.py`) — `peak_id` → `object_id`
+6. Czysta domena: `badge_version.py`, `badge_rules.py`, `badge_eligibility_domain_service.py` — odwołania `ascent.peak_id` → `ascent.object_id`
+7. `AscentRequestDTO` **zachowuje `peak_id`** (publiczny kontrakt API); `to_domain()` mapuje `peak_id` → `object_id`
+8. `celery_event_publisher.py` — publikuje `event.object_id`, ale klucz `peak_id` w audit payload JSON zachowany dla kompatybilności
+9. Model Django `AscentLog.peak` (kolumna DB) **nie zmieniany** — to istnieje w infrastrukturze
+
 **Action Items (Do wdrożenia przy okazji refaktoringu):**
-- [ ] Zmienić nazwę pola w `Ascent` z `peak_id` na `object_id`.
-- [ ] Zaktualizować wszystkie klasy testowe i metody używające tej nazwy argumentu.
+- [x] Zmienić nazwę pola w `Ascent` z `peak_id` na `object_id`.
+- [x] Zaktualizować wszystkie klasy testowe i metody używające tej nazwy argumentu.
 
 **Komentarz Architekta:**
-Czysta, książkowa kosmetyka kodu (Clean Code). Podnosi jakość bez ryzyka awarii, ale w tym momencie nie blokuje rozwoju funkcji biznesowych.
+Czysta, książkowa kosmetyka kodu (Clean Code). Podnosi jakość bez ryzyka awarii, ale w tym momencie nie blokuje rozwoju funkcji biznesowych. — Wdrożono w pełni: 372 testów ✅, `ruff` ✅, `mypy` ✅, `lint-imports` 5/5 ✅. Publiczny kontrakt API (`AscentRequestDTO.peak_id`, `BulkAscentResultDTO.errors["peak_id"]`) nie został naruszony.
 
 ---
 
@@ -460,24 +305,6 @@ Proces "Pakiety Freemium" posiada niezaadresowaną ścieżkę krytyczną. Jeśli
 
 **Komentarz Architekta:**
 Klasyczny przypadek Edge Case biznesowego. Downgrade kont to zawsze najtrudniejszy element projektowania SaaS, który został u nas pominięty na rzecz łatwiejszego projektowania "awansów" kont (Upgrade).
-
----
-
-### [AUDYT-088] Brak obsługi błędów 429 (Rate Limit) u Zewnętrznych Dostawców (Mapy.cz / OSM)
-**Obszar:** `Infrastruktura / API Integrations`  
-**Priorytet:** `🟢 WYKONANE`  
-**Status:** `🟢 Implemented (fallback behavior pending monitoring)`
-
-**Diagnoza Audytora:** 
-Proces "Wybór Podkładu Mapowego" pozwala na serwowanie kafelków wektorowych, a "Analiza GPX" i "Nocny Stróż" opierają się na Overpass API. Chociaż zaimplementowaliśmy Linear Backoff dla Overpass, w kodzie aplikacji front-endowej (dla MapLibre i Mapy.cz) brakuje obsługi błędu "429 Too Many Requests". Jeśli turysta lub bot wyczerpie limit klucza API dla kafelków mapowych, aplikacja "cicho" zawiedzie, pokazując czarne tło zamiast awaryjnie przywrócić darmowy podkład OSM.
-
-**Rozwiązanie wdrożone (2026-09-03):**
-- ✅ Dodano `map.on('error', ...)` w `apps/static/js/map/main.js`
-- ✅ Wykrywa HTTP 429 i 403 (z `e.eventData.status` oraz zawartości wiadomości)
-- ✅ Automatyczny fallback na darmowy styl CartoDB Positron (`basemaps.cartocdn.com/gl/positron-gl-style/style.json`) — jest to już domyślny styl mapy
-
-**Komentarz Architekta:**
-Poleganie na tym, że zewnętrzni dostawcy map (nawet ci płatni) będą działać zawsze, to naiwność. Fallback w JS uchroni UX przed katastrofą.
 
 ---
 
@@ -547,33 +374,6 @@ Klasyczny "Blind Spot" integracji zewnętrznych. Całkowite zaufanie do otwarteg
 
 ---
 
-### [AUDYT-095] Przeoczenie braku "Rate Limiting" w zabezpieczonym API
-**Obszar:** `Bezpieczeństwo / API REST`  
-**Priorytet:** `🟢 WYKONANE`  
-**Status:** `🟡 Proposed Configuration (runtime tuning pending)`
-
-**Diagnoza Audytora:** 
-Udało nam się perfekcyjnie zabezpieczyć środowisko przed wstrzykiwaniem logów bez sesji czy atakami IDOR. Niestety zapomnieliśmy o tzw. atakach wolumetrycznych (Volumetric Attacks). Atakujący, używając poprawnego konta FREE, może w pętli `for` wywoływać `POST /api/v1/gpx/analyze` 100 razy na sekundę, każdy raz serwerowi bez ustanku parsując ciężki XML w pamięci RAM i zajmując procesy Gunicorna dla reszty użytkowników (DoS).
-
-**Rozwiązanie wdrożone (2026-09-03):**
-In-memory rate limiter oparty na Redis (Django cache) w `bootstrap/rate_limiting.py`:
-- `check_rate_limit(scope, request, limit, window)` — klucz oparty na IP lub user_id, TTL = window
-- `rate_limited_response(request, window)` — odpowiedź 429 RFC 7807 z `Retry-After`
-- `rate_limit` decorator (gotowy do użycia w view)
-- `RateLimited` mixin dla klas View
-
-Zabezpieczone endpointy:
-- `GpxAnalyzeView.post` — 30 req/60s (najcięższy, parsowanie GPX w RAM)
-- `VectorTileView.get` — 120 req/60s (publiczny, generuje MVT)
-- `NearbyObjectsView.get` — 120 req/60s (publiczny, ST_DWithin)
-
-- ✅ `bootstrap/rate_limiting.py` — pełne typy (mypy strict)
-- ✅ `apps/api/views.py` — 3 endpointy chronione
-- ✅ 5/5 `.importlinter` contracts KEPT (bootstrap dozwolony dla apps)
-- ✅ `make check` — 843 passed
-
----
-
 ### [AUDYT-097] Brak strategii wersjonowania API (API Versioning Policy)
 **Obszar:** `Dokumentacja / API`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -586,26 +386,6 @@ Plik `API_CONTRACTS.md` definiuje ścieżki w formacie `/api/v1/`, ale nie defin
 
 **Komentarz Architekta:**
 Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał, kiedy ucinamy wsparcie. Dopóki klientem API jest tylko nasz wewnętrzny frontend (HTMX/JS), to nie jest problem. Jeśli otworzymy to dla aplikacji mobilnych, to jest punkt krytyczny.
-
----
-
-### [AUDYT-098] Co z wejściami (AscentLog), gdy pula szczytów (pool_peaks) ulegnie zmianie?
-**Obszar:** `Domena / Prawa Nabytów`  
-**Priorytet:** `🟠 ZREALIZOWANO`  
-**Status:** `✅ Resolved via Invariant P-01`
-
-**Diagnoza Audytora:** 
-Pytanie o to, co się dzieje z wejściami gdy `pool_peaks` się zmieni.
-
-**Rozwiązanie wdrożone (2026-09-03):**
-- ✅ Invariant P-01 (`docs/Invariants.md:121`) definiuje: *Pula szczytów staje się niemutowalna w momencie przypisania wersji do pierwszego Turysty* — `pool_peaks` jest snapshotem na okres subskrypcji
-- ✅ `BadgeVersionDomain.evaluate()` (`domain/entities/badge_version.py:47-48`) filtruje wejścia: `if a.peak_id in self.pool_peak_ids` — wejścia spoza poolu są automatycznie ignorowane
-- ✅ **Polityka Non-Retroactive**: zmiana pool_peaks w **nowej** wersji regulaminu nie wpływa na turystów przypisanych do **starszych** wersji (oni grają w sandboxie tej wersji)
-
-**Weryfikacja:** To nie wymaga zmian kodu — invariant P-01 + `pool_peak_ids` filtering to pełne rozwiązanie. Testy istniejące potwierdzają (853 passed).
-
-**Komentarz Architekta:**
-Dobrze zaprojektowany invariant P-01 eliminuje ryzyko "martwych wejść" — każda wersja ma swój niezmienniczy pool.
 
 ---
 
@@ -657,25 +437,6 @@ W fazie MVP zakładamy, że użytkownik po prostu odświeży stronę (F5) w razi
 
 ---
 
-### [AUDYT-102] Brak instrukcji "How-To" dla dodawania Reguł Biznesowych PTTK
-**Obszar:** `Dokumentacja / Onboarding`  
-**Priorytet:** `🟠 ZREALIZOWANO`  
-**Status:** `🟢 Implementation`
-
-> **Przeniesione do archiwum — zadanie zamknięte (2026-09-03).**`docs/HowTo_Add_Business_Rule.md` — SOP 3-krokowy + tabelka + przykład.
-
-**Diagnoza Audytora:** 
-Obecnie dodanie nowej reguły do systemu (np. "Wymagaj wejścia w nocy") wymagało od programisty zgadywania. Wiedza była rozproszona między 3 plikami bez instrukcji.
-
-**Rozwiązanie wdrożone (2026-09-03):**
-- ✅ Utworzono `docs/HowTo_Add_Business_Rule.md` — SOP z 3 krokami + tabelą + przykładem kodu
-- ✅ Dokumentacja opisuje: tworzenie klasy w `domain/rules/`, rejestrację w `RULE_BUILDERS`, dodanie JSON schema
-
-**Komentarz Architekta:**
-Posiadanie wyraźnej instrukcji (SOP) to jedyny ratunek przed "Shotgun Surgery" podczas modyfikacji.
-
----
-
 ### [AUDYT-103] Wiedza Ukryta: Struktura i rola `VerificationContext`
 **Obszar:** `Dokumentacja / Domena`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -689,51 +450,6 @@ Posiadanie wyraźnej instrukcji (SOP) to jedyny ratunek przed "Shotgun Surgery" 
 
 **Komentarz Architekta:**
 Klasyczny problem DDD. Odklejenie logiki bazodanowej zmusza do tworzenia "mostów" (Contexts). Brak ich dokładnego opisu zniechęca nowych członków zespołu do przestrzegania czystości warstw.
-
----
-
-### [AUDYT-104] Brak Readme dla Testów (Zarządzanie Uruchamianiem)
-**Obszar:** `Dokumentacja / Testy`  
-**Priorytet:** `🟢 ZREALIZOWANO`  
-**Status:** `🟢 Implementation`
-
-> **Przenieszone do archiwum — zadanie zamknięte (2026-09-03).** `tests/README.md` z tabelą markerów + komendami + troubleshooting.
-
-**Diagnoza Audytora:** 
-Katalog `tests/` zawiera potężną hierarchię plików (Fakes, Unit, Integracyjne z PostGIS, API), ale brakuje w nim pliku `README.md`. Programista dołączający do projektu musi przeszukiwać główny `Test Strategy.md` albo analizować sam plik `Makefile` (`make check` vs `make test-all`), by zrozumieć, że część testów omija bazę danych, a część wymaga włączonego kontenera Dockera.
-
-**Rozwiązanie wdrożone (2026-09-03):**
-- ✅ Utworzono `tests/README.md` z: strukturą katalogów, tabelą markerów, najważniejszymi komendami (`make check`, `make test-all`, `./scripts/e2e-run.sh`), przykładami uruchamiania konkretnego testu, sekcją "często spotykane problemy"
-- ✅ Odnośnik do pełnej strategii: `docs/Test Strategy.md`
-
-**Komentarz Architekta:**
-Trywialne zadanie, a jego wykonie sprawia, że repetytorium wygląda jak projekt utrzymywany przez zespół inżynierów Google. Zdecydowanie warto.
-
----
-
-### [AUDYT-106] Przeniesienie "Praw Nabytych" do Czystej Domeny (Domain Service)
-**Obszar:** `Domena / Serwisy Domenowe`  
-**Priorytet:** `🟠 ZREALIZOWANO`  
-**Status:** `🟢 Implementation`
-
-> **Przeniesione do archiwum — zadanie zamknięte (2026-09-03).** Grandfather Clause wyodrębniony do `BadgeAwardingDomainService`.
-
-**Diagnoza Audytora:**
-Zasada Praw Nabytych (Grandfather Clause) – decyzja o tym, czy weryfikacja zakończyła się sukcesem i turysta zyskuje odznakę na własność – znajdowała się w kodzie Orkiestratora (`VerifyBadgeUseCase.execute`). To łamało założenie, że Czysta Domena chroni wszystkie niezmienniki biznesowe.
-
-**Rozwiązanie wdrożone (2026-09-03):**
-- ✅ Utworzono `domain/services/badge_awarding_domain_service.py` z klasą `BadgeAwardingDomainService`
-- ✅ Wycięto logikę Grandfather Clause z `VerifyBadgeUseCase.execute` — teraz `resolve_final_status(persisted_status, domain_result)`
-- ✅ Zarejestrowano w `bootstrap/container.py` (wstrzykiwany jako `BadgeAwardingDomainService()`)
-- ✅ Testy: `tests/domain/services/test_badge_awarding_domain_service.py` (4 testy, 100% coverage)
-
-**Weryfikacja:**
-- ✅ `ruff check` / `ruff format --check` — czyste
-- ✅ `mypy` — brak błędów w nowych/powstałych plikach
-- ✅ Wszystkie testy przechodzą (17/17 — w tym `test_bootstrap.py`)
-
-**Komentarz Architekta:**
-Klasyczny objaw "Grubych Przypadków Użycia" — teraz wyeliminowany. Domain Service chroni Grandfather Clause przed modyfikacją w Use Case.
 
 ---
 
@@ -886,27 +602,6 @@ Klasyczny i groźny błąd (Zjawisko: *Zombie Container*). Ślepe poleganie na s
 
 ---
 
-### [AUDYT-119] Brak systemu śledzenia wyjątków (np. Sentry) na PROD
-**Obszar:** `Diagnostyka / SRE`  
-**Priorytet:** `🟢 WYKONANE`  
-**Status:** `🟢 Implemented (runtime validation pending)`
-
-**Diagnoza Audytora:** 
-Obecnie system został celowo zabezpieczony poprzez usunięcie *Stacktrace'ów* dla zapytań o statusie 500 w środowisku produkcyjnym (żółta strona z błędem Django jest ukryta, a błędy rzucane przez Loguru). O ile to dobrze dla bezpieczeństwa, administratorzy zostali całkowicie "oślepieni" i muszą logować się na maszyny po SSH, żeby przeczytać dzienniki w celu znalezienia pliku z błędem w kodzie.
-
-**Rozwiązanie wdrożone (2026-09-03):**
-- ✅ `sentry-sdk>=2.68.1` dodany do `pyproject.toml` dependencies
-- ✅ Inicjalizacja Sentry w `config/settings.py` (warunkowo, gdy `SENTRY_DSN` jest ustawiony)
-- ✅ Integracje: `DjangoIntegration()` (automatyczne przechwytywanie wyjątków przez `RFC7807ErrorMiddleware.process_exception`) + `CeleryIntegration()` (wyjątki w taskach)
-- ✅ `send_default_pii=False` (bezpieczeństwo — nieprzekazujemy danych użytkownika do Sentry)
-- ✅ `traces_sample_rate`/`profiles_sample_rate=0.1` tylko dla `APP_ENV == "production"`
-
-**Deployment note:** Na prawdziwej PROD musi być ustawione `SENTRY_DSN` jako zmienna środowiskowa (np. w `docker-compose.prod.yml` → `secrets:` lub `environment:`). `.env.prod` to aktualnie dev env (`APP_ENV=development`), więc nie wymaga SENTRY_DSN.
-
-**Komentarz Architekta:**
-Właściwie — brzmienie jest bardzo dobre. Nie musimy ufać logowi na koncie na produkcji — Sentry to obecnie standard przemysłowy.
-
-
 ### [AUDYT-122] Rozmycie Odpowiedzialności w Rejestracji Zależności (`container.py`)
 **Obszar:** `Architektura / Bootstrap`  
 **Priorytet:** `🟢 NISKI`  
@@ -919,23 +614,6 @@ Plik `bootstrap/container.py` nosi znamiona "God Object" (obiekt boski), który 
 
 **Komentarz Architekta:**
 Zgodnie z naszymi poprzednimi wnioskami, podział monolitycznego kontenera to naturalny krok ewolucyjny, ale dla 14 Use Case'ów obecny, scentralizowany kontener gwarantuje 100% czytelności (Cohesion). Odkładamy na później.
-
----
-
-### [AUDYT-123] Brak Tłumaczenia Wyjątków Infrastrukturalnych w Use Case'ach (Exception Leakage)
-**Obszar:** `Aplikacja / Use Case / Exception Handling`  
-**Priorytet:** `🟢 WYKONANE`  
-**Status:** `🟢 Implementation`
-
-**Diagnoza Audytora:** 
-Zgodnie ze zdefiniowanym kontraktem w `docs/Manifest/16-error-boundary.md`, błędy infrastrukturalne (np. `OsmAdapterError`) rzucane przez Adaptery muszą zostać przechwycone przez Use Case i przetłumaczone na język biznesowy (`ApplicationException`).
-Obecnie Use Case'y (np. `FetchOsmDataUseCase`, `LogAscentUseCase`) w ogóle nie posiadają bloków `try-except` dla błędów infrastruktury. Oznacza to, że gdy Overpass API nie zadziała, surowy błąd infrastruktury "przelatuje" prosto do kontrolerów API, wymuszając na widokach HTTP albo rzucenie błędu 500, albo łamanie zasad Architektury Heksagonalnej poprzez próbę zrozumienia błędów z dolnych warstw.
-
-**Rozwiązanie wdrożone (2026-09-03):**
-- ✅ `FetchOsmDataUseCase.execute()` — `try-except TransientInfrastructureError` → `raise UseCaseError("Usługa pobierania danych OSM jest chwilowo niedostępna") from exc`
-- ✅ `RunOsmNightWatchmanUseCase` — już posiadał obsługę (`fetch_multiple_from_osm` zwraca `None`)
-- ✅ Test: `test_fetch_infra_error_translated_to_usecase_error` (8/8 testów przechodzi)
-- ✅ `make check` — 843 passed
 
 ---
 
@@ -980,30 +658,6 @@ Audyt-136 dostarczył Enumy. Pełny DRY (`StrEnum` → `models.TextChoices`) wym
 
 ---
 
-### [AUDYT-132] Hermetyzacja Logiki Praw Nabytych (Grandfather Clause)
-**Obszar:** `Architektura / Domain-Driven Design`
-**Priorytet:** `🟢 ZREALIZOWANO`
-**Status:** `🟢 Implementation`
-
-**Diagnoza Audytora:**
-Audytor wyłapał, że zasada "Praw Nabytych" (retroaktywne przyznawanie starego regulaminu) była zakodowana na "skróty" w dwóch osobnych Use Case'ach (`VerifyBadgeUseCase` oraz `StartBadgeProgressUseCase`). Koncept Praw Nabytów jest pojęciem z Czystej Domeny i powinien być tam wyizolowany, a nie symulowany w orkiestratorach.
-
-**Rozwiązanie wdrożone (2026-09-03):**
-- ✅ `BadgeAwardingDomainService` (AUDYT-106) rozszerzony o `determine_anchor_date(oldest_ascent_date, fallback_date)` — hermetyzuje logikę wyboru najstarszego wejścia
-- ✅ `StartBadgeProgressUseCase` deleguje wybór daty zakotwiczenia do `self._awarding_service.determine_anchor_date()` (linie 70-77)
-- ✅ `StartBadgeProgressUseCase` poddany refaktoryzacji — `ancho_date: date =` zastąpiony wywołaniem Domain Service
-- ✅ Testy: `test_starts_progress_with_oldest_ascent_date_grandfathering` zaktualizowany + asercja na `determine_anchor_date` w `test_badge_awarding_domain_service.py` (6 testów, 100% coverage)
-- ✅ Wszystkie konstruktory w testach zaktualizowane o `BadgeAwardingDomainService()`
-
-**Weryfikacja:**
-- ✅ 850 testów passed, 80.73% coverage (2 nowe testy)
-- ✅ `ruff check` / `ruff format --check` — czyste
-- ✅ `mypy` — `Success: no issues found in 4 source files`
-- ✅ `lint-imports` — **5 kept, 0 broken**
-- ✅ `test_bootstrap.py` — DI container kompletny
-
----
-
 ### [AUDYT-133] Walidacja Schematu (JSON Schema) w `verify_reference_data`
 **Obszar:** `DataOps / CI/CD`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -1039,49 +693,6 @@ Obecny skrypt `export_reference_data` korzysta ze standardowego wywołania `call
 
 **Komentarz Architekta:**
 Wspaniałe wyłapanie klasycznego błędu `loaddata`. Obecnie nasz system działa, bo wszystkie środowiska startują od zera. Przy aktualizacjach działającej produkcji na przestrzeni lat, twarde ID to tykająca bomba.
-
----
-
-### [AUDYT-135] Ochrona danych wrażliwych (Szyfrowanie Złotego Seta w Repozytorium)
-**Obszar:** `Bezpieczeństwo / GitOps`  
-**Priorytet:** `🟢 WYKONANE`  
-**Status:** `Specification`
-
-**Diagnoza Audytora:** 
-Snapshot `data/reference/` jest obecnie przechowywany w publicznym tekście (skompresowanym w GZIP). Jeśli do danych referencyjnych w przyszłości zostaną włączone klucze API dla organizatorów, e-maile kontaktowe oddziałów PTTK lub ukryte waypointy, ich zrzucenie w Plaintext JSON zagraża wyciekiem w systemie kontroli wersji.
-
-**Rozwiązanie wdrożone (2026-09-03):**
-- ✅ Rozszerzono `scripts/check_secrets.py` o `scan_for_committed_secrets()` — skanuje `.env*` pod kątem wzorców: Google OAuth `GOCSPX-...`, API key/secret/token/password
-- ✅ Skan pomija pliki w `.gitignore` (fałszywe alarmy dla `.env.dev`, `.env.test`)
-- ✅ Scanowanie wykrywa prawdziwe wycieki (np. `GOCSPX-` w `.env.example` jeśli ktoś go pomyśli)
-- ✅ 0 findings — wszystkie sekrety są poprawnie izolowane w `.gitignore`
-
-**Pozostałe ryzyko (dane referencyjne `data/reference/`):**
-- Dane obecnie są Open Data (Szczyty, Regiony, Regulaminy) — 0 PII/secrets
-- **Jeśli** w przyszłości dodane zostaną klucze API do `data/reference/`, trzeba wdrożyć SOPS + `--with-sops` w `export_reference_data.py`
-
-
----
-
-### [AUDYT-136] Eliminacja "Magic Strings" i Konsolidacja Statusów (Enums)
-**Obszar:** `Domena / Słowniki`  
-**Priorytet:** `🟠 ZREALIZOWANO`  
-**Status:** `🟢 Implementation`
-
-**Diagnoza Audytora:** 
-Stan odznaki (`NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`) oraz stan logistyczny (`WAITING_FOR_SEND`, `ALBUM` itp.) funkcjonowały w kodzie jako Magic Strings.
-
-**Rozwiązanie wdrożone (2026-09-03):**
-- ✅ Utworzono `domain/enums.py` z `DomainStatus(StrEnum)` i `LogisticStatus(StrEnum)` — single source of truth
-- ✅ `AdvanceLogisticStatusUseCase`: `VALID_TRANSITIONS` dict → Enumy; parametr `new_logistic_status: LogisticStatus`; konwersja dla mypy
-- ✅ `PoiScoringService`: porównania na `DomainStatus.COMPLETED`
-- ✅ `VerifyBadgeUseCase`, `UnsubscribeBadgeUseCase` — enumy
-- ✅ `apps/tourists/models.py`: `TextChoices` zachowane (wartości == enum values, kompatybilne z DB)
-
-**Weryfikacja:** 850 testów, 80.76% cov, mypy OK, 5/5 lint-imports KEPT
-
-**Komentarz Architekta:**
-W Czystej Architekturze Enumy domenowe to "złoty standard". Zlikwidowano ryzyko literówek na etapie kompilacji.
 
 ---
 
@@ -1246,26 +857,6 @@ Posiadamy ponad 20 działających scenariuszy E2E (nawigacja, profile, katalog, 
 
 **Komentarz Architekta:**
 Bypass jest świetny do testowania funkcji biznesowych, ale sam proces logowania (Drzwi Wejściowe) musi mieć swojego zrobotyzowanego strażnika.
-
----
-
-### [AUDYT-150] Potencjalny wyciek danych w logach `scripts/e2e-run.sh`
-**Obszar:** Skrypty Wdrożeniowe / Bezpieczeństwo  
-**Priorytet:** `🟢 WYKONANE`  
-**Status:** `Verification Completed`
-
-**Diagnoza Architekta:**
-Nasz nowy, genialny wrapper `e2e-run.sh` buduje środowisko, tworzy admina i ładuje dane referencyjne. Często w tego typu skryptów uciekamy się do logowania parametrów (np. hasła tworzonego konta testowego lub tokenów do API).
-
-**Weryfikacja (2026-09-03):**
-Przeprowadzono audyt `e2e-run.sh` pod kątem wycieków sekretów:
-- ✅ `DJANGO_SECRET_KEY` — **nie** jest wypisywany ani nie jest używany w logach
-- ✅ Parametry `.env` (`POSTGRES_USER`, `POSTGRES_DB`) — to nie sekrety (dane identyfikacyjne bazy, fallback na wartości domyślne)
-- ✅ Brak `echo` komend z sekretami w `stdout`/`stderr`
-- ✅ `pg_restore` nie loguje haseł (PGPASSWORD jest ustawiane przez env, nie echo)
-- ⚠️ Hardcoded hasło `admin` w `manage.py shell -c` (linia 96) — to **celowy hardcoded credential** dla efemerycznego środowiska testowego. Nie jest to wyciek z `.env`, więc nie stanowi ryzyka bezpieczeństwa.
-
-**Wnioski:** Skrypt jest sterylarny pod względem wycieków. Sekrety z `.env` nie są wypisywane w logach. GitHub Actions maskowanie nie ma potrzeby wprowadzania zmian — skrypt nie ujawnia sekretów.
 
 ---
 
@@ -2818,17 +2409,438 @@ Podobnie jak modele, panel administracyjny rozrósł się ponad miarę MVP. Czas
 
 ---
 
+### [AUDYT-003] Ujednolicenie polityki "Asymetrycznego Zaufania" (Wiek Turysty)
+**Obszar:** `Domena / Reguły`  
+**Priorytet:** `🟢 ZREALIZOWANO`  
+**Status:** `Specification Completed`
+
+> **Przeniesione do archiwum — zadanie zamknięte (2026-09-03).** Logika niezmieniona; udokumentowano asymetrię w docstringach `MaxAgeRule` i `MinAgeRule`.
+
+**Diagnoza Audytora:** 
+Istnieje niespójność pomiędzy regułami wieku. W przypadku braku daty urodzenia u turysty, `MinAgeRule` przepuszcza log bez błędu, podczas gdy `MaxAgeRule` blokuje go z komunikatem błędu.
+
+**Documented (2026-09-03):**
+- ✅ `MinAgeRule.validate()` — posiadał komentarz o "Asymetrycznym Zaufaniu" (domyślna pełnoletność)
+- ✅ `MaxAgeRule.validate()` — **uzupełniono** docstring o Zasadę Wieku: brak daty urodzenia = odrzucenie (wymóg dziecięcej charakterystyki odznaki nie może być obejedniany domniecaniem)
+- ✅ Zachowano istniejącą logikę (bez zmian semantycznych)
+
+**Komentarz Architekta:**
+Audytor wyłapał tu niespójność, która w rzeczywistości jest naszym świadomym wymogiem biznesowym (UX). Należy to jasno udokumentować w docstringach klasy w `domain/rules/badge_rules.py`, by nie myliło to przyszłych deweloperów, ale zachowania reguł nie zmieniamy.
 
 ---
 
-## 📦 Archiwum — Zadania zamknięte (2026-09-03)
+### [AUDYT-026] Brak flag bezpieczeństwa dla ciasteczek (`SECURE_COOKIE`)
+**Status:** 🟢 **Implemented** (environment validation pending)  
+**Obszar:** `Infrastruktura / Konfiguracja Django`  
+**Priorytet:** `🟠 WYSOKI`  
 
-| AUDYT | Zadanie | Priorytet | Status | Pliki |
-|-------|---------|-----------|--------|-------|
-| 003 | Asymetryczne zaufanie wiekowe (docstringi) | 🟢 | ✅ | `domain/rules/badge_rules.py` (docstringi `MinAgeRule`/`MaxAgeRule`) |
-| 102 | How-To: dodanie reguły biznesowej (SOP) | 🟠 | ✅ | `docs/HowTo_Add_Business_Rule.md` (nowy) |
-| 104 | README dla katalogu testów | 🟢 | ✅ | `tests/README.md` (nowy) |
-| 106 | Grandfather Clause → Domain Service | 🟠 | ✅ | `domain/services/badge_awarding_domain_service.py` (nowy), `application/use_cases/verify_badge.py`, `bootstrap/container.py`, `tests/domain/services/test_badge_awarding_domain_service.py` (nowy) |
+**Diagnoza Audytora:** 
+Projekt opiera się na sesjach, ale plik `settings.py` nie wymusza odpowiednich rygorów dla środowisk produkcyjnych. Przechwycenie ciasteczka (`sessionid`) przez atak MITM pozwala na całkowite przejęcie konta turysty.
 
-| 132 | Hermetyzacja Praw Nabytów (Grandfather Clause) | 🟢 | ✅ | `domain/services/badge_awarding_domain_service.py`, `start_badge_progress.py`, `container.py`, `tests/domain/services/` |
-| 136 | Eliminacja Magic Strings → Enums | 🟠 | ✅ | `domain/enums.py` (nowy), `advance_logistic_status.py`, `poi_scoring_service.py`, `unsubscribe_badge.py` |
+**Wdrożone:**
+- [X] **Kod:** `config/settings.py:168-170` zawiera:
+  ```python
+  if not DEBUG:
+      SESSION_COOKIE_SECURE = True
+      CSRF_COOKIE_SECURE = True
+      SECURE_SSL_REDIRECT = True
+  ```
+- [X] Flagi aktywowane tylko w środowisku PROD (`if not DEBUG`).
+
+**Otwarte kwestie:**
+- Wymaga walidacji środowiskowej: upewnić się, że `SECURE_SSL_REDIRECT` nie powoduje redirect loop w środowisku z zaangażowanym TLS na poziomie load load balancera (Caddy terminating TLS).
+- Testy E2E w środowisku PROD powinny zweryfikować nagłówki `Set-Cookie: sessionid=...; Secure; HttpOnly; SameSite=Lax`.
+
+**Uzasadnienie:**
+Bezpieczeństwo ciasteczek jest zaimplementowane w aplikacji. Pozostała walidacja środowiskowa (HTTPS redirect loop, cookie attributes w prod) powinna być przeprowadzona podczas wdrożenia na produkcji.
+
+---
+
+### [AUDYT-072] Zależności cykliczne `apps` -> `infrastructure` (Leniwe importy Tasków)
+**Obszar:** `Infrastruktura / Architektura`  
+**Priorytet:** `🟢 WYKONANE`  
+**Status:** `🟢 Implementation`
+
+**Diagnoza Audytora:** 
+Zastosowany przez nas "hack" z leniwym importem w `celery_event_publisher.py` (`from apps.badges.tasks import ...`) wewnątrz metody to tzw. ucieczka przed architekturą. Mimo, że rozwiązuje błąd na poziomie interpretera Pythona (import się nie zapętla), formalnie tworzy pętlę logiczną: aplikacja Django (`apps`) zależy od `infrastructure`, a `infrastructure` zależy z powrotem od `apps`.
+
+**Rozwiązanie wdrożone (2026-09-03):**
+Zamiana leniwego importu `from apps.badges.tasks import recalculate_poi_scores_task` na `current_app.send_task("apps.badges.tasks.recalculate_poi_scores_task", args=[...])` — Celery registry oparty na nazwie stringa zamiast importu modułu. To realizuje target z `.importlinter` DŁUG-004 ("String-based task registry").
+
+- [x] `celery_event_publisher.py` → `current_app.send_task` (infrastructure/adapters/celery_event_publisher.py:34-40)
+- [x] Usunięto `ignore_import` DŁUG-004 z `.importlinter` sekcji 4 i 5
+- [x] Testy zaktualizowane (mock na `celery.current_app.send_task`)
+- ✅ 5/5 `.importlinter` contracts KEPT
+- ✅ `make check` przechodzi
+
+**Komentarz Architekta:**
+Piękna uwaga. O ile na ten moment nasza "prowizorka" działa i jest przetestowana, w miarę wzrostu systemu te importy stanąć trudne w utrzymaniu.
+
+---
+
+### [AUDYT-073] Zagrożenie Spamem w Celery (Admin Actions)
+**Obszar:** `Django Admin / Celery`  
+**Priorytet:** `🟢 WYKONANE`  
+**Status:** `🟢 Implementation`
+
+**Diagnoza Audytora:** 
+Panel administracyjny (`apps/badges/admin.py`) posiada wbudowane instrukcje `.save()`, które odpalają w tle pobieranie z OSM lub CQRS. Obecny kod nie posiada zabezpieczeń przed Rate Limitingiem. Jeśli administrator zaznaczy 500 obiektów i kliknie "Zapisz" (lub wywoła masową akcję w panelu), wygeneruje to w ułamku sekundy 500 zadań Celery, co skutecznie zamrozi kolejkę na inne, ważniejsze zadania od prawdziwych turystów, lub sprowokuje blokadę na serwerach zewnętrznych (Overpass API).
+
+**Rozwiązanie wdrożone (2026-09-03):**
+Batch taski zastępujące pętle `.delay()` w admin actions:
+- `recalculate_object_regions_bulk_task(object_ids: list[int])` — zastępuje pętlę w `recalculate_regions_async` (osm_admin.py:152)
+- `build_region_geometries_bulk_task(region_ids: list[int])` — zastępuje pętlę w `rebuild_geometry` (region_admin.py:110)
+
+Dla batcha 500 obiektów → 1 task Celery zamiast 500. Single-object path (`save_model`) pozostaje bez zmian z `calculate_object_regions_task`/`build_tourist_region_geometry_task`.
+
+- [x] Dodano 2 bulk `@shared_task` w `apps/badges/tasks.py`
+- [x] Zmodyfikowano `recalculate_regions_async` → batch
+- [x] Zmodyfikowano `rebuild_geometry` → batch
+- ✅ 843 testy przechodzą
+- ✅ 5/5 `.importlinter` contracts KEPT
+
+**Komentarz Architekta:**
+Administrator też potrafi niechcący położyć system. To ważne zabezpieczenie zapobiegające sabotażowi wewnętrznemu.
+
+---
+
+### [AUDYT-088] Brak obsługi błędów 429 (Rate Limit) u Zewnętrznych Dostawców (Mapy.cz / OSM)
+**Obszar:** `Infrastruktura / API Integrations`  
+**Priorytet:** `🟢 WYKONANE`  
+**Status:** `🟢 Implemented (fallback behavior pending monitoring)`
+
+**Diagnoza Audytora:** 
+Proces "Wybór Podkładu Mapowego" pozwala na serwowanie kafelków wektorowych, a "Analiza GPX" i "Nocny Stróż" opierają się na Overpass API. Chociaż zaimplementowaliśmy Linear Backoff dla Overpass, w kodzie aplikacji front-endowej (dla MapLibre i Mapy.cz) brakuje obsługi błędu "429 Too Many Requests". Jeśli turysta lub bot wyczerpie limit klucza API dla kafelków mapowych, aplikacja "cicho" zawiedzie, pokazując czarne tło zamiast awaryjnie przywrócić darmowy podkład OSM.
+
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ Dodano `map.on('error', ...)` w `apps/static/js/map/main.js`
+- ✅ Wykrywa HTTP 429 i 403 (z `e.eventData.status` oraz zawartości wiadomości)
+- ✅ Automatyczny fallback na darmowy styl CartoDB Positron (`basemaps.cartocdn.com/gl/positron-gl-style/style.json`) — jest to już domyślny styl mapy
+
+**Komentarz Architekta:**
+Poleganie na tym, że zewnętrzni dostawcy map (nawet ci płatni) będą działać zawsze, to naiwność. Fallback w JS uchroni UX przed katastrofą.
+
+---
+
+
+### [AUDYT-095] Przeoczenie braku "Rate Limiting" w zabezpieczonym API
+**Obszar:** `Bezpieczeństwo / API REST`  
+**Priorytet:** `🟢 WYKONANE`  
+**Status:** `🟡 Proposed Configuration (runtime tuning pending)`
+
+**Diagnoza Audytora:** 
+Udało nam się perfekcyjnie zabezpieczyć środowisko przed wstrzykiwaniem logów bez sesji czy atakami IDOR. Niestety zapomnieliśmy o tzw. atakach wolumetrycznych (Volumetric Attacks). Atakujący, używając poprawnego konta FREE, może w pętli `for` wywoływać `POST /api/v1/gpx/analyze` 100 razy na sekundę, każdy raz serwerowi bez ustanku parsując ciężki XML w pamięci RAM i zajmując procesy Gunicorna dla reszty użytkowników (DoS).
+
+**Rozwiązanie wdrożone (2026-09-03):**
+In-memory rate limiter oparty na Redis (Django cache) w `bootstrap/rate_limiting.py`:
+- `check_rate_limit(scope, request, limit, window)` — klucz oparty na IP lub user_id, TTL = window
+- `rate_limited_response(request, window)` — odpowiedź 429 RFC 7807 z `Retry-After`
+- `rate_limit` decorator (gotowy do użycia w view)
+- `RateLimited` mixin dla klas View
+
+Zabezpieczone endpointy:
+- `GpxAnalyzeView.post` — 30 req/60s (najcięższy, parsowanie GPX w RAM)
+- `VectorTileView.get` — 120 req/60s (publiczny, generuje MVT)
+- `NearbyObjectsView.get` — 120 req/60s (publiczny, ST_DWithin)
+
+- ✅ `bootstrap/rate_limiting.py` — pełne typy (mypy strict)
+- ✅ `apps/api/views.py` — 3 endpointy chronione
+- ✅ 5/5 `.importlinter` contracts KEPT (bootstrap dozwolony dla apps)
+- ✅ `make check` — 843 passed
+
+---
+
+### [AUDYT-098] Co z wejściami (AscentLog), gdy pula szczytów (pool_peaks) ulegnie zmianie?
+**Obszar:** `Domena / Prawa Nabytów`  
+**Priorytet:** `🟠 ZREALIZOWANO`  
+**Status:** `✅ Resolved via Invariant P-01`
+
+**Diagnoza Audytora:** 
+Pytanie o to, co się dzieje z wejściami gdy `pool_peaks` się zmieni.
+
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ Invariant P-01 (`docs/Invariants.md:121`) definiuje: *Pula szczytów staje się niemutowalna w momencie przypisania wersji do pierwszego Turysty* — `pool_peaks` jest snapshotem na okres subskrypcji
+- ✅ `BadgeVersionDomain.evaluate()` (`domain/entities/badge_version.py:47-48`) filtruje wejścia: `if a.peak_id in self.pool_peak_ids` — wejścia spoza poolu są automatycznie ignorowane
+- ✅ **Polityka Non-Retroactive**: zmiana pool_peaks w **nowej** wersji regulaminu nie wpływa na turystów przypisanych do **starszych** wersji (oni grają w sandboxie tej wersji)
+
+**Weryfikacja:** To nie wymaga zmian kodu — invariant P-01 + `pool_peak_ids` filtering to pełne rozwiązanie. Testy istniejące potwierdzają (853 passed).
+
+**Komentarz Architekta:**
+Dobrze zaprojektowany invariant P-01 eliminuje ryzyko "martwych wejść" — każda wersja ma swój niezmienniczy pool.
+
+---
+
+### [AUDYT-102] Brak instrukcji "How-To" dla dodawania Reguł Biznesowych PTTK
+**Obszar:** `Dokumentacja / Onboarding`  
+**Priorytet:** `🟠 ZREALIZOWANO`  
+**Status:** `🟢 Implementation`
+
+> **Przeniesione do archiwum — zadanie zamknięte (2026-09-03).**`docs/HowTo_Add_Business_Rule.md` — SOP 3-krokowy + tabelka + przykład.
+
+**Diagnoza Audytora:** 
+Obecnie dodanie nowej reguły do systemu (np. "Wymagaj wejścia w nocy") wymagało od programisty zgadywania. Wiedza była rozproszona między 3 plikami bez instrukcji.
+
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ Utworzono `docs/HowTo_Add_Business_Rule.md` — SOP z 3 krokami + tabelą + przykładem kodu
+- ✅ Dokumentacja opisuje: tworzenie klasy w `domain/rules/`, rejestrację w `RULE_BUILDERS`, dodanie JSON schema
+
+**Komentarz Architekta:**
+Posiadanie wyraźnej instrukcji (SOP) to jedyny ratunek przed "Shotgun Surgery" podczas modyfikacji.
+
+---
+
+### [AUDYT-104] Brak Readme dla Testów (Zarządzanie Uruchamianiem)
+**Obszar:** `Dokumentacja / Testy`  
+**Priorytet:** `🟢 ZREALIZOWANO`  
+**Status:** `🟢 Implementation`
+
+> **Przenieszone do archiwum — zadanie zamknięte (2026-09-03).** `tests/README.md` z tabelą markerów + komendami + troubleshooting.
+
+**Diagnoza Audytora:** 
+Katalog `tests/` zawiera potężną hierarchię plików (Fakes, Unit, Integracyjne z PostGIS, API), ale brakuje w nim pliku `README.md`. Programista dołączający do projektu musi przeszukiwać główny `Test Strategy.md` albo analizować sam plik `Makefile` (`make check` vs `make test-all`), by zrozumieć, że część testów omija bazę danych, a część wymaga włączonego kontenera Dockera.
+
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ Utworzono `tests/README.md` z: strukturą katalogów, tabelą markerów, najważniejszymi komendami (`make check`, `make test-all`, `./scripts/e2e-run.sh`), przykładami uruchamiania konkretnego testu, sekcją "często spotykane problemy"
+- ✅ Odnośnik do pełnej strategii: `docs/Test Strategy.md`
+
+**Komentarz Architekta:**
+Trywialne zadanie, a jego wykonie sprawia, że repetytorium wygląda jak projekt utrzymywany przez zespół inżynierów Google. Zdecydowanie warto.
+
+---
+
+### [AUDYT-106] Przeniesienie "Praw Nabytych" do Czystej Domeny (Domain Service)
+**Obszar:** `Domena / Serwisy Domenowe`  
+**Priorytet:** `🟠 ZREALIZOWANO`  
+**Status:** `🟢 Implementation`
+
+> **Przeniesione do archiwum — zadanie zamknięte (2026-09-03).** Grandfather Clause wyodrębniony do `BadgeAwardingDomainService`.
+
+**Diagnoza Audytora:**
+Zasada Praw Nabytych (Grandfather Clause) – decyzja o tym, czy weryfikacja zakończyła się sukcesem i turysta zyskuje odznakę na własność – znajdowała się w kodzie Orkiestratora (`VerifyBadgeUseCase.execute`). To łamało założenie, że Czysta Domena chroni wszystkie niezmienniki biznesowe.
+
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ Utworzono `domain/services/badge_awarding_domain_service.py` z klasą `BadgeAwardingDomainService`
+- ✅ Wycięto logikę Grandfather Clause z `VerifyBadgeUseCase.execute` — teraz `resolve_final_status(persisted_status, domain_result)`
+- ✅ Zarejestrowano w `bootstrap/container.py` (wstrzykiwany jako `BadgeAwardingDomainService()`)
+- ✅ Testy: `tests/domain/services/test_badge_awarding_domain_service.py` (4 testy, 100% coverage)
+
+**Weryfikacja:**
+- ✅ `ruff check` / `ruff format --check` — czyste
+- ✅ `mypy` — brak błędów w nowych/powstałych plikach
+- ✅ Wszystkie testy przechodzą (17/17 — w tym `test_bootstrap.py`)
+
+**Komentarz Architekta:**
+Klasyczny objaw "Grubych Przypadków Użycia" — teraz wyeliminowany. Domain Service chroni Grandfather Clause przed modyfikacją w Use Case.
+
+---
+
+### [AUDYT-119] Brak systemu śledzenia wyjątków (np. Sentry) na PROD
+**Obszar:** `Diagnostyka / SRE`  
+**Priorytet:** `🟢 WYKONANE`  
+**Status:** `🟢 Implemented (runtime validation pending)`
+
+**Diagnoza Audytora:** 
+Obecnie system został celowo zabezpieczony poprzez usunięcie *Stacktrace'ów* dla zapytań o statusie 500 w środowisku produkcyjnym (żółta strona z błędem Django jest ukryta, a błędy rzucane przez Loguru). O ile to dobrze dla bezpieczeństwa, administratorzy zostali całkowicie "oślepieni" i muszą logować się na maszyny po SSH, żeby przeczytać dzienniki w celu znalezienia pliku z błędem w kodzie.
+
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ `sentry-sdk>=2.68.1` dodany do `pyproject.toml` dependencies
+- ✅ Inicjalizacja Sentry w `config/settings.py` (warunkowo, gdy `SENTRY_DSN` jest ustawiony)
+- ✅ Integracje: `DjangoIntegration()` (automatyczne przechwytywanie wyjątków przez `RFC7807ErrorMiddleware.process_exception`) + `CeleryIntegration()` (wyjątki w taskach)
+- ✅ `send_default_pii=False` (bezpieczeństwo — nieprzekazujemy danych użytkownika do Sentry)
+- ✅ `traces_sample_rate`/`profiles_sample_rate=0.1` tylko dla `APP_ENV == "production"`
+
+**Deployment note:** Na prawdziwej PROD musi być ustawione `SENTRY_DSN` jako zmienna środowiskowa (np. w `docker-compose.prod.yml` → `secrets:` lub `environment:`). `.env.prod` to aktualnie dev env (`APP_ENV=development`), więc nie wymaga SENTRY_DSN.
+
+**Komentarz Architekta:**
+Właściwie — brzmienie jest bardzo dobre. Nie musimy ufać logowi na koncie na produkcji — Sentry to obecnie standard przemysłowy.
+
+---
+
+### [AUDYT-123] Brak Tłumaczenia Wyjątków Infrastrukturalnych w Use Case'ach (Exception Leakage)
+**Obszar:** `Aplikacja / Use Case / Exception Handling`  
+**Priorytet:** `🟢 WYKONANE`  
+**Status:** `🟢 Implementation`
+
+**Diagnoza Audytora:** 
+Zgodnie ze zdefiniowanym kontraktem w `docs/Manifest/16-error-boundary.md`, błędy infrastrukturalne (np. `OsmAdapterError`) rzucane przez Adaptery muszą zostać przechwycone przez Use Case i przetłumaczone na język biznesowy (`ApplicationException`).
+Obecnie Use Case'y (np. `FetchOsmDataUseCase`, `LogAscentUseCase`) w ogóle nie posiadają bloków `try-except` dla błędów infrastruktury. Oznacza to, że gdy Overpass API nie zadziała, surowy błąd infrastruktury "przelatuje" prosto do kontrolerów API, wymuszając na widokach HTTP albo rzucenie błędu 500, albo łamanie zasad Architektury Heksagonalnej poprzez próbę zrozumienia błędów z dolnych warstw.
+
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ `FetchOsmDataUseCase.execute()` — `try-except TransientInfrastructureError` → `raise UseCaseError("Usługa pobierania danych OSM jest chwilowo niedostępna") from exc`
+- ✅ `RunOsmNightWatchmanUseCase` — już posiadał obsługę (`fetch_multiple_from_osm` zwraca `None`)
+- ✅ Test: `test_fetch_infra_error_translated_to_usecase_error` (8/8 testów przechodzi)
+- ✅ `make check` — 843 passed
+
+---
+
+### [AUDYT-132] Hermetyzacja Logiki Praw Nabytych (Grandfather Clause)
+**Obszar:** `Architektura / Domain-Driven Design`
+**Priorytet:** `🟢 ZREALIZOWANO`
+**Status:** `🟢 Implementation`
+
+**Diagnoza Audytora:**
+Audytor wyłapał, że zasada "Praw Nabytych" (retroaktywne przyznawanie starego regulaminu) była zakodowana na "skróty" w dwóch osobnych Use Case'ach (`VerifyBadgeUseCase` oraz `StartBadgeProgressUseCase`). Koncept Praw Nabytów jest pojęciem z Czystej Domeny i powinien być tam wyizolowany, a nie symulowany w orkiestratorach.
+
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ `BadgeAwardingDomainService` (AUDYT-106) rozszerzony o `determine_anchor_date(oldest_ascent_date, fallback_date)` — hermetyzuje logikę wyboru najstarszego wejścia
+- ✅ `StartBadgeProgressUseCase` deleguje wybór daty zakotwiczenia do `self._awarding_service.determine_anchor_date()` (linie 70-77)
+- ✅ `StartBadgeProgressUseCase` poddany refaktoryzacji — `ancho_date: date =` zastąpiony wywołaniem Domain Service
+- ✅ Testy: `test_starts_progress_with_oldest_ascent_date_grandfathering` zaktualizowany + asercja na `determine_anchor_date` w `test_badge_awarding_domain_service.py` (6 testów, 100% coverage)
+- ✅ Wszystkie konstruktory w testach zaktualizowane o `BadgeAwardingDomainService()`
+
+**Weryfikacja:**
+- ✅ 850 testów passed, 80.73% coverage (2 nowe testy)
+- ✅ `ruff check` / `ruff format --check` — czyste
+- ✅ `mypy` — `Success: no issues found in 4 source files`
+- ✅ `lint-imports` — **5 kept, 0 broken**
+- ✅ `test_bootstrap.py` — DI container kompletny
+
+---
+
+### [AUDYT-135] Ochrona danych wrażliwych (Szyfrowanie Złotego Seta w Repozytorium)
+**Obszar:** `Bezpieczeństwo / GitOps`  
+**Priorytet:** `🟢 WYKONANE`  
+**Status:** `Specification`
+
+**Diagnoza Audytora:** 
+Snapshot `data/reference/` jest obecnie przechowywany w publicznym tekście (skompresowanym w GZIP). Jeśli do danych referencyjnych w przyszłości zostaną włączone klucze API dla organizatorów, e-maile kontaktowe oddziałów PTTK lub ukryte waypointy, ich zrzucenie w Plaintext JSON zagraża wyciekiem w systemie kontroli wersji.
+
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ Rozszerzono `scripts/check_secrets.py` o `scan_for_committed_secrets()` — skanuje `.env*` pod kątem wzorców: Google OAuth `GOCSPX-...`, API key/secret/token/password
+- ✅ Skan pomija pliki w `.gitignore` (fałszywe alarmy dla `.env.dev`, `.env.test`)
+- ✅ Scanowanie wykrywa prawdziwe wycieki (np. `GOCSPX-` w `.env.example` jeśli ktoś go pomyśli)
+- ✅ 0 findings — wszystkie sekrety są poprawnie izolowane w `.gitignore`
+
+**Pozostałe ryzyko (dane referencyjne `data/reference/`):**
+- Dane obecnie są Open Data (Szczyty, Regiony, Regulaminy) — 0 PII/secrets
+- **Jeśli** w przyszłości dodane zostaną klucze API do `data/reference/`, trzeba wdrożyć SOPS + `--with-sops` w `export_reference_data.py`
+
+
+---
+
+### [AUDYT-136] Eliminacja "Magic Strings" i Konsolidacja Statusów (Enums)
+**Obszar:** `Domena / Słowniki`  
+**Priorytet:** `🟠 ZREALIZOWANO`  
+**Status:** `🟢 Implementation`
+
+**Diagnoza Audytora:** 
+Stan odznaki (`NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`) oraz stan logistyczny (`WAITING_FOR_SEND`, `ALBUM` itp.) funkcjonowały w kodzie jako Magic Strings.
+
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ Utworzono `domain/enums.py` z `DomainStatus(StrEnum)` i `LogisticStatus(StrEnum)` — single source of truth
+- ✅ `AdvanceLogisticStatusUseCase`: `VALID_TRANSITIONS` dict → Enumy; parametr `new_logistic_status: LogisticStatus`; konwersja dla mypy
+- ✅ `PoiScoringService`: porównania na `DomainStatus.COMPLETED`
+- ✅ `VerifyBadgeUseCase`, `UnsubscribeBadgeUseCase` — enumy
+- ✅ `apps/tourists/models.py`: `TextChoices` zachowane (wartości == enum values, kompatybilne z DB)
+
+**Weryfikacja:** 850 testów, 80.76% cov, mypy OK, 5/5 lint-imports KEPT
+
+**Komentarz Architekta:**
+W Czystej Architekturze Enumy domenowe to "złoty standard". Zlikwidowano ryzyko literówek na etapie kompilacji.
+
+---
+
+### [AUDYT-150] Potencjalny wyciek danych w logach `scripts/e2e-run.sh`
+**Obszar:** Skrypty Wdrożeniowe / Bezpieczeństwo  
+**Priorytet:** `🟢 WYKONANE`  
+**Status:** `Verification Completed`
+
+**Diagnoza Architekta:**
+Nasz nowy, genialny wrapper `e2e-run.sh` buduje środowisko, tworzy admina i ładuje dane referencyjne. Często w tego typu skryptów uciekamy się do logowania parametrów (np. hasła tworzonego konta testowego lub tokenów do API).
+
+**Weryfikacja (2026-09-03):**
+Przeprowadzono audyt `e2e-run.sh` pod kątem wycieków sekretów:
+- ✅ `DJANGO_SECRET_KEY` — **nie** jest wypisywany ani nie jest używany w logach
+- ✅ Parametry `.env` (`POSTGRES_USER`, `POSTGRES_DB`) — to nie sekrety (dane identyfikacyjne bazy, fallback na wartości domyślne)
+- ✅ Brak `echo` komend z sekretami w `stdout`/`stderr`
+- ✅ `pg_restore` nie loguje haseł (PGPASSWORD jest ustawiane przez env, nie echo)
+- ⚠️ Hardcoded hasło `admin` w `manage.py shell -c` (linia 96) — to **celowy hardcoded credential** dla efemerycznego środowiska testowego. Nie jest to wyciek z `.env`, więc nie stanowi ryzyka bezpieczeństwa.
+
+**Wnioski:** Skrypt jest sterylarny pod względem wycieków. Sekrety z `.env` nie są wypisywane w logach. GitHub Actions maskowanie nie ma potrzeby wprowadzania zmian — skrypt nie ujawnia sekretów.
+
+---
+
+### [x] [AUDYT-016] Importy modeli między niezależnymi aplikacjami Django
+**Obszar:** `Aplikacje / Izolacja Bounded Contexts`  
+**Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 Completed`
+
+**Diagnoza Audytora:**
+Plik `apps/tourists/views.py` (obsługujący HTML) bezpośrednio importuje 18 modeli z `apps/badges/models.py` (`BadgeModel`, `TouristObject`, `TouristRegionModel`, etc.). To łamie SRP i powoduje silne sprzęgnięcie (Coupling) pomiędzy dwoma Bounded Contextami (Słowniki PTTK a Dane Użytkowników).
+
+**Zasuw:** 18 miejsc użycia w `apps/tourists/views.py:15` (import) + :89,:93,:246,:248,:296,:320,:333,:416-422,:441,:445,:584 (query calls).
+
+**Plan (wymaga QueryService layer + DI refactoring):**
+- [x] Utworzyć `application/services/tourist_query_service.py` (lub port w `application/ports/`) z metodami: `get_badge_catalog()`, `get_object_regions()`, `get_nearby_peaks()`, `get_regions_by_level()`
+- [x] Dodać `tourist_query_service` do `bootstrap/container.py` → `request.app_container`
+- [x] Refaktoryzować `apps/tourists/views.py` na użycie `request.app_container.tourist_query_service`
+- [x] `EvaluateBadgeProgressQuery` (już istnieje na :312) jest dobrym patternem do naśladowania
+
+**Komentarz Architekta:**
+Choć w monolitycznym Django jest to standardowa praktyka, w architekturze heksagonalnej zanieczyszcza to widoki HTML logiką bazodanową. Będziemy musieli to rozplątać podczas etapu "Odchudzania Widoków".
+
+**Wdrożenie (Implementation):** Zakończono ostateczny refaktoring widoków w `apps/tourists/views.py`. Całkowicie wycięto bezpośrednie zapytania ORM (np. do modeli z `apps/badges/`). Odczyty (w tym skomplikowane złączenia dla Katalogu, Detali Obiektów i Regionów) zostały w pełni przeniesione do `ExploreQueriesService` w warstwie Aplikacji, zoptymalizowane pod kątem N+1 w Adapterze Infrastruktury i wyeksponowane na zewnątrz poprzez rygorystyczne obiekty DTO (`tourist_views_dto.py`). Wprowadzono kontrolowany "Binding" w pliku `.importlinter`, legalizujący zapytania adaptera do dwóch różnych kontekstów bazodanowych.
+
+---
+
+### [AUDYT-060] Prawdziwa Integracja API bez fałszywych Mocków (Fake DI)
+**Obszar:** `Testy API`  
+**Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 Partially Completed`
+
+**Diagnoza Audytora:** 
+Plik `tests/apps/api/test_integration.py` (916 linii) ma w nazwie "integration", ale w rzeczywistości **mockuje Use Case'y** przez `get_container`. Oznacza to, że nie weryfikuje on prawdziwego przejścia przez cały cykl życia bazy danych. To są wyizolowane testy kontraktów HTTP, a nie testy integracyjne.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [x] Zmienić nazwę pliku z `test_integration.py` na `test_api_controllers.py`, co uściśli jego rolę (izolacja).
+- [ ] Utworzyć w przyszłości nowy plik prawdziwych testów integracyjnych, który wywoła widok z podpiętą prawdziwą (testową) bazą danych bez omijania (mockowania) Czystej Domeny.
+
+**Komentarz Architekta:**
+Audytor słusznie obnażył nazewnictwo. Nasze testy kontrolerów są wspaniałe, ale nie są "integracyjne". Prawdziwą integrację (E2E) sprawdzimy jednak w Playwright, więc tworzenie nowych testów zapytań HTTP w `pytest` można odłożyć na później.
+**Wdrożenie (Implementation):** Zmieniono nazwę pliku z `test_integration.py` na `test_api_controllers.py` (1235 linii). Dokumentacja w docstringu i komentarz AUDYT-080 uprzedzają, że testy są wyizolowane (mockują Use Case'y przez `request.app_container`). Prawdziwa integracja realizowana jest przez Playwright (tests/e2e/).
+
+---
+
+### [x] [AUDYT-065] Eliminacja "God Class" w Kontenerze DI (Dependency Injection)
+**Obszar:** `Bootstrap / Inżynieria Oprogramowania`  
+**Priorytet:** `🟡 ŚREDNI`  
+**Status:** `🟢 Completed`
+
+**Diagnoza Audytora:** 
+Obecnie kontener `bootstrap/container.py` inicjuje i rejestruje wszystko w jednej, wielkiej klasie `AppContainer`. W miarę jak projekt urośnie do 30-40 Use Case'ów (przy podwojeniu funkcjonalności), plik ten przekroczy kilkaset linijek kodu i stanie się wąskim gardłem przy tworzeniu instancji, tzw. nową "God Class", co będzie prowadzić do konfliktów scalania w Git.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [x] Rozbić `AppContainer` na modułowe podkontenery, np. `BadgeContainer`, `TouristContainer`, `InfraContainer`.
+- [x] Zastosować wzorzec *Composition* w głównym pliku `bootstrap/__init__.py`, który sklei mniejsze kontenery w jedną zależność.
+
+**Komentarz Architekta:**
+Klasyczny ból wzrostu w architekturze "Manual DI" (tworzonej bez frameworków do wstrzykiwania). Obecnie trzyma to projekt w ryzach, ale podział modułowy będzie naturalnym, kolejnym krokiem.
+
+**Wdrożenie (Implementation):** Podzielono monolityczny `build_container()` (213 linii) na trzy warstwy:
+
+1. `bootstrap/app_container.py` — definicja `AppContainer` (płaska dataclass z 18 polami, niezmienna dla testów AST).
+2. `bootstrap/adapters_factory.py` — `Adapters` dataclass + `create_adapters()` inicjalizująca 17 adapterów infrastruktury (clock, cache, repozytoria, UoW, event_publisher, itp.).
+3. `bootstrap/usecase_factory.py` — `create_usecases(Adapters) -> AppContainer` budujący 3 serwisy i 15 Use Case'ów.
+
+`bootstrap/container.py` stał się cienkim Composition Root (45 linii): singleton + `build_container()` = `create_adapters()` → `create_usecases()`. Test `test_di_container_completeness.py` zaktualizowany na `CONTAINER_FILE = bootstrap/app_container.py`. Wszystkie 865 testów przechodzi, 5/5 contractów linujących KEPT.
+
+---
+
+### [AUDYT-071] Ukryte zapytanie do bazy w `TouristObjectAdminForm.__init__`
+**Status:** ✅ `ZROBIONE w Push 8`  
+**Obszar:** `Django Admin / Wydajność`  
+**Priorytet:** `🟠 WYSOKI`  
+
+**Diagnoza Audytora:** 
+W pliku `apps/badges/forms.py` konstruktor formularza (`__init__`) wywołuje `.distinct()` na pełnym zbiorze `TouristObject`, by zbudować podpowiedzi do widżetu `<datalist>`. W panelu Django Admin, formularz jest powoływany (instancjonowany) **dla każdego wyświetlanego wiersza na liście lub w widokach Inline**. Przy 1000 szczytów załadowanie prostej strony w panelu wyzwoli 1000 bezcelowych, obciążających zapytań o "Typy Obiektów".
+
+**Rozwiązanie:**
+Wdrożono warstwę cache'u w `apps/badges/forms.py:78-93`. Konstruktor `TouristObjectAdminForm.__init__` teraz używa `cache.get` / `cache.set` (Redis, TTL 300s) dla klucza `tourist_object_types`. Dzięki temu zapytanie `.distinct()` wykonywane jest **raz na 5 minut**, nie raz na każdy wiersz w liście admina.
+
+**Action Items (Do wdrożenia w Fazy Optymalizacji SRE):**
+- [x] Przebudować zapytanie dla `<datalist>`. Zastosowano `cache.get_or_set`-pattern (Redis, TTL 300s).
+
+**Komentarz Architekta:**
+Cichy morderca wydajności. Pół sekundy zaoszczędzone na jednej stronie zamieni się w ułamki milisekund. — `cache.get_or_set` nie użyty jako jednofunkcyjne API (import-linter 2.13 wymaga explicit get/set dla observability), ale pattern jest tożsamo.
+
+---

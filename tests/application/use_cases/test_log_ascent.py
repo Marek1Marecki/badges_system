@@ -75,7 +75,7 @@ class TestLogAscentUseCase:
         ascent_repo.get_object_lifespan.assert_called_once_with(42)
         ascent_repo.save_ascent.assert_called_once_with(
             profile_id=1,
-            peak_id=42,
+            object_id=42,
             ascent_date=date(2024, 6, 1),
         )
 

@@ -24,20 +24,20 @@ class TouristProfileRepositoryPort(Protocol):
 class AscentLogRepositoryPort(Protocol):
     """Port obsługujący fizyczny dziennik wejść w oparciu o bitemporalność."""
 
-    def get_object_lifespan(self, peak_id: int) -> tuple[date | None, date | None] | None:
+    def get_object_lifespan(self, object_id: int) -> tuple[date | None, date | None] | None:
         """Pobiera okno istnienia obiektu turystycznego.
 
         Zwraca `(existence_start, existence_end)`. `None` w dacie oznacza brak ograniczenia czasowego, a `None` jako
         wynik oznacza brak obiektu.
         """
 
-    def ascent_exists(self, profile_id: int, peak_id: int, ascent_date: date) -> bool:
+    def ascent_exists(self, profile_id: int, object_id: int, ascent_date: date) -> bool:
         """Sprawdza, czy turysta posiada już log wejścia na ten obiekt w tym dniu (Upsert)."""
 
     def get_oldest_ascent_date(self, profile_id: int, badge_code: str) -> date | None:
         """Zwraca datę najstarszego wpisu dla danej odznaki (potrzebne do Praw Nabytych)."""
 
-    def save_ascent(self, profile_id: int, peak_id: int, ascent_date: date) -> int:
+    def save_ascent(self, profile_id: int, object_id: int, ascent_date: date) -> int:
         """Zapisuje wejście."""
 
     def get_unconsumed_ascents(self, profile_id: int, badge_code: str, cutoff_date: date | None) -> list[AscentDTO]:
@@ -50,10 +50,10 @@ class AscentLogRepositoryPort(Protocol):
     def get_all_ascents_for_user(self, profile_id: int) -> list[AscentDTO]:
         """Pobiera całą, niefiltrowaną historię wejść turysty na potrzeby oceny kolorów."""
 
-    def get_objects_lifespans(self, peak_ids: set[int]) -> dict[int, tuple[date | None, date | None]]:
+    def get_objects_lifespans(self, object_ids: set[int]) -> dict[int, tuple[date | None, date | None]]:
         """Pobiera bitemporalne ramy życia dla wielu obiektów naraz (Optymalizacja N+1).
 
-        Zwraca słownik: {peak_id: (existence_start, existence_end)}
+        Zwraca słownik: {object_id: (existence_start, existence_end)}
         """
 
     def bulk_save_ascents(self, profile_id: int, ascents: list[AscentRequestDTO]) -> int:

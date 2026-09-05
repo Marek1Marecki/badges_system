@@ -63,7 +63,7 @@ class LogAscentUseCase:
         self._bitemporal_service.validate_single(dto.peak_id, dto.ascent_date)
 
         # 3. Zabezpieczenie przed duplikatami / Upsert (Invariant D-04)
-        if self._ascent_repo.ascent_exists(profile_id=profile_id, peak_id=dto.peak_id, ascent_date=dto.ascent_date):
+        if self._ascent_repo.ascent_exists(profile_id=profile_id, object_id=dto.peak_id, ascent_date=dto.ascent_date):
             raise ConflictError(
                 f"Wejście na obiekt {dto.peak_id} w dniu {dto.ascent_date} zostało już wcześniej zalogowane."
             )
@@ -72,7 +72,7 @@ class LogAscentUseCase:
         with self._uow:
             ascent_id = self._ascent_repo.save_ascent(
                 profile_id=profile_id,
-                peak_id=dto.peak_id,
+                object_id=dto.peak_id,
                 ascent_date=dto.ascent_date,
             )
             # Uruchamiamy powiadomienie (odpali to Celery, gdy transakcja z commituje się w db)
@@ -81,7 +81,7 @@ class LogAscentUseCase:
             self._event_publisher.publish(
                 AscentLogged(
                     actor_profile_id=profile_id,
-                    peak_id=dto.peak_id,
+                    object_id=dto.peak_id,
                     ascent_date=dto.ascent_date,
                 )
             )
