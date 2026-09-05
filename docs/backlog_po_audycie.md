@@ -284,6 +284,7 @@ Klasyczne "odcięcie frontendu od backendu". Backend to umie (bo przyjmuje param
 ---
 
 ### [AUDYT-093] Brak zautomatyzowanej kwarantanny dla złośliwych danych OSM
+**Status:** ⏸️ `Odłożone do Fazy SRE`  
 **Obszar:** `Dane Referencyjne / DataOps`  
 **Priorytet:** `🟠 WYSOKI`  
 
@@ -296,32 +297,6 @@ Obecny mechanizm "Nocnego Stróża" (`RunOsmNightWatchmanUseCase`) potrafi zgła
 
 **Komentarz Architekta:**
 Klasyczny "Blind Spot" integracji zewnętrznych. Całkowite zaufanie do otwartego API (OSM) to ryzyko wandalizmu (Vandalism Attack). Ciche wstrzymanie (Quarantine) zabezpieczy nas przed rozpadem siatki MVT.
-
----
-
-### [AUDYT-097] Brak strategii wersjonowania API (API Versioning Policy)
-**Status:** ✅ `ZROBIONE w Push 9`  
-**Obszar:** `Dokumentacja / API`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Plik `API Contracts.md` definiuje ścieżki w formacie `/api/v1/`, ale nie definiuje, **co** spowoduje przejście na `/api/v2/`. Kiedy wprowadzić nową wersję? Czy usunięcie pola z payloadu łamie wsteczną kompatybilność? Brakuje formalnego kontraktu.
-
-**Rozwiązanie:**
-Stworzono `docs/adrs/ADR-027 — Strategia Wersjonowania API i Definicja Breaking Change.md` (ze szablonu `ADR-TEMPLATE.md`).
-
-**Zasady:**
-1. **URL Path Versioning** (`/api/v1/`, `/api/v2/`) — wybrany ze względu na prostotę, wsparcie HTMX/JS i transparentność monitoringu.
-2. **Definicja Breaking Change** (wymaga nowej wersji `v2`): usunięcie pola request/response, zmiana typu danych, zmiana wymagania pola, zmiana kodu HTTP, zmiana struktury odpowiedzi, usunięcie endpointu.
-3. **Nie-Breaking Change** (może być w `v1`): dodanie pola, dodanie endpointu, zmiana tekstu błędu, rozszerzenie enum.
-4. **Depolaryzacja:** Stara wersja wspierana ≥3 miesiące z `deprecated: true` w OpenAPI.
-5. `config/openapi.json` pozostaje jedynym autorytatywnym kontraktem.
-
-**Action Items (Do wdrożenia w Fazy Rozwoju API):**
-- [x] Dodać sekcję "Strategia Wersjonowania API" do `API_CONTRACTS.md` lub stworzyć dedykowany `ADR` wyjaśniający, co stanowi *Breaking Change* w naszym systemie (np. usunięcie pola, zmiana typu, zmiana wymogów CSRF).
-
-**Komentarz Architekta:**
-Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał, kiedy ucinamy wsparcie. Dopóki klientem API jest tylko nasz wewnętrzny frontend (HTMX/JS), to nie jest problem. Jeśli otworzymy to dla aplikacji mobilnych, to jest punkt krytyczny. — ADR-027 formalizuje tę strategię i będzie przewodnikiem dla przyszłych zmian API.
 
 ---
 
@@ -374,18 +349,26 @@ W fazie MVP zakładamy, że użytkownik po prostu odświeży stronę (F5) w razi
 ---
 
 ### [AUDYT-103] Wiedza Ukryta: Struktura i rola `VerificationContext`
+**Status:** ✅ `ZROBIONE w Push 9`  
 **Obszar:** `Dokumentacja / Domena`  
 **Priorytet:** `🟡 ŚREDNI`  
 
 **Diagnoza Audytora:** 
 `VerificationContext` to nasz genialny obiekt wstrzykujący stan zewnętrzny (czas, datę urodzenia turysty, mapę klubów PTTK) prosto do Czystej Domeny, zabezpieczając Invariant T-02. Jednak jego pełna rola (oraz struktury, z jakich korzysta, np. `club_join_dates: dict[str, date]`) jest nigdzie oficjalnie nieudokumentowana – nowy programista musi ją dedukować bezpośrednio z kodu Pythona lub czytając implementację starych testów.
 
+**Rozwiązanie:**
+Zaktualizowano sekcję `VerificationContext` w `docs/Domain Model.md`:
+1. Uzupełniona tabela o `completed_badge_codes` (brakująca kolumna)
+2. Dodano diagram konstrukcji kontekstu w `VerifyBadgeUseCase` (mermaid flowchart pokazujący iniekcję z `ClockPort`, `TouristProfileRepositoryPort`, `UserProgressRepositoryPort`)
+3. Wyszczególnowiono Invariant T-02 (determinizm czasu)
+4. Uzupełniona dokumentacja `AscentContextDTO` — `peak_id` → `object_id` (AUDYT-082)
+
 **Action Items (Do wdrożenia w przyszłości):**
-- [ ] Zaktualizować plik `DOMAIN_MODEL.md` w sekcji `VerificationContext`.
-- [ ] Jawnie opisać, dlaczego domena nie pobiera dat samodzielnie i jak warstwa aplikacji (`VerifyBadgeUseCase`) buduje ten kontekst na podstawie profilu z bazy.
+- [x] Zaktualizować plik `DOMAIN_MODEL.md` w sekcji `VerificationContext`.
+- [x] Jawnie opisać, dlaczego domena nie pobiera dat samodzielnie i jak warstwa aplikacji (`VerifyBadgeUseCase`) buduje ten kontekst na podstawie profilu z bazy.
 
 **Komentarz Architekta:**
-Klasyczny problem DDD. Odklejenie logiki bazodanowej zmusza do tworzenia "mostów" (Contexts). Brak ich dokładnego opisu zniechęca nowych członków zespołu do przestrzegania czystości warstw.
+Klasyczny problem DDD. Odklejenie logiki bazodanowej zmusza do tworzenia "mostów" (Contexts). Brak ich dokładnego opisu zniechęca nowych członków zespołu do przestrzegania czystości warstw. — Dokumentacja teraz jasno pokazuje, jak `ClockPort`, `TouristProfileRepositoryPort` i `UserProgressRepositoryPort` społecznie budują `VerificationContext` przed wejściem do domeny.
 
 ---
 
@@ -2867,3 +2850,32 @@ AUDYT-092 został już wdrożony w commitcie `ff140da`:
 
 **Komentarz Architekta:**
 Czysta sprawa UX, zapobiegająca konfuzji turysty. — Zasada: "fail loud, not silent". `UseCaseError` (422 zamiast 200) zapewnia, że API nigdy nie zwróci pustego wyniku bez wyraźnego komunikatu. HTMX obsłuży `422` jako błąd i pokaże komunikat.
+
+---
+
+
+### [AUDYT-097] Brak strategii wersjonowania API (API Versioning Policy)
+**Status:** ✅ `ZROBIONE w Push 9`  
+**Obszar:** `Dokumentacja / API`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Plik `API Contracts.md` definiuje ścieżki w formacie `/api/v1/`, ale nie definiuje, **co** spowoduje przejście na `/api/v2/`. Kiedy wprowadzić nową wersję? Czy usunięcie pola z payloadu łamie wsteczną kompatybilność? Brakuje formalnego kontraktu.
+
+**Rozwiązanie:**
+Stworzono `docs/adrs/ADR-027 — Strategia Wersjonowania API i Definicja Breaking Change.md` (ze szablonu `ADR-TEMPLATE.md`).
+
+**Zasady:**
+1. **URL Path Versioning** (`/api/v1/`, `/api/v2/`) — wybrany ze względu na prostotę, wsparcie HTMX/JS i transparentność monitoringu.
+2. **Definicja Breaking Change** (wymaga nowej wersji `v2`): usunięcie pola request/response, zmiana typu danych, zmiana wymagania pola, zmiana kodu HTTP, zmiana struktury odpowiedzi, usunięcie endpointu.
+3. **Nie-Breaking Change** (może być w `v1`): dodanie pola, dodanie endpointu, zmiana tekstu błędu, rozszerzenie enum.
+4. **Depolaryzacja:** Stara wersja wspierana ≥3 miesiące z `deprecated: true` w OpenAPI.
+5. `config/openapi.json` pozostaje jedynym autorytatywnym kontraktem.
+
+**Action Items (Do wdrożenia w Fazy Rozwoju API):**
+- [x] Dodać sekcję "Strategia Wersjonowania API" do `API_CONTRACTS.md` lub stworzyć dedykowany `ADR` wyjaśniający, co stanowi *Breaking Change* w naszym systemie (np. usunięcie pola, zmiana typu, zmiana wymogów CSRF).
+
+**Komentarz Architekta:**
+Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał, kiedy ucinamy wsparcie. Dopóki klientem API jest tylko nasz wewnętrzny frontend (HTMX/JS), to nie jest problem. Jeśli otworzymy to dla aplikacji mobilnych, to jest punkt krytyczny. — ADR-027 formalizuje tę strategię i będzie przewodnikiem dla przyszłych zmian API.
+
+---

@@ -105,7 +105,7 @@ Aby chronić czystość architektury (Domain Purity), następujące byty **nie n
 **Opis:** Abstrakcja logu z wejścia turysty. Przekazywana do Czystej Domeny.
 | Atrybut | Typ domenowy | Wymagany | Opis |
 |---------|--------------|----------|------|
-| `peak_id` | `int` | Tak | Logiczne ID z `TouristObject` |
+| `object_id` | `int` | Tak | Logiczne ID z `TouristObject` (AUDYT-082: peak_id → object_id) |
 | `ascent_date` | `date` | Tak | Weryfikowana przez domyślne reguły |
 | `region_ids` | `frozenset[int]` | Tak | Zasilone przez CQRS Cache *(→ Invariant R-03)* |
 *(Uwaga: Parametr `activity` wycięty jako YAGNI).*
@@ -113,13 +113,31 @@ Aby chronić czystość architektury (Domain Purity), następujące byty **nie n
 ### `VerificationContext` (Kontekst Weryfikacyjny)
 **Opis:** Kluczowy obiekt pełniący funkcję "pomostu" pomiędzy bezstanową domeną a stanem konkretnego turysty. Zgodnie z zasadą oddzielenia Wzorca (Blueprint) od Stanu Użytkownika (User State), wstrzykuje on do metody `validate()` reguł biznesowych wszystkie parametry osobiste wymagane do ewaluacji (np. daty z profilu).
 
-| Atrybut (Planowane Faza C)| Typ domenowy | Opis (Uzasadnienie) |
-|---------------------------|--------------|---------------------|
-| `evaluation_time` | `datetime` | Zastępuje `datetime.now()` gwarantując determinizm w testach (T-02). |
-| `tourist_birth_date` | `date` | Zastępuje zaślepkę `TD-02` dla `MinAgeRule` i `MaxAgeRule`. |
-| `club_join_dates` | `dict[str, date]` | Zastępuje zaślepkę `TD-02` dla `RequiresClubJoinDateRule`. Mapa kodów klubów na datę zapisu turysty. |
+**Invariant:** T-02 (Determinizm Czasu) — Czysta domena **nigdy** nie wywołuje `datetime.now()` ani `date.today()`. Każdy czas musi być wstrzyknięty poprzez `evaluation_time`.
 
-**Reguła biznesowa:** Czysta domena nigdy nie pyta bezpośrednio o te dane (np. nie uderza do bazy `TouristProfile`). Warstwa Aplikacji (Use Case) odpowiada za zbudowanie tego kontekstu przed wywołaniem metody `.evaluate()`.
+**Budowa w warstwie aplikacji (`EvaluateBadgeProgressQuery.execute`):**
+```mermaid
+flowchart LR
+    A[Django HttpRequest / Celery task] --> B[VerifyBadgeUseCase]
+    B --> C[Pobranie TouristProfileDTO\nz TouristProfileRepositoryPort]
+    B --> D[Pobranie ClockPort.now()\n—iniekcja bieżącego czasu]
+    B --> E[Pobranie completed_badge_codes\nz UserProgressRepositoryPort]
+    C --> F[VerificationContext]
+    D --> F
+    E --> F
+    F --> G[BadgeVersionDomain.evaluate\n— czysta domena, bezpieczna]
+```
+
+| Atrybut | Typ domenowy | Wymagany | Opis (Uzasadnienie) |
+|---------|--------------|----------|---------------------|
+| `evaluation_time` | `datetime` | Tak | Zastępuje `datetime.now()` gwarantując determinizm w testach (T-02). Dostarczany przez `ClockPort`, którego implementacja w produkcji odczytuje `timezone.now()`, a w testach — zamockowaną stałą wartość. |
+| `tourist_birth_date` | `date \| None` | Nie | Zastępuje zaślepkę `TD-02` dla `MinAgeRule` i `MaxAgeRule`. `None` = profil bez daty urodzenia (MinAgeRule zakłada pełnoletność). |
+| `club_join_dates` | `dict[str, date]` | Nie | Zastępuje zaślepkę `TD-02` dla `RequiresClubJoinDateRule`. Mapa kodów klubów (np. `"PTTK"`) na datę zapisu turysty do danego klubu. Pusta mapa = brak przynależności do klubów. |
+| `completed_badge_codes` | `frozenset[str]` | Nie | Zasilane dla `PrerequisiteBadgeRule` — zbiór kodów odznak ze statusem `COMPLETED`, które turysta już zdobył. Pusta zbiór = brak ukończonych odznak wymagających. |
+
+**Reguła biznesowa:** Czysta domena nigdy nie pyta bezpośrednio o te dane (np. nie uderza do bazy `TouristProfile`). Warstwa Aplikacji (`VerifyBadgeUseCase`) odpowiada za zbudowanie tego kontekstu przed wywołaniem metody `.evaluate()`.
+
+**Invariant:** T-02 (Determinizm Czasu) — `evaluation_time` pochodzi z `ClockPort`, a nie z `datetime.now()` w domenie. W testach hypothesis używamy `@settings(suppress_health_check=[...])` z `clock=FakeClock(fixed_time=...)`.
 
 ---
 
