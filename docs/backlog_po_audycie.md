@@ -232,42 +232,6 @@ To lekcja z budowania startupów. Kiedy zaczynamy pobierać opłaty, płatności
 
 ---
 
-### [AUDYT-083] Niejednoznaczność metody `get_active_progresses()`
-**Status:** ✅ `ZROBIONE w Push 9`  
-**Obszar:** `Aplikacja / Porty`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Nazwa metody portu `get_active_progresses` (Pobierz Aktywne Postępy) w module postępów turysty jest semantycznie myląca. Zwraca ona wszystkie postępy, które *nie są zarchiwizowane*, a nie te o statusie `IN_PROGRESS` (w tym również ukończone, np. `COMPLETED`). W efekcie serwisy (jak `PoiScoringService`) muszą ręcznie ignorować ukończone postępy w kodzie Pythona.
-
-**Rozwiązanie:**
-Wdrożono pierwszą opcję z AUDYT-083 — zmiana nazwy na `get_all_unarchived_progresses()`, która odzwierciedla faktyczną semantykę: zwraca wszystkie postępy **do momentu archiwizacji** (w tym `COMPLETED`, bo archiwizacja to osobny stan od finalizacji). Nazwa jasno sygnalizuje, że filtracja po `domain_status` jest intencjonalnym zachowaniem warstwy aplikacji, a nie pomyłką w adapterze.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [x] Zmienić nazwę metody na `get_all_unarchived_progresses()`.
-- [x] Dokumentacja portu wyjaśnia, że `COMPLETED` nie jest archiwizowany.
-
-**Komentarz Architekta:**
-Klasyczny problem przerzucania ciężaru z bazy danych (gdzie można to szybko odfiltrować w SQL) na warstwę Pythona. Przeniesienie warunku do adaptera to krok typu "Quick Win". — Zmiana nazwy nie wymagała migracji DB. Logika archiwizacji może być później dopięta do zapytania SQL (`WHERE is_archived = false`) bez breaking change dla serwisów.
-
----
-
-### [AUDYT-084] Odśmiecianie pojęć technicznych w `application/services`
-**Obszar:** `Aplikacja / Serwisy`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-Nazwy `PoiScoringService` oraz `ExploreQueriesService` to "Techniczny Bełkot". Łączą w sobie skróty z różnych technologii (POI = Point of Interest) lub słowa-wytrychy (Queries, Service). System powinien posługiwać się czystszym językiem Domenowym (np. "Potencjał Turystyczny" zamiast "POI Score").
-
-**Action Items (Do wdrożenia opcjonalnie):**
-- [ ] Rozważyć zmianę nazwy `PoiScoringService` na `PotentialRankingService`.
-- [ ] Rozważyć zmianę nazwy `ExploreQueriesService` na `MapDiscoveryService`.
-
-**Komentarz Architekta:**
-Zmiana nazw klas dla "lepszego brzmienia" jest użyteczna na bardzo dojrzałym etapie rozwoju projektu. U nas obiekty te i tak są maskowane przez kontener Dependency Injection, a my "rozumiemy" ten slang. Odłożyć do głębokiego Backlogu.
-
----
-
 ### [AUDYT-087] Luki w procesie zarządzania Limitami Freemium (Krawędzie pakietów)
 **Obszar:** `Aplikacja / Freemium Business Logic`  
 **Priorytet:** `🟠 WYSOKI`  
@@ -319,21 +283,6 @@ Klasyczne "odcięcie frontendu od backendu". Backend to umie (bo przyjmuje param
 
 ---
 
-### [AUDYT-092] Pusta odpowiedź z API przy braku obiektów (Silent Success)
-**Obszar:** `API / UX GPX`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-W scenariuszu `US-C17` wgrywamy ślad GPX, by znaleźć pobliskie szczyty. Jeżeli ślad znajduje się np. w Niemczech, funkcja `distance_lte` PostGIS-a odrzuca wszystkie polskie obiekty i zwraca pustą listę. API odpowiada cichym `200 OK` z pustą listą. Brak odpowiedniej obsługi tego stanu (np. `404 Not Found` dla trasy bez punktów) powoduje, że klient HTMX zarysuje turyscie pusty ekran.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Dodać wyraźny komunikat i obsługę stanu "Empty State" (Pusty Koszyk) w kodzie widoku `gpx_upload.html` lub wymusić na Use Case w `AnalyzeGpxTrackUseCase` rzucanie błędu biznesowego `Brak obiektów PTTK w promieniu 200m od wyznaczonej trasy.`
-
-**Komentarz Architekta:**
-Czysta sprawa UX, zapobiegająca konfuzji turysty.
-
----
-
 ### [AUDYT-093] Brak zautomatyzowanej kwarantanny dla złośliwych danych OSM
 **Obszar:** `Dane Referencyjne / DataOps`  
 **Priorytet:** `🟠 WYSOKI`  
@@ -351,17 +300,28 @@ Klasyczny "Blind Spot" integracji zewnętrznych. Całkowite zaufanie do otwarteg
 ---
 
 ### [AUDYT-097] Brak strategii wersjonowania API (API Versioning Policy)
+**Status:** ✅ `ZROBIONE w Push 9`  
 **Obszar:** `Dokumentacja / API`  
 **Priorytet:** `🟡 ŚREDNI`  
 
 **Diagnoza Audytora:** 
-Plik `API_CONTRACTS.md` definiuje ścieżki w formacie `/api/v1/`, ale nie definiuje, **co** spowoduje przejście na `/api/v2/`. Kiedy wprowadzić nową wersję? Czy usunięcie pola z payloadu łamie wsteczną kompatybilność? Brakuje formalnego kontraktu.
+Plik `API Contracts.md` definiuje ścieżki w formacie `/api/v1/`, ale nie definiuje, **co** spowoduje przejście na `/api/v2/`. Kiedy wprowadzić nową wersję? Czy usunięcie pola z payloadu łamie wsteczną kompatybilność? Brakuje formalnego kontraktu.
+
+**Rozwiązanie:**
+Stworzono `docs/adrs/ADR-027 — Strategia Wersjonowania API i Definicja Breaking Change.md` (ze szablonu `ADR-TEMPLATE.md`).
+
+**Zasady:**
+1. **URL Path Versioning** (`/api/v1/`, `/api/v2/`) — wybrany ze względu na prostotę, wsparcie HTMX/JS i transparentność monitoringu.
+2. **Definicja Breaking Change** (wymaga nowej wersji `v2`): usunięcie pola request/response, zmiana typu danych, zmiana wymagania pola, zmiana kodu HTTP, zmiana struktury odpowiedzi, usunięcie endpointu.
+3. **Nie-Breaking Change** (może być w `v1`): dodanie pola, dodanie endpointu, zmiana tekstu błędu, rozszerzenie enum.
+4. **Depolaryzacja:** Stara wersja wspierana ≥3 miesiące z `deprecated: true` w OpenAPI.
+5. `config/openapi.json` pozostaje jedynym autorytatywnym kontraktem.
 
 **Action Items (Do wdrożenia w Fazy Rozwoju API):**
-- [ ] Dodać sekcję "Strategia Wersjonowania API" do `API_CONTRACTS.md` lub stworzyć dedykowany `ADR` wyjaśniający, co stanowi *Breaking Change* w naszym systemie (np. usunięcie pola, zmiana typu, zmiana wymogów CSRF).
+- [x] Dodać sekcję "Strategia Wersjonowania API" do `API_CONTRACTS.md` lub stworzyć dedykowany `ADR` wyjaśniający, co stanowi *Breaking Change* w naszym systemie (np. usunięcie pola, zmiana typu, zmiana wymogów CSRF).
 
 **Komentarz Architekta:**
-Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał, kiedy ucinamy wsparcie. Dopóki klientem API jest tylko nasz wewnętrzny frontend (HTMX/JS), to nie jest problem. Jeśli otworzymy to dla aplikacji mobilnych, to jest punkt krytyczny.
+Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał, kiedy ucinamy wsparcie. Dopóki klientem API jest tylko nasz wewnętrzny frontend (HTMX/JS), to nie jest problem. Jeśli otworzymy to dla aplikacji mobilnych, to jest punkt krytyczny. — ADR-027 formalizuje tę strategię i będzie przewodnikiem dla przyszłych zmian API.
 
 ---
 
@@ -2851,3 +2811,59 @@ Czysta, książkowa kosmetyka kodu (Clean Code). Podnosi jakość bez ryzyka awa
 
 ---
 
+
+### [AUDYT-083] Niejednoznaczność metody `get_active_progresses()`
+**Status:** ✅ `ZROBIONE w Push 9`  
+**Obszar:** `Aplikacja / Porty`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Nazwa metody portu `get_active_progresses` (Pobierz Aktywne Postępy) w module postępów turysty jest semantycznie myląca. Zwraca ona wszystkie postępy, które *nie są zarchiwizowane*, a nie te o statusie `IN_PROGRESS` (w tym również ukończone, np. `COMPLETED`). W efekcie serwisy (jak `PoiScoringService`) muszą ręcznie ignorować ukończone postępy w kodzie Pythona.
+
+**Rozwiązanie:**
+Wdrożono pierwszą opcję z AUDYT-083 — zmiana nazwy na `get_all_unarchived_progresses()`, która odzwierciedla faktyczną semantykę: zwraca wszystkie postępy **do momentu archiwizacji** (w tym `COMPLETED`, bo archiwizacja to osobny stan od finalizacji). Nazwa jasno sygnalizuje, że filtracja po `domain_status` jest intencjonalnym zachowaniem warstwy aplikacji, a nie pomyłką w adapterze.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [x] Zmienić nazwę metody na `get_all_unarchived_progresses()`.
+- [x] Dokumentacja portu wyjaśnia, że `COMPLETED` nie jest archiwizowany.
+
+**Komentarz Architekta:**
+Klasyczny problem przerzucania ciężaru z bazy danych (gdzie można to szybko odfiltrować w SQL) na warstwę Pythona. Przeniesienie warunku do adaptera to krok typu "Quick Win". — Zmiana nazwy nie wymagała migracji DB. Logika archiwizacji może być później dopięta do zapytania SQL (`WHERE is_archived = false`) bez breaking change dla serwisów.
+
+---
+
+### [AUDYT-084] Odśmiecianie pojęć technicznych w `application/services`
+**Obszar:** `Aplikacja / Serwisy`  
+**Priorytet:** `🟢 NISKI`  
+
+**Diagnoza Audytora:** 
+Nazwy `PoiScoringService` oraz `ExploreQueriesService` to "Techniczny Bełkot". Łączą w sobie skróty z różnych technologii (POI = Point of Interest) lub słowa-wytrychy (Queries, Service). System powinien posługiwać się czystszym językiem Domenowym (np. "Potencjał Turystyczny" zamiast "POI Score").
+
+**Action Items (Do wdrożenia opcjonalnie):**
+- [ ] Rozważyć zmianę nazwy `PoiScoringService` na `PotentialRankingService`.
+- [ ] Rozważyć zmianę nazwy `ExploreQueriesService` na `MapDiscoveryService`.
+
+**Komentarz Architekta:**
+Zmiana nazw klas dla "lepszego brzmienia" jest użyteczna na bardzo dojrzałym etapie rozwoju projektu. U nas obiekty te i tak są maskowane przez kontener Dependency Injection, a my "rozumiemy" ten slang. Odłożyć do głębokiego Backlogu.
+
+---
+
+### [AUDYT-092] Pusta odpowiedź z API przy braku obiektów (Silent Success)
+**Status:** ✅ `ZROBIONE`  
+**Obszar:** `API / UX GPX`  
+**Priorytet:** `🟢 NISKI`  
+
+**Diagnoza Audytora:** 
+W scenariuszu `US-C17` wgrywamy ślad GPX, by znaleźć pobliskie szczyty. Jeżeli ślad znajduje się np. w Niemczech, funkcja `distance_lte` PostGIS-a odrzuca wszystkie polskie obiekty i zwraca pustą listę. API odpowiada cichym `200 OK` z pustą listą. Brak odpównowiedniej obsługi tego stanu (np. `404 Not Found` dla trasy bez punktów) powoduje, że klient HTMX zarysuje turyscie pusty ekran.
+
+**Rozwiązanie:**
+AUDYT-092 został już wdrożony w commitcie `ff140da`:
+- `AnalyzeGpxTrackUseCase.execute()` (linie 42-46): Gdy `nearby_objects` jest pusty, rzuca `UseCaseError` z komunikatem "Brak obiektów PTTG w promieniu 200m od wyznaczonej trasy..."
+- `GpxAnalyzeView.post()`: `UseCaseError` jest przechwytywany przez `_handle_application_exception` → mapowany na **HTTP 422** + RFC 7807 response body
+- Test `test_execute_with_no_nearby_objects()` w `test_analyze_gpx_track.py:87-95`: Asercja że `UseCaseError` z "Brak obiektów PTTK" jest rzucany
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [x] Dodać wyraźny komunikat i obsługę stanu "Empty State" (Pusty Koszyk) w kodzie widoku `gpx_upload.html` lub wymusić na Use Case w `AnalyzeGpxTrackUseCase` rzucanie błędu biznesowego `Brak obiektów PTTK w promieniu 200m od wyznaczonej trasy.`
+
+**Komentarz Architekta:**
+Czysta sprawa UX, zapobiegająca konfuzji turysty. — Zasada: "fail loud, not silent". `UseCaseError` (422 zamiast 200) zapewnia, że API nigdy nie zwróci pustego wyniku bez wyraźnego komunikatu. HTMX obsłuży `422` jako błąd i pokaże komunikat.

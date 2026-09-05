@@ -7,7 +7,7 @@
 > **OSTRZEŻENIE ARCHITEKTONICZNE (Contract First):**  
 > Niniejszy dokument ma charakter pomocniczy. **Jedynym, autorytatywnym źródłem prawdy o API** jest plik `config/openapi.json` w formacie OpenAPI Specification (OAS). Wszelkie zmiany w parametrach, kodach błędów oraz ścieżkach API muszą zostać najpierw odzwierciedlone w pliku `openapi.json`. Automatyczny test architektoniczny `test_api_contract_consistency.py` na stałe blokuje potok CI (`make check`), jeśli wykryje rozbieżność między fizycznymi ścieżkami zadeklarowanymi w `urls.py` Django, a kontraktem zdefiniowanym w `openapi.json`.
 
-> **Zasada Wersjonowania:** Wersjonowanie odbywa się przez prefix URL (np. `/api/v1/`). Zmiany łamiące kompatybilność wsteczną wymagają inkrementacji do `/v2/` i wpisu w ADR.  
+> **Zasada Wersjonowania:** Strategia i definicja *Breaking Change* określona w `docs/adrs/ADR-027 — Strategia Wersjonowania API i Definicja Breaking Change.md`. Wersjonowanie odbywa się przez prefix URL (`/api/v1/`, `/api/v2/`). Zmiany łamiące kompatybilność wsteczną wymagają inkrementacji wersji i wpisu w tym ADR.  
 > **Zasada dla Agentów LLM:** Zmiana formatu wyjściowego dowolnego z tych endpointów wymaga uprzedniej edycji tego pliku. Wszystkie błędy muszą ściśle przestrzegać standardu z `ERROR_HANDLING.md` (RFC 7807).
 
 ---
