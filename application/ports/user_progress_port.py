@@ -66,8 +66,12 @@ class AscentLogRepositoryPort(Protocol):
 class UserProgressRepositoryPort(Protocol):
     """Port obsługujący subskrypcje, Prawa Nabyte i Osobisty Kanban."""
 
-    def get_active_progresses(self, profile_id: int) -> list[BadgeProgressDTO]:
-        """Zwraca listę wszystkich aktualnie subskrybowanych (śledzonych) odznak."""
+    def get_all_unarchived_progresses(self, profile_id: int) -> list[BadgeProgressDTO]:
+        """Zwraca wszystkie postępy turysty, które nie są jeszcze zarchiwizowane.
+
+        Uwaga: Metoda zwraca również postępy `COMPLETED` — archiwizacja to
+        osobny stan od finalizacji. Filtr statusów odbywa się w serwisach.
+        """
 
     def get_progress(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> BadgeProgressDTO | None:
         """Pobiera konkretny snapshot postępu."""

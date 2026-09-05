@@ -28,7 +28,7 @@ class TestPoiScoringServiceMissingCoverage:
         completed_progress = MagicMock()
         completed_progress.badge_code = "KGP"
         completed_progress.domain_status = "COMPLETED"
-        progress_repo.get_active_progresses.return_value = [completed_progress]
+        progress_repo.get_all_unarchived_progresses.return_value = [completed_progress]
 
         ascent_repo.get_all_ascents_for_user.return_value = []
 
@@ -56,7 +56,7 @@ class TestPoiScoringServiceMissingCoverage:
         progress.domain_status = "IN_PROGRESS"
         progress.version_id = None
         progress.cycle_number = 1
-        progress_repo.get_active_progresses.return_value = [progress]
+        progress_repo.get_all_unarchived_progresses.return_value = [progress]
 
         badge_version = MagicMock()
         badge_version.pool_peak_ids = [1, 2, 3]
@@ -92,7 +92,7 @@ class TestPoiScoringServiceMissingCoverage:
         progress.domain_status = "IN_PROGRESS"
         progress.version_id = 42
         progress.cycle_number = 1
-        progress_repo.get_active_progresses.return_value = [progress]
+        progress_repo.get_all_unarchived_progresses.return_value = [progress]
 
         badge_repo.get_badge_version_by_id.return_value = None
 
@@ -122,7 +122,7 @@ class TestPoiScoringServiceMissingCoverage:
         progress.domain_status = "IN_PROGRESS"
         progress.version_id = 42
         progress.cycle_number = 1
-        progress_repo.get_active_progresses.return_value = [progress]
+        progress_repo.get_all_unarchived_progresses.return_value = [progress]
 
         badge_version = MagicMock()
         badge_version.pool_peak_ids = []
@@ -155,7 +155,7 @@ class TestPoiScoringServiceMissingCoverage:
         progress.domain_status = "IN_PROGRESS"
         progress.version_id = 42
         progress.cycle_number = 2
-        progress_repo.get_active_progresses.return_value = [progress]
+        progress_repo.get_all_unarchived_progresses.return_value = [progress]
 
         prev_cycle = MagicMock()
         prev_cycle.logistic_status_date = date(2023, 1, 1)
@@ -204,7 +204,7 @@ class TestPoiScoringServiceMissingCoverage:
         progress.domain_status = "IN_PROGRESS"
         progress.version_id = 42
         progress.cycle_number = 1
-        progress_repo.get_active_progresses.return_value = [progress]
+        progress_repo.get_all_unarchived_progresses.return_value = [progress]
 
         progress_repo.get_progress.return_value = None
 
@@ -244,7 +244,7 @@ class TestPoiScoringServiceMissingCoverage:
         progress.domain_status = "IN_PROGRESS"
         progress.version_id = 42
         progress.cycle_number = 1
-        progress_repo.get_active_progresses.return_value = [progress]
+        progress_repo.get_all_unarchived_progresses.return_value = [progress]
 
         badge_version = MagicMock()
         badge_version.pool_peak_ids = [1, 2]
@@ -303,7 +303,7 @@ class TestPoiScoringServiceMissingCoverage:
         progress.domain_status = "IN_PROGRESS"
         progress.version_id = 42
         progress.cycle_number = 1
-        progress_repo.get_active_progresses.return_value = [progress]
+        progress_repo.get_all_unarchived_progresses.return_value = [progress]
 
         badge_version = MagicMock()
         badge_version.pool_peak_ids = [1]
@@ -348,7 +348,7 @@ class TestPoiScoringServiceMissingCoverage:
         progress2.version_id = 43
         progress2.cycle_number = 1
 
-        progress_repo.get_active_progresses.return_value = [progress1, progress2]
+        progress_repo.get_all_unarchived_progresses.return_value = [progress1, progress2]
 
         badge_version1 = MagicMock()
         badge_version1.pool_peak_ids = [1]

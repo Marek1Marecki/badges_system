@@ -59,7 +59,7 @@ class StartBadgeProgressUseCase:
         if not profile_dto:
             raise UseCaseError(f"Nie znaleziono profilu o ID {profile_id}.")
 
-        active_progresses = self._progress_repo.get_active_progresses(profile_id)
+        active_progresses = self._progress_repo.get_all_unarchived_progresses(profile_id)
         active_count = len(active_progresses)
         if active_count >= profile_dto.max_active_badges:
             raise UseCaseError(

@@ -61,14 +61,14 @@ class TestFakeTouristRepository:
         """Test zarządzania postępami odznak."""
         repo = FakeTouristRepository()
 
-        assert repo.get_active_progresses(profile_id=1) == []
+        assert repo.get_all_unarchived_progresses(profile_id=1) == []
         assert repo.get_progress(profile_id=1, badge_code="KGP", cycle_number=1) is None
 
         # Startujemy progres
         prog_id = repo.start_progress(profile_id=1, badge_code="KGP", version_id=42, cycle_number=1)
         assert prog_id == 1
 
-        active = repo.get_active_progresses(profile_id=1)
+        active = repo.get_all_unarchived_progresses(profile_id=1)
         assert len(active) == 1
         assert active[0].domain_status == "NOT_STARTED"
 

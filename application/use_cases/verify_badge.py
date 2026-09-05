@@ -110,7 +110,7 @@ class EvaluateBadgeProgressQuery:
         # odznaka jest "zamrożona" — ewaluacja nie może dawać COMPLETED.
         final_errors = list(domain_result.errors)
         if final_status != DomainStatus.COMPLETED and profile_dto:
-            active_progresses = self._progress_repo.get_active_progresses(profile_id)
+            active_progresses = self._progress_repo.get_all_unarchived_progresses(profile_id)
             active_count = len([p for p in active_progresses if p.domain_status != DomainStatus.COMPLETED])
             if active_count > profile_dto.max_active_badges:
                 is_verified = False

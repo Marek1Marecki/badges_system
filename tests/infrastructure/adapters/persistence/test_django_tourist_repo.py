@@ -236,7 +236,7 @@ class TestDjangoTouristRepository:
 
         assert result is None
 
-    def test_get_active_progresses(self):
+    def test_get_all_unarchived_progresses(self):
         """Zwraca listę aktywnych postępów profilu."""
         user = _create_user("turysta11", "t11@example.com")
         profile = user.profiles.create(nickname="T11", birth_date=date(1990, 1, 1))
@@ -246,7 +246,7 @@ class TestDjangoTouristRepository:
         version = BadgeVersionModel.objects.create(badge=badge, version_code="v2024", valid_from=date(2024, 1, 1))
         self.repo.start_progress(profile.id, "KGP7", version.id)
 
-        progresses = self.repo.get_active_progresses(profile.id)
+        progresses = self.repo.get_all_unarchived_progresses(profile.id)
 
         assert len(progresses) == 1
         assert progresses[0].badge_code == "KGP7"

@@ -51,7 +51,7 @@ class TestPoiScoringService:
     def test_recalculate_and_cache_for_profile_with_no_active_progresses(self):
         """Test przeliczania gdy użytkownik nie ma aktywnych postępów."""
         progress_repo = MagicMock()
-        progress_repo.get_active_progresses.return_value = []
+        progress_repo.get_all_unarchived_progresses.return_value = []
         ascent_repo = MagicMock()
         profile_repo = MagicMock()
         profile_repo.get_profile.return_value = TouristProfileDTO(
@@ -76,7 +76,7 @@ class TestPoiScoringService:
     def test_recalculate_and_cache_for_profile_with_completed_badge(self):
         """Test przeliczania gdy odznaka jest już ukończona."""
         progress_repo = MagicMock()
-        progress_repo.get_active_progresses.return_value = [
+        progress_repo.get_all_unarchived_progresses.return_value = [
             BadgeProgressDTO(
                 progress_id=1,
                 profile_id=1,
@@ -112,7 +112,7 @@ class TestPoiScoringService:
     def test_recalculate_and_cache_for_profile_with_no_version_id(self):
         """Test przeliczania gdy postęp nie ma version_id."""
         progress_repo = MagicMock()
-        progress_repo.get_active_progresses.return_value = [
+        progress_repo.get_all_unarchived_progresses.return_value = [
             BadgeProgressDTO(
                 progress_id=1,
                 profile_id=1,
@@ -159,7 +159,7 @@ class TestPoiScoringService:
     def test_recalculate_and_cache_for_profile_with_green_color(self):
         """Test przeliczania gdy szczyt jest już zdobyty w obecnym cyklu."""
         progress_repo = MagicMock()
-        progress_repo.get_active_progresses.return_value = [
+        progress_repo.get_all_unarchived_progresses.return_value = [
             BadgeProgressDTO(
                 progress_id=1,
                 profile_id=1,
@@ -211,7 +211,7 @@ class TestPoiScoringService:
     def test_recalculate_and_cache_for_profile_with_blue_color(self):
         """Test przeliczania gdy szczyt był zdobyty w starym cyklu."""
         progress_repo = MagicMock()
-        progress_repo.get_active_progresses.return_value = [
+        progress_repo.get_all_unarchived_progresses.return_value = [
             BadgeProgressDTO(
                 progress_id=1,
                 profile_id=1,
@@ -258,7 +258,7 @@ class TestPoiScoringService:
     def test_recalculate_and_cache_for_profile_with_red_color(self):
         """Test przeliczania gdy szczyt jest nowym celem (RED)."""
         progress_repo = MagicMock()
-        progress_repo.get_active_progresses.return_value = [
+        progress_repo.get_all_unarchived_progresses.return_value = [
             BadgeProgressDTO(
                 progress_id=1,
                 profile_id=1,
@@ -306,7 +306,7 @@ class TestPoiScoringService:
     def test_recalculate_and_cache_for_profile_with_red_color_score_100(self):
         """Test przeliczania gdy brakuje 0 szczytów (score=100)."""
         progress_repo = MagicMock()
-        progress_repo.get_active_progresses.return_value = [
+        progress_repo.get_all_unarchived_progresses.return_value = [
             BadgeProgressDTO(
                 progress_id=1,
                 profile_id=1,
@@ -362,7 +362,7 @@ class TestPoiScoringService:
     def test_blue_color_value_is_literal(self):
         """Test że wartość koloru BLUE jest literałem stringa używanym w cache payload."""
         progress_repo = MagicMock()
-        progress_repo.get_active_progresses.return_value = [
+        progress_repo.get_all_unarchived_progresses.return_value = [
             BadgeProgressDTO(
                 progress_id=1,
                 profile_id=1,
@@ -409,7 +409,7 @@ class TestPoiScoringService:
     def test_cache_timeout_fixed_300s(self):
         """Test że map_state cache ma stały TTL = 300 sekund (AUDYT-033)."""
         progress_repo = MagicMock()
-        progress_repo.get_active_progresses.return_value = []
+        progress_repo.get_all_unarchived_progresses.return_value = []
         ascent_repo = MagicMock()
         profile_repo = MagicMock()
         profile_repo.get_profile.return_value = TouristProfileDTO(

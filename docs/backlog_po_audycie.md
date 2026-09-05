@@ -232,47 +232,23 @@ To lekcja z budowania startupów. Kiedy zaczynamy pobierać opłaty, płatności
 
 ---
 
-### [AUDYT-082] Refaktoryzacja `peak_id` na `object_id` w Czystej Domenie
-**Status:** ✅ `ZROBIONE w Push 8`  
-**Obszar:** `Domena / Value Objects`  
-**Priorytet:** `🟢 NISKI (Jakość Kodu)`  
-
-**Diagnoza Audytora:** 
-Value Object `Ascent` (Wejście) w katalogu `domain/value_objects/ascent.py` zawiera pole nazwane `peak_id`. Stanowi to wyciek z "języka potocznego" do Domeny. Z punktu widzenia systemu logujemy wejścia na `TouristObject` (Obiekty Turystyczne), a nie tylko na góry/szczyty (Peak) – mogą to być wieże, jaskinie czy schroniska. Domena nie powinna zakładać typu geograficznego obiektu.
-
-**Rozwiązanie:**
-1. `Ascent` VO (`domain/value_objects/ascent.py`) — `peak_id` → `object_id`
-2. `AscentLogged` event (`domain/events.py`) — `peak_id` → `object_id`
-3. `AscentDTO` (`application/dto/ascent_dto.py`) — `peak_id` → `object_id`
-4. Port `AscentLogRepositoryPort` (`application/ports/user_progress_port.py`) — parametry `peak_id` → `object_id`
-5. `BitemporalViolation` (`application/services/bitemporal_validation_service.py`) — `peak_id` → `object_id`
-6. Czysta domena: `badge_version.py`, `badge_rules.py`, `badge_eligibility_domain_service.py` — odwołania `ascent.peak_id` → `ascent.object_id`
-7. `AscentRequestDTO` **zachowuje `peak_id`** (publiczny kontrakt API); `to_domain()` mapuje `peak_id` → `object_id`
-8. `celery_event_publisher.py` — publikuje `event.object_id`, ale klucz `peak_id` w audit payload JSON zachowany dla kompatybilności
-9. Model Django `AscentLog.peak` (kolumna DB) **nie zmieniany** — to istnieje w infrastrukturze
-
-**Action Items (Do wdrożenia przy okazji refaktoringu):**
-- [x] Zmienić nazwę pola w `Ascent` z `peak_id` na `object_id`.
-- [x] Zaktualizować wszystkie klasy testowe i metody używające tej nazwy argumentu.
-
-**Komentarz Architekta:**
-Czysta, książkowa kosmetyka kodu (Clean Code). Podnosi jakość bez ryzyka awarii, ale w tym momencie nie blokuje rozwoju funkcji biznesowych. — Wdrożono w pełni: 372 testów ✅, `ruff` ✅, `mypy` ✅, `lint-imports` 5/5 ✅. Publiczny kontrakt API (`AscentRequestDTO.peak_id`, `BulkAscentResultDTO.errors["peak_id"]`) nie został naruszony.
-
----
-
 ### [AUDYT-083] Niejednoznaczność metody `get_active_progresses()`
+**Status:** ✅ `ZROBIONE w Push 9`  
 **Obszar:** `Aplikacja / Porty`  
 **Priorytet:** `🟡 ŚREDNI`  
 
 **Diagnoza Audytora:** 
 Nazwa metody portu `get_active_progresses` (Pobierz Aktywne Postępy) w module postępów turysty jest semantycznie myląca. Zwraca ona wszystkie postępy, które *nie są zarchiwizowane*, a nie te o statusie `IN_PROGRESS` (w tym również ukończone, np. `COMPLETED`). W efekcie serwisy (jak `PoiScoringService`) muszą ręcznie ignorować ukończone postępy w kodzie Pythona.
 
+**Rozwiązanie:**
+Wdrożono pierwszą opcję z AUDYT-083 — zmiana nazwy na `get_all_unarchived_progresses()`, która odzwierciedla faktyczną semantykę: zwraca wszystkie postępy **do momentu archiwizacji** (w tym `COMPLETED`, bo archiwizacja to osobny stan od finalizacji). Nazwa jasno sygnalizuje, że filtracja po `domain_status` jest intencjonalnym zachowaniem warstwy aplikacji, a nie pomyłką w adapterze.
+
 **Action Items (Do wdrożenia w przyszłości):**
-- [ ] Zmienić nazwę metody na `get_all_unarchived_progresses()`.
-- [ ] **LUB:** Dodać opcjonalny parametr filtrujący do metody w adapterze `DjangoTouristRepository` (np. `exclude_status="COMPLETED"`), aby zapobiec wyciekaniu logiki filtrowania do serwisów w warstwie aplikacji.
+- [x] Zmienić nazwę metody na `get_all_unarchived_progresses()`.
+- [x] Dokumentacja portu wyjaśnia, że `COMPLETED` nie jest archiwizowany.
 
 **Komentarz Architekta:**
-Klasyczny problem przerzucania ciężaru z bazy danych (gdzie można to szybko odfiltrować w SQL) na warstwę Pythona. Przeniesienie warunku do adaptera to krok typu "Quick Win".
+Klasyczny problem przerzucania ciężaru z bazy danych (gdzie można to szybko odfiltrować w SQL) na warstwę Pythona. Przeniesienie warunku do adaptera to krok typu "Quick Win". — Zmiana nazwy nie wymagała migracji DB. Logika archiwizacji może być później dopięta do zapytania SQL (`WHERE is_archived = false`) bez breaking change dla serwisów.
 
 ---
 
@@ -2844,3 +2820,34 @@ Wdrożono warstwę cache'u w `apps/badges/forms.py:78-93`. Konstruktor `TouristO
 Cichy morderca wydajności. Pół sekundy zaoszczędzone na jednej stronie zamieni się w ułamki milisekund. — `cache.get_or_set` nie użyty jako jednofunkcyjne API (import-linter 2.13 wymaga explicit get/set dla observability), ale pattern jest tożsamo.
 
 ---
+
+---
+
+### [AUDYT-082] Refaktoryzacja `peak_id` na `object_id` w Czystej Domenie
+**Status:** ✅ `ZROBIONE w Push 8`  
+**Obszar:** `Domena / Value Objects`  
+**Priorytet:** `🟢 NISKI (Jakość Kodu)`  
+
+**Diagnoza Audytora:** 
+Value Object `Ascent` (Wejście) w katalogu `domain/value_objects/ascent.py` zawiera pole nazwane `peak_id`. Stanowi to wyciek z "języka potocznego" do Domeny. Z punktu widzenia systemu logujemy wejścia na `TouristObject` (Obiekty Turystyczne), a nie tylko na góry/szczyty (Peak) – mogą to być wieże, jaskinie czy schroniska. Domena nie powinna zakładać typu geograficznego obiektu.
+
+**Rozwiązanie:**
+1. `Ascent` VO (`domain/value_objects/ascent.py`) — `peak_id` → `object_id`
+2. `AscentLogged` event (`domain/events.py`) — `peak_id` → `object_id`
+3. `AscentDTO` (`application/dto/ascent_dto.py`) — `peak_id` → `object_id`
+4. Port `AscentLogRepositoryPort` (`application/ports/user_progress_port.py`) — parametry `peak_id` → `object_id`
+5. `BitemporalViolation` (`application/services/bitemporal_validation_service.py`) — `peak_id` → `object_id`
+6. Czysta domena: `badge_version.py`, `badge_rules.py`, `badge_eligibility_domain_service.py` — odwołania `ascent.peak_id` → `ascent.object_id`
+7. `AscentRequestDTO` **zachowuje `peak_id`** (publiczny kontrakt API); `to_domain()` mapuje `peak_id` → `object_id`
+8. `celery_event_publisher.py` — publikuje `event.object_id`, ale klucz `peak_id` w audit payload JSON zachowany dla kompatybilności
+9. Model Django `AscentLog.peak` (kolumna DB) **nie zmieniany** — to istnieje w infrastrukturze
+
+**Action Items (Do wdrożenia przy okazji refaktoringu):**
+- [x] Zmienić nazwę pola w `Ascent` z `peak_id` na `object_id`.
+- [x] Zaktualizować wszystkie klasy testowe i metody używające tej nazwy argumentu.
+
+**Komentarz Architekta:**
+Czysta, książkowa kosmetyka kodu (Clean Code). Podnosi jakość bez ryzyka awarii, ale w tym momencie nie blokuje rozwoju funkcji biznesowych. — Wdrożono w pełni: 372 testów ✅, `ruff` ✅, `mypy` ✅, `lint-imports` 5/5 ✅. Publiczny kontrakt API (`AscentRequestDTO.peak_id`, `BulkAscentResultDTO.errors["peak_id"]`) nie został naruszony.
+
+---
+

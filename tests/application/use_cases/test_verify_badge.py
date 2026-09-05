@@ -180,7 +180,7 @@ class TestEvaluateBadgeProgressQuery:
         p1.domain_status = "IN_PROGRESS"
         p2 = MagicMock()
         p2.domain_status = "IN_PROGRESS"
-        progress_repo.get_active_progresses.return_value = [p1, p2]
+        progress_repo.get_all_unarchived_progresses.return_value = [p1, p2]
 
         badge_repo = MagicMock()
         badge_version = MagicMock()

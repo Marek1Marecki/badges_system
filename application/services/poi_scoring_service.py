@@ -77,7 +77,7 @@ class PoiScoringService:
         birth_date = profile.birth_date if profile else None
         club_dates = profile.club_join_dates if profile else {}
 
-        active_progresses = self._progress_repo.get_active_progresses(profile_id)
+        active_progresses = self._progress_repo.get_all_unarchived_progresses(profile_id)
 
         completed_badges = frozenset(
             p.badge_code for p in active_progresses if p.domain_status == DomainStatus.COMPLETED

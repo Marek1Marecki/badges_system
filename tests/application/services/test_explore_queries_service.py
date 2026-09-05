@@ -35,7 +35,7 @@ class TestExploreQueriesService:
 
     def test_get_poi_ranking_builds_clusters(self, service):
         """Buduje ranking szczytów z klastrami rodzinnymi."""
-        service._progress_repo.get_active_progresses.return_value = []
+        service._progress_repo.get_all_unarchived_progresses.return_value = []
         service._cache.get.return_value = {}
         service._query_repo.get_points_of_interest_with_relations.return_value = [
             self._make_peak(1, "P1", "Szczyt", 1000, None),
@@ -52,7 +52,7 @@ class TestExploreQueriesService:
 
     def test_get_poi_ranking_sorts_by_score(self, service):
         """Sortuje klastry według wyniku malejąco."""
-        service._progress_repo.get_active_progresses.return_value = []
+        service._progress_repo.get_all_unarchived_progresses.return_value = []
         service._cache.get.return_value = {"scores": {1: 10, 2: 5, 3: 3}, "colors": {}}
         service._query_repo.get_points_of_interest_with_relations.return_value = [
             self._make_peak(1, "P1", "Szczyt", 1000, None),
@@ -163,7 +163,7 @@ class TestExploreQueriesService:
             return None
 
         service._cache.get.side_effect = cache_get_side_effect
-        service._progress_repo.get_active_progresses.return_value = []
+        service._progress_repo.get_all_unarchived_progresses.return_value = []
         service._query_repo.get_points_of_interest_with_relations.return_value = [
             self._make_peak(1, "P1", "Szczyt", 1000, None),
         ]
@@ -175,7 +175,7 @@ class TestExploreQueriesService:
     def test_get_poi_ranking_handles_missing_cache(self, service):
         """Gdy cache zwraca None, serwis nie przerywa działania w get_poi_ranking."""
         service._cache.get.return_value = None
-        service._progress_repo.get_active_progresses.return_value = []
+        service._progress_repo.get_all_unarchived_progresses.return_value = []
         service._query_repo.get_points_of_interest_with_relations.return_value = [
             self._make_peak(1, "P1", "Szczyt", 1000, None),
         ]
@@ -188,7 +188,7 @@ class TestExploreQueriesService:
     def test_get_poi_ranking_calls_cache_get(self, service):
         """Serwis wywołuje cache.get z poprawnym kluczem w get_poi_ranking."""
         service._cache.get.return_value = {}
-        service._progress_repo.get_active_progresses.return_value = []
+        service._progress_repo.get_all_unarchived_progresses.return_value = []
         service._query_repo.get_points_of_interest_with_relations.return_value = [
             self._make_peak(1, "P1", "Szczyt", 1000, None),
         ]
@@ -203,7 +203,7 @@ class TestExploreQueriesService:
             "scores": {},
             "colors": {1: "RED"},
         }
-        service._progress_repo.get_active_progresses.return_value = []
+        service._progress_repo.get_all_unarchived_progresses.return_value = []
         service._query_repo.get_points_of_interest_with_relations.return_value = [
             self._make_peak(1, "P1", "Szczyt", 1000, None),
         ]

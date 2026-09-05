@@ -76,7 +76,7 @@ class FakeTouristRepository(
         return result
 
     # --- UserProgressRepositoryPort ---
-    def get_active_progresses(self, profile_id: int) -> list[BadgeProgressDTO]:
+    def get_all_unarchived_progresses(self, profile_id: int) -> list[BadgeProgressDTO]:
         return [p for p in self.progresses.values() if p.profile_id == profile_id]
 
     def get_progress(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> BadgeProgressDTO | None:

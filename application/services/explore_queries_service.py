@@ -48,7 +48,7 @@ class ExploreQueriesService:
         Returns:
           Ranking obiektów POI z klasterami i wynikami.
         """
-        active_progresses = self._progress_repo.get_active_progresses(profile_id)
+        active_progresses = self._progress_repo.get_all_unarchived_progresses(profile_id)
         subscribed_badge_codes = [p.badge_code for p in active_progresses]
 
         map_state = self._cache.get(f"map_state:{profile_id}") or {}

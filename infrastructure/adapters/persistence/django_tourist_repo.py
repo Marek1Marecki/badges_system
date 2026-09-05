@@ -346,7 +346,7 @@ class DjangoUserProgressRepository(UserProgressRepositoryPort):
             logistic_status_date=progress_obj.logistic_status_date,
         )
 
-    def get_active_progresses(self, profile_id: int) -> list[BadgeProgressDTO]:
+    def get_all_unarchived_progresses(self, profile_id: int) -> list[BadgeProgressDTO]:
         """
 
         Args:
