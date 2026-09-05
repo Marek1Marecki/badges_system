@@ -20,6 +20,7 @@ from application.dto.tourist_views_dto import (
     RegionContextResponseDTO,
     RegionRankingEntryDTO,
 )
+from application.dto.verify_badge_dto import VerifyBadgeResponseDTO
 from application.ports.cache_port import CachePort
 from application.ports.explore_queries_port import ExploreQueriesRepositoryPort
 from application.ports.user_progress_port import UserProgressRepositoryPort
@@ -174,14 +175,17 @@ class ExploreQueriesService:
         return self._query_repo.get_catalog_badges(profile_id)
 
     def get_badge_details(
-        self, badge_code: str, profile_id: int, evaluation: dict[str, object] | None = None
+        self,
+        badge_code: str,
+        profile_id: int,
+        evaluation: VerifyBadgeResponseDTO | None = None,
     ) -> BadgeDetailResponseDTO:
         """Buduje szczegóły odznaki dla widoku badge_detail.
 
         Args:
           badge_code: str:
           profile_id: int:
-          evaluation: dict[str, object] | None:
+          evaluation: VerifyBadgeResponseDTO | None:
 
         Returns:
           BadgeDetailDTO: Szczegóły odznaki z danymi dla HTML.

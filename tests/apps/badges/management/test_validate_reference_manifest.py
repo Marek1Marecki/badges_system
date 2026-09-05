@@ -58,14 +58,13 @@ class TestValidateJsonSchema:
         # Should not raise
         cmd._validate_json_schema(manifest, base_data_dir)
 
-    def test_fails_when_rules_empty(self, base_data_dir: Path) -> None:
-        """Puste rules — ValidationError, bo minItems=1."""
+    def test_allows_empty_rules_for_wildcard(self, base_data_dir: Path) -> None:
+        """Puste rules — dopuszczalne dla badge'ów wildcard (pool_peaks, ADR-012)."""
         _write_badge_versions(base_data_dir, [{"pk": 1, "rules": []}])
         cmd = Command()
         manifest = json.loads((base_data_dir / "manifest.json").read_text(encoding="utf-8"))
-        with pytest.raises(CommandError) as exc_info:
-            cmd._validate_json_schema(manifest, base_data_dir)
-        assert "JSON Schema" in str(exc_info.value)
+        # Should not raise
+        cmd._validate_json_schema(manifest, base_data_dir)
 
     def test_fails_when_rules_missing_type_key(self, base_data_dir: Path) -> None:
         """Rules bez klucza 'type' — ValidationError."""

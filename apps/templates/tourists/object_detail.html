@@ -77,7 +77,7 @@
                                     {% endif %}
                                 </li>
                             {% empty %}
-                                <li class="italic text-gray-400">Brak powiązanych odznak</li>
+                                <li class="italic text-gray-500">Brak powiązanych odznak</li>
                             {% endfor %}
                         </ul>
                     </div>
@@ -86,12 +86,12 @@
                         <ul class="text-sm text-gray-600 space-y-1">
                             {% for r in regions %}
                                 <li>
-                                    <span class="text-xs font-mono text-gray-400">{{ r.region_level|slice:":3" }}</span>
+                                    <span class="text-xs font-mono text-gray-500">{{ r.region_level|slice:":3" }}</span>
                                     <a href="{% url 'region_detail' r.region_level r.region_id %}"
                                        class="hover:text-sky-600 hover:underline font-medium">{{ r.region_name }}</a>
                                 </li>
                             {% empty %}
-                                <li class="italic text-gray-400">Brak danych przestrzennych</li>
+                                <li class="italic text-gray-500">Brak danych przestrzennych</li>
                             {% endfor %}
                         </ul>
                     </div>

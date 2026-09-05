@@ -78,7 +78,7 @@ if [ "$WITH_PG_RESTORE" = true ]; then
     POSTGRES_DB="${POSTGRES_DB:-badges_system_db}"
     "${COMPOSE[@]}" exec -T db mkdir -p /dumps
     "${COMPOSE[@]}" cp data/reference/postgis_dump.custom db:/dumps/postgis_dump.custom
-    "${COMPOSE[@]}" exec -T db pg_restore -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" --no-owner -c --if-exists -1 /dumps/postgis_dump.custom
+    "${COMPOSE[@]}" exec -T db pg_restore -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" --no-owner -c --if-exists /dumps/postgis_dump.custom
 else
     "${COMPOSE[@]}" exec -T web-e2e python manage.py validate_reference_manifest
     for fixture in 01_regions.json.gz 02_tourist_objects.json.gz 03_badges.json.gz 04_osm_mappings.json.gz 05_badge_news.json.gz; do

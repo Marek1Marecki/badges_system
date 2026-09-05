@@ -9,6 +9,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from application.dto.verify_badge_dto import VerifyBadgeResponseDTO
+
 
 class BadgeCatalogEntryResponseDTO(BaseModel):
     """Jedna pozycja w katalogu odznak."""
@@ -55,7 +57,7 @@ class BadgeDetailResponseDTO(BaseModel):
 
     badge: Any
     progress: Any | None
-    evaluation: dict[str, Any] | None
+    evaluation: VerifyBadgeResponseDTO | None
     objects_list: list[BadgeObjectDTO]
     target_version: Any | None
     tiers_info: list[BadgeTierInfoDTO]

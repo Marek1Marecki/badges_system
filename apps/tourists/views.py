@@ -74,7 +74,7 @@ def badge_catalog_view(request):
     entries = _get_queries(request).get_catalog_badges(profile_id)
 
     badges = [e.badge for e in entries]
-    active_ids = [e.id for e in entries if e.domain_status != "COMPLETED"]
+    subscribed_ids = [e.id for e in entries if e.is_subscribed and e.domain_status != "COMPLETED"]
     completed_ids = [e.id for e in entries if e.domain_status == "COMPLETED"]
 
     return render(
@@ -82,7 +82,7 @@ def badge_catalog_view(request):
         "tourists/catalog.html",
         {
             "badges": badges,
-            "active_ids": active_ids,
+            "active_ids": subscribed_ids,
             "completed_ids": completed_ids,
         },
     )

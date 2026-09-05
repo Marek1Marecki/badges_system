@@ -177,6 +177,7 @@ digraph G {
   }
 
   "application.dto.ascent_dto" -> "domain.value_objects.ascent";
+  "application.dto.tourist_views_dto" -> "application.dto.verify_badge_dto";
   "application.ports.badge_repository_port" -> "domain.entities.badge_version";
   "application.ports.event_publisher_port" -> "domain.events";
   "application.ports.explore_queries_port" -> "application.dto.tourist_views_dto";
@@ -190,6 +191,7 @@ digraph G {
   "application.services.bitemporal_validation_service" -> "application.ports.user_progress_port";
   "application.services.explore_queries_service" -> "application.dto.explore_queries_dto";
   "application.services.explore_queries_service" -> "application.dto.tourist_views_dto";
+  "application.services.explore_queries_service" -> "application.dto.verify_badge_dto";
   "application.services.explore_queries_service" -> "application.ports.cache_port";
   "application.services.explore_queries_service" -> "application.ports.explore_queries_port";
   "application.services.explore_queries_service" -> "application.ports.user_progress_port";
