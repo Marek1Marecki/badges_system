@@ -113,9 +113,9 @@ done
 echo ""
 echo "=== E2E: uruchamianie testów Playwright ==="
 if [ ${#PYTEST_ARGS[@]} -eq 0 ]; then
-    "${COMPOSE[@]}" exec -T web-e2e uv run pytest tests/e2e -m e2e --no-header -q --override-ini="addopts="
+    "${COMPOSE[@]}" exec -T web-e2e uv run pytest tests/e2e -m e2e --no-header -v -s --tb=long --override-ini="addopts="
 else
-    "${COMPOSE[@]}" exec -T web-e2e uv run pytest tests/e2e -m e2e "${PYTEST_ARGS[@]}" --override-ini="addopts="
+    "${COMPOSE[@]}" exec -T web-e2e uv run pytest tests/e2e -m e2e "${PYTEST_ARGS[@]}" -v -s --tb=long --override-ini="addopts="
 fi
 
 echo ""
