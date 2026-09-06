@@ -20,6 +20,8 @@ LOGIN_PATH = "/accounts/login/"
 
 def test_login_page_renders_google_button(page: Page) -> None:
     """Strona logowania /accounts/login/ musi pokazywać przycisk Google OAuth."""
+    # Gwarancja: czysty kontekst (bez sessionid z poprzednich testów)
+    page.context.clear_cookies()
     page.goto(f"{BASE_URL}{LOGIN_PATH}", wait_until="domcontentloaded", timeout=15000)
     expect(page).to_have_title("PTTK Badges")
     btn = page.locator("button[data-testid='btn-login-google']")
