@@ -23,24 +23,23 @@ BASE = "/accounts/login/"
 def test_login_page_renders_google_button(page: Page) -> None:
     """Strona logowania musi pokazywać widoczny przycisk logowania Google."""
     page.goto(BASE)
-    expect(page).to_have_title(re.compile("Logowanie", re.IGNORECASE))
+    expect(page).to_have_title(re.compile("szlaku", re.IGNORECASE))
 
-    # allauth renderuje przycisk z atrybutem /data-/href do Google OAuth
-    google_btn = page.locator("a[href*='/accounts/google/login/']")
+    # allauth renderuje przycisk z data-testid="btn-login-google"
+    google_btn = page.locator("button[data-testid='btn-login-google']")
     expect(google_btn).to_be_visible()
     assert google_btn.count() == 1
 
 
 def test_login_page_redirects_to_google_when_clicked(page: Page) -> None:
-    """Po kliknięciu przycisku przekierowuje do providera Google OAuth.
+    """Po kliknięciu przycisku przenosi do Google OAuth.
 
-    Oczekujemy przekierowania (Google może odpowiedzieć 302, 301, 200
-    na stronie logowania Google, ale URI musi zawierać `accounts.google`
-    lub `accounts/o/` — typowy flow dla allauth/socialaccount).
+    Przycisk submituje form POST na `{% provider_login_url 'google' %}`,
+    co powoduje przekierowanie do konsoli Google OAuth.
     """
     page.goto(BASE)
     with page.expect_navigation(timeout=10000) as nav_info:
-        page.locator("a[href*='/accounts/google/login/']").click()
+        page.locator("button[data-testid='btn-login-google']").click()
     assert "google" in nav_info.value.url.lower() or "accounts.google" in nav_info.value.url
 
 
@@ -53,8 +52,8 @@ def test_login_page_has_no_raw_secrets(page: Page) -> None:
 
 def test_unauthenticated_user_redirected_from_protected_route(page: Page) -> None:
     """Turysta bez sesji ma być przekierowany z chronionej ścieżki."""
-    # Próba wejścia na stronę wymagającą auth — powinno być 302→login
-    response = page.request.get(BASE_URL + "/profile/")
+    # Izolowany request context — nie dzieli ciasteczek z `page`
+    response = page.context.request.new_context().get(BASE_URL + "/profile/")  # type: ignore[attr-defined]
     assert response.status == 302, f"Expected redirect, got {response.status}"
     loc = response.headers.get("location", "")
     assert "accounts/login" in loc
