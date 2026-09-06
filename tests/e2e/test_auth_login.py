@@ -10,6 +10,7 @@ Używa *czystego* kontekstu przeglądarki (bez wstrzykiwania ciasteczka
 
 import os
 import re
+from typing import Any
 
 import pytest
 from playwright.sync_api import Page, expect
@@ -50,10 +51,17 @@ def test_login_page_has_no_raw_secrets(page: Page) -> None:
     assert "GOOGLE_CLIENT_ID" not in html
 
 
-def test_unauthenticated_user_redirected_from_protected_route(page: Page) -> None:
-    """Turysta bez sesji ma być przekierowany z chronionej ścieżki."""
-    # Izolowany request context — nie dzieli ciasteczek z `page`
-    response = page.context.request.new_context().get(BASE_URL + "/profile/")  # type: ignore[attr-defined]
-    assert response.status == 302, f"Expected redirect, got {response.status}"
-    loc = response.headers.get("location", "")
-    assert "accounts/login" in loc
+def test_unauthenticated_user_redirected_from_protected_route(playwright: Any) -> None:
+    """Turysta bez sesji ma być przekierowany z chronionej ścieżki.
+
+    Globalny playwright.request.new_context() tworzy APIRequestContext
+    bez dzielenia się ciasteczkami z browser context → rzeczywiście anonimowy.
+    """
+    api_ctx = playwright.request.new_context()
+    try:
+        response = api_ctx.get(BASE_URL + "/profile/")
+        assert response.status == 302, f"Expected redirect, got {response.status}"
+        loc = response.headers.get("location", "")
+        assert "accounts/login" in loc
+    finally:
+        api_ctx.dispose()
