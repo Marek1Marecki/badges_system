@@ -7,6 +7,7 @@ Weryfikuje:
 """
 
 import os
+import sys
 
 import pytest
 import requests
@@ -20,10 +21,13 @@ LOGIN_PATH = "/accounts/login/"
 
 def test_login_page_renders_google_button(page: Page) -> None:
     """Strona logowania /accounts/login/ musi pokazywać przycisk Google OAuth."""
-    # Gwarancja: czysty kontekst (bez sessionid z poprzednich testów)
     page.context.clear_cookies()
-    page.goto(f"{BASE_URL}{LOGIN_PATH}", wait_until="domcontentloaded", timeout=15000)
-    expect(page).to_have_title("PTTK Badges")
+    resp = page.goto(f"{BASE_URL}{LOGIN_PATH}", wait_until="domcontentloaded", timeout=15000)
+    assert resp is not None, "Failed to load /accounts/login/"
+    assert resp.status == 200, f"Expected 200, got {resp.status} at {resp.url}"
+    title = page.title()
+    print(f"[DEBUG] title={title!r} url={page.url!r}", file=sys.stderr, flush=True)
+    assert title == "PTTK Badges", f"Unexpected title: {title!r}"
     btn = page.locator("button[data-testid='btn-login-google']")
     expect(btn).to_be_visible(timeout=10000)
     assert btn.count() == 1
