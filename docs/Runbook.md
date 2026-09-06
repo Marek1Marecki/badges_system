@@ -324,6 +324,40 @@ W przypadku długotrwałej awarii darmowych zasobów GitHub Actions lub przejśc
 
 ## 10. Typowe problemy i rozwiązania
 
+### Disk Space Monitoring (AUDYT-151)
+
+Na self-hosted runnerze krytyczne jest monitorowanie zajętości dysku — nieudane testy mogą zostawić osierocone wolumeny i obrazy Dockera.
+
+| Element | Szczegóły |
+|----------|-----------|
+| **Skrypt monitorujący** | `scripts/monitor_disk_space.sh` — albo `return 1` (exit) gdy dysk > 80% (lub `DISK_THRESHOLD`). |
+| **Alert** | Log do stdout; opcjonalny webhook Slacka (`SLACK_WEBHOOK_URL`). |
+| **Skrypt czyszczący** | `scripts/cleanup_docker.sh` — `docker system prune -a -f --volumes --filter "until=24h"`. |
+| **Cron** | `cleanup_docker.sh --quiet` codziennie o 03:00, tylko gdy `docker ps -q` zwraca pusty wynik (brak uruchomionych kontenerów). |
+
+#### Konfiguracja crontaba na hośnie (jednorazowo):
+```bash
+# Edytuj crontab:
+crontab -e
+
+# Dodaj linię (codziennie o 03:00):
+0 3 * * * /app/scripts/cleanup_docker.sh --quiet >> /var/log/docker-cleanup.log 2>&1
+```
+
+#### Test manualny:
+```bash
+# Sprawdź stan dysku:
+./scripts/monitor_disk_space.sh /
+
+# Dry-run przed czyszczeniem:
+DRY_RUN=1 ./scripts/cleanup_docker.sh
+
+# Wymuś czyszczenie:
+FORCE=1 ./scripts/cleanup_docker.sh
+```
+
+---
+
 ### Problem 1: `Temporary failure in name resolution` w WSL2
 **Objaw:** Celery lub skrypty rzucają timeoutem HTTP, nie mogąc połączyć się z zewnętrznym API (Overpass), podczas gdy przeglądarka w Windowsie ma internet.  
 **Przyczyna:** Środowisko WSL2 traci poprawną konfigurację DNS po wybudzeniu komputera z uśpienia, przez co Python nie potrafi zamienić domen na adresy IP.  
