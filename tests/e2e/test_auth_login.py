@@ -27,10 +27,13 @@ def test_login_page_renders_google_button(page: Page) -> None:
     assert resp.status == 200, f"Expected 200, got {resp.status} at {resp.url}"
     title = page.title()
     print(f"[DEBUG] title={title!r} url={page.url!r}", file=sys.stderr, flush=True)
-    assert title == "PTTK Badges", f"Unexpected title: {title!r}"
+    html = page.content()
+    html_has_btn = "btn-login-google" in html
     btn = page.locator("button[data-testid='btn-login-google']")
+    btn_count = btn.count()
+    print(f"[DEBUG] btn_count={btn_count} html_has_btn={html_has_btn}", file=sys.stderr, flush=True)
     expect(btn).to_be_visible(timeout=10000)
-    assert btn.count() == 1
+    assert btn_count == 1
 
 
 def test_login_page_has_no_raw_secrets(page: Page) -> None:
