@@ -1325,3 +1325,6 @@ class TestErrorMessageFormatHypothesis:
         errors = rule.validate([Ascent(object_id=peak_id, ascent_date=ascent_date)], ctx_override)
         assert errors
         assert "lat" in errors[0]
+
+
+pytestmark = [pytest.mark.hypothesis]

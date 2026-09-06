@@ -88,11 +88,17 @@ markers = [
     "integration: Oznacza testy wymagajace dzialajacej bazy danych PostGIS (deselekcjonowane przez 'not integration')",
     "e2e: Oznacza testy End-to-End przegladarkowe (Playwright)",
     "testcontainers: Oznacza testy uzywajace testcontainers do uruchomienia izolowanych baz danych (Experimental)",
+    "hypothesis: Oznacza testy property-based (Hypothesis) — generują wiele przypadków, nie wpływają w sposób proporcjonalny na coverage (AUDYT-148)",
 ]
 addopts = ["--strict-markers", "--cov=.", "--cov-fail-under=80"]
 filterwarnings = [
     "ignore:DateTimeField .* received a naive datetime:RuntimeWarning",
 ]
+
+# AUDYT-148: Hypothesis (Property-Based Testing) — testy oznaczone @pytest.mark.hypothesis
+# generują wiele kombinacji. Główny raport coverage (--cov=.) obejmuje cały
+# projekt, aby nie rozmywać statystyki. Konfiguracja deadline/seed/database
+# przekazywana jest przez env vars w CI (HYPOTHESIS_SEED itd.).
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]

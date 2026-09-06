@@ -2033,3 +2033,6 @@ class TestDomainFinalResilienceHypothesis:
         result = domain.evaluate(ascents, make_ctx())
         assert result.tiers is not None
         assert isinstance(result.tiers, list)
+
+
+pytestmark = [pytest.mark.hypothesis]
