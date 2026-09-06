@@ -9,7 +9,6 @@ Weryfikuje:
 """
 
 import os
-import re
 from typing import Any
 
 import pytest
@@ -24,7 +23,8 @@ LOGIN_PATH = "/accounts/login/"
 def test_login_page_renders_google_button(page: Page) -> None:
     """Strona logowania /accounts/login/ musi pokazywać przycisk Google OAuth."""
     page.goto(BASE_URL + LOGIN_PATH)
-    expect(page).to_have_title(re.compile("szlaku", re.IGNORECASE))
+    # Szablon allauth: <h2>Witaj na szlaku! ⛰️</h2>
+    expect(page.locator("h2")).to_contain_text("szlaku")
     btn = page.locator("button[data-testid='btn-login-google']")
     expect(btn).to_be_visible()
     assert btn.count() == 1
