@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from application.dto.result import CreatedResourceResultDTO
 from tests.fakes.clock import FakeClock
 
 TEST_TODAY = str(FakeClock.DEFAULT_TIME.date())
@@ -109,7 +110,7 @@ class TestAscentLogView:
         """Zwraca 201 z identyfikatorem wejścia po poprawnym zalogowaniu wędrówki."""
         from apps.api.views import AscentLogView
 
-        use_cases["log_ascent"].execute.return_value = 77
+        use_cases["log_ascent"].execute.return_value = CreatedResourceResultDTO(id=77, type="ascent")
 
         request = factory.post(
             "/api/v1/ascents/",
@@ -127,7 +128,7 @@ class TestAscentLogView:
         """SECURITY: profile_id musi pochodzić z autoryzacji, a nie z payloadu."""
         from apps.api.views import AscentLogView
 
-        use_cases["log_ascent"].execute.return_value = 1
+        use_cases["log_ascent"].execute.return_value = CreatedResourceResultDTO(id=1, type="ascent")
 
         request = factory.post(
             "/api/v1/ascents/",
@@ -191,7 +192,7 @@ class TestBadgeSubscribeView:
         """Zwraca 201 z identyfikatorem postępu po subskrypcji odznaki."""
         from apps.api.views import BadgeSubscribeView
 
-        use_cases["start_badge_progress"].execute.return_value = 99
+        use_cases["start_badge_progress"].execute.return_value = CreatedResourceResultDTO(id=99, type="user_progress")
 
         request = factory.post("/api/v1/badges/KGP/subscribe/")
         request.user = mock_user
@@ -205,7 +206,7 @@ class TestBadgeSubscribeView:
         """Wywołuje use case subskrypcji z poprawnymi argumentami."""
         from apps.api.views import BadgeSubscribeView
 
-        use_cases["start_badge_progress"].execute.return_value = 1
+        use_cases["start_badge_progress"].execute.return_value = CreatedResourceResultDTO(id=1, type="user_progress")
 
         request = factory.post("/api/v1/badges/KGP/subscribe/")
         request.user = mock_user
@@ -515,7 +516,9 @@ class TestBadgeUnsubscribeView:
         from apps.api.views import BadgeSubscribeView
 
         use_cases["unsubscribe_badge"] = MagicMock()
-        use_cases["unsubscribe_badge"].execute.return_value = "KGP"
+        use_cases["unsubscribe_badge"].execute.return_value = CreatedResourceResultDTO(
+            id="KGP", type="unsubscribed_badge"
+        )
 
         request = factory.delete("/api/v1/badges/KGP/subscribe/")
         request.user = mock_user

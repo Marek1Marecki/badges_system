@@ -235,7 +235,9 @@ class AscentLogView(View):
             result = use_case.execute(
                 profile_id=profile_id, dto=ascent_input, request_id=getattr(request, "request_id", "unknown")
             )
-            return JsonResponse(result.model_dump(), status=201)
+            return JsonResponse(
+                {"ascent_id": result.id, **{k: v for k, v in result.model_dump().items() if k != "id"}}, status=201
+            )
 
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
@@ -278,7 +280,13 @@ class BadgeSubscribeView(View):
             progress_result = use_case.execute(profile_id=profile_id, badge_code=badge_code)
             recalculate_poi_scores_task.delay(profile_id)
 
-            return JsonResponse(progress_result.model_dump(), status=201)
+            return JsonResponse(
+                {
+                    "progress_id": progress_result.id,
+                    **{k: v for k, v in progress_result.model_dump().items() if k != "id"},
+                },
+                status=201,
+            )
 
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
@@ -304,7 +312,9 @@ class BadgeSubscribeView(View):
             use_case = request.app_container.unsubscribe_badge
             result = use_case.execute(profile_id=profile_id, badge_code=badge_code)
 
-            return JsonResponse(result.model_dump(), status=200)
+            return JsonResponse(
+                {"badge_code": result.id, **{k: v for k, v in result.model_dump().items() if k != "id"}}, status=200
+            )
 
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
