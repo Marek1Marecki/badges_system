@@ -30,7 +30,7 @@ class MapExploreRequestDTO(BaseModel):
     region_id: int | None = None
 
 
-class TouristObjectGeoDTO(BaseModel):
+class TouristObjectGeoResponseDTO(BaseModel):
     """Reprezentuje płaski punkt na mapie zwrócony przez infrastrukturę (Adapter)."""
 
     model_config = ConfigDict(frozen=True)
@@ -42,7 +42,7 @@ class TouristObjectGeoDTO(BaseModel):
     lat: float
 
 
-class GeoJSONFeatureDTO(BaseModel):
+class GeoJSONFeatureResponseDTO(BaseModel):
     """Pojedynczy obiekt GeoJSON (Feature) dla mapy eksploracji."""
 
     type: str = "Feature"
@@ -58,4 +58,4 @@ class MapExploreResponseDTO(BaseModel):
     """
 
     type: str = "FeatureCollection"
-    features: list[GeoJSONFeatureDTO]
+    features: list[GeoJSONFeatureResponseDTO]

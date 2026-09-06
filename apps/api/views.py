@@ -26,7 +26,7 @@ from pydantic import ValidationError
 from application.dto.ascent_dto import AscentRequestDTO
 from application.dto.map_dto import MapExploreRequestDTO
 from application.dto.user_context_dto import (
-    LogisticStatusUpdateDTO,
+    LogisticStatusUpdateDomainDTO,
     UpdateProfileRequestDTO,
 )
 from application.exceptions import (
@@ -232,9 +232,10 @@ class AscentLogView(View):
             use_case = request.app_container.log_ascent
 
             # WPISUJEMY TYLKO TO (UoW i Event Publisher są zaszyte w środku!)
-            ascent_id = use_case.execute(profile_id=profile_id, dto=ascent_input)
-
-            return JsonResponse({"ascent_id": ascent_id, "status": "CREATED"}, status=201)
+            result = use_case.execute(
+                profile_id=profile_id, dto=ascent_input, request_id=getattr(request, "request_id", "unknown")
+            )
+            return JsonResponse(result.model_dump(), status=201)
 
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
@@ -274,11 +275,10 @@ class BadgeSubscribeView(View):
             use_case = request.app_container.start_badge_progress
 
             # WPISUJEMY TYLKO TO:
-            progress_id = use_case.execute(profile_id=profile_id, badge_code=badge_code)
-
+            progress_result = use_case.execute(profile_id=profile_id, badge_code=badge_code)
             recalculate_poi_scores_task.delay(profile_id)
 
-            return JsonResponse({"progress_id": progress_id, "status": "SUBSCRIBED"}, status=201)
+            return JsonResponse(progress_result.model_dump(), status=201)
 
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
@@ -304,7 +304,7 @@ class BadgeSubscribeView(View):
             use_case = request.app_container.unsubscribe_badge
             result = use_case.execute(profile_id=profile_id, badge_code=badge_code)
 
-            return JsonResponse({"status": "UNSUBSCRIBED", "badge_code": result}, status=200)
+            return JsonResponse(result.model_dump(), status=200)
 
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
@@ -468,7 +468,7 @@ class BadgeLogisticsView(View):
             )
 
         try:
-            dto = LogisticStatusUpdateDTO(**body)
+            dto = LogisticStatusUpdateDomainDTO(**body)
         except ValidationError:
             return _problem_detail(
                 request,

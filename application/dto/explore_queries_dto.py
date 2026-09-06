@@ -5,14 +5,14 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 
-class BadgeCodeNameDTO(BaseModel):
+class BadgeCodeNameResponseDTO(BaseModel):
     """Mały obiekt odznaki do linkowania na frontendzie."""
 
     code: str
     name: str
 
 
-class RankingItemDTO(BaseModel):
+class RankingItemResponseDTO(BaseModel):
     """Pojedynczy element rankingu (szczyt lub zsumowany klaster)."""
 
     model_config = ConfigDict(frozen=True)
@@ -24,7 +24,7 @@ class RankingItemDTO(BaseModel):
     items: list[dict[str, Any]]  # Lista słowników reprezentujących dzieci (szczyty/schroniska)
 
 
-class RegionRankingItemDTO(BaseModel):
+class RegionRankingItemResponseDTO(BaseModel):
     """Pojedynczy element rankingu regionów."""
 
     model_config = ConfigDict(frozen=True)
@@ -42,7 +42,7 @@ class PoiRankingResponseDTO(BaseModel):
 
     active_progresses: list[dict[str, Any]]
     subscribed_badge_codes: list[str]
-    ranking: list[RankingItemDTO]
+    ranking: list[RankingItemResponseDTO]
 
 
 class RegionRankingResponseDTO(BaseModel):
@@ -51,4 +51,4 @@ class RegionRankingResponseDTO(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     level: str
-    ranking: list[RegionRankingItemDTO]
+    ranking: list[RegionRankingItemResponseDTO]

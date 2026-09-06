@@ -2,15 +2,15 @@
 
 from datetime import date
 
-from application.dto.user_context_dto import BadgeProgressDTO, TouristProfileDTO
+from application.dto.user_context_dto import BadgeProgressDomainDTO, TouristProfileDomainDTO
 
 
-class TestTouristProfileDTO:
-    """Testy klasy TouristProfileDTO."""
+class TestTouristProfileDomainDTO:
+    """Testy klasy TouristProfileDomainDTO."""
 
     def test_tourist_profile_dto_creation_with_all_fields(self):
-        """Test tworzenia TouristProfileDTO z wszystkimi polami."""
-        dto = TouristProfileDTO(
+        """Test tworzenia TouristProfileDomainDTO z wszystkimi polami."""
+        dto = TouristProfileDomainDTO(
             profile_id=1,
             is_main_profile=True,
             email="test@example.com",
@@ -32,8 +32,8 @@ class TestTouristProfileDTO:
         assert dto.max_active_badges == 10
 
     def test_tourist_profile_dto_creation_with_minimal_fields(self):
-        """Test tworzenia TouristProfileDTO z minimalnymi polami."""
-        dto = TouristProfileDTO(
+        """Test tworzenia TouristProfileDomainDTO z minimalnymi polami."""
+        dto = TouristProfileDomainDTO(
             profile_id=1,
             is_main_profile=True,
             email="test@example.com",
@@ -48,8 +48,8 @@ class TestTouristProfileDTO:
         assert dto.club_join_dates == {}
 
     def test_tourist_profile_dto_with_multiple_clubs(self):
-        """Test TouristProfileDTO z wieloma klubami."""
-        dto = TouristProfileDTO(
+        """Test TouristProfileDomainDTO z wieloma klubami."""
+        dto = TouristProfileDomainDTO(
             profile_id=1,
             is_main_profile=True,
             email="test@example.com",
@@ -63,8 +63,8 @@ class TestTouristProfileDTO:
         assert len(dto.club_join_dates) == 2
 
     def test_tourist_profile_dto_is_frozen(self):
-        """Test że TouristProfileDTO jest immutable."""
-        dto = TouristProfileDTO(
+        """Test że TouristProfileDomainDTO jest immutable."""
+        dto = TouristProfileDomainDTO(
             profile_id=1,
             is_main_profile=True,
             email="test@example.com",
@@ -78,12 +78,12 @@ class TestTouristProfileDTO:
         assert dto.model_config.get("frozen") is True
 
 
-class TestBadgeProgressDTO:
-    """Testy klasy BadgeProgressDTO."""
+class TestBadgeProgressDomainDTO:
+    """Testy klasy BadgeProgressDomainDTO."""
 
     def test_badge_progress_dto_creation_with_all_fields(self):
-        """Test tworzenia BadgeProgressDTO z wszystkimi polami."""
-        dto = BadgeProgressDTO(
+        """Test tworzenia BadgeProgressDomainDTO z wszystkimi polami."""
+        dto = BadgeProgressDomainDTO(
             progress_id=1,
             profile_id=1,
             badge_code="KGP",
@@ -104,8 +104,8 @@ class TestBadgeProgressDTO:
         assert dto.logistic_status_date == date(2026, 6, 1)
 
     def test_badge_progress_dto_creation_with_minimal_fields(self):
-        """Test tworzenia BadgeProgressDTO z minimalnymi polami."""
-        dto = BadgeProgressDTO(
+        """Test tworzenia BadgeProgressDomainDTO z minimalnymi polami."""
+        dto = BadgeProgressDomainDTO(
             progress_id=1,
             profile_id=1,
             badge_code="KGP",
@@ -121,8 +121,8 @@ class TestBadgeProgressDTO:
         assert dto.logistic_status_date is None
 
     def test_badge_progress_dto_with_different_statuses(self):
-        """Test BadgeProgressDTO z różnymi statusami."""
-        dto = BadgeProgressDTO(
+        """Test BadgeProgressDomainDTO z różnymi statusami."""
+        dto = BadgeProgressDomainDTO(
             progress_id=1,
             profile_id=1,
             badge_code="KGP",
@@ -137,8 +137,8 @@ class TestBadgeProgressDTO:
         assert dto.logistic_status == "ALBUM"
 
     def test_badge_progress_dto_is_frozen(self):
-        """Test że BadgeProgressDTO jest immutable."""
-        dto = BadgeProgressDTO(
+        """Test że BadgeProgressDomainDTO jest immutable."""
+        dto = BadgeProgressDomainDTO(
             progress_id=1,
             profile_id=1,
             badge_code="KGP",

@@ -5,20 +5,20 @@ from collections.abc import Sequence
 
 from application.dto.explore_queries_dto import (
     PoiRankingResponseDTO,
-    RankingItemDTO,
-    RegionRankingItemDTO,
+    RankingItemResponseDTO,
+    RegionRankingItemResponseDTO,
     RegionRankingResponseDTO,
 )
 from application.dto.tourist_views_dto import (
     BadgeCatalogEntryResponseDTO,
     BadgeDetailResponseDTO,
-    BadgeObjectDTO,
-    BadgeTierInfoDTO,
+    BadgeObjectResponseDTO,
+    BadgeTierInfoResponseDTO,
     ObjectDetailResponseDTO,
-    ObjectRegionDTO,
+    ObjectRegionResponseDTO,
     OrganizerDetailResponseDTO,
     RegionContextResponseDTO,
-    RegionRankingEntryDTO,
+    RegionRankingEntryResponseDTO,
 )
 from application.dto.verify_badge_dto import VerifyBadgeResponseDTO
 from application.ports.cache_port import CachePort
@@ -101,7 +101,7 @@ class ExploreQueriesService:
                 )
 
             ranking_data.append(
-                RankingItemDTO(
+                RankingItemResponseDTO(
                     is_family=is_family,
                     cluster_score=cluster_score,
                     cluster_id=anchor_id if is_family else None,
@@ -152,7 +152,9 @@ class ExploreQueriesService:
 
         ranking_data = []
         for r_id, r_data in region_dict.items():
-            ranking_data.append(RegionRankingItemDTO(id=r_id, name=r_data["name"], score=r_data["score"], level=level))
+            ranking_data.append(
+                RegionRankingItemResponseDTO(id=r_id, name=r_data["name"], score=r_data["score"], level=level)
+            )
 
         ranking_data.sort(key=lambda x: x.score, reverse=True)
 
@@ -202,7 +204,7 @@ class ExploreQueriesService:
             obj_score = int(scores.get(obj.id, scores.get(str(obj.id), 0)))
             obj_color = colors.get(obj.id, colors.get(str(obj.id), "GRAY"))
             objects_list.append(
-                BadgeObjectDTO(
+                BadgeObjectResponseDTO(
                     id=obj.id,
                     name=obj.name,
                     altitude=obj.altitude,
@@ -214,7 +216,7 @@ class ExploreQueriesService:
         tiers_info = []
         for tier in raw["tiers"]:
             tiers_info.append(
-                BadgeTierInfoDTO(
+                BadgeTierInfoResponseDTO(
                     name=tier.name,
                     required_count=tier.required_peaks_count if tier.required_peaks_count else 0,
                     status="",
@@ -253,7 +255,7 @@ class ExploreQueriesService:
         obj_score = int(scores.get(obj.id, scores.get(str(obj.id), 0)))
         obj_color = colors.get(obj.id, colors.get(str(obj.id), "GRAY"))
 
-        regions = [ObjectRegionDTO(level=level, name=name) for level, name in raw["regions"]]
+        regions = [ObjectRegionResponseDTO(level=level, name=name) for level, name in raw["regions"]]
 
         badges_list = [{"code": b.badge.code, "name": b.badge.name} for b in raw["badges"]]
 
@@ -290,12 +292,12 @@ class ExploreQueriesService:
         colors = map_state.get("colors", {})
 
         objects = raw["objects"]
-        ranking_data: list[RegionRankingEntryDTO] = []
+        ranking_data: list[RegionRankingEntryResponseDTO] = []
         for obj in objects:
             obj_score = int(scores.get(obj.id, scores.get(str(obj.id), 0)))
             obj_color = colors.get(obj.id, colors.get(str(obj.id), "GRAY"))
             ranking_data.append(
-                RegionRankingEntryDTO(
+                RegionRankingEntryResponseDTO(
                     id=obj.id,
                     name=obj.name,
                     type=obj.type,

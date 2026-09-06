@@ -27,7 +27,7 @@ class BadgeCatalogEntryResponseDTO(BaseModel):
     badge: Any
 
 
-class BadgeTierInfoDTO(BaseModel):
+class BadgeTierInfoResponseDTO(BaseModel):
     """Tier z evaluation lub z DB (unifikowany interfejs dla HTML)."""
 
     model_config = ConfigDict(frozen=True)
@@ -38,7 +38,7 @@ class BadgeTierInfoDTO(BaseModel):
     image_url: str | None
 
 
-class BadgeObjectDTO(BaseModel):
+class BadgeObjectResponseDTO(BaseModel):
     """Obiekt w kolekcji odznaki (dla mapy szczytów)."""
 
     model_config = ConfigDict(frozen=True)
@@ -58,13 +58,13 @@ class BadgeDetailResponseDTO(BaseModel):
     badge: Any
     progress: Any | None
     evaluation: VerifyBadgeResponseDTO | None
-    objects_list: list[BadgeObjectDTO]
+    objects_list: list[BadgeObjectResponseDTO]
     target_version: Any | None
-    tiers_info: list[BadgeTierInfoDTO]
+    tiers_info: list[BadgeTierInfoResponseDTO]
     has_consent: bool
 
 
-class ObjectRegionDTO(BaseModel):
+class ObjectRegionResponseDTO(BaseModel):
     """Jedna pozycja regionu dla obiektu turystycznego."""
 
     model_config = ConfigDict(frozen=True)
@@ -79,7 +79,7 @@ class ObjectDetailResponseDTO(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     obj: Any
-    regions: list[ObjectRegionDTO]
+    regions: list[ObjectRegionResponseDTO]
     badges_list: list[dict[str, str]]
     score: float
     color: str
@@ -89,7 +89,7 @@ class ObjectDetailResponseDTO(BaseModel):
     subscribed_badge_codes: list[str]
 
 
-class RegionRankingEntryDTO(BaseModel):
+class RegionRankingEntryResponseDTO(BaseModel):
     """Pozycja rankingu regionu."""
 
     model_config = ConfigDict(frozen=True)
@@ -110,7 +110,7 @@ class RegionContextResponseDTO(BaseModel):
     region_level: str
     region_id: int
     extent: tuple[float, float, float, float] | None
-    ranking_data: list[RegionRankingEntryDTO]
+    ranking_data: list[RegionRankingEntryResponseDTO]
     total_objects: int
     parent_region: Any | None
     parent_level: str | None

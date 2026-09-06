@@ -62,6 +62,21 @@ class TestRecalculatePoiScoresTask:
             mock_logger.error.assert_called_once()
             assert "Nieoczekiwany błąd w recalculate_poi_scores_task" in mock_logger.error.call_args[0][0]
 
+    def test_request_id_propagated_to_logs(self) -> None:
+        """AUDYT-117: request_id jest przekazywany z HTTP i łączy logi Celery z HTTP."""
+        with (
+            patch("bootstrap.get_container") as mock_get_container,
+            patch("apps.badges.tasks.logger") as mock_logger,
+        ):
+            mock_container = MagicMock()
+            mock_service = MagicMock()
+            mock_container.poi_scoring_service = mock_service
+            mock_get_container.return_value = mock_container
+
+            mock_logger.contextualize = MagicMock(return_value=mock_logger)
+            recalculate_poi_scores_task(1, request_id="req_abc123")
+            assert mock_logger.contextualize.call_args.kwargs.get("request_id") == "req_abc123"
+
 
 # ---------------------------------------------------------------------------
 # TestFetchBadgeNewsTask

@@ -1,13 +1,12 @@
-from django.conf import settings
-from django.contrib import admin
-from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
-from django.urls import include, path
-from django.views.decorators.http import require_GET
-
 import logging
 
-from django.db import connection
+from django.conf import settings
+from django.contrib import admin
 from django.core.cache import cache
+from django.db import connection
+from django.http import HttpResponse, JsonResponse
+from django.urls import include, path
+from django.views.decorators.http import require_GET
 
 from apps.tourists.views import (
     badge_catalog_view,
@@ -41,7 +40,7 @@ def health_check(request):
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
         checks["database"] = "healthy"
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         logger.error("Database health check failed", exc_info=True)
         checks["database"] = "unhealthy"
 
@@ -50,7 +49,7 @@ def health_check(request):
         if cache.get("healthcheck") != "ok":
             raise RuntimeError("Redis cache readback mismatch")
         checks["redis"] = "healthy"
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         logger.error("Redis health check failed", exc_info=True)
         checks["redis"] = "unhealthy"
 

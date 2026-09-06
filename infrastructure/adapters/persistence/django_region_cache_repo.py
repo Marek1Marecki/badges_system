@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from application.dto.region_cache_dto import ObjectRegionDTO
+from application.dto.region_cache_dto import ObjectRegionDomainDTO
 from application.ports.region_cache_port import RegionCacheRepositoryPort
 from apps.badges.models import ObjectRegionCache, TouristObject, TouristRegionModel
 
@@ -36,12 +36,12 @@ class DjangoRegionCacheRepository(RegionCacheRepositoryPort):
         """
         ObjectRegionCache.objects.filter(region_id=region_id, region_level=region_level).delete()
 
-    def save_object_region(self, dto: ObjectRegionDTO) -> None:
+    def save_object_region(self, dto: ObjectRegionDomainDTO) -> None:
         """
 
         Args:
-          dto: ObjectRegionDTO:
-          dto: ObjectRegionDTO:
+          dto: ObjectRegionDomainDTO:
+          dto: ObjectRegionDomainDTO:
 
         Returns:
 

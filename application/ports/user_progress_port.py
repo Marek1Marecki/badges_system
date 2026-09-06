@@ -7,14 +7,14 @@ application/use_cases/. Nie zawierają importów z Django.
 from datetime import date
 from typing import Protocol
 
-from application.dto.ascent_dto import AscentDTO, AscentRequestDTO
-from application.dto.user_context_dto import BadgeProgressDTO, TouristProfileDTO
+from application.dto.ascent_dto import AscentDomainDTO, AscentRequestDTO
+from application.dto.user_context_dto import BadgeProgressDomainDTO, TouristProfileDomainDTO
 
 
 class TouristProfileRepositoryPort(Protocol):
     """Port dostarczający dane o wieku i limitach turysty."""
 
-    def get_profile(self, profile_id: int) -> TouristProfileDTO | None:
+    def get_profile(self, profile_id: int) -> TouristProfileDomainDTO | None:
         """Pobiera pełen, połączony profil (z limitami).
 
         Zwraca None, jeśli nie istnieje.
@@ -40,14 +40,16 @@ class AscentLogRepositoryPort(Protocol):
     def save_ascent(self, profile_id: int, object_id: int, ascent_date: date) -> int:
         """Zapisuje wejście."""
 
-    def get_unconsumed_ascents(self, profile_id: int, badge_code: str, cutoff_date: date | None) -> list[AscentDTO]:
+    def get_unconsumed_ascents(
+        self, profile_id: int, badge_code: str, cutoff_date: date | None
+    ) -> list[AscentDomainDTO]:
         """Pobiera wejścia turysty.
 
         Jeśli podano cutoff_date (data zamknięcia poprzedniego cyklu odznaki), odfiltrowuje wejścia 'zużyte' (starsze
-        lub równe tej dacie). Zwrócone AscentDTO może posiadać wstrzyknięte regiony CQRS (Dla Wildcard Rules).
+        lub równe tej dacie). Zwrócone AscentDomainDTO może posiadać wstrzyknięte regiony CQRS (Dla Wildcard Rules).
         """
 
-    def get_all_ascents_for_user(self, profile_id: int) -> list[AscentDTO]:
+    def get_all_ascents_for_user(self, profile_id: int) -> list[AscentDomainDTO]:
         """Pobiera całą, niefiltrowaną historię wejść turysty na potrzeby oceny kolorów."""
 
     def get_objects_lifespans(self, object_ids: set[int]) -> dict[int, tuple[date | None, date | None]]:
@@ -66,14 +68,14 @@ class AscentLogRepositoryPort(Protocol):
 class UserProgressRepositoryPort(Protocol):
     """Port obsługujący subskrypcje, Prawa Nabyte i Osobisty Kanban."""
 
-    def get_all_unarchived_progresses(self, profile_id: int) -> list[BadgeProgressDTO]:
+    def get_all_unarchived_progresses(self, profile_id: int) -> list[BadgeProgressDomainDTO]:
         """Zwraca wszystkie postępy turysty, które nie są jeszcze zarchiwizowane.
 
         Uwaga: Metoda zwraca również postępy `COMPLETED` — archiwizacja to
         osobny stan od finalizacji. Filtr statusów odbywa się w serwisach.
         """
 
-    def get_progress(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> BadgeProgressDTO | None:
+    def get_progress(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> BadgeProgressDomainDTO | None:
         """Pobiera konkretny snapshot postępu."""
 
     def start_progress(self, profile_id: int, badge_code: str, version_id: int, cycle_number: int = 1) -> int:
@@ -97,7 +99,7 @@ class UserProgressRepositoryPort(Protocol):
     def get_completed_badge_codes(self, profile_id: int) -> frozenset[str]:
         """Zwraca kody odznak ze statusem COMPLETED (optymalizacja dla PrerequisiteBadgeRule)."""
 
-    def get_progress_by_id(self, profile_id: int, progress_id: int) -> BadgeProgressDTO | None:
+    def get_progress_by_id(self, profile_id: int, progress_id: int) -> BadgeProgressDomainDTO | None:
         """Pobiera konkretny snapshot postępu po jego ID (weryfikując właściciela)."""
 
     def delete_progress(self, profile_id: int, badge_code: str) -> None:

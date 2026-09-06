@@ -3,8 +3,8 @@
 from datetime import date
 from typing import Any
 
-from application.dto.ascent_dto import AscentDTO
-from application.dto.user_context_dto import BadgeProgressDTO, TouristProfileDTO
+from application.dto.ascent_dto import AscentDomainDTO
+from application.dto.user_context_dto import BadgeProgressDomainDTO, TouristProfileDomainDTO
 from application.ports.user_progress_port import (
     AscentLogRepositoryPort,
     TouristProfileRepositoryPort,
@@ -20,14 +20,14 @@ class FakeTouristRepository(
     """Zunifikowany Fake na potrzeby szybkiego testowania Use Case'ów Fazy C."""
 
     def __init__(self) -> None:
-        self.profiles: dict[int, TouristProfileDTO] = {}
+        self.profiles: dict[int, TouristProfileDomainDTO] = {}
         self.ascents: list[dict[str, Any]] = []
-        self.progresses: dict[int, BadgeProgressDTO] = {}
+        self.progresses: dict[int, BadgeProgressDomainDTO] = {}
         self._next_ascent_id = 1
         self._next_progress_id = 1
 
     # --- TouristProfileRepositoryPort ---
-    def get_profile(self, profile_id: int) -> TouristProfileDTO | None:
+    def get_profile(self, profile_id: int) -> TouristProfileDomainDTO | None:
         return self.profiles.get(profile_id)
 
     # --- AscentLogRepositoryPort ---
@@ -59,27 +59,27 @@ class FakeTouristRepository(
         )
         return ascent_id
 
-    def get_unconsumed_ascents(self, profile_id: int, badge_code: str, cutoff_date: date | None) -> list[AscentDTO]:
+    def get_unconsumed_ascents(self, profile_id: int, badge_code: str, cutoff_date: date | None) -> list[AscentDomainDTO]:
         result = []
         for a in self.ascents:
             if a["profile_id"] == profile_id:
                 if cutoff_date and a["ascent_date"] <= cutoff_date:
                     continue
-                result.append(AscentDTO(object_id=a["peak_id"], ascent_date=a["ascent_date"], region_ids=frozenset()))
+                result.append(AscentDomainDTO(object_id=a["peak_id"], ascent_date=a["ascent_date"], region_ids=frozenset()))
         return result
 
-    def get_all_ascents_for_user(self, profile_id: int) -> list[AscentDTO]:
+    def get_all_ascents_for_user(self, profile_id: int) -> list[AscentDomainDTO]:
         result = []
         for a in self.ascents:
             if a["profile_id"] == profile_id:
-                result.append(AscentDTO(object_id=a["peak_id"], ascent_date=a["ascent_date"], region_ids=frozenset()))
+                result.append(AscentDomainDTO(object_id=a["peak_id"], ascent_date=a["ascent_date"], region_ids=frozenset()))
         return result
 
     # --- UserProgressRepositoryPort ---
-    def get_all_unarchived_progresses(self, profile_id: int) -> list[BadgeProgressDTO]:
+    def get_all_unarchived_progresses(self, profile_id: int) -> list[BadgeProgressDomainDTO]:
         return [p for p in self.progresses.values() if p.profile_id == profile_id]
 
-    def get_progress(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> BadgeProgressDTO | None:
+    def get_progress(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> BadgeProgressDomainDTO | None:
         for p in self.progresses.values():
             if p.profile_id == profile_id and p.badge_code == badge_code and p.cycle_number == cycle_number:
                 return p
@@ -88,7 +88,7 @@ class FakeTouristRepository(
     def start_progress(self, profile_id: int, badge_code: str, version_id: int, cycle_number: int = 1) -> int:
         prog_id = self._next_progress_id
         self._next_progress_id += 1
-        dto = BadgeProgressDTO(
+        dto = BadgeProgressDomainDTO(
             progress_id=prog_id,
             profile_id=profile_id,
             badge_code=badge_code,
@@ -105,7 +105,7 @@ class FakeTouristRepository(
         if progress_id in self.progresses:
             # Pydantic jest zamrożony, trzeba stworzyć nową instancję z zaktualizowanym polem
             p = self.progresses[progress_id]
-            self.progresses[progress_id] = BadgeProgressDTO(
+            self.progresses[progress_id] = BadgeProgressDomainDTO(
                 progress_id=p.progress_id,
                 profile_id=p.profile_id,
                 badge_code=p.badge_code,
@@ -119,7 +119,7 @@ class FakeTouristRepository(
     def update_logistic_status(self, progress_id: int, logistic_status: str, status_date: date) -> None:
         if progress_id in self.progresses:
             p = self.progresses[progress_id]
-            self.progresses[progress_id] = BadgeProgressDTO(
+            self.progresses[progress_id] = BadgeProgressDomainDTO(
                 progress_id=p.progress_id,
                 profile_id=p.profile_id,
                 badge_code=p.badge_code,

@@ -66,12 +66,12 @@ class TestLogAscentUseCase:
             lifespan=(date(2020, 1, 1), date(2030, 12, 31)),
         )
 
-        ascent_id = use_case.execute(
+        result = use_case.execute(
             profile_id=1,
             dto=_dto(date(2024, 6, 1)),
         )
 
-        assert ascent_id == 123
+        assert result.id == 123
         ascent_repo.get_object_lifespan.assert_called_once_with(42)
         ascent_repo.save_ascent.assert_called_once_with(
             profile_id=1,
@@ -117,9 +117,9 @@ class TestLogAscentUseCase:
         )
 
         # Odwiedziny w dzień otwarcia i zniszczenia jednocześnie
-        ascent_id = use_case.execute(profile_id=1, dto=_dto(date(2020, 1, 1)))
+        result = use_case.execute(profile_id=1, dto=_dto(date(2020, 1, 1)))
 
-        assert ascent_id == 123
+        assert result.id == 123
         ascent_repo.save_ascent.assert_called_once()
 
     def test_T03_rejects_ascent_from_the_future(self) -> None:

@@ -9,7 +9,7 @@ from datetime import date
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class TouristProfileDTO(BaseModel):
+class TouristProfileDomainDTO(BaseModel):
     """Zunifikowany profil turysty (Konto Rodzinne + Profil + Limity)."""
 
     model_config = ConfigDict(frozen=True)
@@ -29,7 +29,7 @@ class TouristProfileDTO(BaseModel):
     max_active_badges: int
 
 
-class BadgeProgressDTO(BaseModel):
+class BadgeProgressDomainDTO(BaseModel):
     """Snapshot stanu zdobywania danej odznaki przez turystę."""
 
     model_config = ConfigDict(frozen=True)
@@ -48,7 +48,7 @@ class BadgeProgressDTO(BaseModel):
     logistic_status_date: date | None
 
 
-class LogisticStatusUpdateDTO(BaseModel):
+class LogisticStatusUpdateDomainDTO(BaseModel):
     """Waliduje żądanie zmiany statusu logistycznego odznaki przez turystę."""
 
     logistic_status: str

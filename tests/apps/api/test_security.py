@@ -333,7 +333,7 @@ class TestBadgeLogisticsViewValidation:
         request.request_id = "sec-log-2"
         request.path = "/api/v1/progress/1/logistics/"
 
-        with patch("apps.api.views.LogisticStatusUpdateDTO", side_effect=RuntimeError("DTO boom")):
+        with patch("apps.api.views.LogisticStatusUpdateDomainDTO", side_effect=RuntimeError("DTO boom")):
             with pytest.raises(RuntimeError, match="DTO boom"):
                 BadgeLogisticsView.as_view()(request, progress_id=1)
 

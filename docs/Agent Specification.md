@@ -69,7 +69,11 @@ Ten dokument to zbiór **instrukcji briefingowych** — per obszar, per typ zada
    - Wejście z API musi używać lekkiego `[Entity]InputDTO` (np. `AscentInputDTO` z samym `peak_id` i `date`).
    - Dane wyciągane z bazy i przekazywane do Czystej Domeny muszą używać bogatego `[Entity]DTO` (np. `AscentDTO` wzbogacone przez adapter bazy o wyliczone z CQRS `region_ids`).
 6. **Ochrona Stanu w Pydantic (Mutable Defaults):** Zakazuje się używania mutowalnych wartości domyślnych w klasach Pydantic (np. `club_join_dates: dict = {}`). Zawsze używaj `Field(default_factory=dict)`, aby zapobiec wyciekom stanu pamięci (Memory Leak) pomiędzy różnymi żądaniami w API.
-7. **Segregacja DTO (Input vs Zhydrowane):** Bezwzględnie zakazuje się używania tego samego obiektu DTO do odbierania danych z API oraz do transportu danych odczytanych z bazy.
+7. **Konwencja Nazewnictwa DTO (AUDYT-137):**
+   - `[Entity]RequestDTO` — dla wszystkich danych wejściowych z API (lekkie modele walidujące).
+   - `[Entity]ResponseDTO` — dla wszystkich danych wyjściowych z API (bogate, hierarchiczne).
+   - `[Entity]DomainDTO` — dla struktur pośredniczących między Use Case a Repozytorium (zhydrowane snapshoty z bazy).
+   - `[Name]ResultDTO` — dla wyników Command Use Cases zwracających ID (`CreatedResourceResultDTO`).
    - `[Entity]InputDTO` (np. `AscentInputDTO`) służy tylko do walidacji surowych danych z zewnątrz (np. formularz HTML/API).
    - `[Entity]DTO` (np. `AscentDTO`) to bogaty, zhydrowany snapshot z bazy danych, często wzbogacony o pre-kalkulowane pola z infrastruktury (np. płaskie `region_ids` z CQRS dla reguł Wildcard), służący do wstrzykiwania stanu do Czystej Domeny.
 8. **Ochrona Stanu w Pydantic:** Zakazuje się używania mutowalnych wartości domyślnych w klasach `BaseModel` (np. `club_join_dates: dict = {}`). Zawsze używaj `Field(default_factory=dict)`, aby zapobiec wyciekom stanu pamięci pomiędzy różnymi żądaniami w API.

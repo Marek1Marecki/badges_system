@@ -6,7 +6,7 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from application.dto.ascent_dto import AscentRequestDTO
-from application.dto.user_context_dto import TouristProfileDTO
+from application.dto.user_context_dto import TouristProfileDomainDTO
 from infrastructure.adapters.persistence.django_tourist_repo import DjangoTouristRepository
 
 User = get_user_model()
@@ -34,7 +34,7 @@ class TestDjangoTouristRepository:
         self.repo = DjangoTouristRepository()
 
     def test_get_profile_returns_dto(self):
-        """Zwraca TouristProfileDTO dla istniejącego profilu."""
+        """Zwraca TouristProfileDomainDTO dla istniejącego profilu."""
         user = _create_user("turysta", "turysta@example.com")
         profile = user.profiles.create(
             nickname="Turysta",
@@ -44,7 +44,7 @@ class TestDjangoTouristRepository:
 
         result = self.repo.get_profile(profile.id)
 
-        assert isinstance(result, TouristProfileDTO)
+        assert isinstance(result, TouristProfileDomainDTO)
         assert result.profile_id == profile.id
         assert result.nickname == "Turysta"
         assert result.email == "turysta@example.com"

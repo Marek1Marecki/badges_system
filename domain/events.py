@@ -23,6 +23,7 @@ class UserProgressStateChanged(DomainEvent):
     """
 
     profile_id: int
+    request_id: str | None = None
 
 
 @dataclass(frozen=True)

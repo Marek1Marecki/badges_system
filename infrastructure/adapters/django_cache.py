@@ -8,12 +8,18 @@ i logują warning, zwracając wartości domyślne.
 import logging
 from typing import Any
 
+import redis.exceptions
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
 
 from application.ports.cache_port import CachePort
 
 logger = logging.getLogger(__name__)
+
+# Redis rzuca redis.exceptions.ConnectionError (nie-dziedziczy od
+# builtin ConnectionError). Musimy łapać RedisError bazowy, aby chronić
+# aplikację przed awarią warstwy cache (AUDYT-114).
+_CACHE_ERRORS = (ConnectionError, TimeoutError, redis.exceptions.RedisError, ImproperlyConfigured)
 
 
 class DjangoCacheAdapter(CachePort):
@@ -23,14 +29,14 @@ class DjangoCacheAdapter(CachePort):
         """Zapisuje wartość w cache. Ignoruje błędy połączenia (degrade gracefully)."""
         try:
             cache.set(key, value, timeout=timeout_seconds)
-        except (ConnectionError, TimeoutError, ImproperlyConfigured) as exc:
+        except _CACHE_ERRORS as exc:
             logger.warning("DjangoCacheAdapter.set failed for key %r: %s", key, exc)
 
     def get(self, key: str) -> Any | None:
         """Odczytuje wartość z cache. Zwraca None przy błędzie połączenia (cache miss)."""
         try:
             return cache.get(key)
-        except (ConnectionError, TimeoutError, ImproperlyConfigured) as exc:
+        except _CACHE_ERRORS as exc:
             logger.warning("DjangoCacheAdapter.get failed for key %r: %s", key, exc)
             return None
 
@@ -38,5 +44,5 @@ class DjangoCacheAdapter(CachePort):
         """Usuwa wartość z cache. Ignoruje błędy połączenia."""
         try:
             cache.delete(key)
-        except (ConnectionError, TimeoutError, ImproperlyConfigured) as exc:
+        except _CACHE_ERRORS as exc:
             logger.warning("DjangoCacheAdapter.delete failed for key %r: %s", key, exc)

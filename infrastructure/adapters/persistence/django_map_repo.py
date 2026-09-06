@@ -5,7 +5,7 @@ from typing import Any
 from django.contrib.gis.geos import GEOSException, GEOSGeometry, Polygon
 from django.contrib.gis.measure import D
 
-from application.dto.map_dto import TouristObjectGeoDTO
+from application.dto.map_dto import TouristObjectGeoResponseDTO
 from application.exceptions import SpatialCalculationError
 from application.ports.map_port import MapRepositoryPort
 
@@ -22,7 +22,7 @@ class DjangoMapRepository(MapRepositoryPort):
         badge_code: str | None,
         region_level: str | None,
         region_id: int | None,
-    ) -> list[TouristObjectGeoDTO]:
+    ) -> list[TouristObjectGeoResponseDTO]:
         """
 
         Args:
@@ -68,7 +68,7 @@ class DjangoMapRepository(MapRepositoryPort):
         qs = qs[:500]
 
         return [
-            TouristObjectGeoDTO(
+            TouristObjectGeoResponseDTO(
                 id=obj.id,
                 name=obj.name,
                 type=obj.type,

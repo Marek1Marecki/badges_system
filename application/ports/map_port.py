@@ -5,7 +5,7 @@ Zwraca obiekty w oparciu o filtry przestrzenne.
 
 from typing import Any, Protocol
 
-from application.dto.map_dto import TouristObjectGeoDTO
+from application.dto.map_dto import TouristObjectGeoResponseDTO
 
 
 class MapRepositoryPort(Protocol):
@@ -20,7 +20,7 @@ class MapRepositoryPort(Protocol):
         badge_code: str | None,
         region_level: str | None,
         region_id: int | None,
-    ) -> list[TouristObjectGeoDTO]:
+    ) -> list[TouristObjectGeoResponseDTO]:
         """Pobiera zwalidowane, aktywne obiekty z zadanego prostokąta.
 
         Maksymalnie do 500 sztuk, aby zapobiec przeciążeniu frontendu.

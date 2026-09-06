@@ -2,7 +2,7 @@
 
 import pytest
 
-from application.dto.news_dto import BadgeNewsDTO
+from application.dto.news_dto import BadgeNewsResponseDTO
 from infrastructure.adapters.persistence.django_news_repo import DjangoNewsRepository
 
 
@@ -16,7 +16,7 @@ class TestDjangoNewsRepository:
 
     def test_save_news_item_creates_new_item(self):
         """Tworzy nowy wpis news gdy nie istnieje."""
-        dto = BadgeNewsDTO(
+        dto = BadgeNewsResponseDTO(
             change_date_str="2023-01-01",
             change_type="NEW",
             badge_name="Test Badge",
@@ -30,7 +30,7 @@ class TestDjangoNewsRepository:
 
     def test_save_news_item_returns_false_when_exists(self):
         """Zwraca False gdy wpis już istnieje (idempotentność)."""
-        dto = BadgeNewsDTO(
+        dto = BadgeNewsResponseDTO(
             change_date_str="2023-01-01",
             change_type="NEW",
             badge_name="Test Badge",
@@ -44,7 +44,7 @@ class TestDjangoNewsRepository:
 
     def test_save_news_item_deduplicates_by_composite_key(self):
         """Deduplikuje na podstawie klucza złożonego."""
-        dto = BadgeNewsDTO(
+        dto = BadgeNewsResponseDTO(
             change_date_str="2023-01-01",
             change_type="UPDATE",
             badge_name="Another Badge",

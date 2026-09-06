@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+import redis.exceptions
+
 from infrastructure.adapters.django_cache import DjangoCacheAdapter
 
 
@@ -92,4 +94,25 @@ class TestDjangoCacheAdapter:
         adapter = DjangoCacheAdapter()
         with patch("infrastructure.adapters.django_cache.cache") as mock_cache:
             mock_cache.delete.side_effect = ConnectionError("redis down")
+            adapter.delete("test_key")
+
+    def test_get_degrades_gracefully_on_redis_error(self) -> None:
+        """get() zwraca None gdy Redis rzuca redis.exceptions.RedisError (AUDYT-114)."""
+        adapter = DjangoCacheAdapter()
+        with patch("infrastructure.adapters.django_cache.cache") as mock_cache:
+            mock_cache.get.side_effect = redis.exceptions.ConnectionError("redis down")
+            assert adapter.get("test_key") is None
+
+    def test_set_degrades_gracefully_on_redis_error(self) -> None:
+        """set() nie wychodzi, gdy Redis rzuca redis.exceptions.RedisError (AUDYT-114)."""
+        adapter = DjangoCacheAdapter()
+        with patch("infrastructure.adapters.django_cache.cache") as mock_cache:
+            mock_cache.set.side_effect = redis.exceptions.TimeoutError("slow")
+            adapter.set("test_key", "value", 300)
+
+    def test_delete_degrades_gracefully_on_redis_error(self) -> None:
+        """delete() nie wychodzi, gdy Redis rzuca redis.exceptions.RedisError (AUDYT-114)."""
+        adapter = DjangoCacheAdapter()
+        with patch("infrastructure.adapters.django_cache.cache") as mock_cache:
+            mock_cache.delete.side_effect = redis.exceptions.RedisError("redis error")
             adapter.delete("test_key")

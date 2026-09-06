@@ -5,6 +5,7 @@ danej odznaki. Jeśli turysta wchodził na szczyty np. w 2018 roku, zostaje "zak
 niezależnie od tego, że dzisiaj mamy nowszą wersję.
 """
 
+from application.dto.result import CreatedResourceResultDTO
 from application.exceptions import UseCaseError
 from application.ports.badge_repository_port import BadgeRepositoryPort
 from application.ports.clock_port import ClockPort
@@ -15,6 +16,7 @@ from application.ports.user_progress_port import (
     TouristProfileRepositoryPort,
     UserProgressRepositoryPort,
 )
+from domain.entities.tourist_profile import TouristProfileDomain
 from domain.events import UserProgressStateChanged
 from domain.services.badge_awarding_domain_service import BadgeAwardingDomainService
 
@@ -43,7 +45,7 @@ class StartBadgeProgressUseCase:
         self._event_publisher = event_publisher
         self._awarding_service = awarding_service
 
-    def execute(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> int:
+    def execute(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> CreatedResourceResultDTO:
         """Rozpoczyna śledzenie postępu odznaki w 100% transakcyjnie.
 
         Args:
@@ -52,19 +54,27 @@ class StartBadgeProgressUseCase:
           cycle_number: Numer cyklu odznaki (domyślnie 1).
 
         Returns:
-          ID nowo utworzonego postępu.
+          `CreatedResourceResultDTO` z ID nowo utworzonego postępu.
         """
         # 1. Walidacja Limitów (US-C01c)
         profile_dto = self._profile_repo.get_profile(profile_id)
         if not profile_dto:
             raise UseCaseError(f"Nie znaleziono profilu o ID {profile_id}.")
 
+        # Delegowanie logiki limitów do agregatu domenowego (AUDYT-144)
+        profile = TouristProfileDomain(
+            profile_id=profile_dto.profile_id,
+            is_main_profile=profile_dto.is_main_profile,
+            active_plan=profile_dto.active_plan,
+            max_photos_per_ascent=profile_dto.max_photos_per_ascent,
+            max_active_badges=profile_dto.max_active_badges,
+            club_join_dates={k: v.isoformat() for k, v in profile_dto.club_join_dates.items()},
+        )
         active_progresses = self._progress_repo.get_all_unarchived_progresses(profile_id)
-        active_count = len(active_progresses)
-        if active_count >= profile_dto.max_active_badges:
+        if not profile.can_track_new_badge(len(active_progresses)):
             raise UseCaseError(
-                f"Przekroczono limit pakietu ({profile_dto.active_plan}). "
-                f"Możesz zdobywać maksymalnie {profile_dto.max_active_badges} odznak jednocześnie."
+                f"Przekroczono limit pakietu ({profile.active_plan}). "
+                f"Możesz zdobywać maksymalnie {profile.max_active_badges} odznak jednocześnie."
             )
 
         # 2. Prawa Nabyte (hermetyzowane w Domain Service)
@@ -91,4 +101,4 @@ class StartBadgeProgressUseCase:
             )
             self._event_publisher.publish(UserProgressStateChanged(profile_id=profile_id))
 
-        return progress_id
+        return CreatedResourceResultDTO(id=progress_id, type="user_progress")

@@ -279,9 +279,26 @@ W przypadku długotrwałej awarii darmowych zasobów GitHub Actions lub przejśc
 **Kroki do zestawienia własnej maszyny:**
 1. Utwórz serwer z systemem Ubuntu 24.04.
 2. Zainstaluj Docker Engine (zgodnie z `ADR-020` maszyna musi potrafić budować i uruchamiać kontenery).
-3. W GitHubie przejdź do: **Settings -> Actions -> Runners** i wybierz **New self-hosted runner**.
-4. Przeklej wygenerowane na ekranie komendy terminalowe (pobierające pakiet `actions-runner` i konfigurujące usługę jako demon systemd) na Twój nowy serwer.
-5. **Kluczowa modyfikacja pliku CI/CD:**
+3. Utwórz dedykowane, ograniczone konto systemowe dla runnera (bez dostępu do shella, izolacja bezpieczeństwa):
+   ```bash
+   sudo useradd -m -s /bin/bash github-runner
+   sudo usermod -aG docker github-runner
+   sudo usermod -aG sudo github-runner   # tylko jeżeli runner musi instalować pakiety
+   ```
+   > **Bezpieczeństwo:** Konto `github-runner` powinno być używane wyłącznie dla uruchamiania agenta GitHub Actions. Nie nadawaj mu konta root ani globalnego dostępu sudo — ogranicz do grupy `docker`.
+4. W GitHubie przejdź do: **Settings -> Actions -> Runners** i wybierz **New self-hosted runner**.
+5. Przeklej wygenerowane na ekranie komendy terminalowe (pobierające pakiet `actions-runner` i konfigurujące usługę jako demon systemd) na Twój nowy serwer. Wykonuj je **jako użytkownik `github-runner`** (nie jako root):
+   ```bash
+   sudo -u github-runner bash
+   # ... tutaj wklej komendy z panelu GitHub (./config.sh --url ... --token ...)
+   sudo ./svc.sh install
+   sudo ./svc.sh start
+   ```
+   > **Troubleshooting:** Jeśli `sudo -u github-runner bash` zgłasza `sudo: no tty present`, upewnij się, że konto ma wpis w `/etc/sudoers.d/github-runner` lub uruchom ręcznie:
+   > ```bash
+   > sudo -u github-runner -S /bin/bash -c 'cd /home/github-runner/actions-runner && ./config.sh ...'
+   > ```
+6. **Kluczowa modyfikacja pliku CI/CD:**
    Zmień etykietę (Tag) wykonywania w pliku `.github/workflows/ci.yml`.
    *Zmień to:*
    ```yaml

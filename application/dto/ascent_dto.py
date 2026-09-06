@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from domain.value_objects.ascent import Ascent
 
 
-class AscentDTO(BaseModel):
+class AscentDomainDTO(BaseModel):
     """Zhydrowany snapshot wejścia turysty używany przez porty aplikacyjne.
 
     `region_ids` są płaskimi ID z CQRS, dzięki czemu przyszłe reguły wildcard mogą działać bez importowania GIS lub

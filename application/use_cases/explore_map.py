@@ -5,7 +5,7 @@ Zgodnie z ADR-011 i ADR-013: Łączy szybkie zapytanie przestrzenne (BBox) z pre
 """
 
 from application.dto.map_dto import (
-    GeoJSONFeatureDTO,
+    GeoJSONFeatureResponseDTO,
     MapExploreRequestDTO,
     MapExploreResponseDTO,
 )
@@ -50,13 +50,13 @@ class ExploreMapUseCase:
         scores = cached_data.get("scores", {})
 
         # 3. Złożenie formatu GeoJSON (FeatureCollection)
-        features: list[GeoJSONFeatureDTO] = []
+        features: list[GeoJSONFeatureResponseDTO] = []
         for obj in objects:
             color = colors.get(obj.id, colors.get(str(obj.id), "GRAY"))
             score = scores.get(obj.id, scores.get(str(obj.id), 0))
 
             features.append(
-                GeoJSONFeatureDTO(
+                GeoJSONFeatureResponseDTO(
                     type="Feature",
                     geometry={"type": "Point", "coordinates": [obj.lon, obj.lat]},
                     properties={

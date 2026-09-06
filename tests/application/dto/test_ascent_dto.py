@@ -1,16 +1,16 @@
-"""Testy dla DTO wejść (AscentDTO i AscentRequestDTO)."""
+"""Testy dla DTO wejść (AscentDomainDTO i AscentRequestDTO)."""
 
 from datetime import date
 
 import pytest
 from pydantic import ValidationError
 
-from application.dto.ascent_dto import AscentDTO, AscentRequestDTO
+from application.dto.ascent_dto import AscentDomainDTO, AscentRequestDTO
 
 
 def test_ascent_dto_to_domain() -> None:
-    """Test konwersji AscentDTO na obiekt domenowy."""
-    dto = AscentDTO(object_id=1, ascent_date=date(2024, 1, 1), region_ids=frozenset([10, 20]))
+    """Test konwersji AscentDomainDTO na obiekt domenowy."""
+    dto = AscentDomainDTO(object_id=1, ascent_date=date(2024, 1, 1), region_ids=frozenset([10, 20]))
     domain_obj = dto.to_domain()
     assert domain_obj.object_id == 1
     assert domain_obj.ascent_date == date(2024, 1, 1)

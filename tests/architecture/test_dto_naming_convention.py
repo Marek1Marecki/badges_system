@@ -4,28 +4,8 @@ import ast
 from pathlib import Path
 
 DTO_DIR = Path("application/dto")
-ALLOWED_SUFFIXES = ("InputDTO", "RequestDTO", "ResponseDTO")
-LEGACY_DTOS = {
-    "TouristProfileDTO",
-    "BadgeProgressDTO",
-    "LogisticStatusUpdateDTO",
-    "AscentDTO",
-    "RankingItemDTO",
-    "BulkAscentResultDTO",
-    "BadgeCodeNameDTO",
-    "RegionRankingItemDTO",
-    "ObjectRegionDTO",
-    "TouristObjectGeoDTO",
-    "BadgeNewsDTO",
-    # Nie-root DTO (AUDYT-124): klasy zagnieżdżone w ResponseDTO są
-    # częścią modelu wewnętrznego, nie górnopoziomowymi OutputDTO
-    "GeoJSONFeatureDTO",
-    "TierResultResponseDTO",
-    # Sub-DTO (AUDYT-016): komponenty składowe większych ResponseDTO
-    "BadgeTierInfoDTO",
-    "BadgeObjectDTO",
-    "RegionRankingEntryDTO",
-}
+ALLOWED_SUFFIXES = ("InputDTO", "RequestDTO", "ResponseDTO", "DomainDTO", "ResultDTO")
+LEGACY_DTOS = set()
 
 
 def _get_dto_classes() -> list[tuple[Path, str]]:

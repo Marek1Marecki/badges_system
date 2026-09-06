@@ -3,7 +3,7 @@
 from pydantic import BaseModel, ConfigDict
 
 
-class ObjectRegionDTO(BaseModel):
+class ObjectRegionDomainDTO(BaseModel):
     """Reprezentuje płaską relację pomiędzy obiektem turystycznym a regionem PTTK."""
 
     model_config = ConfigDict(frozen=True)

@@ -3,8 +3,8 @@
 from datetime import date
 from unittest.mock import MagicMock
 
-from application.dto.ascent_dto import AscentDTO
-from application.dto.user_context_dto import BadgeProgressDTO, TouristProfileDTO
+from application.dto.ascent_dto import AscentDomainDTO
+from application.dto.user_context_dto import BadgeProgressDomainDTO, TouristProfileDomainDTO
 from application.services.poi_scoring_service import COLOR_PRIORITY, PoiScoringService
 from domain.entities.badge_version import BadgeTierDomain, BadgeVersionDomain
 from domain.value_objects.ascent import Ascent
@@ -54,7 +54,7 @@ class TestPoiScoringService:
         progress_repo.get_all_unarchived_progresses.return_value = []
         ascent_repo = MagicMock()
         profile_repo = MagicMock()
-        profile_repo.get_profile.return_value = TouristProfileDTO(
+        profile_repo.get_profile.return_value = TouristProfileDomainDTO(
             profile_id=1,
             is_main_profile=True,
             email="test@example.com",
@@ -77,7 +77,7 @@ class TestPoiScoringService:
         """Test przeliczania gdy odznaka jest już ukończona."""
         progress_repo = MagicMock()
         progress_repo.get_all_unarchived_progresses.return_value = [
-            BadgeProgressDTO(
+            BadgeProgressDomainDTO(
                 progress_id=1,
                 profile_id=1,
                 badge_code="KGP",
@@ -90,7 +90,7 @@ class TestPoiScoringService:
         ]
         ascent_repo = MagicMock()
         profile_repo = MagicMock()
-        profile_repo.get_profile.return_value = TouristProfileDTO(
+        profile_repo.get_profile.return_value = TouristProfileDomainDTO(
             profile_id=1,
             is_main_profile=True,
             email="test@example.com",
@@ -113,7 +113,7 @@ class TestPoiScoringService:
         """Test przeliczania gdy postęp nie ma version_id."""
         progress_repo = MagicMock()
         progress_repo.get_all_unarchived_progresses.return_value = [
-            BadgeProgressDTO(
+            BadgeProgressDomainDTO(
                 progress_id=1,
                 profile_id=1,
                 badge_code="KGP",
@@ -126,7 +126,7 @@ class TestPoiScoringService:
         ]
         ascent_repo = MagicMock()
         profile_repo = MagicMock()
-        profile_repo.get_profile.return_value = TouristProfileDTO(
+        profile_repo.get_profile.return_value = TouristProfileDomainDTO(
             profile_id=1,
             is_main_profile=True,
             email="test@example.com",
@@ -160,7 +160,7 @@ class TestPoiScoringService:
         """Test przeliczania gdy szczyt jest już zdobyty w obecnym cyklu."""
         progress_repo = MagicMock()
         progress_repo.get_all_unarchived_progresses.return_value = [
-            BadgeProgressDTO(
+            BadgeProgressDomainDTO(
                 progress_id=1,
                 profile_id=1,
                 badge_code="KGP",
@@ -174,10 +174,10 @@ class TestPoiScoringService:
         ascent_repo = MagicMock()
         ascent_repo.get_all_ascents_for_user.return_value = []
         ascent_repo.get_unconsumed_ascents.return_value = [
-            AscentDTO(object_id=1, ascent_date=date(2026, 1, 1), region_ids=frozenset())
+            AscentDomainDTO(object_id=1, ascent_date=date(2026, 1, 1), region_ids=frozenset())
         ]
         profile_repo = MagicMock()
-        profile_repo.get_profile.return_value = TouristProfileDTO(
+        profile_repo.get_profile.return_value = TouristProfileDomainDTO(
             profile_id=1,
             is_main_profile=True,
             email="test@example.com",
@@ -212,7 +212,7 @@ class TestPoiScoringService:
         """Test przeliczania gdy szczyt był zdobyty w starym cyklu."""
         progress_repo = MagicMock()
         progress_repo.get_all_unarchived_progresses.return_value = [
-            BadgeProgressDTO(
+            BadgeProgressDomainDTO(
                 progress_id=1,
                 profile_id=1,
                 badge_code="KGP",
@@ -227,7 +227,7 @@ class TestPoiScoringService:
         ascent_repo.get_all_ascents_for_user.return_value = [Ascent(object_id=1, ascent_date=date(2025, 1, 1))]
         ascent_repo.get_unconsumed_ascents.return_value = []
         profile_repo = MagicMock()
-        profile_repo.get_profile.return_value = TouristProfileDTO(
+        profile_repo.get_profile.return_value = TouristProfileDomainDTO(
             profile_id=1,
             is_main_profile=True,
             email="test@example.com",
@@ -259,7 +259,7 @@ class TestPoiScoringService:
         """Test przeliczania gdy szczyt jest nowym celem (RED)."""
         progress_repo = MagicMock()
         progress_repo.get_all_unarchived_progresses.return_value = [
-            BadgeProgressDTO(
+            BadgeProgressDomainDTO(
                 progress_id=1,
                 profile_id=1,
                 badge_code="KGP",
@@ -274,7 +274,7 @@ class TestPoiScoringService:
         ascent_repo.get_all_ascents_for_user.return_value = []
         ascent_repo.get_unconsumed_ascents.return_value = []
         profile_repo = MagicMock()
-        profile_repo.get_profile.return_value = TouristProfileDTO(
+        profile_repo.get_profile.return_value = TouristProfileDomainDTO(
             profile_id=1,
             is_main_profile=True,
             email="test@example.com",
@@ -307,7 +307,7 @@ class TestPoiScoringService:
         """Test przeliczania gdy brakuje 0 szczytów (score=100)."""
         progress_repo = MagicMock()
         progress_repo.get_all_unarchived_progresses.return_value = [
-            BadgeProgressDTO(
+            BadgeProgressDomainDTO(
                 progress_id=1,
                 profile_id=1,
                 badge_code="KGP",
@@ -322,7 +322,7 @@ class TestPoiScoringService:
         ascent_repo.get_all_ascents_for_user.return_value = []
         ascent_repo.get_unconsumed_ascents.return_value = []
         profile_repo = MagicMock()
-        profile_repo.get_profile.return_value = TouristProfileDTO(
+        profile_repo.get_profile.return_value = TouristProfileDomainDTO(
             profile_id=1,
             is_main_profile=True,
             email="test@example.com",
@@ -363,7 +363,7 @@ class TestPoiScoringService:
         """Test że wartość koloru BLUE jest literałem stringa używanym w cache payload."""
         progress_repo = MagicMock()
         progress_repo.get_all_unarchived_progresses.return_value = [
-            BadgeProgressDTO(
+            BadgeProgressDomainDTO(
                 progress_id=1,
                 profile_id=1,
                 badge_code="KGP",
@@ -378,7 +378,7 @@ class TestPoiScoringService:
         ascent_repo.get_all_ascents_for_user.return_value = [Ascent(object_id=1, ascent_date=date(2025, 1, 8))]
         ascent_repo.get_unconsumed_ascents.return_value = []
         profile_repo = MagicMock()
-        profile_repo.get_profile.return_value = TouristProfileDTO(
+        profile_repo.get_profile.return_value = TouristProfileDomainDTO(
             profile_id=1,
             is_main_profile=True,
             email="test@example.com",
@@ -412,7 +412,7 @@ class TestPoiScoringService:
         progress_repo.get_all_unarchived_progresses.return_value = []
         ascent_repo = MagicMock()
         profile_repo = MagicMock()
-        profile_repo.get_profile.return_value = TouristProfileDTO(
+        profile_repo.get_profile.return_value = TouristProfileDomainDTO(
             profile_id=1,
             is_main_profile=True,
             email="test@example.com",

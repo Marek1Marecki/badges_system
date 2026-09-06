@@ -3,7 +3,7 @@
 from pydantic import BaseModel, ConfigDict
 
 
-class BadgeNewsDTO(BaseModel):
+class BadgeNewsResponseDTO(BaseModel):
     """DTO dla pojedynczej aktualności odznaki."""
 
     model_config = ConfigDict(frozen=True)

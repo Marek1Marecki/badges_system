@@ -6,7 +6,7 @@ import urllib.request
 
 from bs4 import BeautifulSoup
 
-from application.dto.news_dto import BadgeNewsDTO
+from application.dto.news_dto import BadgeNewsResponseDTO
 from application.ports.news_port import NewsScraperPort
 from infrastructure.exceptions import InfrastructureException
 
@@ -18,7 +18,7 @@ class BeautifulSoupNewsScraper(NewsScraperPort):
 
     SOURCE_URL = "https://odznaki.org/zmiany/"
 
-    def fetch_news(self) -> list[BadgeNewsDTO]:
+    def fetch_news(self) -> list[BadgeNewsResponseDTO]:
         """Pobiera i parsuje newsy ze strony organizatora."""
         # Zabezpieczenie przed WAF: Udajemy przeglądarkę
         req = urllib.request.Request(self.SOURCE_URL, headers={"User-Agent": "BadgeSystem/1.0"})  # noqa: S310
@@ -89,7 +89,7 @@ class BeautifulSoupNewsScraper(NewsScraperPort):
 
             if date_str and change_type and badge_name_str:
                 items.append(
-                    BadgeNewsDTO(
+                    BadgeNewsResponseDTO(
                         change_date_str=date_str,
                         change_type=change_type,
                         badge_name=badge_name_str,

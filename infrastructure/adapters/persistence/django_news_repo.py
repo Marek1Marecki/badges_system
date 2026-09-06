@@ -1,18 +1,18 @@
 """Adapter zapisu newsów do PostGIS."""
 
-from application.dto.news_dto import BadgeNewsDTO
+from application.dto.news_dto import BadgeNewsResponseDTO
 from application.ports.news_port import NewsRepositoryPort
 
 
 class DjangoNewsRepository(NewsRepositoryPort):
     """Repozytorium newsów oparte o Django ORM."""
 
-    def save_news_item(self, dto: BadgeNewsDTO) -> bool:
+    def save_news_item(self, dto: BadgeNewsResponseDTO) -> bool:
         """
 
         Args:
-          dto: BadgeNewsDTO:
-          dto: BadgeNewsDTO:
+          dto: BadgeNewsResponseDTO:
+          dto: BadgeNewsResponseDTO:
 
         Returns:
 

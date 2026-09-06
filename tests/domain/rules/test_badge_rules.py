@@ -87,7 +87,10 @@ def test_start_date_rule(ctx: VerificationContext) -> None:
 def test_mandatory_objects_rule(ctx: VerificationContext) -> None:
     """Weryfikuje regułę obowiązkowych szczytów."""
     rule = MandatoryObjectsRule(mandatory_peak_ids=frozenset([1, 2]))
-    valid_ascents = [Ascent(object_id=1, ascent_date=date(2024, 6, 15)), Ascent(object_id=2, ascent_date=date(2024, 6, 15))]
+    valid_ascents = [
+        Ascent(object_id=1, ascent_date=date(2024, 6, 15)),
+        Ascent(object_id=2, ascent_date=date(2024, 6, 15)),
+    ]
     invalid_ascents = [Ascent(object_id=1, ascent_date=date(2024, 6, 15))]
     assert not rule.validate(valid_ascents, ctx)
     assert len(rule.validate(invalid_ascents, ctx)) == 1
@@ -96,7 +99,10 @@ def test_mandatory_objects_rule(ctx: VerificationContext) -> None:
 def test_grouped_alternatives_rule(ctx: VerificationContext) -> None:
     """Weryfikuje regułę grupowanych alternatyw."""
     rule = GroupedAlternativesRule(groups=(frozenset([1, 2]), frozenset([3, 4])), min_groups_required=2)
-    valid_ascents = [Ascent(object_id=1, ascent_date=date(2024, 6, 15)), Ascent(object_id=3, ascent_date=date(2024, 6, 15))]
+    valid_ascents = [
+        Ascent(object_id=1, ascent_date=date(2024, 6, 15)),
+        Ascent(object_id=3, ascent_date=date(2024, 6, 15)),
+    ]
     invalid_ascents = [
         Ascent(object_id=1, ascent_date=date(2024, 6, 15)),
         Ascent(object_id=2, ascent_date=date(2024, 6, 15)),

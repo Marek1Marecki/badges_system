@@ -31,13 +31,18 @@ def _persist_audit_log(action: str, target_type: str, target_id: str, payload: d
     )
 
 
-def _delay_poi_recalculation(profile_id: int) -> None:
-    """Send task via Celery's string-based registry to avoid importing apps module."""
+def _delay_poi_recalculation(profile_id: int, request_id: str | None = None) -> None:
+    """Send task via Celery's string-based registry to avoid importing apps module.
+
+    AUDYT-117: request_id jest przekazywany jako kwarg, aby task mógł skorelować
+    logi Celery z logami HTTP (distributed tracing bez OpenTelemetry).
+    """
     from celery import current_app
 
     current_app.send_task(
         "apps.badges.tasks.recalculate_poi_scores_task",
         args=[profile_id],
+        kwargs={"request_id": request_id or "unknown"},
     )
 
 
@@ -50,9 +55,9 @@ class CeleryEventPublisher(DomainEventPublisherPort):
     def publish(self, event: DomainEvent) -> None:
         if isinstance(event, UserProgressStateChanged):
             if getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
-                _delay_poi_recalculation(event.profile_id)
+                _delay_poi_recalculation(event.profile_id, event.request_id)
             else:
-                transaction.on_commit(lambda: _delay_poi_recalculation(event.profile_id))
+                transaction.on_commit(lambda: _delay_poi_recalculation(event.profile_id, event.request_id))
 
         elif isinstance(event, BadgeStatusChanged):
             _persist_audit_log(

@@ -39,9 +39,9 @@ class TestStartBadgeProgressUseCase:
             awarding_service=BadgeAwardingDomainService(),
         )
 
-        progress_id = uc.execute(profile_id=1, badge_code="KGP")
+        result = uc.execute(profile_id=1, badge_code="KGP")
 
-        assert progress_id == 1
+        assert result.id == 1
         assert repo.progresses[1].version_id == 42
         badge_repo.get_version_id_for_date.assert_called_once_with("KGP", clock.now().date())
 
@@ -69,10 +69,10 @@ class TestStartBadgeProgressUseCase:
             awarding_service=awarding_service,
         )
 
-        progress_id = uc.execute(profile_id=1, badge_code="KGP")
+        result = uc.execute(profile_id=1, badge_code="KGP")
 
         badge_repo.get_version_id_for_date.assert_called_once_with("KGP", date(2015, 6, 1))
-        assert repo.progresses[progress_id].version_id == 10
+        assert repo.progresses[result.id].version_id == 10
 
     def test_raises_error_when_no_version_exists(self) -> None:
         """Rzuca błąd gdy brak wersji regulaminu."""

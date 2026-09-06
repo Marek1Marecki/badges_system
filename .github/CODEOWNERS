@@ -1,0 +1,25 @@
+# Code Owners dla badges_system
+
+## Zasada
+Zmiany w krytycznych częściach architektury wymagają zatwierdzenia
+przez Głównego Architekta przed merge.
+
+## Właściciele
+# Architecture: domain layer + ADRs + docs
+/docs/                   @Marek1Marecki
+/domain/                 @Marek1Marecki
+/apps/badges/models/     @Marek1Marecki
+
+# Application layer (use cases, DTOs, ports)
+/application/            @Marek1Marecki
+
+# Infrastructure (adapters) — wymaga review przed zmianą
+/infrastructure/         @Marek1Marecki
+
+# E2E / test infra — open
+/tests/                  *
+
+# Config / CI
+/.github/                @Marek1Marecki
+/docker-compose*.yml     @Marek1Marecki
+/Dockerfile              @Marek1Marecki

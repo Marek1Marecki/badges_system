@@ -1,5 +1,6 @@
 """Przypadek użycia: Porzucenie odznaki (US-C01b)."""
 
+from application.dto.result import CreatedResourceResultDTO
 from application.exceptions import ConflictError, UseCaseError
 from application.ports.event_publisher_port import DomainEventPublisherPort
 from application.ports.uow_port import UnitOfWorkPort
@@ -22,7 +23,7 @@ class UnsubscribeBadgeUseCase:
         self._uow = uow
         self._event_publisher = event_publisher
 
-    def execute(self, profile_id: int, badge_code: str) -> str:
+    def execute(self, profile_id: int, badge_code: str) -> CreatedResourceResultDTO:
         """Kasuje subskrypcję i inwaliduje cache mapy.
 
         Args:
@@ -30,7 +31,7 @@ class UnsubscribeBadgeUseCase:
             badge_code: Kod odznaki do usunięcia.
 
         Returns:
-            badge_code odsubskrybowanej odznaki.
+            `CreatedResourceResultDTO` z `id` = badge_code odsubskrybowanej odznaki.
         """
         progress = self._progress_repo.get_progress(profile_id, badge_code, 1)
         if not progress:
@@ -45,4 +46,4 @@ class UnsubscribeBadgeUseCase:
             # System sam dowie się, że postęp się zmienił (zniknął) i wyczyści kolory
             self._event_publisher.publish(UserProgressStateChanged(profile_id=profile_id))
 
-        return badge_code
+        return CreatedResourceResultDTO(id=badge_code, type="unsubscribed_badge")

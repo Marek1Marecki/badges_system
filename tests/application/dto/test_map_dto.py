@@ -5,8 +5,6 @@ Audyt-027: walidatory `Field(ge=, le=)` muszą odrzucać
 fałszywe wektory bbox (np. ``-999,-999,999,999``) zanim trafią do PostGIS.
 """
 
-from datetime import date
-
 import pytest
 from pydantic import ValidationError
 

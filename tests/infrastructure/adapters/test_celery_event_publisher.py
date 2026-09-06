@@ -19,7 +19,26 @@ class TestCeleryEventPublisher:
             with patch("django.conf.settings.CELERY_TASK_ALWAYS_EAGER", True):
                 publisher.publish(event)
 
-        mock_send.assert_called_once_with("apps.badges.tasks.recalculate_poi_scores_task", args=[1])
+        mock_send.assert_called_once_with(
+            "apps.badges.tasks.recalculate_poi_scores_task",
+            args=[1],
+            kwargs={"request_id": "unknown"},
+        )
+
+    def test_request_id_propagated_in_eager_mode(self) -> None:
+        """AUDYT-117: request_id z eventu jest propagowany jako kwarg taska Celery."""
+        publisher = CeleryEventPublisher()
+        event = UserProgressStateChanged(profile_id=1, request_id="req_trace_42")
+
+        with patch("celery.current_app.send_task") as mock_send:
+            with patch("django.conf.settings.CELERY_TASK_ALWAYS_EAGER", True):
+                publisher.publish(event)
+
+        mock_send.assert_called_once_with(
+            "apps.badges.tasks.recalculate_poi_scores_task",
+            args=[1],
+            kwargs={"request_id": "req_trace_42"},
+        )
 
     def test_publishes_user_progress_event_on_commit(self) -> None:
         """Publikuje zdarzenie po commicie gdy CELERY_TASK_ALWAYS_EAGER=False."""

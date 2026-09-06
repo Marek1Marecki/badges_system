@@ -36,6 +36,7 @@ digraph G {
     "application.dto.map_dto" [fillcolor="lightgreen"];
     "application.dto.news_dto" [fillcolor="lightgreen"];
     "application.dto.region_cache_dto" [fillcolor="lightgreen"];
+    "application.dto.result" [fillcolor="lightgreen"];
     "application.dto.tourist_views_dto" [fillcolor="lightgreen"];
     "application.dto.user_context_dto" [fillcolor="lightgreen"];
     "application.dto.verify_badge_dto" [fillcolor="lightgreen"];
@@ -231,6 +232,7 @@ digraph G {
   "application.use_cases.get_mvt_tile" -> "application.ports.cache_port";
   "application.use_cases.get_mvt_tile" -> "application.ports.mvt_port";
   "application.use_cases.log_ascent" -> "application.dto.ascent_dto";
+  "application.use_cases.log_ascent" -> "application.dto.result";
   "application.use_cases.log_ascent" -> "application.exceptions";
   "application.use_cases.log_ascent" -> "application.ports.clock_port";
   "application.use_cases.log_ascent" -> "application.ports.event_publisher_port";
@@ -240,14 +242,17 @@ digraph G {
   "application.use_cases.log_ascent" -> "application.services.poi_scoring_service";
   "application.use_cases.log_ascent" -> "domain.events";
   "application.use_cases.scan_proximity_candidates" -> "application.ports.region_cache_port";
+  "application.use_cases.start_badge_progress" -> "application.dto.result";
   "application.use_cases.start_badge_progress" -> "application.exceptions";
   "application.use_cases.start_badge_progress" -> "application.ports.badge_repository_port";
   "application.use_cases.start_badge_progress" -> "application.ports.clock_port";
   "application.use_cases.start_badge_progress" -> "application.ports.event_publisher_port";
   "application.use_cases.start_badge_progress" -> "application.ports.uow_port";
   "application.use_cases.start_badge_progress" -> "application.ports.user_progress_port";
+  "application.use_cases.start_badge_progress" -> "domain.entities.tourist_profile";
   "application.use_cases.start_badge_progress" -> "domain.events";
   "application.use_cases.start_badge_progress" -> "domain.services.badge_awarding_domain_service";
+  "application.use_cases.unsubscribe_badge" -> "application.dto.result";
   "application.use_cases.unsubscribe_badge" -> "application.exceptions";
   "application.use_cases.unsubscribe_badge" -> "application.ports.event_publisher_port";
   "application.use_cases.unsubscribe_badge" -> "application.ports.uow_port";

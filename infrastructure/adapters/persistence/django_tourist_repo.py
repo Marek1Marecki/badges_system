@@ -18,8 +18,8 @@ from typing import TYPE_CHECKING, cast
 
 from django.db.models import Min
 
-from application.dto.ascent_dto import AscentDTO, AscentRequestDTO
-from application.dto.user_context_dto import BadgeProgressDTO, TouristProfileDTO
+from application.dto.ascent_dto import AscentDomainDTO, AscentRequestDTO
+from application.dto.user_context_dto import BadgeProgressDomainDTO, TouristProfileDomainDTO
 from application.ports.user_progress_port import (
     AscentLogRepositoryPort,
     TouristProfileRepositoryPort,
@@ -36,7 +36,7 @@ class DjangoTouristProfileRepository(TouristProfileRepositoryPort):
     Odpowiedzialny wyłącznie za odczyt profilu turysty (wiek, limity, kluby).
     """
 
-    def get_profile(self, profile_id: int) -> TouristProfileDTO | None:
+    def get_profile(self, profile_id: int) -> TouristProfileDomainDTO | None:
         """
 
         Args:
@@ -56,7 +56,7 @@ class DjangoTouristProfileRepository(TouristProfileRepositoryPort):
         # Rzutowanie kluczy na str, a wartości na date z JSONB bazy
         join_dates = {str(k): date.fromisoformat(str(v)) for k, v in profile.club_join_dates.items()}
 
-        return TouristProfileDTO(
+        return TouristProfileDomainDTO(
             profile_id=profile.id,
             is_main_profile=profile.is_main_profile,
             email=profile.user.email,
@@ -165,7 +165,9 @@ class DjangoAscentLogRepository(AscentLogRepositoryPort):
         )
         return cast(int, log.id)
 
-    def get_unconsumed_ascents(self, profile_id: int, badge_code: str, cutoff_date: date | None) -> list[AscentDTO]:
+    def get_unconsumed_ascents(
+        self, profile_id: int, badge_code: str, cutoff_date: date | None
+    ) -> list[AscentDomainDTO]:
         """
 
         Args:
@@ -214,10 +216,10 @@ class DjangoAscentLogRepository(AscentLogRepositoryPort):
 
         # Przebieg 2: strumień po ascents, by skonstruować DTO — nie trzyma
         # tysięcy obiektów AscentLog w RAM naraz.
-        ascents: list[AscentDTO] = []
+        ascents: list[AscentDomainDTO] = []
         for ascent in qs.only("peak_id", "ascent_date").iterator(chunk_size=2000):
             ascents.append(
-                AscentDTO(
+                AscentDomainDTO(
                     object_id=ascent.peak_id,
                     ascent_date=ascent.ascent_date,
                     region_ids=frozenset(region_map.get(ascent.peak_id, set())),
@@ -271,7 +273,7 @@ class DjangoAscentLogRepository(AscentLogRepositoryPort):
         created = AscentLog.objects.bulk_create(new_logs, ignore_conflicts=True)
         return len(created)
 
-    def get_all_ascents_for_user(self, profile_id: int) -> list[AscentDTO]:
+    def get_all_ascents_for_user(self, profile_id: int) -> list[AscentDomainDTO]:
         """
 
         Args:
@@ -308,10 +310,10 @@ class DjangoAscentLogRepository(AscentLogRepositoryPort):
             region_map[rc["tourist_object_id"]].add(rc["region_id"])
 
         # Przebieg 2: strumień z powrotem, by nie trzymać 50k obiektów w RAM.
-        ascents: list[AscentDTO] = []
+        ascents: list[AscentDomainDTO] = []
         for ascent in ascent_qs.only("peak_id", "ascent_date").iterator(chunk_size=2000):
             ascents.append(
-                AscentDTO(
+                AscentDomainDTO(
                     object_id=ascent.peak_id,
                     ascent_date=ascent.ascent_date,
                     region_ids=frozenset(region_map.get(ascent.peak_id, set())),
@@ -327,7 +329,7 @@ class DjangoUserProgressRepository(UserProgressRepositoryPort):
     (tworzenie, aktualizacja i odczyt postępów użytkownika).
     """
 
-    def _to_progress_dto(self, progress_obj: UserBadgeProgress) -> BadgeProgressDTO:
+    def _to_progress_dto(self, progress_obj: UserBadgeProgress) -> BadgeProgressDomainDTO:
         """Prywatny mapper ORM -> DTO.
 
         Args:
@@ -335,7 +337,7 @@ class DjangoUserProgressRepository(UserProgressRepositoryPort):
 
         Returns:
         """
-        return BadgeProgressDTO(
+        return BadgeProgressDomainDTO(
             progress_id=progress_obj.id,
             profile_id=progress_obj.profile_id,
             badge_code=progress_obj.badge.code,
@@ -346,7 +348,7 @@ class DjangoUserProgressRepository(UserProgressRepositoryPort):
             logistic_status_date=progress_obj.logistic_status_date,
         )
 
-    def get_all_unarchived_progresses(self, profile_id: int) -> list[BadgeProgressDTO]:
+    def get_all_unarchived_progresses(self, profile_id: int) -> list[BadgeProgressDomainDTO]:
         """
 
         Args:
@@ -361,7 +363,7 @@ class DjangoUserProgressRepository(UserProgressRepositoryPort):
         qs = UserBadgeProgress.objects.filter(profile_id=profile_id).select_related("badge", "version")
         return [self._to_progress_dto(p) for p in qs]
 
-    def get_progress(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> BadgeProgressDTO | None:
+    def get_progress(self, profile_id: int, badge_code: str, cycle_number: int = 1) -> BadgeProgressDomainDTO | None:
         """
 
         Args:
@@ -466,7 +468,7 @@ class DjangoUserProgressRepository(UserProgressRepositoryPort):
         )
         return frozenset(codes)
 
-    def get_progress_by_id(self, profile_id: int, progress_id: int) -> BadgeProgressDTO | None:
+    def get_progress_by_id(self, profile_id: int, progress_id: int) -> BadgeProgressDomainDTO | None:
         """
 
         Args:

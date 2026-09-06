@@ -358,9 +358,17 @@ jobs:
           name: integration-test-docker-logs
           path: integration-test-docker-logs.txt
 
-      - name: Cleanup środowiska Docker (zawsze)
-        if: always()
-        run: docker compose --env-file .env -f compose.yml -f compose.test.yml down -v --remove-orphans || true
+    - name: Cleanup środowiska Docker (zawsze)
+      if: always()
+      run: |
+        docker compose --env-file .env -f compose.yml -f compose.test.yml down -v --remove-orphans || true
+        # GC (AUDYT-147): dangling images + stopped containers + networks.
+        # --filter until=24h chroni obrazy używane w ciągu ostatniej doby (lokalne dev).
+        docker system prune -f --filter "until=24h" || true
+        # Orphaned wolumeny z prefiksem ci- (przerwane buildy) — nie dotyczy innych wolumenów hosta
+        docker volume ls -qf dangling=true | xargs -r docker volume rm -f || true
+        echo "Cleanup completed."
+
 
   e2e-tests:
     name: E2E / Playwright Tests

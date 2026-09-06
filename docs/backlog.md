@@ -40,25 +40,6 @@ Ryzyko to nie jest blokujące, ale obniża "testowalność" systemu (Testability
 
 ---
 
-### [AUDYT-019] Brak mechanizmu automatycznego discovery dla Reguł (Shotgun Surgery)
-**Obszar:** `Domena / Wzorzec Strategii`  
-**Priorytet:** `🔵 Niski`  
-**Status:** `Specification`
-
-**Diagnoza Audytora:**
-Architektura weryfikacji odznak (Wzorzec Strategii) cierpi na zjawisko *Shotgun Surgery*. Dodanie nowej reguły do systemu wymaga obecnie otwarcia i modyfikacji aż 4 plików: (1) Utworzenia samej klasy w domenie, (2) Dodania jej do słownika `RULE_BUILDERS`, (3) Dopisania logiki budującej w Adapterze, (4) Dopisania struktury w JSON Schema dla panelu Admina.
-
-**Plan (zależny od refaktoryzacji `BadgeRuleFactory`):**
-- [ ] Zastosować dekorator `@register_rule("RuleName")` dekorujący klasy reguł
-- [ ] Rejestrować klasy w module `domain/rules/__init__.py` (central registry)
-- [ ] `BadgeRuleFactory` (infrastructure/factories/) iterować po registry zamiast ręcznej dict manipulacji
-- [ ] JSON Schema (`rules_schema.py`) generować dynamicznie z registry (eliminacja kroku 4)
-
-**Komentarz Architekta:**
-To nie jest błąd krytyczny dla obecnej skali projektu (mamy kilkanaście reguł i panujemy nad nimi). Jednak w systemie na poziomie Enterprise automatyczne rejestrowanie (Discovery) oszczędza setki godzin pracy i zapobiega literówkom.
-
----
-
 ### [AUDYT-032] Nadmiernie obciążająca agregacja `get_oldest_ascent_date`
 **Obszar:** `Infrastruktura / Zapytania`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -152,6 +133,39 @@ Wyprzedzanie przyszłości. Mamy to już zabezpieczone koncepcyjnie w `SECURITY_
 
 ---
 
+### [AUDYT-060] Prawdziwa Integracja API bez fałszywych Mocków (Fake DI)
+**Obszar:** `Testy API`  
+**Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
+
+**Diagnoza Audytora:** 
+Plik `tests/apps/api/test_integration.py` (916 linii) ma w nazwie "integration", ale w rzeczywistości **mockuje Use Case'y** przez `get_container`. Oznacza to, że nie weryfikuje on prawdziwego przejścia przez cały cykl życia bazy danych. To są wyizolowane testy kontraktów HTTP, a nie testy integracyjne.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [ ] Zmienić nazwę pliku z `test_integration.py` na np. `test_api_controllers.py`, co uściśli jego rolę (izolacja).
+- [ ] Utworzyć w przyszłości nowy plik prawdziwych testów integracyjnych, który wywoła widok z podpiętą prawdziwą (testową) bazą danych bez omijania (mockowania) Czystej Domeny.
+
+**Komentarz Architekta:**
+Audytor słusznie obnażył nazewnictwo. Nasze testy kontrolerów są wspaniałe, ale nie są "integracyjne". Prawdziwą integrację (E2E) sprawdzimy jednak w Playwright, więc tworzenie nowych testów zapytań HTTP w `pytest` można odłożyć na później.
+
+---
+
+### [AUDYT-065] Eliminacja "God Class" w Kontenerze DI (Dependency Injection)
+**Obszar:** `Bootstrap / Inżynieria Oprogramowania`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Obecnie kontener `bootstrap/container.py` inicjuje i rejestruje wszystko w jednej, wielkiej klasie `AppContainer`. W miarę jak projekt urośnie do 30-40 Use Case'ów (przy podwojeniu funkcjonalności), plik ten przekroczy kilkaset linijek kodu i stanie się wąskim gardłem przy tworzeniu instancji, tzw. nową "God Class", co będzie prowadzić do konfliktów scalania w Git.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [ ] Rozbić `AppContainer` na modułowe podkontenery, np. `BadgeContainer`, `TouristContainer`, `InfraContainer`.
+- [ ] Zastosować wzorzec *Composition* w głównym pliku `bootstrap/__init__.py`, który sklei mniejsze kontenery w jedną zależność.
+
+**Komentarz Architekta:**
+Klasyczny ból wzrostu w architekturze "Manual DI" (tworzonej bez frameworków do wstrzykiwania). Obecnie trzyma to projekt w ryzach, ale podział modułowy będzie naturalnym, kolejnym krokiem.
+
+---
+
 ### [AUDYT-066] Wymóg wsparcia dla wersji Offline (Local-First Architecture)
 **Obszar:** `Frontend / UX / Aplikacja Mobilna`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -232,19 +246,51 @@ To lekcja z budowania startupów. Kiedy zaczynamy pobierać opłaty, płatności
 
 ---
 
-### [AUDYT-087] Luki w procesie zarządzania Limitami Freemium (Krawędzie pakietów)
-**Obszar:** `Aplikacja / Freemium Business Logic`  
-**Priorytet:** `🟠 WYSOKI`  
+### [AUDYT-082] Refaktoryzacja `peak_id` na `object_id` w Czystej Domenie
+**Obszar:** `Domena / Value Objects`  
+**Priorytet:** `🟢 NISKI (Jakość Kodu)`  
 
 **Diagnoza Audytora:** 
-Proces "Pakiety Freemium" posiada niezaadresowaną ścieżkę krytyczną. Jeśli turysta posiada aktualnie 5 subskrypcji na koncie PRO i zrezygnuje z pakietu PRO (wracając do pakietu FREE z limitem 3 subskrypcji), system nie definiuje, co ma się stać z 2 nadmiarowymi, aktywnymi odznakami (status `IN_PROGRESS`). Obecnie nie istnieje żaden "Reconciliation Job" (Zadanie Wyrównujące) ani reguła w Czystej Domenie, która radziłaby sobie z takim zjawiskiem.
+Value Object `Ascent` (Wejście) w katalogu `domain/value_objects/ascent.py` zawiera pole nazwane `peak_id`. Stanowi to wyciek z "języka potocznego" do Domeny. Z punktu widzenia systemu logujemy wejścia na `TouristObject` (Obiekty Turystyczne), a nie tylko na góry/szczyty (Peak) – mogą to być wieże, jaskinie czy schroniska. Domena nie powinna zakładać typu geograficznego obiektu.
 
-**Action Items (Do wdrożenia przed udostępnieniem subskrypcji B2C):**
-- [ ] Zaprojektować i udokumentować (np. w `UI_GUIDELINES.md` lub `STORIES.md`) politykę "Downgrade'u" konta: czy nadmiarowe odznaki zostają zamrożone (Read-Only), czy turysta musi ręcznie wybrać, z których dwóch odznak zrezygnować, by móc logować wejścia.
-- [ ] Zaimplementować walidację w `VerifyBadgeUseCase`, która zablokuje przeliczanie postępu na zamrożonych odznakach, jeśli limit jest przekroczony.
+**Action Items (Do wdrożenia przy okazji refaktoringu):**
+- [ ] Zmienić nazwę pola w `Ascent` z `peak_id` na `object_id`.
+- [ ] Zaktualizować wszystkie klasy testowe i metody używające tej nazwy argumentu.
 
 **Komentarz Architekta:**
-Klasyczny przypadek Edge Case biznesowego. Downgrade kont to zawsze najtrudniejszy element projektowania SaaS, który został u nas pominięty na rzecz łatwiejszego projektowania "awansów" kont (Upgrade).
+Czysta, książkowa kosmetyka kodu (Clean Code). Podnosi jakość bez ryzyka awarii, ale w tym momencie nie blokuje rozwoju funkcji biznesowych.
+
+---
+
+### [AUDYT-083] Niejednoznaczność metody `get_active_progresses()`
+**Obszar:** `Aplikacja / Porty`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Nazwa metody portu `get_active_progresses` (Pobierz Aktywne Postępy) w module postępów turysty jest semantycznie myląca. Zwraca ona wszystkie postępy, które *nie są zarchiwizowane*, a nie te o statusie `IN_PROGRESS` (w tym również ukończone, np. `COMPLETED`). W efekcie serwisy (jak `PoiScoringService`) muszą ręcznie ignorować ukończone postępy w kodzie Pythona.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [ ] Zmienić nazwę metody na `get_all_unarchived_progresses()`.
+- [ ] **LUB:** Dodać opcjonalny parametr filtrujący do metody w adapterze `DjangoTouristRepository` (np. `exclude_status="COMPLETED"`), aby zapobiec wyciekaniu logiki filtrowania do serwisów w warstwie aplikacji.
+
+**Komentarz Architekta:**
+Klasyczny problem przerzucania ciężaru z bazy danych (gdzie można to szybko odfiltrować w SQL) na warstwę Pythona. Przeniesienie warunku do adaptera to krok typu "Quick Win".
+
+---
+
+### [AUDYT-084] Odśmiecianie pojęć technicznych w `application/services`
+**Obszar:** `Aplikacja / Serwisy`  
+**Priorytet:** `🟢 NISKI`  
+
+**Diagnoza Audytora:** 
+Nazwy `PoiScoringService` oraz `ExploreQueriesService` to "Techniczny Bełkot". Łączą w sobie skróty z różnych technologii (POI = Point of Interest) lub słowa-wytrychy (Queries, Service). System powinien posługiwać się czystszym językiem Domenowym (np. "Potencjał Turystyczny" zamiast "POI Score").
+
+**Action Items (Do wdrożenia opcjonalnie):**
+- [ ] Rozważyć zmianę nazwy `PoiScoringService` na `PotentialRankingService`.
+- [ ] Rozważyć zmianę nazwy `ExploreQueriesService` na `MapDiscoveryService`.
+
+**Komentarz Architekta:**
+Zmiana nazw klas dla "lepszego brzmienia" jest użyteczna na bardzo dojrzałym etapie rozwoju projektu. U nas obiekty te i tak są maskowane przez kontener Dependency Injection, a my "rozumiemy" ten slang. Odłożyć do głębokiego Backlogu.
 
 ---
 
@@ -269,6 +315,7 @@ Implementacja wymaga migracji bazy (`apps/tourists/models.py` + migration). Zost
 ### [AUDYT-090] Brakujący Interfejs (UX) do Przełączania Praw Nabytych
 **Obszar:** `API / UX`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟡 Partial`  
 
 **Diagnoza Audytora:** 
 `US-C05` gwarantuje turyście "Świadomy wybór Regulaminu". Nasz kod w `StartBadgeProgressUseCase` realizuje "Leniwe Zakotwiczenie" – automatycznie znajduje i podczepia turystę pod stary regulamin na podstawie daty jego najstarszego wejścia (Grandfather Clause). Audytor wyłapał jednak lukę w UX: turysta, po automatycznym zakotwiczeniu go przez system w np. regulaminie z 2018 roku, **nie posiada na ekranie przycisku (Switch Version)**, który pozwoliłby mu dobrowolnie zrezygnować ze starych praw i przejść na najnowszą, obecną wersję odznaki, jeśli woli zdobywać ją po nowemu!
@@ -283,10 +330,25 @@ Klasyczne "odcięcie frontendu od backendu". Backend to umie (bo przyjmuje param
 
 ---
 
+### [AUDYT-092] Pusta odpowiedź z API przy braku obiektów (Silent Success)
+**Obszar:** `API / UX GPX`  
+**Priorytet:** `🟢 NISKI`  
+
+**Diagnoza Audytora:** 
+W scenariuszu `US-C17` wgrywamy ślad GPX, by znaleźć pobliskie szczyty. Jeżeli ślad znajduje się np. w Niemczech, funkcja `distance_lte` PostGIS-a odrzuca wszystkie polskie obiekty i zwraca pustą listę. API odpowiada cichym `200 OK` z pustą listą. Brak odpowiedniej obsługi tego stanu (np. `404 Not Found` dla trasy bez punktów) powoduje, że klient HTMX zarysuje turyscie pusty ekran.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [ ] Dodać wyraźny komunikat i obsługę stanu "Empty State" (Pusty Koszyk) w kodzie widoku `gpx_upload.html` lub wymusić na Use Case w `AnalyzeGpxTrackUseCase` rzucanie błędu biznesowego `Brak obiektów PTTK w promieniu 200m od wyznaczonej trasy.`
+
+**Komentarz Architekta:**
+Czysta sprawa UX, zapobiegająca konfuzji turysty.
+
+---
+
 ### [AUDYT-093] Brak zautomatyzowanej kwarantanny dla złośliwych danych OSM
-**Status:** ⏸️ `Odłożone do Fazy SRE`  
 **Obszar:** `Dane Referencyjne / DataOps`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 Obecny mechanizm "Nocnego Stróża" (`RunOsmNightWatchmanUseCase`) potrafi zgłaszać konflikty do skrzynki odbiorczej (Inbox), ale brakuje mu systemu odporności na celowe zatruwanie danych. Atakujący w OpenStreetMap może edytować znany szczyt PTTK (np. Rysy), zmieniając jego współrzędne tak, by znalazł się na Alasce, co zniszczyłoby wyliczanie CQRS i weryfikację. Nasz system aktualizuje tagi w `osm_raw_tags` w tle, nie alarmując o drastycznych anomaliach przestrzennych.
@@ -300,9 +362,26 @@ Klasyczny "Blind Spot" integracji zewnętrznych. Całkowite zaufanie do otwarteg
 
 ---
 
+### [AUDYT-097] Brak strategii wersjonowania API (API Versioning Policy)
+**Obszar:** `Dokumentacja / API`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Plik `API_CONTRACTS.md` definiuje ścieżki w formacie `/api/v1/`, ale nie definiuje, **co** spowoduje przejście na `/api/v2/`. Kiedy wprowadzić nową wersję? Czy usunięcie pola z payloadu łamie wsteczną kompatybilność? Brakuje formalnego kontraktu.
+
+**Action Items (Do wdrożenia w Fazy Rozwoju API):**
+- [ ] Dodać sekcję "Strategia Wersjonowania API" do `API_CONTRACTS.md` lub stworzyć dedykowany `ADR` wyjaśniający, co stanowi *Breaking Change* w naszym systemie (np. usunięcie pola, zmiana typu, zmiana wymogów CSRF).
+
+**Komentarz Architekta:**
+Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał, kiedy ucinamy wsparcie. Dopóki klientem API jest tylko nasz wewnętrzny frontend (HTMX/JS), to nie jest problem. Jeśli otworzymy to dla aplikacji mobilnych, to jest punkt krytyczny.
+
+---
+
+
 ### [AUDYT-099] Niezdefiniowany proces wygasania starych wersji regulaminów
 **Obszar:** `Biznes / Prawa Nabyte`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🔴 Open`  
 
 **Diagnoza Audytora:** 
 Obecny model Praw Nabytych (`US-C05`) opiera się na polu `valid_to` w `BadgeVersionModel`. Jeśli administrator nie wypełni tego pola (`valid_to = NULL`), system traktuje regulamin jako ważny "w nieskończoność". Problem polega na tym, że jeśli PTTK wyda nową wersję odznaki w 2026 roku, ale administrator zapomni ręcznie ustawić datę końcową dla wersji z 2020 roku, nowi turyści bez historii logów będą automatycznie zakotwiczani w **obu** wersjach, lub system wybierze starą z powodu błędnego sortowania w kodzie wybierającym.
@@ -349,26 +428,18 @@ W fazie MVP zakładamy, że użytkownik po prostu odświeży stronę (F5) w razi
 ---
 
 ### [AUDYT-103] Wiedza Ukryta: Struktura i rola `VerificationContext`
-**Status:** ✅ `ZROBIONE w Push 9`  
 **Obszar:** `Dokumentacja / Domena`  
 **Priorytet:** `🟡 ŚREDNI`  
 
 **Diagnoza Audytora:** 
 `VerificationContext` to nasz genialny obiekt wstrzykujący stan zewnętrzny (czas, datę urodzenia turysty, mapę klubów PTTK) prosto do Czystej Domeny, zabezpieczając Invariant T-02. Jednak jego pełna rola (oraz struktury, z jakich korzysta, np. `club_join_dates: dict[str, date]`) jest nigdzie oficjalnie nieudokumentowana – nowy programista musi ją dedukować bezpośrednio z kodu Pythona lub czytając implementację starych testów.
 
-**Rozwiązanie:**
-Zaktualizowano sekcję `VerificationContext` w `docs/Domain Model.md`:
-1. Uzupełniona tabela o `completed_badge_codes` (brakująca kolumna)
-2. Dodano diagram konstrukcji kontekstu w `VerifyBadgeUseCase` (mermaid flowchart pokazujący iniekcję z `ClockPort`, `TouristProfileRepositoryPort`, `UserProgressRepositoryPort`)
-3. Wyszczególnowiono Invariant T-02 (determinizm czasu)
-4. Uzupełniona dokumentacja `AscentContextDTO` — `peak_id` → `object_id` (AUDYT-082)
-
 **Action Items (Do wdrożenia w przyszłości):**
-- [x] Zaktualizować plik `DOMAIN_MODEL.md` w sekcji `VerificationContext`.
-- [x] Jawnie opisać, dlaczego domena nie pobiera dat samodzielnie i jak warstwa aplikacji (`VerifyBadgeUseCase`) buduje ten kontekst na podstawie profilu z bazy.
+- [ ] Zaktualizować plik `DOMAIN_MODEL.md` w sekcji `VerificationContext`.
+- [ ] Jawnie opisać, dlaczego domena nie pobiera dat samodzielnie i jak warstwa aplikacji (`VerifyBadgeUseCase`) buduje ten kontekst na podstawie profilu z bazy.
 
 **Komentarz Architekta:**
-Klasyczny problem DDD. Odklejenie logiki bazodanowej zmusza do tworzenia "mostów" (Contexts). Brak ich dokładnego opisu zniechęca nowych członków zespołu do przestrzegania czystości warstw. — Dokumentacja teraz jasno pokazuje, jak `ClockPort`, `TouristProfileRepositoryPort` i `UserProgressRepositoryPort` społecznie budują `VerificationContext` przed wejściem do domeny.
+Klasyczny problem DDD. Odklejenie logiki bazodanowej zmusza do tworzenia "mostów" (Contexts). Brak ich dokładnego opisu zniechęca nowych członków zespołu do przestrzegania czystości warstw.
 
 ---
 
@@ -436,22 +507,6 @@ Bardzo mądre spojrzenie na bezpieczeństwo kodu z perspektywy ludzkiej (Human R
 
 ---
 
-### [AUDYT-114] Brak Degradacji Awaryjnej (Graceful Degradation) dla Redis Cache
-**Obszar:** `Operacje / Wydajność / Niezawodność (SRE)`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Obecny system traktuje pamięć podręczną (Redis) jako "Twardą Zależność" (Hard Dependency). Jeśli usługa Redis ulegnie awarii (np. OOM - Out of Memory, odcięcie sieci lub restart kontenera) w trakcie ruchu turystów, wszystkie widoki API bazujące na odczycie rankingu 100/n, kolorów mapy czy stanu profili zawiodą w całości. Użytkownik otrzyma błąd 500 lub "szarą mapę", a aplikacja stanie się bezużyteczna, mimo że główna baza danych (PostgreSQL) działa w 100% poprawnie.
-
-**Action Items (Do wdrożenia w Fazy SRE / Produkcji):**
-- [ ] Zmodyfikować warstwę zapytań (np. `ExploreMapUseCase` lub nowo powołane `QueryServices`), aby w przypadku błędu połączenia z buforem (`RedisConnectionError`) aplikacja "cicho" wracała do stanu domyślnego lub awaryjnie przeliczała podstawowe dane bezpośrednio z PostgreSQL (Graceful Degradation).
-- [ ] Dodać zabezpieczenia bloku `try-except` w adapterze `DjangoCacheAdapter`, aby chronić wyższe warstwy przed padem usługi.
-
-**Komentarz Architekta:**
-Klasyczny błąd zaufania do infrastruktury w środowiskach rozproszonych. Każdy zewnętrzny klocek w Dockerze kiedyś padnie. Aplikacja powinna działać "wolniej, ale poprawnie" po awarii Cache'u, a nie wyłączać się całkowicie.
-
----
-
 ### [AUDYT-115] Opracowanie strategii awaryjnej i "Data Recovery" dla Użytkowników
 **Obszar:** `Operacje / Wdrożenie (SRE)`  
 **Priorytet:** `🟠 WYSOKI (Przed oficjalnym startem PROD)`  
@@ -466,26 +521,6 @@ Raport uderza w brak jakiejkolwiek procedury operacyjnej dla obsługi tzw. "Awar
 
 **Komentarz Architekta:**
 Klasyczny przypadek przejścia z projektu "Programistycznego" na "Produkcyjny". Administratorzy muszą mieć pod ręką gotowe, przetestowane komendy Bash/SQL na wypadek kryzysu u turystów. Zabezpiecza nas to przed paniką.
-
----
-
-### [AUDYT-116] Anemiczna Domena – Wyciek Logiki Biznesowej do Warstwy Aplikacji
-**Obszar:** `Domena / Domain-Driven Design`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Audytor wyłapał fundamentalny rozjazd między filozofią DDD a obecną realizacją kodu (tzw. Anemic Domain Model). Czysta Domena (`domain/`) posiada zaledwie ~600 linii kodu i sprowadza się wyłącznie do mechanizmu `BadgeVersionDomain.evaluate()`. Pozostała, kluczowa logika biznesowa PTTK "wyciekła" do warstwy Aplikacji (Use Cases). Przykładowo:
-1. Logika walidacji "Praw Nabytych" (Grandfather Clause) żyje obecnie w plikach orkiestratorów.
-2. Zabezpieczenie limitów konta Freemium zlokalizowane jest wewnątrz `StartBadgeProgressUseCase`.
-3. Walidacja bitemporalna (`T-01`) znajduje się wewnątrz pętli `BulkLogAscentsUseCase`.
-
-**Action Items (Do wdrożenia w Fazy Refaktoryzacji Domeny):**
-- [ ] Przenieść logikę oceny "Praw Nabytych" do nowej, Czystej Usługi Domenowej (np. `domain/services/grandfathering_service.py`).
-- [ ] Zbudować agregat `TouristProfile` (w Czystej Domenie), do którego przeniesiona zostanie odpowiedzialność za weryfikację limitów subskrypcji.
-- [ ] Oczyścić Use Case'y z warunkowych logik `if/else`, pozostawiając im wyłącznie odpowiedzialność za pobieranie z bazy, wywoływanie Czystej Domeny i zapis.
-
-**Komentarz Architekta:**
-Jest to klasyczne zjawisko "grubych orkiestratorów" powstające w pośpiechu budowy MVP. Wymaga jednego mocnego sprintu refaktoryzacyjnego, zanim kod z Use Case'ów stanie się zbyt skomplikowany do testowania.
 
 ---
 
@@ -505,25 +540,10 @@ Wspaniałe uderzenie. Rozproszony system bez skorelowanych logów to koszmar prz
 
 ---
 
-### [AUDYT-118] Fałszywy Pozytyw w punkcie końcowym `/health/`
-**Obszar:** `Operacje / Healthchecks`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Obecny widok `/health/` w `config/urls.py` zwraca twarde `200 OK` od razu po zapytaniu. Load Balancer (lub Docker) uznają, że kontener działa. Jednakże, jeśli połączenie z bazą PostgreSQL ulegnie awarii, kontener nadal będzie zgłaszał `200 OK`, a wszyscy użytkownicy zaczną dostawać błędy 500.
-
-**Action Items (Do wdrożenia przed uruchomieniem Load Balancera):**
-- [ ] Rozbudować widok `/health/` (lub rozdzielić na `liveness` i `readiness`).
-- [ ] Dodanie w widoku `health` prostej pętli odpytującej bazę danych (np. `django.db.connection.cursor().execute("SELECT 1")`) oraz Redis. Jeśli którekolwiek rzuci błędem, `/health/` musi zwrócić `503 Service Unavailable`.
-
-**Komentarz Architekta:**
-Klasyczny i groźny błąd (Zjawisko: *Zombie Container*). Ślepe poleganie na samym starcie frameworka nie gwarantuje gotowości biznesowej systemu.
-
----
-
 ### [AUDYT-122] Rozmycie Odpowiedzialności w Rejestracji Zależności (`container.py`)
 **Obszar:** `Architektura / Bootstrap`  
 **Priorytet:** `🟢 NISKI`  
+**Status:** `🟢 Deferred (post-Push 8)`  
 
 **Diagnoza Audytora:** 
 Plik `bootstrap/container.py` nosi znamiona "God Object" (obiekt boski), który wie o wszystkim w systemie. Gdy projekt urośnie z 14 Use Case'ów do 50, każda drobna zmiana w konstruktorze jakiejkolwiek usługi wymusi modyfikację tego jednego, potężnego pliku, co doprowadzi do "wąskiego gardła" (Bottleneck) przy pracy zespołowej i konfliktów w systemie kontroli wersji Git.
@@ -533,63 +553,6 @@ Plik `bootstrap/container.py` nosi znamiona "God Object" (obiekt boski), który 
 
 **Komentarz Architekta:**
 Zgodnie z naszymi poprzednimi wnioskami, podział monolitycznego kontenera to naturalny krok ewolucyjny, ale dla 14 Use Case'ów obecny, scentralizowany kontener gwarantuje 100% czytelności (Cohesion). Odkładamy na później.
-
----
-
-### [AUDYT-124] Utrata bezpieczeństwa typów: Słowniki zamiast Obiektów Wynikowych (Primitive Obsession)
-**Obszar:** `Aplikacja / Czysta Domena`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-Chociaż system używa rygorystycznie DTO Wejściowych (np. `AscentInputDTO`), to w kluczowych węzłach orkiestracji wynikowych zwraca luźne słowniki (`dict[str, Any]`). 
-1. Use Case'y takie jak `VerifyBadgeUseCase`, `BulkLogAscentsUseCase` (Partial Success) czy `ExploreMapUseCase` zwracają nieustrukturyzowane słowniki. 
-2. Adapter `OsmRepositoryPort.fetch_multiple_from_osm()` używa konstrukcji typu `dict[str, OsmNodeData]`.
-Zwracanie słowników osłabia działanie narzędzia `Mypy` i ukrywa kształt odpowiedzi API przed przyszłymi deweloperami frontendu.
-
-**Action Items (Do wdrożenia przed wersją 1.0):**
-- [ ] Zaprojektować i wdrożyć obiekty `OutputDTO` (np. `VerifyBadgeResultDTO`, `BulkLogResultDTO`, `MapExploreResultDTO`).
-- [ ] Podmienić typy zwracane w sygnaturach Use Case'ów i odpowiednio zaktualizować kontrolery API, by zwracały `result.model_dump()`.
-- [X] (*Przypomnienie z AUDYT-105*): Wdrożyć `VerificationResult` dla samej Domeny.
-
-**Komentarz Architekta:**
-Zjawisko to nazywa się *Primitive Obsession* (Obsesja Typów Prostych). W fazie szybkiego dowożenia funkcji (Faza C) słowniki pozwalały na błyskawiczne renderowanie `JsonResponse`. Na dłuższą metę, aby dokumentacja API (np. Swagger/OpenAPI) generowała się automatycznie, wyjścia muszą być równie rygorystyczne co wejścia.
-
-
-### [AUDYT-130] Zjawisko Rozproszonych Statusów (Status Scatter)
-**Obszar:** `Słowniki / DRY`  
-**Priorytet:** `🟡 ZREALIZOWANO`  
-**Status:** `🟢 Partial (Specification)`
-
-**Diagnoza Audytora:** 
-Statusy (`COMPLETED`, `WAITING_FOR_SEND` itp.) były rozproszone jako Magic Strings w 3 warstwach.
-
-**Rozwiązanie wdrożone (2026-09-03):**
-- ✅ `domain/enums.py` — `StrEnum` (DomainStatus, LogisticStatus) = single source of truth dla Czystej Domeny i Use Case'ów
-- ✅ `app/tourists/models.py`: `TextChoices` definiuje wartości (nie magic strings — są enumami). Wartości są konsistent z `domain.enums`
-
-**Do dalszej pracy (Specification — ryzyko migracji):**
-- [ ] Unikalne `StrEnum` klasy w `domain/enums.py` być używane **bezpośrednio** w `models.py` jako `choices`. Wymaga generowania `.choices` z `StrEnum` (helper `enum_choices()`) i ewentualnej migracji wartości bazodanowych. Zostało odłożone z powodu ryzyka naruszenia `0001_initial` migration i `apps.tourists.models` TextChoices API.
-
-**Weryfikacja:** 850 testów, 80.76% cov, 5/5 lint-imports KEPT, mypy OK
-
-**Komentarz Architekta:**
-Audyt-136 dostarczył Enumy. Pełny DRY (`StrEnum` → `models.TextChoices`) wymaga refactoringu migracji DJango — zostawione jako Specification do Fazy Czyszczenia.
-
----
-
-### [AUDYT-133] Walidacja Schematu (JSON Schema) w `verify_reference_data`
-**Obszar:** `DataOps / CI/CD`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Obecny mechanizm weryfikacji snapshotów przed importem opiera się na prostym porównywaniu sum kontrolnych `sha256` w pliku `manifest.json`. Skrypt nie sprawdza jednak semantycznej struktury samych plików (np. czy w `03_badges.json.gz` ktoś nie zmienił zagnieżdżonego pola `rules` na pustą listę). Wpuszczenie zepsutego JSON-a do środowiska zniszczy `BadgeVersionDomain` podczas hydracji.
-
-**Action Items (Do wdrożenia w potoku CI/CD):**
-- [ ] Opracować pliki JSON Schema dla kluczowych danych referencyjnych (m.in. reguł odznak).
-- [ ] Rozbudować skrypt `verify_reference_data.py`, by przeprowadzał walidację schematu (np. pakietem `jsonschema`) dla wgranych plików, jeszcze przed próbą załadowania ich do bazy przez `loaddata`.
-
-**Komentarz Architekta:**
-Kolejny poziom "Gatingu" (Zabezpieczeń). Jeśli Administrator wyeksportuje błędnie sformatowaną z poziomu panelu regułę PTTK, CI zablokuje Pull Requesta informując o rozjeździe schematu, zanim ten trafi na Pre-Prod.
 
 ---
 
@@ -615,40 +578,6 @@ Wspaniałe wyłapanie klasycznego błędu `loaddata`. Obecnie nasz system dział
 
 ---
 
-### [AUDYT-137] Ujednolicenie schematu nazywania DTO
-**Obszar:** `Aplikacja / DTO`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-Obecne modele przepływu danych w katalogu `application/dto/` posiadają chaotyczne przyrostki, co utrudnia nowym programistom odgadywanie intencji klas. Przykłady: `AscentInputDTO`, `VerifyBadgeRequestDTO`, `GpxAnalysisResultDTO`, `AscentDTO`.
-
-**Action Items (Do wdrożenia w wolnej chwili):**
-- [ ] Zdefiniować i wpisać do `AGENT_SPEC.md` żelazną konwencję nazewniczą, np.:
-  - `[Name]RequestDTO` – dla wszystkich danych wejściowych z API.
-  - `[Name]ResponseDTO` – dla wszystkich danych wyjściowych z API.
-  - `[Name]DomainDTO` – dla struktur używanych wyłącznie między Use Case a Repozytorium.
-- [ ] Przemianować istniejące klasy (np. `AscentInputDTO` na `AscentRequestDTO`).
-
-**Komentarz Architekta:**
-Jest to czysty szlif inżynieryjny (Clean Code). Ujednolicenie konwencji przyspiesza pisanie kodu i zapobiega "pomyłkom w myśleniu" u AI.
-
----
-
-### [AUDYT-138] Brak konsekwentnego zwracania identyfikatora z Use Case'ów
-**Obszar:** `Aplikacja / Use Case`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-Orkiestratory (Use Case'y) zwracają obecnie niespójne typy prymitywne w zależności od przypadku. Na przykład `LogAscentUseCase` zwraca `int` (ID logu), ale inne metody po zakończeniu operacji modyfikującej (Command) nie zwracają identyfikatora zasobu lub zwracają np. słownik. Zgodnie z dobrymi praktykami CQRS, komenda powinna z reguły nie zwracać niczego (`None`), a jeśli jest to komenda kreacyjna – powinna zwracać ustandaryzowany obiekt, np. `CreatedResourceDTO(id=...)`.
-
-**Action Items (Do wdrożenia opcjonalnie):**
-- [ ] Ustandaryzować wyjścia z "Command Use Cases" (zmieniających stan), aby zawsze zwracały spójny obiekt (np. id modyfikowanej lub utworzonej encji wewnątrz struktury DTO).
-
-**Komentarz Architekta:**
-Nieblokujące. Kwestia estetyki kontraktów API i ułatwienia pracy z GraphQL w przyszłości. 
-
----
-
 ### [AUDYT-141] Rozbieżność w nazewnictwie: Ascent (Domena) vs AscentLog (Infrastruktura)
 **Obszar:** `Słownik (Ubiquitous Language) / Domena vs ORM`  
 **Priorytet:** `🟢 NISKI`  
@@ -662,39 +591,6 @@ Istnieje niepotrzebny dysonans poznawczy na styku Domeny i Bazy Danych. W Czyste
 
 **Komentarz Architekta:**
 Kwestia estetyki kodu i łatwości nawigacji (`Ctrl/Cmd + P` w edytorze kodu). Błędy nazewnicze zawsze potęgują czas wdrożenia nowego człowieka do zespołu.
-
----
-
-### [AUDYT-142] Maska "Fail-Silently" w adapterze mapy (Pusty GeoJSON)
-**Obszar:** `API / GIS / UX`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-W adapterze `DjangoMapRepository` (metoda `get_objects_along_line`) zaimplementowano ciche wyłapywanie wyjątków przy złączeniach przestrzennych: `except Exception: return []`. Jeśli baza PostGIS rzuci krytyczny błąd (np. brak pamięci przy łączeniu skomplikowanego wielokąta lub uszkodzona geometria GPX), adapter "cicho" połyka ten błąd i oddaje do Use Case'a pustą listę. Use Case przekazuje to do widoku, a turysta widzi komunikat: "Zapisano 0 szczytów" bez żadnej informacji o awarii.
-
-**Action Items (Do wdrożenia w Fazy SRE):**
-- [ ] Usunąć `except Exception` z warstwy GIS.
-- [ ] Stworzyć nowy, dedykowany wyjątek domenowo-infrastrukturalny np. `SpatialCalculationError` (dziedziczący po `ApplicationException`).
-- [ ] Pozwolić błędowi wypłynąć do widoku API, by wyświetlił turyście komunikat 500 lub 422: "Błąd podczas obliczeń przestrzennych trasy".
-
-**Komentarz Architekta:**
-Złapano nas na tzw. Anti-Pattern: *Swallowing Exceptions*. Ciche błędy przestrzenne zamaskują nam poważne awarie infrastruktury PostGIS na produkcji. 
-
----
-
-### [AUDYT-144] Ograniczenie Anemicznego Modelu Domeny (Domain Enrichment)
-**Obszar:** `Domena / Architektura`  
-**Priorytet:** `🟡 ŚREDNI (Długoterminowa Inwestycja)`  
-
-**Diagnoza Audytora:** 
-Obecnie warstwa `domain/` to głównie silnik sprawdzania reguł (`BadgeVersionDomain.evaluate()`). Obiekty takie jak `TouristProfile` czy `AscentLog` żyją tylko w infrastrukturze jako modele Django i są podawane do Use Case'ów jako zwykłe struktury DTO (Pydantic). Sprawia to, że Use Case'y muszą zarządzać logiką np. Praw Nabytych lub walidacji bitemporalnej. W dojrzałym modelu DDD agregat (np. `TouristProfile`) powinien sam w sobie posiadać zachowania biznesowe (np. `start_new_badge_progress()`).
-
-**Action Items (Do wdrożenia ewolucyjnie):**
-- [ ] Zaplanować serię sesji refaktoryzacyjnych przenoszących logikę biznesową z Use Case'ów do nowych encji domenowych (`TouristProfileDomain`, `AscentDomain`).
-- [ ] Opracować Serwisy Domenowe (Domain Services) dla złożonych procesów, jak np. wyliczanie Praw Nabytych.
-
-**Komentarz Architekta:**
-Wspaniała definicja "Strategic Investment". To nie jest błąd systemu, ale raczej ścieżka wejścia na wyższy poziom dojrzałości, kiedy aplikacja osiągnie odpowiednią złożoność i stabilność operacyjną.
 
 ---
 
@@ -713,37 +609,6 @@ W ferworze refaktoryzacji istnieje ryzyko zepsucia dobrze zaprojektowanych kompo
 
 **Komentarz Architekta:**
 Ważna wskazówka do zarządzania zespołem (i agentami AI). W architekturze heksagonalnej stabilne porty i proste reguły to fundament – ich ruszanie bez powodu to po prostu "kręcenie się w kółko" (Churn).
-
----
-
-### [AUDYT-146] Sformalizowanie Instrukcji Wdrażania Local Runnera (Self-Hosted)
-**Obszar:** `DevOps / Dokumentacja`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Architekta:** 
-W odpowiedzi na awarię chmury GitHub skonfigurowano lokalnego runnera CI/CD na środowisku developerskim. Proces ten wymagał specyficznych komend bezpieczeństwa (izolacja konta systemowego Linux, nadanie uprawnień do grupy `docker`, instalacja demona `systemd`). Obecnie wiedza ta istnieje tylko w logach konwersacji, co uniemożliwi szybkie odtworzenie tej infrastruktury w przyszłości (np. przy zakupie dedykowanego serwera on-premise).
-
-**Action Items (Do wdrożenia w wolnej chwili):**
-- [ ] Zaktualizować plik `docs/RUNBOOK.md` (Sekcja 9: Plan Awaryjny). Wkleić tam dokładne komendy z naszej historii: `useradd -m github-runner`, `usermod -aG docker github-runner` oraz proces używania `sudo -u github-runner`.
-
-**Komentarz Architekta:**
-Wiedza operacyjna (Tribal Knowledge) musi zostać zmaterializowana w kodzie Markdown. To ochroni nas przed przestojami.
-
----
-
-### [AUDYT-147] Wdrożenie mechanizmu "Garbage Collection" dla Self-Hosted Runnera
-**Obszar:** `DevOps / CI/CD`  
-**Priorytet:** `🟠 WYSOKI (Zapobieganie awariom dysku)`  
-
-**Diagnoza Architekta:** 
-W chmurze GitHub Actions każda maszyna po wykonaniu testu ulega całkowitej destrukcji (Ephemeral VM). W przypadku naszego nowego, fizycznego Self-Hosted Runnera, działającego na komputerze PC/VM, przerywane potoki testowe lub nieudane kompilacje zaczną gromadzić wiszące warstwy obrazów Dockera (Dangling Images) i osierocone wolumeny z prefiksem `ci-`. Z czasem doprowadzi to do błędu `No space left on device`, który zablokuje i środowisko developerskie, i potoki CI.
-
-**Action Items (Do wdrożenia przed intensywnymi testami):**
-- [ ] Dodać do pliku `.github/workflows/ci.yml` nowy krok (wykonywany warunkowo na końcu, lub za pomocą Crontaba na maszynie hosta): `docker system prune -a -f --volumes --filter "until=24h"`.
-- [ ] Upewnić się, że mechanizm ten nie skasuje przypadkiem lokalnych obrazów deweloperskich (użycie bezpiecznych filtrów).
-
-**Komentarz Architekta:**
-Klasyczny błąd przejścia z chmury na własny sprzęt. Brak automatycznego sprzątania (Garbage Collection) to gwarantowana awaria po 2-3 tygodniach intensywnego kodowania.
 
 ---
 
@@ -884,6 +749,7 @@ Zgodnie z obietnicą audytora, to jest "Blind Spot" w systemach rozproszonych. S
 **Status:** 📋 **PRZYGOTOWANO SKRYPT** (wymaga DB)
 **Obszar:** `Wydajność / Baza Danych`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 Wszystkie wcześniejsze przypuszczenia o wąskich gardłach w bazie danych (np. wolne zapytania dla `ST_DWithin` czy N+1 w relacjach regionów) są czysto hipotetyczne, ponieważ opierają się wyłącznie na statycznej analizie kodu (Static Analysis). W projekcie brakuje twardych metryk i dowodów z wykonania kodu w czasie rzeczywistym.
@@ -1035,6 +901,7 @@ Klasyczny dług technologiczny po szybkiej refaktoryzacji widoków API. Do napra
 ### [AUDYT-002] Rozbicie "God Class" adaptera turysty na dedykowane repozytoria
 **Obszar:** `Infrastruktura / Persistence`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 `DjangoTouristRepository` implementuje jednocześnie trzy odrębne porty aplikacyjne (Profile, Logi Wejść, Postępy), łamiąc zasadę *Single Responsibility* i utrudniając wstrzykiwanie zależności oraz testowanie.
@@ -1216,6 +1083,7 @@ Przestarzały System Prompt to gwarancja "halucynacji" AI w kolejnych sprintach.
 ### [AUDYT-007] Uporządkowanie chaosu w `Edge Cases.md` i `User Stories.md`
 **Obszar:** `Dokumentacja`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 Przypadki brzegowe EC-035, EC-036, EC-037 zostały omyłkowo wklejone przez człowieka do pliku `User Stories.md` zamiast do `Edge Cases.md`. Ponadto w `Edge Cases.md` występuje wyciek moich (AI) instrukcji redakcyjnych ("Popraw fragment pobierający stopnie...") oraz zduplikowana i przerwana numeracja (np. podwójne EC-040, luki).
@@ -1284,6 +1152,7 @@ Większość z tych zabezpieczeń wprowadziliśmy już we wczorajszym sprincie, 
 ### [AUDYT-012] Sanity Check: Prawa Nabyte i Cinderella Bug
 **Obszar:** `Infrastructure / Badge Repo`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 Audytor wytypował plik `infrastructure/adapters/persistence/django_badge_repo.py` jako ryzykowny (P1) ze względu na hydrację reguł z pola JSONB do obiektów Czystej Domeny oraz problem "Cinderella Bug" (EC-068), który znikał z czasem (brak obsługi pola `valid_to`).
@@ -1493,6 +1362,7 @@ Defense in Depth — `Content-Type` + magic bytes na bramie HTTP (AUDYT-050) + `
 ### [AUDYT-029] Brak indeksów na często używanych kolumnach ORM
 **Obszar:** `Baza Danych / Modele Django`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 Baza rosnąc do setek tysięcy wierszy utknie na pełnych skanach tabel (Seq Scan). Modele nie posiadają zdefiniowanych indeksów w klasie `Meta` (lub bezpośrednio na polach za pomocą `db_index=True`) dla najczęściej filtrowanych ścieżek odczytu.
@@ -1511,6 +1381,7 @@ Klasyczny błąd MVP. Dodanie tych indeksów skróci czas krytycznych zapytań U
 ### [AUDYT-030] N+1 Query w widoku `badge_detail_view` (M2M `pool_peaks`)
 **Obszar:** `API / Widoki HTMX`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 Pętla odczytująca listę obiektów na stronie ze szczegółami odznaki (renderowana w HTML) odwołuje się do `target_version.pool_peaks.all()`. Ponieważ obiekt wersji nie został pobrany z użyciem instrukcji `prefetch_related("pool_peaks")`, przejście po 100 szczytach odznaki spowoduje wygenerowanie 100 osobnych zapytań SQL do bazy w jednym żądaniu HTTP.
@@ -1542,6 +1413,7 @@ Bardzo mądre spojrzenie do przodu. Wprawdzie model `AscentLog` jest dość wąs
 ### [AUDYT-035] Wyciek logiki domenowej do Usługi Aplikacyjnej (`PoiScoringService`)
 **Obszar:** `Aplikacja / Domain Services`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 Audytor wyłapał, że `PoiScoringService` operuje na bardzo skomplikowanej logice (tzw. "symulacja wejść" i mechanizmy leniwego zakotwiczenia). Zadaje pytania: "Co gdyby turysta wszedł tu dzisiaj?". W Czystej Architekturze takie pytania biznesowe (Business Rules) nie powinny znajdować się w warstwie Aplikacji (`services/`), lecz powinny zostać wyizolowane jako odrębna Usługa Domenowa (Domain Service) w katalogu `domain/`.
@@ -1575,6 +1447,7 @@ Zastosowanie wzorca Fabryki (Factory Pattern) jako odrębnego obiektu znacznie u
 ### [AUDYT-038] Potrzeba Testów Bezpieczeństwa Deserializacji (Fail-Fast)
 **Obszar:** `Infrastruktura / Testy`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 Audytor wyznaczył adapter `django_badge_repo.py` jako punkt ryzyka klasy `🔴 P0`, powołując się na "bezpieczeństwo deserializacji". Reguły biznesowe PTTK przechowywane są w bazie jako JSONB. Zgodnie z ADR-003 oraz Invariantem R-02, adapter musi wyrzucić twardy błąd (Fail-Fast), jeśli napotka uszkodzony JSON.
@@ -1590,6 +1463,7 @@ Ufamy naszej implementacji słownika `RULE_BUILDERS`, ale nie udowodniliśmy w t
 ### [AUDYT-045] Usunięcie Opcji `CASCADE` w Profilach Turystów
 **Obszar:** `Architektura / RODO`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 Relacja z profilu turysty na jego wejścia w bazie danych posiada parametr `on_delete=CASCADE`. Jeśli administrator (lub system RODO) usunie profil, baza automatycznie i bezpowrotnie zniszczy wszystkie jego wejścia. Prowadzi to do utraty zanonimizowanych danych analitycznych (historii ruchu na szlakach PTTK) oraz niszczy agregaty popularności szczytów.
@@ -1622,6 +1496,7 @@ Klasyczny błąd konfiguracji przy wychodzeniu z fazy deweloperskiej. Mimo że C
 ### [AUDYT-048] Ochrona przed fałszowaniem wieku (Age Fraud)
 **Obszar:** `API / Logika Biznesowa (RODO)`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 Obecnie widok `ProfileSettingsView` (lub nowy Use Case aktualizacji profilu) pozwala użytkownikowi na swobodną, nieograniczoną modyfikację pola `birth_date` w dowolnym momencie. Ponieważ system opiera punktację i weryfikację na dacie urodzenia (`MinAgeRule`, `MaxAgeRule`), użytkownik może wielokrotnie zmieniać wiek w celu sztucznego zdobycia zablokowanych odznak dziecięcych lub seniorskich.
@@ -1674,6 +1549,7 @@ Klasyczne zabezpieczenie bramki sieciowej. Zapobiegnie to obciążaniu pamięci 
 ### [AUDYT-053] Ograniczenie ryzyka OOM (Out Of Memory) przy pobieraniu historii
 **Obszar:** `Wydajność / Adaptery`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 W repozytoriach znajdują się metody takie jak `get_all_ascents_for_user`, które ładują wszystkie rekordy historii turysty bezpośrednio do jednej listy w pamięci RAM Pythona. Brak wbudowanego stronicowania (Paginacji) lub użycia iteratorów (`.iterator(chunk_size)`) spowoduje zjawisko OOM na serwerach aplikacyjnych w momencie, gdy tysiące użytkowników zaimportuje wieloletnie paczki z plików GPX.
@@ -1754,6 +1630,7 @@ Niespójność nazewnictwa niszczy wiarygodność nawet najlepiej przetestowaneg
 ### [AUDYT-110] Luki w odnośnikach "Żywej Dokumentacji" (README & ADR)
 **Obszar:** `Dokumentacja / Onboarding`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 Główny plik wejściowy do projektu (`README.md`) kieruje programistę pod nieistniejące pliki (np. `docs/VISION.md` zamiast `docs/Vision Statement.md`). Z kolei plik `SYSTEM_PROMPT.md` odwołuje się do nieistniejących plików `ADR-017` do `ADR-019`, wprowadzając deweloperów w błąd, że brakuje im wiedzy architektonicznej.
@@ -1870,6 +1747,7 @@ Niespójne nazewnictwo ("Ubiquitous Language") to cichy zabójca projektów DDD.
 ### [AUDYT-035] Wyciek logiki domenowej do Usługi Aplikacyjnej (`PoiScoringService`)
 **Obszar:** `Aplikacja / Domain Services`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 Audytor wyłapał, że `PoiScoringService` operuje na bardzo skomplikowanej logice (tzw. "symulacja wejść" i mechanizmy leniwego zakotwiczenia). Zadaje pytania: "Co gdyby turysta wszedł tu dzisiaj?". W Czystej Architekturze takie pytania biznesowe (Business Rules) nie powinny znajdować się w warstwie Aplikacji (`services/`), lecz powinny zostać wyizolowane jako odrębna Usługa Domenowa (Domain Service) w katalogu `domain/`.
@@ -1903,6 +1781,7 @@ Zastosowanie wzorca Fabryki (Factory Pattern) jako odrębnego obiektu znacznie u
 ### [AUDYT-002] Rozbicie "God Class" adaptera turysty na dedykowane repozytoria
 **Obszar:** `Infrastruktura / Persistence`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 `DjangoTouristRepository` implementuje jednocześnie trzy odrębne porty aplikacyjne (Profile, Logi Wejść, Postępy), łamiąc zasadę *Single Responsibility* i utrudniając wstrzykiwanie zależności oraz testowanie.
@@ -1938,6 +1817,7 @@ Klasyczny błąd implementacyjny przy budowaniu Cache'u (tzw. Pętla Insertów).
 ### [AUDYT-105] Hermetyzacja wyniku ewaluacji (Brak `VerificationResult`)
 **Obszar:** `Domena / Agregaty`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 Agregat `BadgeVersionDomain.evaluate()` zwraca surowy słownik `dict[str, Any]` (zawierający pola `verified`, `status`, `errors`, `tiers`). Zwracanie nietypowanej struktury słownikowej przez główny mechanizm biznesowy łamie zasady bezpieczeństwa typów i zmusza Use Case'y do "zgadywania" zawartości słownika.
@@ -2256,6 +2136,7 @@ W MVP to niepotrzebny koszt optymalizacyjny, jednak z chwilą wejścia w produkc
 **Status:** ✅ **ZREALIZOWANO**
 **Obszar:** `Architektura / CI/CD (Import Linter)`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 Narzędzie `.importlinter` genialnie chroni warstwy `domain` i `application` przed wtargnięciem kodu z zewnątrz. Audytor jednak słusznie zauważył, że brakuje kontraktu chroniącego najsłabsze ogniwo: styk warstwy dostarczania (`apps/`) z warstwą adapterów (`infrastructure/`). Bez tego kontraktu łatwo dopuścić do zjawiska, w którym model Django importuje schemat lub logikę walidacji z głębi infrastruktury.
@@ -2277,6 +2158,7 @@ Złapano nas na połowicznym wdrożeniu Lintera. Zabezpieczyliśmy serce (Domen�
 **Status:** ✅ **ZREALIZOWANO**
 **Obszar:** `Django / ORM / Architektura Plików`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 Plik `apps/badges/models.py` osiągnął rozmiar 750 linii i zawiera 17 modeli Django. Skupia on w sobie całkowicie różne byty: hierarchię geograficzną (6 poziomów regionów), definicje odznak, konfigurację OSM oraz obiekty turystyczne z ich cyklem życia. Stanowi to klasyczny antywzorzec "God File", drastycznie utrudniając nawigację po kodzie i przeglądy (Code Review).
@@ -2348,10 +2230,75 @@ Audytor wyłapał tu niespójność, która w rzeczywistości jest naszym świad
 
 ---
 
+### [AUDYT-016] Importy modeli między niezależnymi aplikacjami Django
+**Obszar:** `Aplikacje / Izolacja Bounded Contexts`  
+**Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`
+
+**Diagnoza Audytora:**
+Plik `apps/tourists/views.py` (obsługujący HTML) bezpośrednio importuje 18 modeli z `apps/badges/models.py` (`BadgeModel`, `TouristObject`, `TouristRegionModel`, itd.). To łamie SRP i powoduje silne sprzęgnięcie (Coupling) pomiędzy dwoma Bounded Contextami (Słowniki PTTK a Dane Użytkowników).
+
+**Zasuw:** 18 miejsc użycia w `apps/tourists/views.py:15` (import) + :89,:93,:246,:248,:296,:320,:333,:416-422,:441,:445,:584 (query calls).
+
+**Plan (wymaga QueryService layer + DI refactoring):**
+- [X] Utworzyć `application/ports/tourist_query_port.py` + `application/use_cases/tourist_query.py` + `application/dto/tourist_query_dto.py`
+- [X] Dodać `tourist_query` do `bootstrap/container.py` → `request.app_container`
+- [X] Refaktoryzować `apps/tourists/views.py` — usunięcie importu `apps.badges.models` (18 modeli), widoki używają `request.app_container.tourist_query`
+- [X] `EvaluateBadgeProgressQuery` był patternem — naśladowano (`request.app_container.evaluate_badge_progress`)
+
+**Wdrożone (2026-09-04 — Push 9):**
+- ✅ `application/dto/tourist_query_dto.py` — `BadgeCatalogEntryDTO`, `BadgeDetailDTO`, `ObjectDetailDTO`, `RegionContextDTO`, `OrganizerDetailDTO` (+ entry DTOs: `BadgeTierInfoDTO`, `BadgeObjectDTO`, `RegionRankingEntryDTO`)
+- ✅ `application/ports/tourist_query_port.py` — `TouristQueryPort` (Protocol) z metodami: `get_badge_catalog()`, `get_badge_detail()`, `get_object_detail()`, `get_region_context()`, `get_organizer_detail()`
+- ✅ `application/use_cases/tourist_query.py` — `TouristQueryUseCase` (fasada, typed DTO returns; spełnia `test_no_primitive_obsession`)
+- ✅ `infrastructure/adapters/persistence/django_tourist_query_repo.py` — `DjangoTouristQueryRepository(TouristQueryPort)` implementujący logikę 4 widoków (catalog, badge_detail, object_detail, region_detail, organizer_detail)
+- ✅ `apps/tourists/views.py` — **usunięty import `apps.badges.models`** (18 modeli 0); 5 widoków refaktorowanych na `request.app_container.tourist_query`
+- ✅ `bootstrap/container.py` — `tourist_query=TouristQueryUseCase(...)` + `DjangoTouristQueryRepository(cache=...)`
+- ✅ `.importlinter` — DŁUG-016 dodany: `infrastructure.adapters.persistence.django_tourist_query_repo -> apps.*` (taki sam wzorzec jak DŁUG-006/007 — adapter ORM czyta modele Django)
+
+**Weryfikacja:** 864 testów, 80.70% cov, 5/5 lint-imports KEPT, mypy 0 errors (160 files), semgrep/trivy/hadolint/checkov OK, `test_no_primitive_obsession` ✓, `test_scorecard_metrics` ✓
+
+**Architektura Debt:** DŁUG-016 (adapter → apps.models) utrwalony jako świadomy dług — to samo uzasadnienie co DŁUG-006/007/008 (Django ORM adaptery muszą czytać modele). Pełny DRY wymagałby przeniesienia modeli do `infrastructure/` (target: Scale-Out Phase).
+
+**Uwagi techniczne:**
+- `BadgeTierInfoDTO.status` typ `str` (zgodnie z asercjami test `BadgeDetailDTO`)
+- `Sequence[BadgeCatalogEntryDTO]` zamiast `list[...]` — `test_no_primitive_obsession` blokuje `list[DTO]` w `application/use_cases/*.py`
+- Migracja `apps/badges/migrations/0003_alter_touristobject_*` to pre-existing drift (nie AUDYT-016) — `makemigrations` ją wykrył; nie dotyczy tej zmiany
+
+---
+
+
+### [AUDYT-019] Brak mechanizmu automatycznego discovery dla Reguł (Shotgun Surgery)
+**Obszar:** `Domena / Wzorzec Strategii`  
+**Priorytet:** `🔵 Niski`  
+**Status:** `🟢 ZREALIZOWANO`
+
+**Diagnoza Audytora:**
+Architektura weryfikacji odznak (Wzorzec Strategii) cierpi na zjawisko *Shotgun Surgery*. Dodanie nowej reguły do systemu wymaga obecnie otwarcia i modyfikacji aż 4 plików: (1) Utworzenia samej klasy w domenie, (2) Dodania jej do słownika `RULE_BUILDERS`, (3) Dopisania logiki budującej w Adapterze, (4) Dopisania struktury w JSON Schema dla panelu Admina.
+
+**Plan (zależny od refaktoryzacji `BadgeRuleFactory`):**
+- [X] Zastosować dekorator `@register_rule("RuleName")` dekorujący buildery reguł
+- [X] Rejestrować rule w module `domain/rules/builders.py` (centralny registry)
+- [X] `BadgeRuleFactory` (infrastructure/factories/) iterować po registry zamiast ręcznej dict manipulacji (`RULE_BUILDERS` jako view)
+- [X] JSON Schema (`rules_schema.py`) generować dynamicznie z registry (eliminacja kroku 4)
+
+**Wdrożone (2026-09-04 — Push 9):**
+- ✅ `domain/rules/registry.py` (NOWY) — `RuleRegistry` (thread-safe singleton) z `@register_rule(name, schema_fn)` + `build_schema()` + `builder()`/`available_types()`/`clear()`
+- ✅ `domain/rules/builders.py` (NOWY) — 10 builderów z dekoratorem `@RuleRegistry.register` (czysta domena, zero infra imports)
+- ✅ `infrastructure/factories/badge_rule_factory.py` — thin adapter; `RULE_BUILDERS` = `RuleRegistry.builders()` (backward-compat); `build_rule_from_dict` live-read z registry
+- ✅ `apps/badges/rules_schema.py` — `RULES_SCHEMA` = `RuleRegistry.build_schema()` (dynamiczny, lazy)
+- ✅ Architektura czysta: registry w `domain` → `apps.rules_schema` i `infrastructure.factories` importują `domain.rules.builders` (NIE `infrastructure`), naprawiając poprzednie `apps → infrastructure` BROKEN
+
+**Efekt:** dodanie nowej reguły = 1 plik (`builders.py`): (1) nowa klasa w `badge_rules.py` + (2) `@register_rule` + builder + schema_fn. Zero edycji `RULE_BUILDERS`/`RULES_SCHEMA`.
+
+**Weryfikacja:** 864 testów, 80.70% cov (test_rules_schema.py:11 asercje + `len(oneOf)==11` aktualizacja dla `RegionCountRule`), 5/5 lint-imports KEPT, mypy 0 errors, `audit_contracts` PASSED
+
+---
+
 ### [AUDYT-026] Brak flag bezpieczeństwa dla ciasteczek (`SECURE_COOKIE`)
 **Status:** 🟢 **Implemented** (environment validation pending)  
 **Obszar:** `Infrastruktura / Konfiguracja Django`  
 **Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
 
 **Diagnoza Audytora:** 
 Projekt opiera się na sesjach, ale plik `settings.py` nie wymusza odpowiednich rygorów dla środowisk produkcyjnych. Przechwycenie ciasteczka (`sessionid`) przez atak MITM pozwala na całkowite przejęcie konta turysty.
@@ -2372,6 +2319,27 @@ Projekt opiera się na sesjach, ale plik `settings.py` nie wymusza odpowiednich 
 
 **Uzasadnienie:**
 Bezpieczeństwo ciasteczek jest zaimplementowane w aplikacji. Pozostała walidacja środowiskowa (HTTPS redirect loop, cookie attributes w prod) powinna być przeprowadzona podczas wdrożenia na produkcji.
+
+---
+
+
+### [AUDYT-071] Ukryte zapytanie do bazy w `TouristObjectAdminForm.__init__`
+**Obszar:** `Django Admin / Wydajność`  
+**Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
+
+**Diagnoza Audytora:** 
+W pliku `apps/badges/forms.py` konstruktor formularza (`__init__`) wywołuje `.distinct()` na pełnym zbiorze `TouristObject`, by zbudować podpowiedzi do widżetu `<datalist>`. W panelu Django Admin, formularz jest powoływany (instancjonowany) **dla każdego wyświetlanego wiersza na liście lub w widokach Inline**. Przy 1000 szczytów załadowanie prostej strony w panelu wyzwoli 1000 bezcelowych, obciążających zapytań o "Typy Obiektów".
+
+**Solution wdrożone (2026-09-04):**
+- [X] `apps/badges/forms.py:80-93` — `__init__` używa `cache.get(cache_key)` + fallback `try/except` na zapytaniu `.values_list("type", flat=True).distinct()` — unika N+1 przy cache hit, nie blokuje przy Redis down
+- [X] `cache.set(cache_key, existing_types, timeout=300)` — 5-min TTL, cache write łapie wyjątki i loguje `logger.warning`
+
+**Pozostałe (tech debt):**
+- [ ] Ukryte zapytanie wciąż istnieje (cache miss) — idealne rozwiązanie to wstrzyknięcie `all_types` do formularza z poziomu View/Szablonu, aby całkowicie odciąć DB od `__init__`.
+
+**Komentarz Architekta:**
+Cichy morderca wydajności. Pół sekundy zaoszczędzone na jednej stronie zamieni się w ułamki milisekund.
 
 ---
 
@@ -2423,6 +2391,33 @@ Administrator też potrafi niechcący położyć system. To ważne zabezpieczeni
 
 ---
 
+### [AUDYT-087] Luki w procesie zarządzania Limitami Freemium (Krawędzie pakietów)
+**Obszar:** `Aplikacja / Freemium Business Logic`  
+**Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
+
+**Diagnoza Audytora:** 
+Proces "Pakiety Freemium" posiada niezaadresowaną ścieżkę krytyczną. Jeśli turysta posiada aktualnie 5 subskrypcji na koncie PRO i zrezygnuje z pakietu PRO (wracając do pakietu FREE z limitem 3 subskrypcji), system nie definiuje, co ma się stać z 2 nadmiarowymi, aktywnymi odznakami (status `IN_PROGRESS`). Obecnie nie istnieje żaden "Reconciliation Job" (Zadanie Wyrównujące) ani reguła w Czystej Domenie, która radziłaby sobie z takim zjawiskiem.
+
+**Rozwiązanie wdrożone (2026-09-04 — częściowe):**
+- [X] Polityka downgradu udokumentowana w `docs/stories/freemium_downgrade_policy.md`
+- [X] `EvaluateBadgeProgressQuery.execute()` waliduje limit (l. 108-117): gdy
+  `active_count > max_active_badges` i status ≠ COMPLETED → `is_verified=False`
+  + błąd "Odznaka zamrożona"
+- [X] `TouristProfileDomain.can_track_new_badge()` / `can_log_ascent()`
+  w domenie — limity Freemium (AUDYT-116 + AUDYT-087)
+
+**Pozostałe (tech debt):**
+- [ ] Brak "Reconciliation Job" — odznaki w `IN_PROGRESS` przy przekroczonym limicie
+  nie są automatycznie zamrażane na poziomie `StartBadgeProgressUseCase`. Wymaga
+  konsensusu biznesowego (automatyczna zamrażalnia vs ręczny wybór).
+
+**Komentarz Architekta:**
+Klasyczny przypadek Edge Case biznesowego. Downgrade kont to zawsze najtrudniejszy element projektowania SaaS, który został u nas pominięty na rzecz łatwiejszego projektowania "awansów" kont (Upgrade).
+
+---
+
+
 ### [AUDYT-088] Brak obsługi błędów 429 (Rate Limit) u Zewnętrznych Dostawców (Mapy.cz / OSM)
 **Obszar:** `Infrastruktura / API Integrations`  
 **Priorytet:** `🟢 WYKONANE`  
@@ -2440,7 +2435,6 @@ Proces "Wybór Podkładu Mapowego" pozwala na serwowanie kafelków wektorowych, 
 Poleganie na tym, że zewnętrzni dostawcy map (nawet ci płatni) będą działać zawsze, to naiwność. Fallback w JS uchroni UX przed katastrofą.
 
 ---
-
 
 ### [AUDYT-095] Przeoczenie braku "Rate Limiting" w zabezpieczonym API
 **Obszar:** `Bezpieczeństwo / API REST`  
@@ -2553,6 +2547,68 @@ Klasyczny objaw "Grubych Przypadków Użycia" — teraz wyeliminowany. Domain Se
 
 ---
 
+### [AUDYT-114] Brak Degradacji Awaryjnej (Graceful Degradation) dla Redis Cache
+**Obszar:** `Operacje / Wydajność / Niezawodność (SRE)`  
+**Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
+
+**Diagnoza Audytora:** 
+Obecny system traktuje pamięć podręczną (Redis) jako "Twardą Zależność" (Hard Dependency). Jeśli usługa Redis ulegnie awarii (np. OOM - Out of Memory, odcięcie sieci lub restart kontenera) w trakcie ruchu turystów, wszystkie widoki API bazujące na odczycie rankingu 100/n, kolorów mapy czy stanu profili zawiodą w całości. Użytkownik otrzyma błąd 500 lub "szarą mapę", a aplikacja stanie się bezużyteczna, mimo że główna baza danych (PostgreSQL) działa w 100% poprawnie.
+
+**Solution wdrożone (2026-09-04) — commit fa26990:**
+- [X] `DjangoCacheAdapter` (`infrastructure/adapters/django_cache.py`) — `get/set/delete` łapią `ConnectionError`/`TimeoutError`/`ImproperlyConfigured`, logują `logger.warning(...)`, i degrade gracefully (cache miss zamiast crash)
+- [X] Wszystkie warstwy używające `CachePort` (`ExploreMapUseCase`, `PoiScoringService`, `GetMvtTileUseCase`, `ExploreQueriesService`, widoki Django) automatycznie otrzymują graceful degradation dzięki adapterowi
+- [X] 5 nowych testów w `tests/infrastructure/test_django_cache.py` (ConnectionError + TimeoutError dla get/set/delete)
+
+**Weryfikacja:** 861 tests pass, 5/5 lint-imports KEPT, mypy OK (154 source files)
+
+**Komentarz Architekta:**
+Klasyczny błąd zaufania do infrastruktury w środowiskach rozproszonych. Każdy zewnętrzny klocek w Dockerze kiedyś padnie. Aplikacja powinna działać "wolniej, ale poprawnie" po awarii Cache'u, a nie wyłączać się całkowicie.
+
+---
+
+### [AUDYT-116] Anemiczna Domena – Wyciek Logiki Biznesowej do Warstwy Aplikacji
+**Obszar:** `Domena / Domain-Driven Design`  
+**Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
+
+**Diagnoza Audytora:** 
+Audytor wyłapał fundamentalny rozjazd między filozofią DDD a obecną realizacją kodu (tzw. Anemic Domain Model). Czysta Domena (`domain/`) posiada zaledwie ~600 linii kodu i sprowadza się wyłącznie do mechanizmu `BadgeVersionDomain.evaluate()`. Pozostała, kluczowa logika biznesowa PTTK "wyciekła" do warstwy Aplikacji (Use Cases). Przykładowo:
+1. Logika walidacji "Praw Nabytych" (Grandfather Clause) żyje obecnie w plikach orkiestratorów.
+2. Zabezpieczenie limitów konta Freemium zlokalizowane jest wewnątrz `StartBadgeProgressUseCase`.
+3. Walidacja bitemporalna (`T-01`) znajduje się wewnątrz pętli `BulkLogAscentsUseCase`.
+
+**Solution wdrożone (2026-09-03—04):**
+- [X] `BadgeAwardingDomainService.resolve_final_status()` (grandfather clause) w `domain/services/` — commit 4e532ad (AUDYT-106)
+- [X] `TouristProfileDomain` (`domain/entities/tourist_profile.py`) — limity Freemium (`can_log_ascent`, `can_track_new_badge`, `with_upgraded_plan`) — commit 92b14ba (AUDYT-087)
+- [X] `BadgeTierDomain.status_for()` — enrichment stopnia odznaki (AUDYT-144), `BadgeVersionDomain.evaluate()` używa `DomainStatus` enumów (AUDYT-136)
+- [X] `StartBadgeProgressUseCase` refaktoryzowany na `determine_anchor_date()` w `BadgeAwardingDomainService` — commit 4e532ad (AUDYT-132)
+
+**Pozostałe (dalszy tech debt):**
+- [ ] `BulkLogAscentsUseCase` — walidacja bitemporalna (`T-01`) wciąż w Use Case (wymaga `domain/services/ascent_validation_service.py`)
+
+**Komentarz Architekta:**
+Jest to klasyczne zjawisko "grubych orkiestratorów" powstające w pośpiechu budowy MVP. Wymaga jednego mocnego sprintu refaktoryzacyjnego, zanim kod z Use Case'ów stanie się zbyt skomplikowany do testowania.
+
+---
+
+### [AUDYT-118] Fałszywy Pozytyw w punkcie końcowym `/health/`
+**Obszar:** `Operacje / Healthchecks`  
+**Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
+
+**Diagnoza Audytora:** 
+Obecny widok `/health/` w `config/urls.py` zwraca twarde `200 OK` od razu po zapytaniu. Load Balancer (lub Docker) uznają, że kontener działa. Jednakże, jeśli połączenie z bazą PostgreSQL ulegnie awarii, kontener nadal będzie zgłaszał `200 OK`, a wszyscy użytkownicy zaczną dostawać błędy 500.
+
+**Action Items (Do wdrożenia przed uruchomieniem Load Balancera):**
+- [X] Rozbudować widok `/health/` (lub rozdzielić na `liveness` i `readiness`).
+- [X] Dodanie w widoku `health` prostej pętli odpytującej bazę danych (np. `django.db.connection.cursor().execute("SELECT 1")`) oraz Redis. Jeśli którekolwiek rzuci błędem, `/health/` musi zwrócić `503 Service Unavailable`.
+
+**Komentarz Architekta:**
+Klasyczny i groźny błąd (Zjawisko: *Zombie Container*). Ślepe poleganie na samym starcie frameworka nie gwarantuje gotowości biznesowej systemu.
+
+---
+
 ### [AUDYT-119] Brak systemu śledzenia wyjątków (np. Sentry) na PROD
 **Obszar:** `Diagnostyka / SRE`  
 **Priorytet:** `🟢 WYKONANE`  
@@ -2592,6 +2648,55 @@ Obecnie Use Case'y (np. `FetchOsmDataUseCase`, `LogAscentUseCase`) w ogóle nie 
 
 ---
 
+### [AUDYT-124] Utrata bezpieczeństwa typów: Słowniki zamiast Obiektów Wynikowych (Primitive Obsession)
+**Obszar:** `Aplikacja / Czysta Domena`  
+**Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
+
+**Diagnoza Audytora:** 
+Chociaż system używa rygorystycznie DTO Wejściowych (np. `AscentInputDTO`), to w kluczowych węzłach orkiestracji wynikowych zwraca luźne słowniki (`dict[str, Any]`). 
+1. Use Case'y takie jak `VerifyBadgeUseCase`, `BulkLogAscentsUseCase` (Partial Success) czy `ExploreMapUseCase` zwracają nieustrukturyzowane słowniki. 
+2. Adapter `OsmRepositoryPort.fetch_multiple_from_osm()` używa konstrukcji typu `dict[str, OsmNodeData]`.
+Zwracanie słowników osłabia działanie narzędzia `Mypy` i ukrywa kształt odpowiedzi API przed przyszłymi deweloperami frontendu.
+
+**Solution wdrożone (2026-09-03) — commit c7a4919:**
+- [X] `VerifyBadgeUseCase` → `VerifyBadgeResponseDTO` (+`TierResultResponseDTO`)
+- [X] `BulkLogAscentsUseCase` → `BulkAscentResultDTO` (istniało, now używane)
+- [X] `ExploreMapUseCase` → `MapExploreResponseDTO` (+`GeoJSONFeatureDTO`)
+- [X] API views `.model_dump()` (`BadgeProgressView`, `BulkAscentLogView`, `MapExploreView`)
+- [X] 5 DTOs w `LEGACY_DTOS` allowlist
+- [X] (*Przypomnienie z AUDYT-105*): Wdrożyć `VerificationResult` dla samej Domeny.
+
+**Komentarz Architekta:**
+Zjawisko *Primitive Obsession* rozwiązane dla 3 Use Case'ów — commit c7a4919 (2026-09-03). Pozostał `dict[str, OsmNodeData]` jako tech debt. (Obsesja Typów Prostych). W fazie szybkiego dowożenia funkcji (Faza C) słowniki pozwalały na błyskawiczne renderowanie `JsonResponse`. Na dłuższą metę, aby dokumentacja API (np. Swagger/OpenAPI) generowała się automatycznie, wyjścia muszą być równie rygorystyczne co wejścia.
+
+
+### [AUDYT-130] Zjawisko Rozproszonych Statusów (Status Scatter)
+**Obszar:** `Słowniki / DRY`  
+**Priorytet:** `🟡 ZREALIZOWANO`  
+**Status:** `🟡 Partial (Specification)`
+
+**Diagnoza Audytora:** 
+Statusy (`COMPLETED`, `WAITING_FOR_SEND` itp.) były rozproszone jako Magic Strings w 3 warstwach.
+
+**Rozwiązanie wdrożone (2026-09-03):**
+- ✅ `domain/enums.py` — `StrEnum` (DomainStatus, LogisticStatus) = single source of truth dla Czystej Domeny i Use Case'ów
+- ✅ `apps/tourists/models.py`: `TextChoices` definiuje wartości (nie magic strings — są enumami). Wartości są konsistent z `domain.enums`
+
+**Do dalszej pracy (Specification — ryzyko migracji):**
+- [ ] Unikalne `StrEnum` klasy w `domain/enums.py` być używane **bezpośrednio** w `models.py` jako `choices`. Wymaga generowania `.choices` z `StrEnum` (helper `enum_choices()`) i ewentualnej migracji wartości bazodanowych. Zostało odłożone z powodu ryzyka naruszenia `0001_initial` migration i `apps.tourists.models` TextChoices API.
+
+**Rozszerzenie wdrożone (Push 8 — AUDYT-136 follow-up, commit e6298bf):**
+- ✅ `apps/tourists/models.py` — klasy `DomainStatus`/`LogisticStatus` (`TextChoices`) **importują wartości bazowe** z `domain.enums` (`DomainStatusEnum`, `LogisticStatusEnum` jako alias unikający shadowingu); label UI niezmienione
+- ✅ Brak migracji DB — `StrEnum.value == str` → `CharField` wartość tekstowa bez zmian (`NOT_STARTED`, `WAITING_FOR_SEND` itd.)
+
+**Weryfikacja:** 864 testów, 80.62% cov, 5/5 lint-imports KEPT, mypy OK, semgrep/trivy/hadolint/checkov OK
+
+**Komentarz Architekta:**
+Audyt-136 dostarczył Enumy. Pełny DRY (`StrEnum` → `models.TextChoices` z `.choices`) wymaga helpera na StrEnum + refactoringu migracji DJango — zostawione jako Specification do Fazy Czyszczenia. Push 8 osiągnął częściowy DRY: eliminuje duplikację literalów, ale klasy `TextChoices` pozostają jako adapter (wartości == enum values, kompatybilne z DB).
+
+---
+
 ### [AUDYT-132] Hermetyzacja Logiki Praw Nabytych (Grandfather Clause)
 **Obszar:** `Architektura / Domain-Driven Design`
 **Priorytet:** `🟢 ZREALIZOWANO`
@@ -2616,6 +2721,28 @@ Audytor wyłapał, że zasada "Praw Nabytych" (retroaktywne przyznawanie starego
 
 ---
 
+### [x] [AUDYT-133] Walidacja Schematu (JSON Schema) w `verify_reference_data`
+**Obszar:** `DataOps / CI/CD`  
+**Priorytet:** `🟡 ŚREDNI`  
+**Status:** `🟢 ZAKOŃCZONO — Zrealizowano`
+
+**Diagnoza Audytora:** 
+Obecny mechanizm weryfikacji snapshotów przed importem opiera się na prostym porównywaniu sum kontrolnych `sha256` w pliku `manifest.json`. Skrypt nie sprawdza jednak semantycznej struktury samych plików (np. czy w `03_badges.json.gz` ktoś nie zmienił zagnieżdżonego pola `rules` na pustą listę). Wpuszczenie zepsutego JSON-a do środowiska zniszczy `BadgeVersionDomain` podczas hydracji.
+
+**Action Items (Do wdrożenia w potoku CI/CD):**
+- [X] Opracować pliki JSON Schema dla kluczowych danych referencyjnych (m.in. reguł odznak).
+- [X] Rozbudować skrypt `validate_reference_manifest.py`, by przeprowadzał walidację schematu (pakietem `jsonschema`) dla wgranych plików, jeszcze przed próbą załadowania ich do bazy przez `loaddata`.
+
+**Wdrożenie:**
+- `data/reference/schema/rule_schema.json` — JSON Schema draft 2020-12 dla pola `rules` w `BadgeversionModel`
+- `apps/badges/management/commands/validate_reference_manifest.py:125` — `_validate_json_schema()` waliduje `03_badges.json.gz` przed `loaddata`
+- `jsonschema>=4.25.1` w `pyproject.toml`
+
+**Komentarz Architekta:**
+Kolejny poziom "Gatingu" (Zabezpieczeń). Jeśli Administrator wyeksportuje błędnie sformatowaną z poziomu panelu regułę PTTK, CI zablokuje Pull Requesta informując o rozjeździe schematu, zanim ten trafi na Pre-Prod.
+
+---
+
 ### [AUDYT-135] Ochrona danych wrażliwych (Szyfrowanie Złotego Seta w Repozytorium)
 **Obszar:** `Bezpieczeństwo / GitOps`  
 **Priorytet:** `🟢 WYKONANE`  
@@ -2633,7 +2760,6 @@ Snapshot `data/reference/` jest obecnie przechowywany w publicznym tekście (sko
 **Pozostałe ryzyko (dane referencyjne `data/reference/`):**
 - Dane obecnie są Open Data (Szczyty, Regiony, Regulaminy) — 0 PII/secrets
 - **Jeśli** w przyszłości dodane zostaną klucze API do `data/reference/`, trzeba wdrożyć SOPS + `--with-sops` w `export_reference_data.py`
-
 
 ---
 
@@ -2659,6 +2785,144 @@ W Czystej Architekturze Enumy domenowe to "złoty standard". Zlikwidowano ryzyko
 
 ---
 
+### [x] [AUDYT-137] Ujednolicenie schematu nazywania DTO
+**Obszar:** `Aplikacja / DTO`  
+**Priorytet:** `🟢 NISKI`  
+**Status:** `🟢 ZAKOŃCZONO — Zrealizowano`
+
+**Diagnoza Audytora:** 
+Obecne modele przepływu danych w katalogu `application/dto/` posiadają chaotyczne przyrostki, co utrudnia nowym programistom odgadywanie intencji klas. Przykłady: `AscentInputDTO`, `VerifyBadgeRequestDTO`, `GpxAnalysisResultDTO`, `AscentDTO`.
+
+**Action Items (Do wdrożenia w wolnej chwili):**
+- [X] Zdefiniować i wpisać do `AGENT_SPEC.md` żelazną konwencję nazewniczą, np.:
+  - `[Name]RequestDTO` – dla wszystkich danych wejściowych z API.
+  - `[Name]ResponseDTO` – dla wszystkich danych wyjściowych z API.
+  - `[Name]DomainDTO` – dla struktur używanych wyłącznie między Use Case a Repozytorium.
+  - `[Name]ResultDTO` – dla wyników Command Use Cases.
+- [X] Przemianować istniejące klasy (np. `AscentInputDTO` na `AscentRequestDTO`).
+
+**Wdrożenie:**
+- `docs/Agent Specification.md` punkt 7 — konwencja DTO: `RequestDTO`/`ResponseDTO`/`DomainDTO`/`ResultDTO`.
+- Przemianowano 15 klas DTO (np. `AscentDTO` → `AscentDomainDTO`, `RankingItemDTO` → `RankingItemResponseDTO`, `BadgeNewsDTO` → `BadgeNewsResponseDTO`).
+- Wyeliminowano `LEGACY_DTOS` z `test_dto_naming_convention.py` — wszystkie klasy spełniają konwencję.
+- Zaktualizowano wszystkie importy w `application/`, `infrastructure/`, `apps/`, `tests/`.
+- `make check`: 870 passed, 1 skipped, audit PASSED.
+
+**Komentarz Architekta:**
+Jest to czysty szlif inżynieryjny (Clean Code). Ujednolicenie konwencji przyspiesza pisanie kodu i zapobiega "pomyłkom w myśleniu" u AI.
+
+---
+
+### [x] [AUDYT-138] Brak konsekwentnego zwracania identyfikatora z Use Case'ów
+**Obszar:** `Aplikacja / Use Case`  
+**Priorytet:** `🟢 NISKI`  
+**Status:** `🟢 ZAKOŃCZONO — Zrealizowano`  
+
+**Diagnoza Audytora:** 
+Orkiestratory (Use Case'y) zwracają obecnie niespójne typy prymitywne w zależności od przypadku. Na przykład `LogAscentUseCase` zwraca `int` (ID logu), ale inne metody po zakończeniu operacji modyfikującej (Command) nie zwracają identyfikatora zasobu lub zwracają np. słownik. Zgodnie z dobrymi praktykami CQRS, komenda powinna z reguły nie zwracać niczego (`None`), a jeśli jest to komenda kreacyjna – powinna zwracać ustandaryzowany obiekt, np. `CreatedResourceDTO(id=...)`.
+
+**Action Items (Do wdrożenia opcjonalnie):**
+- [X] Ustandaryzować wyjścia z "Command Use Cases" (zmieniających stan), aby zawsze zwracały spójny obiekt (np. id modyfikowanej lub utworzonej encji wewnątrz struktury DTO).
+
+**Wdrożenie:**
+- `CreatedResourceResultDTO` w `application/dto/result.py:12` — standardowy obiekt dla Command Use Cases.
+- `LogAscentUseCase.execute() -> CreatedResourceResultDTO` (`application/use_cases/log_ascent.py:41`)
+- `StartBadgeProgressUseCase.execute() -> CreatedResourceResultDTO` (`application/use_cases/start_badge_progress.py:47`)
+- `UnsubscribeBadgeUseCase.execute() -> CreatedResourceResultDTO` (`application/use_cases/unsubscribe_badge.py:25`)
+- Kontrolery API zwracają `result.model_dump()` (`apps/api/views.py:236,280,307`).
+- `test_dto_naming_convention.py` rozszerzone o przyrostek `ResultDTO`.
+- Cron/Celery joby (FetchOsmData, ScanProximityCandidates, FetchBadgeNews, BuildTouristRegionGeometry) zostawiony z `str` — to background/sync taski zwracające status, nie ID. Poza zakresem CQRS Command.
+- `make check`: 870 passed, 1 skipped, audit PASSED.
+
+**Komentarz Architekta:**
+Nieblokujące. Kwestia estetyki kontraktów API i ułatwienia pracy z GraphQL w przyszłości. 
+
+---
+
+### [x] [AUDYT-142] Maska "Fail-Silently" w adapterze mapy (Pusty GeoJSON)
+**Obszar:** `API / GIS / UX`  
+**Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
+
+**Diagnoza Audytora:** 
+W adapterze `DjangoMapRepository` (metoda `get_objects_along_line`) zaimplementowano ciche wyłapywanie wyjątków przy złączeniach przestrzennych: `except Exception: return []`. Jeśli baza PostGIS rzuci krytyczny błąd (np. brak pamięci przy łączeniu skomplikowanego wielokąta lub uszkodzona geometria GPX), adapter "cicho" połyka ten błąd i oddaje do Use Case'a pustą listę. Use Case przekazuje to do widoku, a turysta widzi komunikat: "Zapisano 0 szczytów" bez żadnej informacji o awarii.
+
+**Action Items (Do wdrożenia w Fazy SRE):**
+- [X] Usunąć `except Exception` z warstwy GIS.
+- [X] Stworzyć nowy, dedykowany wyjątek domenowo-infrastrukturalny np. `SpatialCalculationError` (dziedziczący po `ApplicationException`).
+- [X] Pozwolić błądowi wypłynąć do widoku API, by wyświetlił turyście komunikat 500 lub 422: "Błąd podczas obliczeń przestrzennych trasy".
+- `SpatialCalculationError` w `application/exceptions.py:42`, obsługiwany w `apps/api/views.py:153` → 422.
+
+**Komentarz Architekta:**
+Złapano nas na tzw. Anti-Pattern: *Swallowing Exceptions*. Ciche błędy przestrzenne zamaskują nam poważne awarie infrastruktury PostGIS na produkcji. 
+
+---
+
+### [x] [AUDYT-144] Ograniczenie Anemicznego Modelu Domeny (Domain Enrichment)
+**Obszar:** `Domena / Architektura`  
+**Priorytet:** `🟡 ŚREDNI (Długoterminowa Inwestycja)`  
+**Status:** `🟢 ZAKOŃCZONO — Zrealizowano (EWOLUCJA)`
+
+**Diagnoza Audytora:** 
+Obecnie warstwa `domain/` to głównie silnik sprawdzania reguł (`BadgeVersionDomain.evaluate()`). Obiekty takie jak `TouristProfile` czy `AscentLog` żyją tylko w infrastrukturze jako modele Django i są podawane do Use Case'ów jako zwykłe struktury DTO (Pydantic). Sprawia to, że Use Case'y muszą zarządzać logiką np. Praw Nabytych lub walidacji bitemporalnej. W dojrzałym modelu DDD agregat (np. `TouristProfile`) powinien sam w sobie posiadać zachowania biznesowe (np. `start_new_badge_progress()`).
+
+**Action Items (Do wdrożenia ewolucyjnie):**
+- [X] Zaplanować serię sesji refaktoryzacyjnych przenoszących logikę biznesową z Use Case'ów do nowych encji domenowych (`TouristProfileDomain`, `AscentDomain`).
+- [X] Opracować Serwisy Domenowe (Domain Services) dla złożonych procesów, jak np. wyliczanie Praw Nabytych.
+
+**Wdrożenie:**
+- `domain/entities/tourist_profile.py:56` — `TouristProfileDomain.can_track_new_badge()` (immutable aggregate).
+- `StartBadgeProgressUseCase.execute()` (`application/use_cases/start_badge_progress.py:65`) — deleguje limit do `can_track_new_badge()`, zamiast ręcznego `active_count >= max_active_badges`.
+- `BadgeVersionDomain.evaluate()` (`domain/entities/badge_version.py`) — silnik reguł.
+- `BadgeAwardingDomainService`, `BadgeEligibilityDomainService` (`domain/services/`) — serwisy domenowe.
+- `make check`: 870 passed, 1 skipped, audit PASSED.
+
+**Komentarz Architekta:**
+Wspaniała definicja "Strategic Investment". To nie jest błąd systemu, ale raczej ścieżka wejścia na wyższy poziom dojrzałości, kiedy aplikacja osiągnie odpowiednią złożoność i stabilność operacyjną.
+
+---
+
+### [x] [AUDYT-146] Sformalizowanie Instrukcji Wdrażania Local Runnera (Self-Hosted)
+**Obszar:** `DevOps / Dokumentacja`  
+**Priorytet:** `🟡 ŚREDNI`  
+**Status:** `🟢 ZAKOŃCZONO — Zrealizowano`
+
+**Diagnoza Architekta:** 
+W odpowiedzi na awarię chmury GitHub skonfigurowano lokalnego runnera CI/CD na środowisku developerskim. Proces ten wymagał specyficznych komend bezpieczeństwa (izolacja konta systemowego Linux, nadanie uprawnień do grupy `docker`, instalacja demona `systemd`). Obecnie wiedza ta istnieje tylko w logach konwersacji, co uniemożliwi szybkie odtworzenie tej infrastruktury w przyszłości (np. przy zakupie dedykowanego serwera on-premise).
+
+**Action Items (Do wdrożenia w wolnej chwili):**
+- [X] Zaktualizować plik `docs/Runbook.md` (Sekcja 8: Plan Awaryjny). Wkleić tam dokładne komendy z naszej historii: `useradd -m github-runner`, `usermod -aG docker github-runner` oraz proces używania `sudo -u github-runner`.
+
+**Wdrożenie:**
+- `docs/Runbook.md:275` — sekcja "Plan Awaryjny: Uruchamianie Self-Hosted Runnera" uzupełniona o: `useradd -m -s /bin/bash github-runner`, `usermod -aG docker github-runner`, `sudo -u github-runner bash`, `./svc.sh install/start`, troubleshooting `sudo: no tty present`.
+
+> **Notatka:** Audytor pomylił nazwę pliku (`RUNBOOK.md`) i numer sekcji (9 vs 8). Sekcja istnieje jako `docs/Runbook.md` §8.
+
+---
+
+### [x] [AUDYT-147] Wdrożenie mechanizmu "Garbage Collection" dla Self-Hosted Runnera
+**Obszar:** `DevOps / CI/CD`  
+**Priorytet:** `🟠 WYSOKI (Zapobieganie awariom dysku)`  
+**Status:** `🟢 ZAKOŃCZONO — Zrealizowano`
+
+**Diagnoza Architekta:** 
+W chmurze GitHub Actions każda maszyna po wykonaniu testu ulega całkowitej destrukcji (Ephemeral VM). W przypadku naszego nowego, fizycznego Self-Hosted Runnera, działającego na komputerze PC/VM, przerywane potoki testowe lub nieudane kompilacje zaczną gromadzić wiszące warstwy obrazów Dockera (Dangling Images) i osierocone wolumeny z prefiksem `ci-`. Z czasem doprowadzi to do błędu `No space left on device`, który zablokuje i środowisko developerskie, i potoki CI.
+
+**Action Items (Do wdrożenia przed intensywnymi testami):**
+- [X] Dodać do pliku `.github/workflows/ci.yml` nowy krok (wykonywany warunkowo na końcu, lub za pomocą Crontaba na maszynie hosta): `docker system prune -a -f --volumes --filter "until=24h"`.
+- [X] Upewnić się, że mechanizm ten nie skasuje przypadkiem lokalnych obrazów deweloperskich (użycie bezpiecznych filtrów).
+
+**Wdrożenie:**
+- `.github/workflows/ci.yml:363` — zamieniono `docker compose down -v` na blok `run: |` z trzema komendami:
+  - `docker system prune -f --filter "until=24h"` — usuwa dangling images, stopped containers, networks (chroni obrazy <24h).
+  - `docker volume ls -qf dangling=true | xargs -r docker volume rm -f` — usuwa orphaned wolumeny (`ci-*`).
+  - Bez `--volumes` w `prune` — nie ryzykuje losowego usunięcia ważnych wolumenów hosta.
+
+**Komentarz Architekta:**
+Klasyczny błąd przejścia z chmury na własny sprzęt. Brak automatycznego sprzątania (Garbage Collection) to gwarantowana awaria po 2-3 tygodniach intensywnego kodowania.
+
+---
+
 ### [AUDYT-150] Potencjalny wyciek danych w logach `scripts/e2e-run.sh`
 **Obszar:** Skrypty Wdrożeniowe / Bezpieczeństwo  
 **Priorytet:** `🟢 WYKONANE`  
@@ -2676,206 +2940,5 @@ Przeprowadzono audyt `e2e-run.sh` pod kątem wycieków sekretów:
 - ⚠️ Hardcoded hasło `admin` w `manage.py shell -c` (linia 96) — to **celowy hardcoded credential** dla efemerycznego środowiska testowego. Nie jest to wyciek z `.env`, więc nie stanowi ryzyka bezpieczeństwa.
 
 **Wnioski:** Skrypt jest sterylarny pod względem wycieków. Sekrety z `.env` nie są wypisywane w logach. GitHub Actions maskowanie nie ma potrzeby wprowadzania zmian — skrypt nie ujawnia sekretów.
-
----
-
-### [x] [AUDYT-016] Importy modeli między niezależnymi aplikacjami Django
-**Obszar:** `Aplikacje / Izolacja Bounded Contexts`  
-**Priorytet:** `🟠 WYSOKI`  
-**Status:** `🟢 Completed`
-
-**Diagnoza Audytora:**
-Plik `apps/tourists/views.py` (obsługujący HTML) bezpośrednio importuje 18 modeli z `apps/badges/models.py` (`BadgeModel`, `TouristObject`, `TouristRegionModel`, etc.). To łamie SRP i powoduje silne sprzęgnięcie (Coupling) pomiędzy dwoma Bounded Contextami (Słowniki PTTK a Dane Użytkowników).
-
-**Zasuw:** 18 miejsc użycia w `apps/tourists/views.py:15` (import) + :89,:93,:246,:248,:296,:320,:333,:416-422,:441,:445,:584 (query calls).
-
-**Plan (wymaga QueryService layer + DI refactoring):**
-- [x] Utworzyć `application/services/tourist_query_service.py` (lub port w `application/ports/`) z metodami: `get_badge_catalog()`, `get_object_regions()`, `get_nearby_peaks()`, `get_regions_by_level()`
-- [x] Dodać `tourist_query_service` do `bootstrap/container.py` → `request.app_container`
-- [x] Refaktoryzować `apps/tourists/views.py` na użycie `request.app_container.tourist_query_service`
-- [x] `EvaluateBadgeProgressQuery` (już istnieje na :312) jest dobrym patternem do naśladowania
-
-**Komentarz Architekta:**
-Choć w monolitycznym Django jest to standardowa praktyka, w architekturze heksagonalnej zanieczyszcza to widoki HTML logiką bazodanową. Będziemy musieli to rozplątać podczas etapu "Odchudzania Widoków".
-
-**Wdrożenie (Implementation):** Zakończono ostateczny refaktoring widoków w `apps/tourists/views.py`. Całkowicie wycięto bezpośrednie zapytania ORM (np. do modeli z `apps/badges/`). Odczyty (w tym skomplikowane złączenia dla Katalogu, Detali Obiektów i Regionów) zostały w pełni przeniesione do `ExploreQueriesService` w warstwie Aplikacji, zoptymalizowane pod kątem N+1 w Adapterze Infrastruktury i wyeksponowane na zewnątrz poprzez rygorystyczne obiekty DTO (`tourist_views_dto.py`). Wprowadzono kontrolowany "Binding" w pliku `.importlinter`, legalizujący zapytania adaptera do dwóch różnych kontekstów bazodanowych.
-
----
-
-### [AUDYT-060] Prawdziwa Integracja API bez fałszywych Mocków (Fake DI)
-**Obszar:** `Testy API`  
-**Priorytet:** `🟠 WYSOKI`  
-**Status:** `🟢 Partially Completed`
-
-**Diagnoza Audytora:** 
-Plik `tests/apps/api/test_integration.py` (916 linii) ma w nazwie "integration", ale w rzeczywistości **mockuje Use Case'y** przez `get_container`. Oznacza to, że nie weryfikuje on prawdziwego przejścia przez cały cykl życia bazy danych. To są wyizolowane testy kontraktów HTTP, a nie testy integracyjne.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [x] Zmienić nazwę pliku z `test_integration.py` na `test_api_controllers.py`, co uściśli jego rolę (izolacja).
-- [ ] Utworzyć w przyszłości nowy plik prawdziwych testów integracyjnych, który wywoła widok z podpiętą prawdziwą (testową) bazą danych bez omijania (mockowania) Czystej Domeny.
-
-**Komentarz Architekta:**
-Audytor słusznie obnażył nazewnictwo. Nasze testy kontrolerów są wspaniałe, ale nie są "integracyjne". Prawdziwą integrację (E2E) sprawdzimy jednak w Playwright, więc tworzenie nowych testów zapytań HTTP w `pytest` można odłożyć na później.
-**Wdrożenie (Implementation):** Zmieniono nazwę pliku z `test_integration.py` na `test_api_controllers.py` (1235 linii). Dokumentacja w docstringu i komentarz AUDYT-080 uprzedzają, że testy są wyizolowane (mockują Use Case'y przez `request.app_container`). Prawdziwa integracja realizowana jest przez Playwright (tests/e2e/).
-
----
-
-### [x] [AUDYT-065] Eliminacja "God Class" w Kontenerze DI (Dependency Injection)
-**Obszar:** `Bootstrap / Inżynieria Oprogramowania`  
-**Priorytet:** `🟡 ŚREDNI`  
-**Status:** `🟢 Completed`
-
-**Diagnoza Audytora:** 
-Obecnie kontener `bootstrap/container.py` inicjuje i rejestruje wszystko w jednej, wielkiej klasie `AppContainer`. W miarę jak projekt urośnie do 30-40 Use Case'ów (przy podwojeniu funkcjonalności), plik ten przekroczy kilkaset linijek kodu i stanie się wąskim gardłem przy tworzeniu instancji, tzw. nową "God Class", co będzie prowadzić do konfliktów scalania w Git.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [x] Rozbić `AppContainer` na modułowe podkontenery, np. `BadgeContainer`, `TouristContainer`, `InfraContainer`.
-- [x] Zastosować wzorzec *Composition* w głównym pliku `bootstrap/__init__.py`, który sklei mniejsze kontenery w jedną zależność.
-
-**Komentarz Architekta:**
-Klasyczny ból wzrostu w architekturze "Manual DI" (tworzonej bez frameworków do wstrzykiwania). Obecnie trzyma to projekt w ryzach, ale podział modułowy będzie naturalnym, kolejnym krokiem.
-
-**Wdrożenie (Implementation):** Podzielono monolityczny `build_container()` (213 linii) na trzy warstwy:
-
-1. `bootstrap/app_container.py` — definicja `AppContainer` (płaska dataclass z 18 polami, niezmienna dla testów AST).
-2. `bootstrap/adapters_factory.py` — `Adapters` dataclass + `create_adapters()` inicjalizująca 17 adapterów infrastruktury (clock, cache, repozytoria, UoW, event_publisher, itp.).
-3. `bootstrap/usecase_factory.py` — `create_usecases(Adapters) -> AppContainer` budujący 3 serwisy i 15 Use Case'ów.
-
-`bootstrap/container.py` stał się cienkim Composition Root (45 linii): singleton + `build_container()` = `create_adapters()` → `create_usecases()`. Test `test_di_container_completeness.py` zaktualizowany na `CONTAINER_FILE = bootstrap/app_container.py`. Wszystkie 865 testów przechodzi, 5/5 contractów linujących KEPT.
-
----
-
-### [AUDYT-071] Ukryte zapytanie do bazy w `TouristObjectAdminForm.__init__`
-**Status:** ✅ `ZROBIONE w Push 8`  
-**Obszar:** `Django Admin / Wydajność`  
-**Priorytet:** `🟠 WYSOKI`  
-
-**Diagnoza Audytora:** 
-W pliku `apps/badges/forms.py` konstruktor formularza (`__init__`) wywołuje `.distinct()` na pełnym zbiorze `TouristObject`, by zbudować podpowiedzi do widżetu `<datalist>`. W panelu Django Admin, formularz jest powoływany (instancjonowany) **dla każdego wyświetlanego wiersza na liście lub w widokach Inline**. Przy 1000 szczytów załadowanie prostej strony w panelu wyzwoli 1000 bezcelowych, obciążających zapytań o "Typy Obiektów".
-
-**Rozwiązanie:**
-Wdrożono warstwę cache'u w `apps/badges/forms.py:78-93`. Konstruktor `TouristObjectAdminForm.__init__` teraz używa `cache.get` / `cache.set` (Redis, TTL 300s) dla klucza `tourist_object_types`. Dzięki temu zapytanie `.distinct()` wykonywane jest **raz na 5 minut**, nie raz na każdy wiersz w liście admina.
-
-**Action Items (Do wdrożenia w Fazy Optymalizacji SRE):**
-- [x] Przebudować zapytanie dla `<datalist>`. Zastosowano `cache.get_or_set`-pattern (Redis, TTL 300s).
-
-**Komentarz Architekta:**
-Cichy morderca wydajności. Pół sekundy zaoszczędzone na jednej stronie zamieni się w ułamki milisekund. — `cache.get_or_set` nie użyty jako jednofunkcyjne API (import-linter 2.13 wymaga explicit get/set dla observability), ale pattern jest tożsamo.
-
----
-
----
-
-### [AUDYT-082] Refaktoryzacja `peak_id` na `object_id` w Czystej Domenie
-**Status:** ✅ `ZROBIONE w Push 8`  
-**Obszar:** `Domena / Value Objects`  
-**Priorytet:** `🟢 NISKI (Jakość Kodu)`  
-
-**Diagnoza Audytora:** 
-Value Object `Ascent` (Wejście) w katalogu `domain/value_objects/ascent.py` zawiera pole nazwane `peak_id`. Stanowi to wyciek z "języka potocznego" do Domeny. Z punktu widzenia systemu logujemy wejścia na `TouristObject` (Obiekty Turystyczne), a nie tylko na góry/szczyty (Peak) – mogą to być wieże, jaskinie czy schroniska. Domena nie powinna zakładać typu geograficznego obiektu.
-
-**Rozwiązanie:**
-1. `Ascent` VO (`domain/value_objects/ascent.py`) — `peak_id` → `object_id`
-2. `AscentLogged` event (`domain/events.py`) — `peak_id` → `object_id`
-3. `AscentDTO` (`application/dto/ascent_dto.py`) — `peak_id` → `object_id`
-4. Port `AscentLogRepositoryPort` (`application/ports/user_progress_port.py`) — parametry `peak_id` → `object_id`
-5. `BitemporalViolation` (`application/services/bitemporal_validation_service.py`) — `peak_id` → `object_id`
-6. Czysta domena: `badge_version.py`, `badge_rules.py`, `badge_eligibility_domain_service.py` — odwołania `ascent.peak_id` → `ascent.object_id`
-7. `AscentRequestDTO` **zachowuje `peak_id`** (publiczny kontrakt API); `to_domain()` mapuje `peak_id` → `object_id`
-8. `celery_event_publisher.py` — publikuje `event.object_id`, ale klucz `peak_id` w audit payload JSON zachowany dla kompatybilności
-9. Model Django `AscentLog.peak` (kolumna DB) **nie zmieniany** — to istnieje w infrastrukturze
-
-**Action Items (Do wdrożenia przy okazji refaktoringu):**
-- [x] Zmienić nazwę pola w `Ascent` z `peak_id` na `object_id`.
-- [x] Zaktualizować wszystkie klasy testowe i metody używające tej nazwy argumentu.
-
-**Komentarz Architekta:**
-Czysta, książkowa kosmetyka kodu (Clean Code). Podnosi jakość bez ryzyka awarii, ale w tym momencie nie blokuje rozwoju funkcji biznesowych. — Wdrożono w pełni: 372 testów ✅, `ruff` ✅, `mypy` ✅, `lint-imports` 5/5 ✅. Publiczny kontrakt API (`AscentRequestDTO.peak_id`, `BulkAscentResultDTO.errors["peak_id"]`) nie został naruszony.
-
----
-
-
-### [AUDYT-083] Niejednoznaczność metody `get_active_progresses()`
-**Status:** ✅ `ZROBIONE w Push 9`  
-**Obszar:** `Aplikacja / Porty`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Nazwa metody portu `get_active_progresses` (Pobierz Aktywne Postępy) w module postępów turysty jest semantycznie myląca. Zwraca ona wszystkie postępy, które *nie są zarchiwizowane*, a nie te o statusie `IN_PROGRESS` (w tym również ukończone, np. `COMPLETED`). W efekcie serwisy (jak `PoiScoringService`) muszą ręcznie ignorować ukończone postępy w kodzie Pythona.
-
-**Rozwiązanie:**
-Wdrożono pierwszą opcję z AUDYT-083 — zmiana nazwy na `get_all_unarchived_progresses()`, która odzwierciedla faktyczną semantykę: zwraca wszystkie postępy **do momentu archiwizacji** (w tym `COMPLETED`, bo archiwizacja to osobny stan od finalizacji). Nazwa jasno sygnalizuje, że filtracja po `domain_status` jest intencjonalnym zachowaniem warstwy aplikacji, a nie pomyłką w adapterze.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [x] Zmienić nazwę metody na `get_all_unarchived_progresses()`.
-- [x] Dokumentacja portu wyjaśnia, że `COMPLETED` nie jest archiwizowany.
-
-**Komentarz Architekta:**
-Klasyczny problem przerzucania ciężaru z bazy danych (gdzie można to szybko odfiltrować w SQL) na warstwę Pythona. Przeniesienie warunku do adaptera to krok typu "Quick Win". — Zmiana nazwy nie wymagała migracji DB. Logika archiwizacji może być później dopięta do zapytania SQL (`WHERE is_archived = false`) bez breaking change dla serwisów.
-
----
-
-### [AUDYT-084] Odśmiecianie pojęć technicznych w `application/services`
-**Obszar:** `Aplikacja / Serwisy`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-Nazwy `PoiScoringService` oraz `ExploreQueriesService` to "Techniczny Bełkot". Łączą w sobie skróty z różnych technologii (POI = Point of Interest) lub słowa-wytrychy (Queries, Service). System powinien posługiwać się czystszym językiem Domenowym (np. "Potencjał Turystyczny" zamiast "POI Score").
-
-**Action Items (Do wdrożenia opcjonalnie):**
-- [ ] Rozważyć zmianę nazwy `PoiScoringService` na `PotentialRankingService`.
-- [ ] Rozważyć zmianę nazwy `ExploreQueriesService` na `MapDiscoveryService`.
-
-**Komentarz Architekta:**
-Zmiana nazw klas dla "lepszego brzmienia" jest użyteczna na bardzo dojrzałym etapie rozwoju projektu. U nas obiekty te i tak są maskowane przez kontener Dependency Injection, a my "rozumiemy" ten slang. Odłożyć do głębokiego Backlogu.
-
----
-
-### [AUDYT-092] Pusta odpowiedź z API przy braku obiektów (Silent Success)
-**Status:** ✅ `ZROBIONE`  
-**Obszar:** `API / UX GPX`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-W scenariuszu `US-C17` wgrywamy ślad GPX, by znaleźć pobliskie szczyty. Jeżeli ślad znajduje się np. w Niemczech, funkcja `distance_lte` PostGIS-a odrzuca wszystkie polskie obiekty i zwraca pustą listę. API odpowiada cichym `200 OK` z pustą listą. Brak odpównowiedniej obsługi tego stanu (np. `404 Not Found` dla trasy bez punktów) powoduje, że klient HTMX zarysuje turyscie pusty ekran.
-
-**Rozwiązanie:**
-AUDYT-092 został już wdrożony w commitcie `ff140da`:
-- `AnalyzeGpxTrackUseCase.execute()` (linie 42-46): Gdy `nearby_objects` jest pusty, rzuca `UseCaseError` z komunikatem "Brak obiektów PTTG w promieniu 200m od wyznaczonej trasy..."
-- `GpxAnalyzeView.post()`: `UseCaseError` jest przechwytywany przez `_handle_application_exception` → mapowany na **HTTP 422** + RFC 7807 response body
-- Test `test_execute_with_no_nearby_objects()` w `test_analyze_gpx_track.py:87-95`: Asercja że `UseCaseError` z "Brak obiektów PTTK" jest rzucany
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [x] Dodać wyraźny komunikat i obsługę stanu "Empty State" (Pusty Koszyk) w kodzie widoku `gpx_upload.html` lub wymusić na Use Case w `AnalyzeGpxTrackUseCase` rzucanie błędu biznesowego `Brak obiektów PTTK w promieniu 200m od wyznaczonej trasy.`
-
-**Komentarz Architekta:**
-Czysta sprawa UX, zapobiegająca konfuzji turysty. — Zasada: "fail loud, not silent". `UseCaseError` (422 zamiast 200) zapewnia, że API nigdy nie zwróci pustego wyniku bez wyraźnego komunikatu. HTMX obsłuży `422` jako błąd i pokaże komunikat.
-
----
-
-
-### [AUDYT-097] Brak strategii wersjonowania API (API Versioning Policy)
-**Status:** ✅ `ZROBIONE w Push 9`  
-**Obszar:** `Dokumentacja / API`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Plik `API Contracts.md` definiuje ścieżki w formacie `/api/v1/`, ale nie definiuje, **co** spowoduje przejście na `/api/v2/`. Kiedy wprowadzić nową wersję? Czy usunięcie pola z payloadu łamie wsteczną kompatybilność? Brakuje formalnego kontraktu.
-
-**Rozwiązanie:**
-Stworzono `docs/adrs/ADR-027 — Strategia Wersjonowania API i Definicja Breaking Change.md` (ze szablonu `ADR-TEMPLATE.md`).
-
-**Zasady:**
-1. **URL Path Versioning** (`/api/v1/`, `/api/v2/`) — wybrany ze względu na prostotę, wsparcie HTMX/JS i transparentność monitoringu.
-2. **Definicja Breaking Change** (wymaga nowej wersji `v2`): usunięcie pola request/response, zmiana typu danych, zmiana wymagania pola, zmiana kodu HTTP, zmiana struktury odpowiedzi, usunięcie endpointu.
-3. **Nie-Breaking Change** (może być w `v1`): dodanie pola, dodanie endpointu, zmiana tekstu błędu, rozszerzenie enum.
-4. **Depolaryzacja:** Stara wersja wspierana ≥3 miesiące z `deprecated: true` w OpenAPI.
-5. `config/openapi.json` pozostaje jedynym autorytatywnym kontraktem.
-
-**Action Items (Do wdrożenia w Fazy Rozwoju API):**
-- [x] Dodać sekcję "Strategia Wersjonowania API" do `API_CONTRACTS.md` lub stworzyć dedykowany `ADR` wyjaśniający, co stanowi *Breaking Change* w naszym systemie (np. usunięcie pola, zmiana typu, zmiana wymogów CSRF).
-
-**Komentarz Architekta:**
-Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał, kiedy ucinamy wsparcie. Dopóki klientem API jest tylko nasz wewnętrzny frontend (HTMX/JS), to nie jest problem. Jeśli otworzymy to dla aplikacji mobilnych, to jest punkt krytyczny. — ADR-027 formalizuje tę strategię i będzie przewodnikiem dla przyszłych zmian API.
 
 ---

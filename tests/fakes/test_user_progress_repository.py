@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from application.dto.user_context_dto import TouristProfileDTO
+from application.dto.user_context_dto import TouristProfileDomainDTO
 from tests.fakes.user_progress_repository import FakeTouristRepository
 
 
@@ -16,7 +16,7 @@ class TestFakeTouristRepository:
         assert repo.get_profile(99) is None
 
         # Wstrzykujemy mocka profilu
-        repo.profiles[99] = TouristProfileDTO(
+        repo.profiles[99] = TouristProfileDomainDTO(
             profile_id=99,
             is_main_profile=True,
             email="test@test",

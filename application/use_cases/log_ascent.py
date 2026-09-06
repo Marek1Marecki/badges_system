@@ -6,6 +6,7 @@ dnia.
 """
 
 from application.dto.ascent_dto import AscentRequestDTO
+from application.dto.result import CreatedResourceResultDTO
 from application.exceptions import ConflictError
 from application.ports.clock_port import ClockPort
 from application.ports.event_publisher_port import DomainEventPublisherPort
@@ -38,19 +39,18 @@ class LogAscentUseCase:
         self._uow = uow
         self._event_publisher = event_publisher
 
-    def execute(self, profile_id: int, dto: AscentRequestDTO) -> int:
+    def execute(
+        self, profile_id: int, dto: AscentRequestDTO, request_id: str | None = None
+    ) -> CreatedResourceResultDTO:
         """Wykonuje operację logowania wejścia.
 
         Args:
           profile_id: ID turysty z kontekstu sesji (API).
           dto: Zwalidowane dane wejściowe.
-          profile_id: int:
-          dto: AscentRequestDTO:
-          profile_id: int:
-          dto: AscentRequestDTO:
+          request_id: ID żądania HTTP (AUDYT-117 — korelacja logów Celery).
 
         Returns:
-          : ID utworzonego logu wejścia.
+          : `CreatedResourceResultDTO` z ID utworzonego logu wejścia.
 
         Raises:
           UseCaseError: Gdy data wybiega w przyszłość (T-03) lub obiekt nie istnieje.
@@ -76,7 +76,7 @@ class LogAscentUseCase:
                 ascent_date=dto.ascent_date,
             )
             # Uruchamiamy powiadomienie (odpali to Celery, gdy transakcja z commituje się w db)
-            self._event_publisher.publish(UserProgressStateChanged(profile_id=profile_id))
+            self._event_publisher.publish(UserProgressStateChanged(profile_id=profile_id, request_id=request_id))
             # Audit trail: kto (profil) zalogował wejście na który szczyt i kiedy (AUDYT-051)
             self._event_publisher.publish(
                 AscentLogged(
@@ -86,7 +86,4 @@ class LogAscentUseCase:
                 )
             )
 
-        # Wskazówka implementacyjna Fazy C:
-        # Zgodnie z Event-Driven Cache Invalidation, warstwa API wywołująca ten UseCase
-        # powinna po pomyślnym wykonaniu uruchomić zadanie w Celery odświeżające Ranking Potencjału.
-        return ascent_id
+        return CreatedResourceResultDTO(id=ascent_id, type="ascent")

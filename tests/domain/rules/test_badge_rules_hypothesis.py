@@ -55,7 +55,7 @@ def ascents_strategy() -> st.SearchStrategy[list[Ascent]]:
     """Generuje listę obiektów Ascent z losowymi danymi."""
     return st.lists(
         st.builds(
-             Ascent,
+            Ascent,
             object_id=PEAK_IDS,
             ascent_date=DATES,
             region_ids=st.frozensets(REGION_IDS, max_size=5),
