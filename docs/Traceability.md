@@ -49,7 +49,8 @@
 | **US-A01** | `BadgeNewsItem` | UC-010 `FetchBadgeNewsUseCase` | Fail-Silently Web Scraping | `test_news_scraper.py` | ✔ |
 | **(Sync)** | `TouristObject` | UC-011 `RunOsmNightWatchmanUseCase` | S-02 (Poison Pill), Ochrona WAF | `test_osm_adapter.py` | ✔ |
 | **(Klastry)**| `TouristObject` | UC-012 `TouristObject.clean()` | C-01 (Płaska Gwiazda) | `test_tourist_object_clean.py` | ✔ |
-| **Ochrona BBox (Anti-DoS)** | Walidacja Pydantic (`-180..180`) | `ExploreMapUseCase` | Endpoint `/map/objects/` | `test_rejects_out_of_range_bbox` | ✔ |
+ | **Ochrona BBox (Anti-DoS)** | Walidacja Pydantic (`-180..180`) | `ExploreMapUseCase` | Endpoint `/map/objects/` | `test_rejects_out_of_range_bbox` | ✔ |
+| **US-C12** (Navi Regionalna)| **ADR-026** (Ltree), Zmiana na `RegionFlatModel` | Serwis: `ExploreQueriesService` | `/region/{level}/{id}/` | `test_explore_queries_service.py` | ⏳ |
 
 ## 6. Operacje i Utrzymanie Danych (Data Stewardship)
 
