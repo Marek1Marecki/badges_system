@@ -59,20 +59,26 @@ class FakeTouristRepository(
         )
         return ascent_id
 
-    def get_unconsumed_ascents(self, profile_id: int, badge_code: str, cutoff_date: date | None) -> list[AscentDomainDTO]:
+    def get_unconsumed_ascents(
+        self, profile_id: int, badge_code: str, cutoff_date: date | None
+    ) -> list[AscentDomainDTO]:
         result = []
         for a in self.ascents:
             if a["profile_id"] == profile_id:
                 if cutoff_date and a["ascent_date"] <= cutoff_date:
                     continue
-                result.append(AscentDomainDTO(object_id=a["peak_id"], ascent_date=a["ascent_date"], region_ids=frozenset()))
+                result.append(
+                    AscentDomainDTO(object_id=a["peak_id"], ascent_date=a["ascent_date"], region_ids=frozenset())
+                )
         return result
 
     def get_all_ascents_for_user(self, profile_id: int) -> list[AscentDomainDTO]:
         result = []
         for a in self.ascents:
             if a["profile_id"] == profile_id:
-                result.append(AscentDomainDTO(object_id=a["peak_id"], ascent_date=a["ascent_date"], region_ids=frozenset()))
+                result.append(
+                    AscentDomainDTO(object_id=a["peak_id"], ascent_date=a["ascent_date"], region_ids=frozenset())
+                )
         return result
 
     # --- UserProgressRepositoryPort ---

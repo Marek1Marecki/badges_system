@@ -272,7 +272,10 @@ class TestDjangoTouristRepository:
 
         obj = TouristObject.objects.create(name="P13", type="Szczyt", is_active=True, status="READY")
         region = RegionFlatModel.objects.create(
-            name="Region P13", code="P13", level="VOIVODESHIP", path="p13",
+            name="Region P13",
+            code="P13",
+            level="VOIVODESHIP",
+            path="p13",
         )
         ObjectRegionCache.objects.create(
             tourist_object=obj,
