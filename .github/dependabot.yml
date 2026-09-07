@@ -39,8 +39,12 @@ updates:
       include: "scope"
     allow:
       - dependency-type: "all"
-
-  - package-ecosystem: "docker"
+    # AUDYT-154: CodeQL `init` i `analyze` muszą mieć IDENTYCZNY SHA.
+    # Dependabot otwiera osobne PR-y → asynchroniczny bump → version mismatch.
+    # Wyłączamy automat i ręcznie podnosimy oba SHA jednocześnie.
+    ignore:
+      - dependency-name: "github/codeql-action"
+        update-type: "all"
     directory: "/"
     schedule:
       interval: "weekly"
