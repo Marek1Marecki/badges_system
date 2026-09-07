@@ -82,6 +82,12 @@ Każdy wpis ze statusem `open` musi mieć jedno z poniższych przed mergem PR, k
 **Opis:** Dodanie relacji `ManyToManyField` (np. pola `neighbors`) do modeli oznaczonych jako `managed = False` (lub dziedziczących z takich modeli) skutkuje tym, że mechanizm `makemigrations` w Django **całkowicie ignoruje** konieczność utworzenia tabel pośrednich w bazie danych. Ręczne usunięcie flagi `managed = False` wymusza na Django próbę utworzenia od nowa całych, głównych tabel, co kończy się błędem `Relation already exists`.
 **Rozwiązanie / workaround:** Twardy zakaz manipulowania flagą `managed` w celu wymuszenia migracji. Aby powołać do życia tabele M2M dla niezarządzanych modeli, należy użyć tzw. **Pustej Migracji (Empty Migration)**. Należy wygenerować pusty plik komendą `makemigrations --empty` i użyć instrukcji `migrations.RunSQL`, wpisując tam ręcznie wygenerowany kod `CREATE TABLE IF NOT EXISTS` z poprawnymi nazwami tabel i kolumn uzyskanymi z `Model._meta.get_field(...)`.
 
+### EC-090 — Złamanie spójności danych przy migracjach redukcyjnych tabel terytorialnych (`Ltree`)
+**Obszar:** `migrations`, `RegionFlatModel`, `ObjectRegionCache`
+**Status:** `resolved`
+**Opis:** Podczas spłaszczania hierarchii regionów (usunięcie 7 tabel na rzecz jednej `RegionFlatModel` z polem `ltree` zgodnie z ADR-026), próba standardowej zmiany typu kolumny `region_id` z `BigIntegerField` na `ForeignKey` w modelu zmaterializowanym (CQRS) skutkuje błędem bazy danych. Wynika to z faktu, że silnik ORM próbującego zwalidować klucze obce dla rekordów, które w fazie przejściowej mogą nie mieć jeszcze odpowiedników w nowej tabeli docelowej.
+**Rozwiązanie / workaround:** Zastosowano zaawansowany wzorzec migracji Django: użycie operacji `SeparateDatabaseAndState`. Pozwala to na "okłamanie" wirtualnego stanu ORM-a o zmianę typu pola na `ForeignKey`, przy jednoczesnym wykonaniu ręcznych zapytań SQL typu `ALTER TABLE` i transformacji (ETL) na rzeczywistej bazie danych, chroniąc system przed blokadami migracyjnymi.
+
 ---
 
 ## 3. Administracja i Integracja UX (Django Admin)
