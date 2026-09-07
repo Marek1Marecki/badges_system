@@ -146,7 +146,7 @@ ignore_imports =
 
     # DŁUG-008: infrastructure/adapters/persistence/django_region_cache_repo.py -> apps.badges.models
     # Powód: Adaptery regionów i cache używają modeli turystycznych (ObjectRegionCache,
-    #        TouristObject, TouristRegionModel) do zapytań GIS.
+    #        TouristObject, RegionFlatModel) do zapytań GIS.
     infrastructure.adapters.persistence.django_region_cache_repo -> apps.badges.models
 
     # DŁUG-009: infrastructure/adapters/persistence/django_region_geometry_repo.py -> apps.badges.models

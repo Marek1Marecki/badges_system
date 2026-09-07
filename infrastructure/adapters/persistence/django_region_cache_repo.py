@@ -4,7 +4,7 @@ from typing import Any
 
 from application.dto.region_cache_dto import ObjectRegionDomainDTO
 from application.ports.region_cache_port import RegionCacheRepositoryPort
-from apps.badges.models import ObjectRegionCache, TouristObject, TouristRegionModel
+from apps.badges.models import ObjectRegionCache, RegionFlatModel, TouristObject
 
 
 class DjangoRegionCacheRepository(RegionCacheRepositoryPort):
@@ -88,17 +88,15 @@ class DjangoRegionCacheRepository(RegionCacheRepositoryPort):
         Returns:
         """
         try:
-            region = TouristRegionModel.objects.get(id=tourist_region_id)
-        except TouristRegionModel.DoesNotExist:
+            region = RegionFlatModel.objects.get(id=tourist_region_id)
+        except RegionFlatModel.DoesNotExist:
             return []
 
         related = []
-        for v in region.voivodeships.all():
-            related.append((v.id, "VOIVODESHIP"))
-        for m in region.macroregions.all():
-            related.append((m.id, "MACROREGION"))
-        for me in region.mesoregions.all():
-            related.append((me.id, "MESOREGION"))
+        for n in region.neighbors.all():
+            related.append((n.id, n.level))
+        for c in region.children.all():
+            related.append((c.id, c.level))
         return related
 
     def check_object_geometry_and_tags(self, object_id: int) -> tuple[bool, dict[str, Any]]:
@@ -143,7 +141,6 @@ class DjangoRegionCacheRepository(RegionCacheRepositoryPort):
         Returns:
 
         """
-        from django.apps import apps
         from django.contrib.gis.measure import D
 
         from apps.badges.models import ObjectRegionCache, TouristObject
@@ -153,23 +150,17 @@ class DjangoRegionCacheRepository(RegionCacheRepositoryPort):
             return
 
         levels = [
-            ("CountryModel", "COUNTRY"),
-            ("VoivodeshipModel", "VOIVODESHIP"),
-            ("ProvinceModel", "PROVINCE"),
-            ("SubprovinceModel", "SUBPROVINCE"),
-            ("MacroregionModel", "MACROREGION"),
-            ("MesoregionModel", "MESOREGION"),
+            ("regions_flat", RegionFlatModel, "COUNTRY"),
         ]
 
         objects_to_create = []
 
-        for model_name, level_name in levels:
-            model = apps.get_model("badges", model_name)
+        for _, model, level in levels:
             regions = model.objects.filter(shape__distance_lte=(obj.geom, D(m=50)))
             for r in regions:
                 objects_to_create.append(
                     ObjectRegionCache(
-                        tourist_object_id=object_id, region_id=r.id, region_level=level_name, distance_meters=0.0
+                        tourist_object_id=object_id, region_id=r.id, region_level=level, distance_meters=0.0
                     )
                 )
 
@@ -187,12 +178,12 @@ class DjangoRegionCacheRepository(RegionCacheRepositoryPort):
         Returns:
 
         """
-        from apps.badges.models import ObjectRegionCache, TouristRegionModel
+        from apps.badges.models import ObjectRegionCache, RegionFlatModel
 
         current_cache = list(ObjectRegionCache.objects.filter(tourist_object_id=object_id))
         objects_to_create = []
 
-        for tr in TouristRegionModel.objects.all():
+        for tr in RegionFlatModel.objects.all():
             related_components = self.get_related_regions(tr.id)
             is_inside = any(
                 cc.region_id == r_id and cc.region_level == r_level

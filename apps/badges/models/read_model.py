@@ -1,33 +1,20 @@
 """Modele denormalizowanego Read Modelu (CQRS).
 
 Zawiera ``ObjectRegionCache`` — płaską tabelę odczytu łączącą
-punkt (``TouristObject``) z regionami na podstawie ST_DWithin,
-oraz ``RegionLevelType`` — słownik poziomów regionów.
+punkt (``TouristObject``) z regionami na podstawie ST_DWithin.
 """
 
 from django.db import models
-from django.utils.translation import gettext_lazy as _
 
 from apps.badges.models.osm import TouristObject
-
-
-class RegionLevelType(models.TextChoices):
-    """Poziomy słownika geograficznego do filtrowania w CQRS."""
-
-    COUNTRY = "COUNTRY", _("Państwo")
-    VOIVODESHIP = "VOIVODESHIP", _("Województwo")
-    PROVINCE = "PROVINCE", _("Prowincja")
-    SUBPROVINCE = "SUBPROVINCE", _("Podprowincja")
-    MACROREGION = "MACROREGION", _("Makroregion")
-    MESOREGION = "MESOREGION", _("Mezoregion")
-    TOURIST_REGION = "TOURIST_REGION", _("Region Turystyczny")
+from apps.badges.models.region import RegionFlatModel, RegionLevel
 
 
 class ObjectRegionCache(models.Model):
     """Płaska tabela odczytu (CQRS Read Model) wypełniana asynchronicznie przez Celery.
 
     Łączy punkt (TouristObject) z dowolnym z 6 typów regionów na podstawie ST_DWithin.
-    Zamiast 6 tabel M2M, mamy jedną, błyskawiczną w odpytywaniu.
+    Zamiast 6 tabel M2M, mamy jedną, błyskawiczną w odczytywaniu.
 
     Args:
 
@@ -36,13 +23,18 @@ class ObjectRegionCache(models.Model):
 
     tourist_object = models.ForeignKey(TouristObject, on_delete=models.CASCADE, related_name="cached_regions")
 
-    # Przechowujemy typ poziomu (np. COUNTRY) i fizyczne ID wiersza z
-    # odpowiedniej tabeli (np. ID Polski z CountryModel)
-    region_level = models.CharField(max_length=20, choices=RegionLevelType.choices)
-    region_id = models.BigIntegerField(help_text="ID wiersza z tabeli odpowiadającej poziomowi region_level.")
+    # Przechowujemy typ poziomu (np. COUNTRY) i FK do RegionFlatModel
+    region_level = models.CharField(max_length=20, choices=RegionLevel.choices)
+    region = models.ForeignKey(
+        RegionFlatModel,
+        on_delete=models.CASCADE,
+        related_name="cached_objects",
+        db_column="region_id",
+        help_text="Region z regions_flat (ADR-028).",
+    )
     region_name = models.CharField(
         max_length=100,
-        help_text="Zdenormalizowana nazwa regionu do błyskawicznego wyświetlania (np. w panelu).",
+        help_text="Zdenormalizowana nazwa regionu do błyskawicznego wyświetlenia (np. w panelu).",
     )
 
     # 0.0 oznacza, że obiekt leży ściśle wewnątrz poligonu (ST_Intersects)
@@ -56,11 +48,11 @@ class ObjectRegionCache(models.Model):
 
         db_table = "odznaki_object_region_cache"
         # Uniemożliwiamy zduplikowanie przypisania tego samego regionu do obiektu
-        unique_together = ("tourist_object", "region_level", "region_id")
+        unique_together = ("tourist_object", "region_level", "region")
         # Indeksy potężnie przyspieszające odczyt CQRS dla paneli analitycznych
         indexes = [
             models.Index(fields=["tourist_object", "region_level"]),
-            models.Index(fields=["region_level", "region_id"]),
+            models.Index(fields=["region_level", "region"]),
         ]
 
     def __str__(self) -> str:

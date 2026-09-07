@@ -201,7 +201,7 @@ Test egzekwuje zasadę Expand & Contract: migracja nie może zawierać zarówno 
 **Opis:**
 Test wymusza dekompozycję modułów. Przeciwdziała powstawaniu plików takich jak `apps/badges/models.py` (obecnie 19 modeli, w tym klasy abstrakcyjne). Próg 20 gwarantuje, że obecny stan jest akceptowany, ale kolejne znacząco powiększające się moduły zostaną wykryte.
 
-> **Uwaga:** Test korzysta z AST do wykrywania klas dziedziczących po typie kończącym się na `Model` (w tym `models.Model`, `gis_models.Model`, `RegionBaseModel`). Liczba modeli w pliku jest proxy metric, a nie rzeczywistym invariantem architektonicznym. 5 klas może tworzyć potężnego God Object, a 20 może być akceptowalnych. Test służy jako trend/smell detector, a nie blocking rule. Status: **Diagnostic**.
+> **Uwaga:** Test korzysta z AST do wykrywania klas dziedziczących po typie kończącym się na `Model` (w tym `models.Model`, `gis_models.Model`, `RegionFlatModel`). Liczba modeli w pliku jest proxy metric, a nie rzeczywistym invariantem architektonicznym. 5 klas może tworzyć potężnego God Object, a 20 może być akceptowalnych. Test służy jako trend/smell detector, a nie blocking rule. Status: **Diagnostic**.
 
 ---
 

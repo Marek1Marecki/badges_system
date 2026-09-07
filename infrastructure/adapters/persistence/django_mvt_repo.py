@@ -1,30 +1,16 @@
-"""Adapter przestrzenny dla kafelków wektorowych (MVT) z użyciem surowego SQL."""
+"""Adapter przestrzenny dla kafelków wektorowych (MVT) z użyciem surowego SQL (ADR-028)."""
 
 from django.db import connection
 
 from application.ports.mvt_port import MvtRepositoryPort
-from apps.badges.models import (
-    CountryModel,
-    MacroregionModel,
-    MesoregionModel,
-    ProvinceModel,
-    SubprovinceModel,
-    TouristRegionModel,
-    VoivodeshipModel,
-)
+from apps.badges.models import RegionFlatModel
 
 # POPRAWNY IMPORT WYJĄTKU (Z infrastruktury, a nie z aplikacji)
 from infrastructure.exceptions import InfrastructureException
 
-# Baza sama dostarczy poprawne nazwy tabel z modeli!
-LAYER_TO_TABLE_MAP = {
-    "country": CountryModel._meta.db_table,
-    "voivodeship": VoivodeshipModel._meta.db_table,
-    "province": ProvinceModel._meta.db_table,
-    "subprovince": SubprovinceModel._meta.db_table,
-    "macroregion": MacroregionModel._meta.db_table,
-    "mesoregion": MesoregionModel._meta.db_table,
-    "tourist_region": TouristRegionModel._meta.db_table,
+# Jedna płaska tabela regions_flat = wszystkie warstwy MVT
+LAYER_TO_MODEL = {
+    "regions_flat": RegionFlatModel,
 }
 
 
@@ -47,10 +33,11 @@ class DjangoMvtRepository(MvtRepositoryPort):
         Returns:
 
         """
-        table_name = LAYER_TO_TABLE_MAP.get(layer_name)
-        if not table_name:
+        model = LAYER_TO_MODEL.get(layer_name)
+        if not model:
             raise InfrastructureException(f"Nieznana warstwa MVT: {layer_name}")
 
+        table_name = model._meta.db_table
         query = f"""
                 WITH bounds AS (
                     SELECT ST_TileEnvelope(%s, %s, %s) AS geom

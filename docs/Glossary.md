@@ -168,10 +168,10 @@
 | | |
 |---|---|
 | **Definicja** | Sztuczny byt geograficzny na potrzeby PTTK (np. "Sudety", "Beskidy"), składający się ze sklejonych wielokątów mniejszych jednostek (np. mezoregionów). |
-| **Alias** | `TouristRegionModel` |
+ | **Alias** | `RegionFlatModel` (level: `TOURIST_REGION`) |
 | **Przykład** | Region "Tatry Polskie" |
 | **NIE jest** | Z punktu widzenia CQRS staje się po wyliczeniu kolejną równorzędną warstwą w `ObjectRegionCache`. |
-| **Używany w** | `TouristRegionModel`, `BuildTouristRegionGeometryUseCase` |
+ | **Używany w** | `RegionFlatModel` (level=`TOURIST_REGION`), `BuildTouristRegionGeometryUseCase` |
 
 ### Cluster / Parent Object (Klaster / Gniazdo)
 

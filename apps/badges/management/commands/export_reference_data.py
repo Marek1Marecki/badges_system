@@ -108,13 +108,7 @@ class Command(BaseCommand):
 
         # Statystyki do Manifestu (liczone przed zrzutem)
         region_models = [
-            "CountryModel",
-            "VoivodeshipModel",
-            "ProvinceModel",
-            "SubprovinceModel",
-            "MacroregionModel",
-            "MesoregionModel",
-            "TouristRegionModel",
+            "RegionFlatModel",
         ]
 
         stats = {
@@ -140,13 +134,7 @@ class Command(BaseCommand):
         regions_file = output_dir / "01_regions.json"
         call_command(
             "dumpdata",
-            "badges.CountryModel",
-            "badges.VoivodeshipModel",
-            "badges.ProvinceModel",
-            "badges.SubprovinceModel",
-            "badges.MacroregionModel",
-            "badges.MesoregionModel",
-            "badges.TouristRegionModel",
+            "badges.RegionFlatModel",
             indent=2,
             output=str(regions_file),
         )

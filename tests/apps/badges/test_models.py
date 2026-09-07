@@ -6,13 +6,8 @@ from apps.badges.models import (
     BadgeModel,
     BadgeTierModel,
     BadgeVersionModel,
-    CountryModel,
-    MacroregionModel,
-    MesoregionModel,
-    ProvinceModel,
-    RegionBaseModel,
-    SubprovinceModel,
-    VoivodeshipModel,
+    RegionFlatModel,
+    RegionLevel,
 )
 from apps.badges.rules_schema import RULES_SCHEMA
 
@@ -84,264 +79,55 @@ class TestRulesSchema:
         assert limit_field["title"] == "Limit (w latach)"
 
 
-class TestRegionBaseModel:
-    """Testy abstrakcyjnego modelu bazowego."""
+class TestRegionFlatModel:
+    """Testy modelu RegionFlatModel (ADR-028)."""
 
-    def test_region_base_model_fields(self):
-        """Test pól modelu bazowego."""
-        # Test that the model has the expected fields
-        # Note: We can't instantiate abstract models directly, but we can test their structure
-        assert hasattr(RegionBaseModel, "name")
-        assert hasattr(RegionBaseModel, "translation")
-        assert hasattr(RegionBaseModel, "code")
-        assert hasattr(RegionBaseModel, "link")
-        assert hasattr(RegionBaseModel, "shape")
-        assert hasattr(RegionBaseModel, "created_at")
-        assert hasattr(RegionBaseModel, "updated_at")
+    def test_region_flat_model_fields(self):
+        """Test pól modelu RegionFlatModel."""
+        assert hasattr(RegionFlatModel, "name")
+        assert hasattr(RegionFlatModel, "translation")
+        assert hasattr(RegionFlatModel, "code")
+        assert hasattr(RegionFlatModel, "level")
+        assert hasattr(RegionFlatModel, "path")
+        assert hasattr(RegionFlatModel, "shape")
+        assert hasattr(RegionFlatModel, "parent")
+        assert hasattr(RegionFlatModel, "neighbors")
+        assert hasattr(RegionFlatModel, "created_at")
+        assert hasattr(RegionFlatModel, "updated_at")
 
-    def test_region_base_model_meta(self):
-        """Test meta klasy modelu bazowego."""
-        assert RegionBaseModel._meta.abstract is True
+    def test_region_flat_model_meta(self):
+        """Test meta klasy RegionFlatModel."""
+        assert RegionFlatModel._meta.db_table == "regions_flat"
+        assert RegionFlatModel._meta.verbose_name == "Region (Flat)"
+        assert RegionFlatModel._meta.verbose_name_plural == "Regiony (Flat)"
 
+    def test_region_level_choices(self):
+        """Test wartości wyboru RegionLevel."""
+        assert RegionLevel.COUNTRY == "COUNTRY"
+        assert RegionLevel.VOIVODESHIP == "VOIVODESHIP"
+        assert RegionLevel.TOURIST_REGION == "TOURIST_REGION"
 
-class TestCountryModel:
-    """Testy modelu państwa."""
-
-    def test_country_model_inheritance(self):
-        """Test dziedziczenia CountryModel."""
-        assert issubclass(CountryModel, RegionBaseModel)
-
-    def test_country_model_meta(self):
-        """Test meta klasy CountryModel."""
-        assert CountryModel._meta.db_table == "odznaki_country"
-        assert CountryModel._meta.verbose_name == "Państwo"
-        assert CountryModel._meta.verbose_name_plural == "Państwa"
-
-    def test_country_model_has_order_field(self):
-        """Test pola order."""
-        assert hasattr(CountryModel, "order")
-
-
-class TestVoivodeshipModel:
-    """Testy modelu województwa."""
-
-    def test_voivodeship_model_inheritance(self):
-        """Test dziedziczenia VoivodeshipModel."""
-        assert issubclass(VoivodeshipModel, RegionBaseModel)
-
-    def test_voivodeship_model_meta(self):
-        """Test meta klasy VoivodeshipModel."""
-        assert VoivodeshipModel._meta.db_table == "odznaki_voivodeship"
-        assert VoivodeshipModel._meta.verbose_name == "Województwo"
-        assert VoivodeshipModel._meta.verbose_name_plural == "Województwa"
-
-    def test_voivodeship_model_unique_constraints(self):
-        """Test unikalnych ograniczeń."""
-        unique_together = VoivodeshipModel._meta.unique_together
-        assert ("country", "code") in unique_together
-        assert ("country", "name") in unique_together
-
-    def test_voivodeship_model_has_country_field(self):
-        """Test pola country."""
-        assert hasattr(VoivodeshipModel, "country")
+    def test_region_flat_model_str(self):
+        """Test __str__ RegionFlatModel."""
+        region = MagicMock()
+        region.name = "Polska"
+        region.code = "PL"
+        result = RegionFlatModel.__str__(region)
+        assert "Polska" in result
+        assert "PL" in result
 
 
-class TestProvinceModel:
-    """Testy modelu prowincji."""
+class TestRegionFlatModelStr:
+    """Testy __str__ modeli."""
 
-    def test_province_model_inheritance(self):
-        """Test dziedziczenia ProvinceModel."""
-        assert issubclass(ProvinceModel, RegionBaseModel)
-
-    def test_province_model_meta(self):
-        """Test meta klasy ProvinceModel."""
-        assert ProvinceModel._meta.db_table == "odznaki_province"
-        assert ProvinceModel._meta.verbose_name == "Prowincja"
-        assert ProvinceModel._meta.verbose_name_plural == "Prowincje"
-
-    def test_province_model_unique_constraints(self):
-        """Test unikalnych ograniczeń."""
-        unique_together = ProvinceModel._meta.unique_together
-        assert ("country", "code") in unique_together
-
-    def test_province_model_has_country_field(self):
-        """Test pola country."""
-        assert hasattr(ProvinceModel, "country")
-
-
-class TestSubprovinceModel:
-    """Testy modelu podprowincji."""
-
-    def test_subprovince_model_inheritance(self):
-        """Test dziedziczenia SubprovinceModel."""
-        assert issubclass(SubprovinceModel, RegionBaseModel)
-
-    def test_subprovince_model_meta(self):
-        """Test meta klasy SubprovinceModel."""
-        assert SubprovinceModel._meta.db_table == "odznaki_subprovince"
-        assert SubprovinceModel._meta.verbose_name == "Podprowincja"
-        assert SubprovinceModel._meta.verbose_name_plural == "Podprowincje"
-
-    def test_subprovince_model_unique_constraints(self):
-        """Test unikalnych ograniczeń."""
-        unique_together = SubprovinceModel._meta.unique_together
-        assert ("province", "code") in unique_together
-
-    def test_subprovince_model_has_province_field(self):
-        """Test pola province."""
-        assert hasattr(SubprovinceModel, "province")
-
-
-class TestMacroregionModel:
-    """Testy modelu makroregionu."""
-
-    def test_macroregion_model_inheritance(self):
-        """Test dziedziczenia MacroregionModel."""
-        assert issubclass(MacroregionModel, RegionBaseModel)
-
-    def test_macroregion_model_meta(self):
-        """Test meta klasy MacroregionModel."""
-        assert MacroregionModel._meta.db_table == "odznaki_macroregion"
-        assert MacroregionModel._meta.verbose_name == "Makroregion"
-        assert MacroregionModel._meta.verbose_name_plural == "Makroregiony"
-
-    def test_macroregion_model_has_subprovince_field(self):
-        """Test pola subprovince."""
-        assert hasattr(MacroregionModel, "subprovince")
-
-
-class TestMesoregionModel:
-    """Testy modelu mezoregionu."""
-
-    def test_mesoregion_model_inheritance(self):
-        """Test dziedziczenia MesoregionModel."""
-        assert issubclass(MesoregionModel, RegionBaseModel)
-
-    def test_mesoregion_model_meta(self):
-        """Test meta klasy MesoregionModel."""
-        assert MesoregionModel._meta.db_table == "odznaki_mesoregion"
-        assert MesoregionModel._meta.verbose_name == "Mezoregion"
-        assert MesoregionModel._meta.verbose_name_plural == "Mezoregiony"
-
-    def test_mesoregion_model_has_macroregion_field(self):
-        """Test pola macroregion."""
-        assert hasattr(MesoregionModel, "macroregion")
-
-
-class TestBadgeModel:
-    """Testy modelu odznaki."""
-
-    def test_badge_model_fields(self):
-        """Test pól modelu BadgeModel."""
-        assert hasattr(BadgeModel, "code")
-        assert hasattr(BadgeModel, "name")
-
-    def test_badge_model_code_field(self):
-        """Test pola code."""
-        code_field = BadgeModel._meta.get_field("code")
-        assert code_field.max_length == 50
-        assert code_field.unique is True
-        assert code_field.verbose_name == "Kod"
-
-    def test_badge_model_name_field(self):
-        """Test pola name."""
-        name_field = BadgeModel._meta.get_field("name")
-        assert name_field.max_length == 255
-        assert name_field.verbose_name == "Nazwa Odznaki"
-
-    def test_badge_model_str_method(self):
-        """Test metody __str__."""
-        assert hasattr(BadgeModel, "__str__")
-
-
-class TestBadgeVersionModel:
-    """Testy modelu wersji odznaki."""
-
-    def test_badge_version_model_fields(self):
-        """Test pól modelu BadgeVersionModel."""
-        assert hasattr(BadgeVersionModel, "badge")
-        assert hasattr(BadgeVersionModel, "version_code")
-        assert hasattr(BadgeVersionModel, "valid_from")
-        assert hasattr(BadgeVersionModel, "rules")
-        assert hasattr(BadgeVersionModel, "pool_peaks")
-
-    def test_badge_version_model_badge_field(self):
-        """Test pola badge."""
-        badge_field = BadgeVersionModel._meta.get_field("badge")
-        assert badge_field.remote_field.related_name == "versions"
-
-    def test_badge_version_model_version_code_field(self):
-        """Test pola version_code."""
-        version_field = BadgeVersionModel._meta.get_field("version_code")
-        assert version_field.max_length == 50
-        assert version_field.verbose_name == "Wersja (np. v2024)"
-
-    def test_badge_version_model_valid_from_field(self):
-        """Test pola valid_from."""
-        valid_from_field = BadgeVersionModel._meta.get_field("valid_from")
-        assert valid_from_field.verbose_name == "Obowiązuje od"
-
-    def test_badge_version_model_rules_field(self):
-        """Test pola rules."""
-        rules_field = BadgeVersionModel._meta.get_field("rules")
-        assert rules_field.schema == RULES_SCHEMA
-        assert rules_field.verbose_name == "Reguły biznesowe"
-
-    def test_badge_version_model_str_method(self):
-        """Test metody __str__."""
-        assert hasattr(BadgeVersionModel, "__str__")
-
-
-class TestBadgeTierModel:
-    """Testy modelu stopnia odznaki."""
-
-    def test_badge_tier_model_fields(self):
-        """Test pól modelu BadgeTierModel."""
-        assert hasattr(BadgeTierModel, "version")
-        assert hasattr(BadgeTierModel, "name")
-        assert hasattr(BadgeTierModel, "order")
-        assert hasattr(BadgeTierModel, "badge_image")
-        assert hasattr(BadgeTierModel, "required_peaks_count")
-
-    def test_badge_tier_model_required_peaks_count_field(self):
-        """Test pola required_peaks_count."""
-        required_field = BadgeTierModel._meta.get_field("required_peaks_count")
-        assert required_field.null is True
-        assert required_field.blank is True
-        assert "Puste = wymaga zdobycia WSZYSTKIECH szczytów z puli tej wersji." in required_field.help_text
-
-    def test_badge_tier_model_version_field(self):
-        """Test pola version."""
-        version_field = BadgeTierModel._meta.get_field("version")
-        assert version_field.remote_field.related_name == "tiers"
-        assert version_field.verbose_name == "Wersja odznaki"
-
-    def test_badge_tier_model_order_field(self):
-        """Test pola order."""
-        order_field = BadgeTierModel._meta.get_field("order")
-        assert order_field.default == 1
-        assert order_field.verbose_name == "Kolejność zdobywania (1=najniższy)"
-
-    def test_badge_tier_model_name_field(self):
-        """Test pola name."""
-        name_field = BadgeTierModel._meta.get_field("name")
-        assert name_field.max_length == 50
-        assert name_field.verbose_name == "Stopień"
-
-    def test_badge_tier_model_badge_image_field(self):
-        """Test pola badge_image."""
-        image_field = BadgeTierModel._meta.get_field("badge_image")
-        assert image_field.null is True
-        assert image_field.blank is True
-        assert image_field.verbose_name == "Zdjęcie blachy (Odznaki)"
-
-    def test_badge_tier_model_str_method(self):
-        """Test metody __str__."""
-        assert hasattr(BadgeTierModel, "__str__")
-
-
-class TestBadgeModelStr:
-    """Testy __str__ modeli odznak."""
+    def test_region_flat_model_str(self):
+        """Test __str__ RegionFlatModel."""
+        region = MagicMock()
+        region.name = "Polska"
+        region.code = "PL"
+        result = RegionFlatModel.__str__(region)
+        assert "Polska" in result
+        assert "PL" in result
 
     def test_badge_model_str(self):
         """Test __str__ BadgeModel."""
@@ -390,17 +176,6 @@ class TestBadgeModelStr:
 
         assert "Rysy" in result
         assert "Bufor 150m" in result
-
-    def test_country_model_str(self):
-        """Test __str__ CountryModel."""
-        from apps.badges.models import CountryModel
-
-        country = MagicMock()
-        country.name = "Polska"
-        country.code = "PL"
-        result = CountryModel.__str__(country)
-        assert "Polska" in result
-        assert "PL" in result
 
     def test_organizer_model_str(self):
         """Test __str__ OrganizerModel."""
@@ -513,3 +288,115 @@ class TestBadgeModelStr:
         result = BadgeNewsItem.__str__(item)
         assert "DODANO" in result
         assert "KGP" in result
+
+
+class TestBadgeModel:
+    """Testy modelu odznaki."""
+
+    def test_badge_model_fields(self):
+        """Test pól modelu BadgeModel."""
+        assert hasattr(BadgeModel, "code")
+        assert hasattr(BadgeModel, "name")
+
+    def test_badge_model_code_field(self):
+        """Test pola code."""
+        code_field = BadgeModel._meta.get_field("code")
+        assert code_field.max_length == 50
+        assert code_field.unique is True
+        assert code_field.verbose_name == "Kod"
+
+    def test_badge_model_name_field(self):
+        """Test pola name."""
+        name_field = BadgeModel._meta.get_field("name")
+        assert name_field.max_length == 255
+        assert name_field.verbose_name == "Nazwa Odznaki"
+
+    def test_badge_model_str_method(self):
+        """Test metody __str__."""
+        assert hasattr(BadgeModel, "__str__")
+
+
+class TestBadgeVersionModel:
+    """Testy modelu wersji odznaki."""
+
+    def test_badge_version_model_fields(self):
+        """Test pól modelu BadgeVersionModel."""
+        assert hasattr(BadgeVersionModel, "badge")
+        assert hasattr(BadgeVersionModel, "version_code")
+        assert hasattr(BadgeVersionModel, "valid_from")
+        assert hasattr(BadgeVersionModel, "rules")
+        assert hasattr(BadgeVersionModel, "pool_peaks")
+
+    def test_badge_version_model_badge_field(self):
+        """Test pola badge."""
+        badge_field = BadgeVersionModel._meta.get_field("badge")
+        assert badge_field.remote_field.related_name == "versions"
+
+    def test_badge_version_model_version_code_field(self):
+        """Test pola version_code."""
+        version_field = BadgeVersionModel._meta.get_field("version_code")
+        assert version_field.max_length == 50
+        assert version_field.verbose_name == "Wersja (np. v2024)"
+
+    def test_badge_version_model_valid_from_field(self):
+        """Test pola valid_from."""
+        valid_from_field = BadgeVersionModel._meta.get_field("valid_from")
+        assert valid_from_field.verbose_name == "Obowiązuje od"
+
+    def test_badge_version_model_rules_field(self):
+        """Test pola rules."""
+        rules_field = BadgeVersionModel._meta.get_field("rules")
+        assert rules_field.schema == RULES_SCHEMA
+        assert rules_field.verbose_name == "Reguły biznesowe"
+
+    def test_badge_version_model_str_method(self):
+        """Test metody __str__."""
+        assert hasattr(BadgeVersionModel, "__str__")
+
+
+class TestBadgeTierModel:
+    """Testy modelu stopnia odznaki."""
+
+    def test_badge_tier_model_fields(self):
+        """Test pól modelu BadgeTierModel."""
+        assert hasattr(BadgeTierModel, "version")
+        assert hasattr(BadgeTierModel, "name")
+        assert hasattr(BadgeTierModel, "order")
+        assert hasattr(BadgeTierModel, "badge_image")
+        assert hasattr(BadgeTierModel, "required_peaks_count")
+
+    def test_badge_tier_model_required_peaks_count_field(self):
+        """Test pola required_peaks_count."""
+        required_field = BadgeTierModel._meta.get_field("required_peaks_count")
+        assert required_field.null is True
+        assert required_field.blank is True
+        assert "Puste = wymaga zdobycia WSZYSTKIECH szczytów z puli tej wersji." in required_field.help_text
+
+    def test_badge_tier_model_version_field(self):
+        """Test pola version."""
+        version_field = BadgeTierModel._meta.get_field("version")
+        assert version_field.remote_field.related_name == "tiers"
+        assert version_field.verbose_name == "Wersja odznaki"
+
+    def test_badge_tier_model_order_field(self):
+        """Test pola order."""
+        order_field = BadgeTierModel._meta.get_field("order")
+        assert order_field.default == 1
+        assert order_field.verbose_name == "Kolejność zdobywania (1=najniższy)"
+
+    def test_badge_tier_model_name_field(self):
+        """Test pola name."""
+        name_field = BadgeTierModel._meta.get_field("name")
+        assert name_field.max_length == 50
+        assert name_field.verbose_name == "Stopień"
+
+    def test_badge_tier_model_badge_image_field(self):
+        """Test pola badge_image."""
+        image_field = BadgeTierModel._meta.get_field("badge_image")
+        assert image_field.null is True
+        assert image_field.blank is True
+        assert image_field.verbose_name == "Zdjęcie blachy (Odznaki)"
+
+    def test_badge_tier_model_str_method(self):
+        """Test metody __str__."""
+        assert hasattr(BadgeTierModel, "__str__")

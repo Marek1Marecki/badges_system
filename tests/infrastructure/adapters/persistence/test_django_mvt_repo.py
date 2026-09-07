@@ -28,7 +28,7 @@ class TestDjangoMvtRepository:
 
         with patch("infrastructure.adapters.persistence.django_mvt_repo.connection.cursor") as mock_cursor_ctx:
             mock_cursor_ctx.return_value.__enter__.return_value = mock_cursor
-            result = repo.get_tile("voivodeship", 5, 10, 15)
+            result = repo.get_tile("regions_flat", 5, 10, 15)
             assert result == b"mvt_data"
 
     def test_get_tile_returns_none_when_no_data(self, repo):
@@ -38,7 +38,7 @@ class TestDjangoMvtRepository:
 
         with patch("infrastructure.adapters.persistence.django_mvt_repo.connection.cursor") as mock_cursor_ctx:
             mock_cursor_ctx.return_value.__enter__.return_value = mock_cursor
-            result = repo.get_tile("voivodeship", 5, 10, 15)
+            result = repo.get_tile("regions_flat", 5, 10, 15)
             assert result is None
 
     def test_get_tile_returns_none_when_row_has_no_bytes(self, repo):
@@ -48,5 +48,5 @@ class TestDjangoMvtRepository:
 
         with patch("infrastructure.adapters.persistence.django_mvt_repo.connection.cursor") as mock_cursor_ctx:
             mock_cursor_ctx.return_value.__enter__.return_value = mock_cursor
-            result = repo.get_tile("voivodeship", 5, 10, 15)
+            result = repo.get_tile("regions_flat", 5, 10, 15)
             assert result is None

@@ -150,6 +150,9 @@ digraph G {
     "apps.badges.migrations.0002_alter_organizermodel_has_publication_consent_and_more" [fillcolor="pink"];
     "apps.badges.migrations.0003_alter_touristobject_existence_end_and_more" [fillcolor="pink"];
     "apps.badges.migrations.0004_create_regions_flat_ltree" [fillcolor="pink"];
+    "apps.badges.migrations.0005_migrate_region_neighbors_m2m" [fillcolor="pink"];
+    "apps.badges.migrations.0006_alter_objectregioncache_region_id_fk" [fillcolor="pink"];
+    "apps.badges.migrations.0007_drop_legacy_regions" [fillcolor="pink"];
     "apps.badges.models" [fillcolor="pink"];
     "apps.badges.models.badge" [fillcolor="pink"];
     "apps.badges.models.news" [fillcolor="pink"];
@@ -307,7 +310,6 @@ digraph G {
   "apps.badges.admin.proximity_admin" -> "apps.badges.admin.filters";
   "apps.badges.admin.proximity_admin" -> "apps.badges.models";
   "apps.badges.admin.region_admin" -> "apps.badges.models";
-  "apps.badges.admin.region_admin" -> "apps.badges.tasks";
   "apps.badges.admin.sync_conflict_admin" -> "apps.badges.models";
   "apps.badges.forms" -> "apps.badges.models";
   "apps.badges.management.commands.calculate_neighbors" -> "apps.badges.models";
@@ -325,6 +327,7 @@ digraph G {
   "apps.badges.models.badge" -> "apps.badges.rules_schema";
   "apps.badges.models.proximity" -> "apps.badges.models.osm";
   "apps.badges.models.read_model" -> "apps.badges.models.osm";
+  "apps.badges.models.read_model" -> "apps.badges.models.region";
   "apps.badges.rules_schema" -> "domain.rules.builders";
   "apps.badges.rules_schema" -> "domain.rules.registry";
   "apps.badges.tasks" -> "application.exceptions";

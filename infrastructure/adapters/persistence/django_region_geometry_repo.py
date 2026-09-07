@@ -1,9 +1,9 @@
-"""Adapter dla wyliczania fizycznych kształtów Regionów Turystycznych."""
+"""Adapter dla wyliczania fizycznych kształtów Regionów Turystycznych (ADR-028)."""
 
 from django.contrib.gis.geos import MultiPolygon, Polygon
 
 from application.ports.region_cache_port import TouristRegionGeometryRepositoryPort
-from apps.badges.models import TouristRegionModel
+from apps.badges.models import RegionFlatModel
 
 
 class DjangoTouristRegionGeometryRepository(TouristRegionGeometryRepositoryPort):
@@ -11,7 +11,9 @@ class DjangoTouristRegionGeometryRepository(TouristRegionGeometryRepositoryPort)
 
     def get_regions_without_geometry(self) -> list[int]:
         """Zwraca regiony turystyczne bez geometrii."""
-        return list(TouristRegionModel.objects.filter(shape__isnull=True).values_list("id", flat=True))
+        return list(
+            RegionFlatModel.objects.filter(level="TOURIST_REGION", shape__isnull=True).values_list("id", flat=True)
+        )
 
     def update_region_geometry(self, region_id: int) -> bool:
         """
@@ -24,17 +26,14 @@ class DjangoTouristRegionGeometryRepository(TouristRegionGeometryRepositoryPort)
 
         """
         try:
-            region = TouristRegionModel.objects.get(id=region_id)
-        except TouristRegionModel.DoesNotExist:
+            region = RegionFlatModel.objects.get(id=region_id, level="TOURIST_REGION")
+        except RegionFlatModel.DoesNotExist:
             return False
 
         geometries = []
-        for v in region.voivodeships.filter(shape__isnull=False):
-            geometries.append(v.shape)
-        for m in region.macroregions.filter(shape__isnull=False):
-            geometries.append(m.shape)
-        for me in region.mesoregions.filter(shape__isnull=False):
-            geometries.append(me.shape)
+        for child in region.children.all():
+            if child.shape:
+                geometries.append(child.shape)
 
         if not geometries:
             return False
@@ -46,5 +45,5 @@ class DjangoTouristRegionGeometryRepository(TouristRegionGeometryRepositoryPort)
         if isinstance(merged_geom, Polygon):
             merged_geom = MultiPolygon(merged_geom)
 
-        TouristRegionModel.objects.filter(id=region_id).update(shape=merged_geom)
+        RegionFlatModel.objects.filter(id=region_id).update(shape=merged_geom)
         return True

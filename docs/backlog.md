@@ -2964,3 +2964,41 @@ Bypass jest świetny do testowania funkcji biznesowych, ale sam proces logowania
 - `pytest.mark.e2e` + `--strict-markers` kompatybilny.
 
 ---
+
+### [x] [AUDYT-158] Usunięcie historycznych modeli regionów po migracji do RegionFlatModel (ADR-028)
+**Obszar:** `Czyszczenie kodu / Refaktoryzacja`  
+**Priorytet:** `🟢 NISKI (Tech Debt cleanup po ADR-028)`
+**Status:** `🟢 ZAKOŃCZONO`
+
+**Diagnoza:**
+Po udanej migracji danych do płaskiej tabeli `regions_flat` (migracje 0003/0004/0005) i przeksztatałceniu `ObjectRegionCache` (migracja 0006), istniejących w kodzie **7 historycznych modeli regionów** (`CountryModel`, `VoivodeshipModel`, `ProvinceModel`, `SubprovinceModel`, `MacroregionModel`, `MesoregionModel`, `TouristRegionModel`) oraz `RegionBaseModel`, `PhysicalRegionMixin` i `RegionLevelType` są martwym kodem. Przyczyniają się do:
+- importliwości cyklicznej (`apps.badges.models` → `infrastructure.adapters.persistence`)
+- nadużycia `.importlinter` (14 ignorowanych importów)
+- mylącej dokumentacji (Glosariusz, ADR-028 odnoszą się do nieistniejących już klas)
+- testów jednostkowych testujących nieistniejące już modele
+
+**Wdrożone (Phase 2 — Usunięcie kodu):**
+- ✅ `apps/badges/models/region.py` — usunięto 7 histor. modeli + `RegionBaseModel`, `PhysicalRegionMixin`, `RegionLevelType`; zachowano `RegionFlatModel`, `RegionLevel`, `LtreeField`
+- ✅ `apps/badges/models/read_model.py` — `ObjectRegionCache.region_id` (BigInteger) → `region` (FK → `RegionFlatModel`, `db_column="region_id"`); usunięto `RegionLevelType` → używa `RegionLevel` z `region.py`
+- ✅ `apps/badges/models/__init__.py` — aktualizacja eksportów: usunięto `CountryModel`, `VoivodeshipModel`, ..., `PhysicalRegionMixin`, `RegionLevelType`, `RegionBaseModel`; dodano `LtreeField`
+- ✅ `apps/badges/admin/region_admin.py` — zastąpiono 7 klas admin (RegionAdmin dla każdego modelu) jedną klasą `RegionFlatAdmin(ModelAdmin)` z `unfold`; zarejestrowano `RegionFlatModel`
+- ✅ `apps/badges/admin/__init__.py` — usunięto importy `CountryAdmin`, `VoivodeshipAdmin`, ..., `TouristRegionAdmin`, `ReadOnlyMapAdmin`; zachowano `RegionFlatAdmin`
+- ✅ `infrastructure/adapters/persistence/django_region_cache_repo.py` — `get_related_regions` używa `RegionFlatModel.neighbors` + `children.all()` zamiast M2M z `TouristRegionModel`; `recalculate_all_region_levels` działa na `RegionFlatModel`
+- ✅ `infrastructure/adapters/persistence/django_region_geometry_repo.py` — `RegionFlatModel.objects.filter(level="TOURIST_REGION")` + `region.children.all()` zamiast `TouristRegionModel` + M2M
+- ✅ `infrastructure/adapters/persistence/django_mvt_repo.py` — jedna warstwa MVT z `regions_flat`, zamiast mapy 7 warstw → 7 tabel
+- ✅ `apps/badges/management/commands/calculate_neighbors.py` — iteracja po `RegionFlatModel` (jedna pętla zamiast 7 modeli)
+- ✅ `apps/badges/management/commands/export_reference_data.py` — `dumpdata` dla `badges.RegionFlatModel` (jedna tabela)
+- ✅ `tests/apps/badges/test_models.py` — zamieniono `TestCountryModel`, `TestVoivodeshipModel`, ... na `TestRegionFlatModel`
+- ✅ `tests/apps/badges/test_admin.py` — zamieniono testy 7 adminów na `TestRegionFlatAdmin`
+- ✅ `tests/infrastructure/adapters/persistence/test_django_tourist_repo.py` — `region_id=1` → `region=RegionFlatModel.objects.create(...)`
+- ✅ Usunięto backup `region_cache_repo.old`
+- ✅ `.importlinter` — aktualizacja komentarza DŁUG-008 (TouristRegionModel → RegionFlatModel)
+
+**Migracje (etap DB):**
+- `0005_migrate_region_neighbors_m2m.py` — ETL: kopiowanie M2M `TouristRegionModel` sąsiadów do `RegionFlatModel.neighbors`
+- `0006_alter_objectregioncache_region_id_fk.py` — ETL: `region_id` (BigInteger) → `region` (FK → `RegionFlatModel`); `SeparateDatabaseAndState` (DB: `AlterField` na istniejącej kolumnie + `RunPython` cleanup orphaned cache)
+- `0007_drop_legacy_regions.py` — `DeleteModel` dla wszystkich 7 histor. modeli (DROP TABLE CASCADE)
+
+**Weryfikacja:** 86 testów nie-DB (`test_models.py`, `test_admin.py`) ✅ zdrowe; `make lint` ✅ 0 błędów; `make type-check` ✅ 0 błędów (161 plików); `test_django_tourist_repo.py` wymaga kontenera Postgres do uruchomienia.
+
+---

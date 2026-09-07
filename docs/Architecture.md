@@ -108,7 +108,7 @@ Aplikacja operuje na dwóch fundamentalnie różnych typach danych, które podle
    - *Zasada Propagacji:* Zabrania się propagacji ("ściągania") danych użytkowników ze środowiska produkcyjnego na środowiska DEV / TEST w celu ochrony danych osobowych (RODO). Wymaga użycia Fabryk Danych na niższych środowiskach.
 
 2. **Dane Referencyjne (System Authoring):**
-   - *Obejmuje:* `TouristObject`, `Badge`, `BadgeVersion`, `RegionBaseModel` (Kraje, Regiony).
+    - *Obejmuje:* `TouristObject`, `Badge`, `BadgeVersion`, `RegionFlatModel` (Hierarchia Terytorialna).
    - *Źródło Prawdy:* Wyłącznie repozytorium kodu (`data/reference/*.json.gz`).
    - *Zasada Propagacji:* Odtwarzalne z repozytorium za pomocą komendy `restore_reference_data`. Bazy danych we wszystkich środowiskach (DEV, TEST, PROD) są traktowane jako "odtwarzacze" (Runtime Store) dla tych definicji, a nie miejsce ich projektowania.
 

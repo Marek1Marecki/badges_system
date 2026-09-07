@@ -33,17 +33,9 @@ from apps.badges.models.proximity import (
 )
 from apps.badges.models.read_model import ObjectRegionCache
 from apps.badges.models.region import (
-    CountryModel,
-    MacroregionModel,
-    MesoregionModel,
-    PhysicalRegionMixin,
-    ProvinceModel,
-    RegionBaseModel,
+    LtreeField,
     RegionFlatModel,
     RegionLevel,
-    SubprovinceModel,
-    TouristRegionModel,
-    VoivodeshipModel,
 )
 
 __all__ = [
@@ -51,27 +43,18 @@ __all__ = [
     "BadgeNewsItem",
     "BadgeTierModel",
     "BadgeVersionModel",
-    "CountryModel",
     "LevelType",
-    "MacroregionModel",
-    "MesoregionModel",
+    "LtreeField",
     "NewsChangeType",
     "ObjectRegionCache",
     "OrganizerModel",
     "OsmSyncConflict",
     "OsmTypeMapping",
-    "PhysicalRegionMixin",
     "ProximityCandidate",
     "ProximityStatus",
-    "ProvinceModel",
-    "RegionBaseModel",
     "RegionFlatModel",
     "RegionLevel",
-    "RegionLevelType",
-    "SubprovinceModel",
     "SyncConflictStatus",
     "TouristObject",
     "TouristObjectStatus",
-    "TouristRegionModel",
-    "VoivodeshipModel",
 ]

@@ -231,7 +231,7 @@ W pliku `config/settings.py` adres ten jest rozbijany na czynniki pierwsze za po
 1. Modele w Django są tylko "workami na dane" dla infrastruktury.
 2. Klastrowanie obiektów (`parent_object`) nie posiada zabezpieczenia przed cyklem bezpośrednio w bazie. Zawsze zabezpieczaj to w metodzie `clean()` formularza.
 3. **Otwarty Słownik Typów:** Pole `type` w modelu `TouristObject` jest celowo zdefiniowane jako czysty `CharField` (bez nałożonego wymogu `choices` na poziomie bazy danych). Gwarantuje to elastyczność przy asymilacji nowych, nieznanych typów z OSM (np. "Wodospad"). Nie próbuj konwertować tego pola na zablokowany `Enum` w modelu. Ułatwienia UX (np. lista podpowiedzi) są realizowane wyłącznie na poziomie widżetów formularza (np. `<datalist>`).
-4. **Zasada DRY dla Relacji M2M w Hierarchii Geograficznej:** Zezwala się (i zaleca) wykorzystywanie domieszek (Mixinów), takich jak `PhysicalRegionMixin`, do definiowania współdzielonych relacji `ManyToManyField("self")`. Django natywnie zinterpretuje `"self"` dla każdego modelu dziedziczącego po Mixinie z osobna. Domieszki te muszą być wprowadzane z ostrożnością w środowiskach typu `managed = False` (zgodnie z obejściem RunSQL opisanym w EC-062).
+4. **M2M w Hierarchii Geograficznej:** Powiązania sąsiadów i dzieci w `RegionFlatModel` realizowane są przez `ManyToManyField("self")` (dla sąsiadów) oraz `ForeignKey("self", related_name="children")` (dla dziedziczenia). Nie wprowadzaj domieszczków (`Mixinów`) dla tych relacji — `RegionFlatModel` jest modelem finalnym ADR-028.
 
 **Zakazane:**
 - `DROP COLUMN` lub cofanie migracji PostGIS bez jawnej autoryzacji człowieka.

@@ -10,149 +10,57 @@ from apps.badges.admin import (
     BadgeAdmin,
     BadgeTierInline,
     BadgeVersionAdmin,
-    CountryAdmin,
-    MacroregionAdmin,
-    MesoregionAdmin,
     ObjectRegionCacheInline,
     OrganizerAdmin,
     OsmTypeMappingAdmin,
     PeakInBadgeFilter,
     PendingMappingFilter,
-    ProvinceAdmin,
-    ReadOnlyMapAdmin,
+    RegionFlatAdmin,
     RegionLevelFilter,
-    SubprovinceAdmin,
     TouristObjectAdmin,
-    TouristRegionAdmin,
-    VoivodeshipAdmin,
 )
 from apps.badges.models import (
     BadgeModel,
     BadgeTierModel,
     BadgeVersionModel,
-    CountryModel,
-    MacroregionModel,
-    MesoregionModel,
     ObjectRegionCache,
     OsmTypeMapping,
-    ProvinceModel,
-    SubprovinceModel,
+    RegionFlatModel,
     TouristObject,
-    VoivodeshipModel,
 )
 
 
-class TestReadOnlyMapAdmin:
-    """Weryfikacja konfiguracji mapy tylko do odczytu (Leaflet)."""
+class TestRegionFlatAdmin:
+    """Testy admina RegionFlatModel (ADR-028)."""
 
-    def test_read_only_map_admin_inheritance(self) -> None:
-        """Sprawdza, czy panel dziedziczy po poprawnych klasach Leaflet/Unfold."""
-        assert issubclass(ReadOnlyMapAdmin, LeafletGeoAdminMixin), "Musi dziedziczyć po LeafletGeoAdminMixin"
-        assert issubclass(ReadOnlyMapAdmin, ModelAdmin), "Musi dziedziczyć po ModelAdmin z Unfold"
+    def test_region_flat_admin_inheritance(self):
+        """Test dziedziczenia RegionFlatAdmin po ModelAdmin z Unfold."""
+        assert issubclass(RegionFlatAdmin, ModelAdmin), "Musi dziedziczyć po ModelAdmin z Unfold"
 
-    def test_read_only_map_admin_widget_config(self) -> None:
-        """Sprawdza, czy edycja poligonów jest zablokowana i ustawiono środek mapy."""
-        # W LeafletGeoAdmin kluczową flagą blokującą narzędzia rysowania jest `modifiable`
-        assert ReadOnlyMapAdmin.modifiable is False, "Mapa musi być tylko do odczytu"
-
-        # Konfiguracja Leaflet odbywa się przez słownik settings_overrides
-        overrides = getattr(ReadOnlyMapAdmin, "settings_overrides", {})
-        assert "DEFAULT_CENTER" in overrides, "Brak wyśrodkowania mapy na Polskę"
-        assert overrides["DEFAULT_CENTER"] == (52.0, 19.0)
-        assert overrides["DEFAULT_ZOOM"] == 5
-
-
-class TestCountryAdmin:
-    """Testy admina państw."""
-
-    def test_country_admin_inheritance(self):
-        """Test dziedziczenia CountryAdmin."""
-        assert issubclass(CountryAdmin, ReadOnlyMapAdmin)
-
-    def test_country_admin_list_display(self):
+    def test_region_flat_admin_list_display(self):
         """Test pól list_display."""
-        expected = ("name", "code", "order")
-        assert CountryAdmin.list_display == expected
+        expected = ("name", "code", "level", "parent")
+        assert RegionFlatAdmin.list_display == expected
 
-
-class TestVoivodeshipAdmin:
-    """Testy admina województw."""
-
-    def test_voivodeship_admin_inheritance(self):
-        """Test dziedziczenia VoivodeshipAdmin."""
-        assert issubclass(VoivodeshipAdmin, ReadOnlyMapAdmin)
-
-    def test_voivodeship_admin_list_display(self):
-        """Test pól list_display."""
-        expected = ("name", "code", "country")
-        assert VoivodeshipAdmin.list_display == expected
-
-    def test_voivodeship_admin_list_filter(self):
+    def test_region_flat_admin_list_filter(self):
         """Test pól list_filter."""
-        expected = ("country",)
-        assert VoivodeshipAdmin.list_filter == expected
+        assert "level" in RegionFlatAdmin.list_filter
 
-
-class TestProvinceAdmin:
-    """Testy admina prowincji."""
-
-    def test_province_admin_inheritance(self):
-        """Test dziedziczenia ProvinceAdmin."""
-        assert issubclass(ProvinceAdmin, ReadOnlyMapAdmin)
-
-    def test_province_admin_list_display(self):
-        """Test pól list_display."""
-        expected = ("name", "code", "country")
-        assert ProvinceAdmin.list_display == expected
-
-
-class TestSubprovinceAdmin:
-    """Testy admina podprowincji."""
-
-    def test_subprovince_admin_inheritance(self):
-        """Test dziedziczenia SubprovinceAdmin."""
-        assert issubclass(SubprovinceAdmin, ReadOnlyMapAdmin)
-
-    def test_subprovince_admin_list_display(self):
-        """Test pól list_display."""
-        expected = ("name", "code", "province")
-        assert SubprovinceAdmin.list_display == expected
-
-
-class TestMacroregionAdmin:
-    """Testy admina makroregionów."""
-
-    def test_macroregion_admin_inheritance(self):
-        """Test dziedziczenia MacroregionAdmin."""
-        assert issubclass(MacroregionAdmin, ReadOnlyMapAdmin)
-
-    def test_macroregion_admin_list_display(self):
-        """Test pól list_display."""
-        expected = ("name", "code", "subprovince")
-        assert MacroregionAdmin.list_display == expected
-
-    def test_macroregion_admin_search_fields(self):
+    def test_region_flat_admin_search_fields(self):
         """Test pól search_fields."""
         expected = ("name", "code")
-        assert MacroregionAdmin.search_fields == expected
+        assert RegionFlatAdmin.search_fields == expected
 
+    def test_region_flat_admin_filter_horizontal(self):
+        """Test pól filter_horizontal."""
+        expected = ["neighbors"]
+        assert RegionFlatAdmin.filter_horizontal == expected
 
-class TestMesoregionAdmin:
-    """Testy admina mezoregionów."""
+    def test_region_flat_model_is_registered(self):
+        """Test że RegionFlatModel jest zarejestrowany."""
+        from django.contrib import admin
 
-    def test_mesoregion_admin_inheritance(self):
-        """Test dziedziczenia MesoregionAdmin."""
-        assert issubclass(MesoregionAdmin, ReadOnlyMapAdmin)
-
-    def test_mesoregion_admin_list_display(self):
-        """Test pól list_display."""
-        expected = ("name", "code", "macroregion")
-        assert MesoregionAdmin.list_display == expected
-
-    def test_mesoregion_admin_search_fields(self):
-        """Test pól search_fields."""
-        expected = ("name", "code")
-        assert MesoregionAdmin.search_fields == expected
+        assert admin.site.is_registered(RegionFlatModel)
 
 
 class TestBadgeAdmin:
@@ -193,42 +101,6 @@ class TestBadgeVersionAdmin:
 class TestAdminRegistrations:
     """Testy rejestracji adminów."""
 
-    def test_country_model_is_registered(self):
-        """Test że CountryModel jest zarejestrowany."""
-        from django.contrib import admin
-
-        assert admin.site.is_registered(CountryModel)
-
-    def test_voivodeship_model_is_registered(self):
-        """Test że VoivodeshipModel jest zarejestrowany."""
-        from django.contrib import admin
-
-        assert admin.site.is_registered(VoivodeshipModel)
-
-    def test_province_model_is_registered(self):
-        """Test że ProvinceModel jest zarejestrowany."""
-        from django.contrib import admin
-
-        assert admin.site.is_registered(ProvinceModel)
-
-    def test_subprovince_model_is_registered(self):
-        """Test że SubprovinceModel jest zarejestrowany."""
-        from django.contrib import admin
-
-        assert admin.site.is_registered(SubprovinceModel)
-
-    def test_macroregion_model_is_registered(self):
-        """Test że MacroregionModel jest zarejestrowany."""
-        from django.contrib import admin
-
-        assert admin.site.is_registered(MacroregionModel)
-
-    def test_mesoregion_model_is_registered(self):
-        """Test że MesoregionModel jest zarejestrowany."""
-        from django.contrib import admin
-
-        assert admin.site.is_registered(MesoregionModel)
-
     def test_badge_model_is_registered(self):
         """Test że BadgeModel jest zarejestrowany."""
         from django.contrib import admin
@@ -240,6 +112,12 @@ class TestAdminRegistrations:
         from django.contrib import admin
 
         assert admin.site.is_registered(BadgeVersionModel)
+
+    def test_tourist_object_model_is_registered(self):
+        """Test że TouristObject jest zarejestrowany."""
+        from django.contrib import admin
+
+        assert admin.site.is_registered(TouristObject)
 
 
 class TestAddToBadgeForm:
@@ -558,31 +436,3 @@ class TestBadgeTierInline:
         """Test pól inline'a."""
         expected_fields = ("name", "order", "required_peaks_count", "badge_image")
         assert BadgeTierInline.fields == expected_fields
-
-
-class TestTouristRegionAdmin:
-    """Testy admina TouristRegion."""
-
-    def test_tourist_region_admin_inheritance(self):
-        """Test dziedziczenia TouristRegionAdmin."""
-        assert issubclass(TouristRegionAdmin, ReadOnlyMapAdmin)
-
-    def test_tourist_region_admin_list_display(self):
-        """Test pól list_display."""
-        expected = ("name", "code")
-        assert TouristRegionAdmin.list_display == expected
-
-    def test_tourist_region_admin_search_fields(self):
-        """Test pól search_fields."""
-        expected = ("name", "code")
-        assert TouristRegionAdmin.search_fields == expected
-
-    def test_tourist_region_admin_filter_horizontal(self):
-        """Test pól filter_horizontal."""
-        expected = ("provinces", "subprovinces", "macroregions", "mesoregions")
-        assert TouristRegionAdmin.filter_horizontal == expected
-
-    def test_tourist_region_admin_actions(self):
-        """Test akcji admina."""
-        expected_actions = ["rebuild_geometry"]
-        assert TouristRegionAdmin.actions == expected_actions

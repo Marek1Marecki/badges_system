@@ -268,13 +268,16 @@ class TestDjangoTouristRepository:
         """Zwraca wszystkie wejścia użytkownika z regionami CQRS."""
         user = _create_user("turysta13", "t13@example.com")
         profile = user.profiles.create(nickname="T13", birth_date=date(1990, 1, 1))
-        from apps.badges.models import ObjectRegionCache, TouristObject
+        from apps.badges.models import ObjectRegionCache, RegionFlatModel, TouristObject
 
         obj = TouristObject.objects.create(name="P13", type="Szczyt", is_active=True, status="READY")
+        region = RegionFlatModel.objects.create(
+            name="Region P13", code="P13", level="VOIVODESHIP", path="p13",
+        )
         ObjectRegionCache.objects.create(
             tourist_object=obj,
-            region_level="voivodeship",
-            region_id=1,
+            region_level="VOIVODESHIP",
+            region=region,
             region_name="Test Region",
             distance_meters=0.0,
         )
@@ -285,4 +288,4 @@ class TestDjangoTouristRepository:
 
         assert len(ascents) == 1
         assert ascents[0].object_id == obj.id
-        assert ascents[0].region_ids == frozenset({1})
+        assert ascents[0].region_ids == frozenset({region.id})
