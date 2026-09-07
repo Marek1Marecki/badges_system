@@ -7,12 +7,10 @@ from application.ports.explore_queries_port import ExploreQueriesRepositoryPort
 from apps.badges.models import (
     BadgeModel,
     BadgeVersionModel,
-    MacroregionModel,
-    MesoregionModel,
     ObjectRegionCache,
     OrganizerModel,
+    RegionFlatModel,
     TouristObject,
-    VoivodeshipModel,
 )
 
 
@@ -28,20 +26,19 @@ class DjangoExploreQueriesRepository(ExploreQueriesRepositoryPort):
         )
 
     def get_regions_by_level(self, level: str) -> Any:
-        """Zwraca wszystkie regiony z danego poziomu.
+        """Zwraca wszystkie regiony z danego poziomu (ADR-028 — Ltree).
+
+        Read layer używa jednej tabeli `regions_flat` z kolumną `level`
+        zamiast 3 osobnych if/elif na różne modele. O(1) lookup na `level`
+        zamiast 3 modeli + JOIN w `get_region_context_data`.
 
         Args:
-          level: str:
+          level: str: RegionLevel value (np. "VOIVODESHIP", "MACROREGION").
 
         Returns:
+          QuerySet[RegionFlatModel] — pusty, jeśli `level` nieznany.
         """
-        if level == "VOIVODESHIP":
-            return VoivodeshipModel.objects.all()
-        elif level == "MACROREGION":
-            return MacroregionModel.objects.all()
-        elif level == "MESOREGION":
-            return MesoregionModel.objects.all()
-        return []
+        return RegionFlatModel.objects.filter(level=level)
 
     def get_object_region_cache_for_level(self, level: str) -> Any:
         """Pobiera płaską relację CQRS dla obiektów na zadanym poziomie.
@@ -161,37 +158,32 @@ class DjangoExploreQueriesRepository(ExploreQueriesRepositoryPort):
         }
 
     def get_region_context_data(self, region_level: str, region_id: int, profile_id: int) -> Any:
-        """Pobiera surowe dane kontekstu regionu dla widoku region_detail."""
-        region_model_map = {
-            "VOIVODESHIP": VoivodeshipModel,
-            "MACROREGION": MacroregionModel,
-            "MESOREGION": MesoregionModel,
-        }
-        model = region_model_map.get(region_level)
-        if not model:
+        """Pobiera surowe dane kontekstu regionu dla widoku region_detail.
+
+        ADR-028 — używa płaskiej tabeli `regions_flat`:
+          - `region.parent` (FK) zastępuje twarde getattr w if/elif,
+          - `region.children.all()` (reverse FK) zastępuje
+            `MesoregionModel.filter(macroregion=region)` i
+            `MacroregionModel.filter(subprovince__country=region)` —
+            eliminuje dwa chainy JOIN (VOIVODESHIP -> ... -> MACROREGION).
+
+        Returns:
+          dict z region, parent_region, parent_level, children_regions,
+          children_level, neighbors, objects. None, gdy `region_level`
+          nie istnieje w RegionLevel.
+        """
+        try:
+            region = RegionFlatModel.objects.select_related("parent").get(id=region_id, level=region_level)
+        except RegionFlatModel.DoesNotExist:
             return None
 
-        region = model.objects.get(id=region_id)
+        parent_region = region.parent
+        parent_level = parent_region.level if parent_region else None
 
-        parent_region = None
-        parent_level = None
-        children_regions: list[Any] = []
-        children_level = None
-        if region_level == "MESOREGION":
-            parent_region = getattr(region, "macroregion", None)
-            parent_level = "MACROREGION"
-        elif region_level == "MACROREGION":
-            parent_region = getattr(region, "subprovince", None)
-            parent_level = "PROVINCE"
-            children_regions = list(MesoregionModel.objects.filter(macroregion=region))
-            children_level = "MESOREGION"
-        elif region_level == "VOIVODESHIP":
-            parent_region = None
-            parent_level = None
-            children_regions = list(MacroregionModel.objects.filter(subprovince__country=region))
-            children_level = "MACROREGION"
-
-        neighbors = region.neighbors.all() if hasattr(region, "neighbors") else []
+        # Descendants = regiony w tej samej tabeli z `parent=region`
+        # (działa dla każdego poziomu — nie tylko MESOREGION/MACROREGION)
+        children_regions: list[RegionFlatModel] = list(region.children.all())
+        children_level = region.level if children_regions else None
 
         cache_records = ObjectRegionCache.objects.filter(region_level=region_level, region_id=region_id)
         object_ids = [r.tourist_object_id for r in cache_records]
@@ -203,7 +195,7 @@ class DjangoExploreQueriesRepository(ExploreQueriesRepositoryPort):
             "parent_level": parent_level,
             "children_regions": children_regions,
             "children_level": children_level,
-            "neighbors": neighbors,
+            "neighbors": list(region.neighbors.all()),
             "objects": objects,
         }
 

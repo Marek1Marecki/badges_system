@@ -17,30 +17,32 @@ class TestDjangoExploreQueriesRepository:
         return DjangoExploreQueriesRepository()
 
     def test_get_regions_by_level_voivodeship(self, repo):
-        """Zwraca województwa dla poziomu VOIVODESHIP."""
+        """Zwraca regiony dla poziomu VOIVODESHIP z regions_flat (ADR-028)."""
         mock_qs = MagicMock()
-        with patch("apps.badges.models.VoivodeshipModel.objects.all", return_value=mock_qs):
+        with patch("apps.badges.models.RegionFlatModel.objects.filter", return_value=mock_qs):
             result = repo.get_regions_by_level("VOIVODESHIP")
             assert result == mock_qs
 
     def test_get_regions_by_level_macroregion(self, repo):
-        """Zwraca makroregiony dla poziomu MACROREGION."""
+        """Zwraca regiony dla poziomu MACROREGION z regions_flat (ADR-028)."""
         mock_qs = MagicMock()
-        with patch("apps.badges.models.MacroregionModel.objects.all", return_value=mock_qs):
+        with patch("apps.badges.models.RegionFlatModel.objects.filter", return_value=mock_qs):
             result = repo.get_regions_by_level("MACROREGION")
             assert result == mock_qs
 
     def test_get_regions_by_level_mesoregion(self, repo):
-        """Zwraca mezoregiony dla poziomu MESOREGION."""
+        """Zwraca regiony dla poziomu MESOREGION z regions_flat (ADR-028)."""
         mock_qs = MagicMock()
-        with patch("apps.badges.models.MesoregionModel.objects.all", return_value=mock_qs):
+        with patch("apps.badges.models.RegionFlatModel.objects.filter", return_value=mock_qs):
             result = repo.get_regions_by_level("MESOREGION")
             assert result == mock_qs
 
     def test_get_regions_by_level_unknown_returns_empty(self, repo):
-        """Zwraca pustą listę dla nieznanego poziomu."""
-        result = repo.get_regions_by_level("UNKNOWN")
-        assert result == []
+        """Dla nieznanego poziomu zwraca pusty QuerySet (filter level=X)."""
+        mock_qs = MagicMock()
+        with patch("apps.badges.models.RegionFlatModel.objects.filter", return_value=mock_qs):
+            result = repo.get_regions_by_level("UNKNOWN")
+            assert result == mock_qs
 
     def test_get_object_region_cache_for_level(self, repo):
         """Filtruje cache regionów według poziomu."""
