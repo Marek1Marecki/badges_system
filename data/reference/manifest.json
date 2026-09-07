@@ -10,7 +10,7 @@
         "05_badge_news.json.gz"
     ],
     "checksums": {
-        "01_regions.json.gz": "d3712a08265f8298a1517db718e275efb50a9e5b3f45ca30e6cb34f409f5da3e",
+        "01_regions.json.gz": "5aa92855a69d1d36c0a1f00ccd6bc818dee765e93cd1f4841a3cbe4198c2b7f4",
         "02_tourist_objects.json.gz": "c923e97b7e84cbf0435cedb4570896b8c5034668fc549e689e4b817b8721991e",
         "03_badges.json.gz": "0d8245e659cbf8d6d94dc6f171915fb3db5cf292051728208d316b8a893baa9f",
         "04_osm_mappings.json.gz": "0acec14d115b60253e3cb9691ab4b4d70839cad611f25b6d1b3eebee74d46d5a",
@@ -26,6 +26,6 @@
     },
     "pg_dump": {
         "filename": "postgis_dump.custom",
-        "description": "Binarny dump PostgreSQL (pg_dump -Fc) do szybkiego restore w E2E/CI. Nie jest wersjonowany w Gicie — tworzony w pipeline CI."
+        "description": "Binarny dump PostgreSQL (pg_dump -Fc) do szybkiego restore w E2E/CI. Nie jest wersjonowany w Gicie \u2014 tworzony w pipeline CI."
     }
 }
