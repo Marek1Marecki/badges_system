@@ -28,11 +28,11 @@ def test_login_page_renders_google_button(page: Page) -> None:
     title = page.title()
     print(f"[DEBUG] title={title!r} url={page.url!r}", file=sys.stderr, flush=True)
     html = page.content()
-    html_has_btn = "btn-login-google" in html
-    btn = page.locator("button[data-testid='btn-login-google']")
-    btn_count = btn.count()
-    print(f"[DEBUG] btn_count={btn_count} html_has_btn={html_has_btn}", file=sys.stderr, flush=True)
-    expect(btn).to_be_visible(timeout=10000)
+    html_has_main_btn = "btn-login-google'" in html
+    main_btn = page.locator("main button[data-testid='btn-login-google']").first
+    btn_count = main_btn.count()
+    print(f"[DEBUG] btn_count={btn_count} html_has_main_btn={html_has_main_btn}", file=sys.stderr, flush=True)
+    expect(main_btn).to_be_visible(timeout=10000)
     assert btn_count == 1
 
 
