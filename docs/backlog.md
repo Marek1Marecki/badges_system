@@ -88,15 +88,17 @@ W środowisku pojedynczego serwera z Docker Compose jest to ryzyko akceptowalne.
 ---
 
 
-### [AUDYT-055] Otwarta Decyzja Architektoniczna (PD-01): Normalizacja Hierarchii Regionów
+### [x] [AUDYT-055] [PD-01 ACCEPTED] Normalizacja Hierarchii Regionów → Ltree
 **Obszar:** `Architektura / Model Danych`  
-**Priorytet:** `🟡 ŚREDNI (Faza Optymalizacji)`  
+**Priorytet:** `🟡 ŚREDNI (Faza Skalowania)`  
+**Status:** `🟢 ACCEPTED — ADR-028`
 
 **Diagnoza Audytora:** 
 System geograficzny posiada 7 poziomów zagnieżdżenia w osobnych tabelach (np. Województwo -> Powiat -> Gmina). Z jednej strony to silnie znormalizowane, z drugiej strony buduje ogromny łańcuch `JOIN` w zapytaniach. Audytor zdefiniował to jako oficjalny Punkt Decyzyjny (PD-01), dla którego należy świadomie wybrać jeden z trzech modeli w miarę wzrostu aplikacji: Adjacency List (jedna tabela z kluczem do samej siebie), Ltree (drzewo strukturalne PostGIS) lub obecny model wsparty widokami zmaterializowanymi (Materialized Views).
 
 **Action Items (Do wdrożenia w przyszłości):**
-- [ ] Opracować i zatwierdzić `ADR-026 — Strategia Modelowania Drzewa Terytorialnego`, który ostatecznie rozstrzygnie podejście do hierarchii po weryfikacji wydajności na 10 tysiącach obiektów.
+- [X] Opracowano i zatwierdzono `ADR-028 — Strategia Modelowania Drzewa Terytorialnego` (opcja C = Ltree hybrydowy, CQRS: write=`parent_id`, read=`path ltree`).
+- [ ] Fazy implementacyjne: AUDYT-155 (Phase 0: extension + path column), AUDYT-156 (Phase 1a: ETL 7→1), AUDYT-157 (Phase 1b: read layer refactor).
 
 **Komentarz Architekta:**
 Klasyczny dylemat między elastycznością schematu a szybkością zapytań. Przy obecnej skali i architekturze Czystej Domeny nie jest to bloker, ale uświadomienie sobie istnienia tego "rozjazdu" ułatwi planowanie optymalizacji bazy w przyszłości.
