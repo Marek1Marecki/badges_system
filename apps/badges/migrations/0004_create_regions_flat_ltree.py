@@ -5,7 +5,88 @@ import django.db.models.deletion
 from django.contrib.postgres.operations import CreateExtension
 from django.db import migrations, models
 
-import apps.badges.models.region
+from apps.badges.models.region import LtreeField, RegionLevel
+
+
+def migrate_regions_to_flat(apps, schema_editor):
+    """ETL: przenosi 7 tabel regionów do płaskiej tabeli `regions_flat` (ADR-028).
+
+    Każdy wiersz otrzymuje:
+      - `level` (RegionLevel),
+      - `parent` (FK do nowego RegionFlat, odpowiednik starego parent_id),
+      - `path` = ltree string "country.1.voivodeship.15.macroregion.23" —
+        segment "level.{old_pk}" gwarantuje unikalność (pk globalny unikalny).
+      - `shape`, `code`, `name`, `translation`, `link` skopiowane 1:1.
+    `TouristRegionModel` (agregat M2M) → TOURIST_REGION, parent=None
+      (relacje M2M migrowane później jako neighbors).
+    """
+    RegionFlatModel = apps.get_model("badges", "RegionFlatModel")
+    CountryModel = apps.get_model("badges", "CountryModel")
+    VoivodeshipModel = apps.get_model("badges", "VoivodeshipModel")
+    ProvinceModel = apps.get_model("badges", "ProvinceModel")
+    SubprovinceModel = apps.get_model("badges", "SubprovinceModel")
+    MacroregionModel = apps.get_model("badges", "MacroregionModel")
+    MesoregionModel = apps.get_model("badges", "MesoregionModel")
+    TouristRegionModel = apps.get_model("badges", "TouristRegionModel")
+
+    pk_to_flat = {}
+
+    def build_path(model_name: str, pk: int, parent_flat) -> str:
+        segment = f"{model_name.lower()}.{pk}"
+        return segment if parent_flat is None else f"{parent_flat.path}.{segment}"
+
+    def copy_common(src, level, parent_flat):
+        rf = RegionFlatModel(
+            name=src.name,
+            translation=src.translation,
+            code=src.code,
+            link=src.link or "",
+            shape=getattr(src, "shape", None),
+            level=level,
+            parent=parent_flat,
+            path=build_path(level.value.lower(), src.pk, parent_flat),
+        )
+        rf.save()
+        pk_to_flat[src.pk] = rf
+        return rf
+
+    for country in CountryModel.objects.all():
+        copy_common(country, RegionLevel.COUNTRY, None)
+
+    for voi in VoivodeshipModel.objects.select_related("country").all():
+        parent = pk_to_flat.get(voi.country_id)
+        copy_common(voi, RegionLevel.VOIVODESHIP, parent)
+
+    for prov in ProvinceModel.objects.select_related("country").all():
+        parent = pk_to_flat.get(prov.country_id)
+        copy_common(prov, RegionLevel.PROVINCE, parent)
+
+    for sub in SubprovinceModel.objects.select_related("province").all():
+        parent = pk_to_flat.get(sub.province_id)
+        copy_common(sub, RegionLevel.SUBPROVINCE, parent)
+
+    for macro in MacroregionModel.objects.select_related("subprovince").all():
+        parent = pk_to_flat.get(macro.subprovince_id)
+        copy_common(macro, RegionLevel.MACROREGION, parent)
+
+    for meso in MesoregionModel.objects.select_related("macroregion").all():
+        parent = pk_to_flat.get(meso.macroregion_id)
+        copy_common(meso, RegionLevel.MESOREGION, parent)
+
+    # TouristRegionModel = aggregates of M2M units → root in tree (no parent FK)
+    for tr in TouristRegionModel.objects.all():
+        rf = RegionFlatModel(
+            name=tr.name,
+            translation=tr.translation,
+            code=tr.code,
+            link=tr.link or "",
+            shape=getattr(tr, "shape", None),
+            level=RegionLevel.TOURIST_REGION,
+            parent=None,
+            path=f"tourist_region.{tr.pk}",
+        )
+        rf.save()
+        pk_to_flat[tr.pk] = rf
 
 
 class Migration(migrations.Migration):
@@ -44,7 +125,7 @@ class Migration(migrations.Migration):
                         max_length=20,
                     ),
                 ),
-                ("path", apps.badges.models.region.LtreeField(db_index=True, verbose_name="Ścieżka ltree")),
+                ("path", LtreeField(db_index=True, verbose_name="Ścieżka ltree")),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
                 ("neighbors", models.ManyToManyField(blank=True, to="badges.regionflatmodel", verbose_name="Sąsiedzi")),
@@ -67,4 +148,5 @@ class Migration(migrations.Migration):
                 "constraints": [models.UniqueConstraint(fields=("level", "code"), name="uq_regions_flat_level_code")],
             },
         ),
+        migrations.RunPython(migrate_regions_to_flat, reverse_code=migrations.RunPython.noop),
     ]
