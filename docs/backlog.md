@@ -104,36 +104,6 @@ Klasyczny dylemat między elastycznością schematu a szybkością zapytań. Prz
 
 ---
 
-### [AUDYT-056] Otwarta Decyzja Architektoniczna (PD-02): Strategia Partycjonowania Tabeli `AscentLog`
-**Obszar:** `Architektura / Baza Danych`  
-**Priorytet:** `🟡 ŚREDNI (Faza Skalowania)`  
-
-**Diagnoza Audytora:** 
-Audytor wprost stawia przed nami wymóg wyboru ścieżki partycjonowania dla tabeli przechowującej wpisy turystów, która jako jedyna w systemie będzie rosnąć nielimitowanie (logi wejść). Ostrzega przed podziałem wyłącznie po dacie, jeśli główne zapytania aplikacji operują na przekrojach terytorialnych lub identyfikatorach turystów (co jest prawdą, nasza Czysta Domena pyta zawsze o konkretnego turystę).
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Po przekroczeniu progu ostrzegawczego (np. 1 miliona logów w tabeli), wdrożyć w PostgreSQL partycjonowanie natywne (Partitioning) po kluczu `profile_id` (wzorzec Hash Partitioning) zamiast po `ascent_date`.
-
-**Komentarz Architekta:**
-Wspaniała prewencja przed spadkiem wydajności zapytań. Nasz Use Case sprawdza wszystkie wejścia danego turysty naraz.
-
----
-
-### [AUDYT-057] Potrzeba wdrożenia mechanizmów ABAC / RBAC (PD-04)
-**Obszar:** `Architektura / Bezpieczeństwo`  
-**Priorytet:** `🟢 NISKI (W miarę wprowadzania ról)`  
-
-**Diagnoza Audytora:** 
-Obecny system rozdziela użytkowników jedynie na `Admin`, `Owner` i resztę świata. Audytor zwraca uwagę, że jeśli system się rozrośnie i wprowadzimy do niego rolę "Weryfikatora PTTK" (osobę, która nie jest Adminem całego systemu, ale ma prawo cofać odznaki w określonym oddziale) lub rolę "Członka Rodziny" (z ograniczonymi prawami dostępu do profili), obecny model uprawnień (Security Matrix) zawiedzie. Wskazuje potrzebę wdrożenia Attribute-Based Access Control (ABAC) lub Role-Based Access Control (RBAC).
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Rozważyć wdrożenie paczki zarządzania uprawnieniami per obiekt (np. `django-guardian` dla RBAC/ABAC), w momencie tworzenia panelu Weryfikatora.
-
-**Komentarz Architekta:**
-Wyprzedzanie przyszłości. Mamy to już zabezpieczone koncepcyjnie w `SECURITY_MATRIX.md`, ale w miarę pojawiania się nowych typów użytkowników kod autoryzacji w widokach `views.py` musiałby zostać zastąpiony ustandaryzowaną usługą dostępową.
-
----
-
 ### [AUDYT-060] Prawdziwa Integracja API bez fałszywych Mocków (Fake DI)
 **Obszar:** `Testy API`  
 **Priorytet:** `🟠 WYSOKI`  
@@ -228,22 +198,6 @@ Obecny system PTTK wymaga ciągłego połączenia z serwerem Django do weryfikac
 
 **Komentarz Architekta:**
 Zgodnie z naszymi wczesnymi ustaleniami, PWA (Progressive Web App) to ostateczny krok rozwoju interfejsu (Faza D). Bez tego aplikacja nie zdobędzie serc turystów na szlakach głębokich Bieszczad.
-
----
-
-### [AUDYT-078] Rozważenie podziału Bounded Contexts w przypadku dodania nowych systemów
-**Obszar:** `Architektura / Domain-Driven Design`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-Obecnie system obsługuje dwa główne konteksty (Katalog PTTK oraz Profil Turysty). Audytor przewiduje, że w przypadku podwojenia funkcjonalności (np. wejście w płatności Stripe dla abonamentów PRO, lub budowa silnika powiadomień Push), dalsze dokładanie klas do obecnej struktury doprowadzi do "Piekła Zależności" (Coupling).
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Opracować i zatwierdzić dokument wprowadzający nowe Konteksty (np. `Billing Context`, `Notification Context`).
-- [ ] Wykorzystać stworzone wcześniej (i odseparowane) Zdarzenia Domenowe (`Domain Events`) jako jedyny, twardy mechanizm komunikacji między tymi nowymi aplikacjami (Pub/Sub).
-
-**Komentarz Architekta:**
-To lekcja z budowania startupów. Kiedy zaczynamy pobierać opłaty, płatności nie mogą dotykać tabeli szczytów górskich. Modułowość to nasza jedyna tarcza obronna na przyszłość.
 
 ---
 
@@ -380,21 +334,68 @@ Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał
 
 
 ### [AUDYT-099] Niezdefiniowany proces wygasania starych wersji regulaminów
-**Obszar:** `Biznes / Prawa Nabyte`  
-**Priorytet:** `🟠 WYSOKI`  
-**Status:** `🔴 Open`  
+🟢 **Status:** `ZAKOŃCZONO` (Specification Completed)
+**Obszar:** `Biznes / Prawa Nabyte`
+**Priorytet:** `🟠 WYSOKI`
 
 **Diagnoza Audytora:** 
-Obecny model Praw Nabytych (`US-C05`) opiera się na polu `valid_to` w `BadgeVersionModel`. Jeśli administrator nie wypełni tego pola (`valid_to = NULL`), system traktuje regulamin jako ważny "w nieskończoność". Problem polega na tym, że jeśli PTTK wyda nową wersję odznaki w 2026 roku, ale administrator zapomni ręcznie ustawić datę końcową dla wersji z 2020 roku, nowi turyści bez historii logów będą automatycznie zakotwiczani w **obu** wersjach, lub system wybierze starą z powodu błędnego sortowania w kodzie wybierającym.
+Obecny model Praw Nabytych (`US-C05`) opiera się na polu `valid_to` w `BadgeVersionModel`. Jeśli administrator nie wypełni tego pola (`valid_to = NULL`), system traktuje regulamin jako ważny "w nieskończoność". Problem polega na tym, że jeśli PTTK wyda nową wersję odznki w 2026 roku, ale administrator zapomni ręcznie ustawić daty końcowej dla wersji z 2020 roku, nowi turyści bez historii logów będą automatycznie zakotwiczani w obu wersjach, lub system wybierze starą wersję z powodu błędnego sortowania.
 
-**Action Items (Do wdrożenia):**
-- [ ] Zaprojektować i zaimplementować wymóg walidacji modelu w `BadgeVersionModel.clean()`, który blokuje stworzenie nowej wersji odznaki, dopóki stara wersja nie ma ustawionej daty końcowej (`valid_to`).
-- [ ] Dodać skrypt w Django Adminie (np. akcję), która podczas publikacji nowej wersji automatycznie nadpisuje pole `valid_to` dla poprzedniej wersji z dniem wczorajszym.
+**Diagnoza Architekta: Dlaczego domyślna propozycja Audytora to pułapka:**
+
+Audytor zaproponował: (1) walidację `clean()` blokującą nową wersję, jeśli stara nie ma `valid_to`, i (2) skrypt "Auto-Close" ustawiający `valid_to` na wczorajszego dnia.
+
+To **Over-Constraint Nightmare**:
+
+- PTTK może świadomie chcieć **okresu przejściowego** — nowa odznka obowiązuje od 2026-05-01, a stara może być używana jeszcze do końca 2026 roku.
+- Administrator może chcieć dodać wersję "DRAFT" na przyszły rok — nie może być blokowany.
+
+**Propozycja Rozwiązania: Model Nakładający (Overlapping Temporal Validation):**
+
+**Krok 1 — End-Date Policy w `BadgeVersionModel.clean()`:**
+System wymusza dyscyplinę, ale pozwala PTTK na kontrolę:
+- Jeśli tworzona jest kolejna wersja, system sprawdzi, czy jakakolwiek poprzednia wersja ma `valid_to IS NULL` (otwarta w przeszłości).
+- Jeśli tak → `ValidationError`: *"Zakończ najpierw obowiązywanie starej wersji, ustawiając jej datę końcową w polu 'Ważna do' (dopuszczalne jest ustawienie daty w przyszłości, co stworzy okres przejściowy)."*
+
+**Krok 2 — Anchor Guard (`get_latest_badge_version`):**
+Komenda: `BadgeVersionModel.objects.filter(valid_from__lte=today).order_by("-valid_from").first()`
+Sortując malejąco po dacie startu — mimo okresu pokrywania się — system **natywnie** wskazuje najnowszą wersję obowiązującą danego dnia. Turysta nigdy nie zostanie "zrzucony w pustkę".
+
+**Krok 3 — UX dla Administratora:**
+Zamiast automatycznych skryptów "uciszających" stare odznki, dodamy etykiety w Django Admin: `[AKTYWNA]`, `[WYGASŁA]`, `[ZAMYKA SIĘ ZA 30 DNI]`. Przenosimy odpowiedzialność na Głównego Kuratora.
+
+**Action Items:**
+- [x] Odrzucono walidację `clean()` blokującą wszystko — nie ma miejsca na okres przejściowy.
+- [x] Odrzucono skrypt "Auto-Close" z `valid_to = yesterday` — niszczy biznesowy wyjątek.
+- [x] Przyjęto model `Overlapping Temporal Validation`: `clean()` blokuje tylko otwarte wersje w **przeszłości**.
+- [x] Dodano pole `valid_to` do `BadgeVersionModel` (`apps/badges/models/badge.py:66-73`).
+- [x] Zaimplementowano `clean()` — End-Date Policy w `BadgeVersionModel.clean()` (`apps/badges/models/badge.py:122-139`).
+- [x] Uzupełniono `get_latest_badge_version` o filtr `valid_to` + deterministyczny `pk` (`infrastructure/adapters/persistence/django_badge_repo.py:126-156`).
+- [x] Wdrożyć etykiety `[AKTYWNA]`, `[WYGASŁA]`, `[ZAMYKA SIĘ ZA 30 DNI]` w Django Admin (`BadgeVersionAdmin.temporal_status_label`).
+- [x] Przenieść odpowiedzialność za zamykanie wersji na Głównego Kuratora (zamiast automatyzacji).
+
+**Implementacja kodu:**
+
+- **`apps/badges/models/badge.py:66-73`** — pole `valid_to = models.DateField(null=True, blank=True)`.
+- **`apps/badges/models/badge.py:122-139`** — `clean()` z End-Date Policy:
+  - Weryfikuje `open_past_versions` (valid_to IS NULL AND valid_from ≤ today).
+  - Wyrzuca `ValidationError` z komunikatem o konieczności zamknięcia starej wersji.
+- **`infrastructure/adapters/persistence/django_badge_repo.py:126-156`** — Anchor Guard:
+  - `.filter(valid_to__isnull=True | Q(valid_to__gte=today))` — wyklucza wygasłe wersje.
+  - `.order_by("-valid_from", "-pk")` — deterministyczny wybór najnowszej przy pokrywaniu się.
+- **`apps/badges/admin/badge_admin.py`** — `temporal_status_label()` z etykietami UX.
+- **`apps/badges/migrations/0008_add_valid_to_badge_version.py`** — migracja pola `valid_to`.
+- **`tests/apps/badges/test_badge_version_temporal_clean.py`** — 5 testów End-Date Policy.
+- **`tests/infrastructure/adapters/persistence/test_django_badge_repo.py`** — 2 testy Anchor Guard (wygasła, overlap).
+
+**Status testów:** 175/175 testów (apps, use_cases, repo) ✅ | mypy ✅ | ruff ✅.
 
 **Komentarz Architekta:**
-Klasyczny błąd z "zakładaniem" pewnych zachowań administratora. Kod musi wymusić poprawność cyklu życia. Bez tego Prawa Nabyte mogą zacząć działać jak "Prawa Zduplikowane".
+Zgodnie z AUDYT-012 (Cinderella Bug) — `order_by("-valid_from")` zapewnia spójny wektor czasu nawet podczas pokrywania się wersji. Kod nie zgadnie intencji PTTK, ale wymusi jedną, krystaliczną prawidłowość: nie ma wersji otwartych "na zawsze" w przeszłości.
 
 ---
+
+**Pełna specyfikacja w `docs/backlog_po_audycie.md`:** Treść dogłębnej analizy — włączając scenariusz wersji 2020/2026, porównanie z propozycją Audytora oraz trójkrokowy plan implementacji — została zapisana dokumentem `docs/backlog_po_audycie.md`.
 
 ### [AUDYT-100] Brak procesu dla "Osieroconych Wejść" (P-02) przy zmianie regulaminu
 **Obszar:** `Biznes / Logika Weryfikacji`  
@@ -2999,5 +3000,107 @@ Po udanej migracji danych do płaskiej tabeli `regions_flat` (migracje 0003/0004
 - `0007_drop_legacy_regions.py` — `DeleteModel` dla wszystkich 7 histor. modeli (DROP TABLE CASCADE)
 
 **Weryfikacja:** 86 testów nie-DB (`test_models.py`, `test_admin.py`) ✅ zdrowe; `make lint` ✅ 0 błędów; `make type-check` ✅ 0 błędów (161 plików); `test_django_tourist_repo.py` wymaga kontenera Postgres do uruchomienia.
+
+---
+
+### [AUDYT-078] Rozważenie podziału Bounded Contexts w przypadku dodania nowych systemów
+🟢 **Status:** `ZAKOŃCZONO` (Specification Completed)  
+**Obszar:** `Architektura / Domain-Driven Design`  
+**Priorytet:** `🟢 NISKI`  
+
+**Diagnoza Audytora:** 
+Obecnie system obsługuje dwa główne konteksty (Katalog PTTK oraz Profil Turysty). Audytor przewiduje, że w przypadku podwojenia funkcjonalności (np. wejście w płatności Stripe dla abonamentów PRO, lub budowa silnika powiadomień Push), dalsze dokładanie klas do obecnej struktury doprowadzi do "Piekła Zależności" (Coupling).
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [x] Opracować i zatwierdzić dokument wprowadzający nowe Konteksty (np. `Billing Context`, `Notification Context`). — **`docs/adrs/ADR-029 — Podział Bounded Contexts (Billing i Notyfikacje).md`**
+- [x] Wykorzystać stworzone wcześniej (i odseparowane) Zdarzenia Domenowe (`Domain Events`) jako jedyny, twardy mechanizm komunikacji między tymi nowymi aplikacjami (Pub/Sub). — Wdrożone w ADR-029.
+
+**Komentarz Architekta:**
+To lekcja z budowania startupów. Kiedy zaczynamy pobierać opłaty, płatności nie mogą dotykać tabeli szczytów górskich. Modułowość to nasza jedyna tarcza obronna na przyszłość.
+
+---
+
+### [AUDYT-057] Potrzeba wdrożenia mechanizmów ABAC / RBAC (PD-04)
+🟢 **Status:** `ZAKOŃCZONO` (Specification Completed)  
+**Obszar:** `Architektura / Bezpieczeństwo`  
+**Priorytet:** `🟢 NISKI`
+
+**Diagnoza Audytora:** 
+Obecny system rozdziela użytkowników jedynie na `Admin`, `Owner` i resztę świata. Audytor zwraca uwagę, że jeśli system się rozrośnie i wprowadzimy do niego rolę "Weryfikatora PTTK" (osobę, która nie jest Adminem całego systemu, ale ma prawo cofać odznaki w określonym oddziale) lub rolę "Członka Rodziny" (z ograniczonymi prawami dostępu do profili), obecny model uprawnień (Security Matrix) zawiedzie. Wskazuje potrzebę wdrożenia Attribute-Based Access Control (ABAC) lub Role-Based Access Control (RBAC).
+
+**Propozycja Rozwiązania (Specyfikacja Zarchitektoniczna):**
+
+Wdrożenie hybrydy RBAC i ABAC jako dedykowanego `AccessControlService` w warstwie Aplikacji.
+
+**Motywacja:** System aktualnie opiera autoryzację na prostej własności (`request.session.get("active_profile_id")`). Gdy wprowadzimy role takie jak "Weryfikator PTTK" (US-D07), który może zatwierdzać wnioski turystów z tego samego oddziału, ale nie może edytować profilów ani odznak innych oddziałów, dotychczasowy mechanizm IDOR zawiedzie. Logika `if user.is_owner OR (user.is_weryfikator AND wniosek.oddzial == user.oddzial)` w każdym widoku stworzy "Spaghetti of Permissions".
+
+**Etap 1 — Policy Enforcement Point (PEP):**
+Stworzenie portu `AuthorizationPort` w warstwie aplikacji. Widoki przestaną dedukować tożsamość i uprawnienia; będą zapytywać:
+`auth_service.authorize(actor_id=request.user.id, action="VERIFY_BADGE", resource=badge_progress_dto)`
+
+**Etap 2 — Polityki (Policies):**
+Implementacja łańcucha odpowiedzialności (Chain of Responsibility) z klasami polityk, np. `BadgeVerificationPolicy`. Polityka łączy atrybuty zasobu (organizator odznaki) z atrybutami aktora (rola, oddział), np. PTTK Kraków ≠ PTTK Wrocław → odmowa.
+
+**Etap 3 — Model Ról w DB:**
+`ManyToManyField` w `TouristProfile` do tabeli `RoleAssignments` (roli: `WERYFIKATOR`, `CZŁONEK_RODZINY`) powiązanych z `OrganizerModel`. Adapter DB dostarczy kontekst autoryzacji.
+
+**Action Items:**
+- [x] Odrzucono wdrożenie `django-guardian` — zewnętrzne paczki na poziomie ORM wyciekają logikę bezpieczeństwa do warstwy dostarczania.
+- [x] Ustalono architekturę: `AccessControlService` w warstwie Aplikacji z domenowymi obiektami Polityk.
+- [ ] Wdrożyć `AccessControlService` i `AuthorizationPort` w momencie wprowadzania ról innych niż Owner i Admin (gdy pojawi się panel Weryfikatora).
+
+**Komentarz Architekta:**
+Do czasu wprowadzania ról system opiera się na efektywnej architekturze zaufania zdefiniowanej w `SECURITY_MATRIX.md`. Wprowadzanie pełnego ABAC/RBAC dla dwóch roli (Owner, Admin) byłoby over-engineeringiem.
+
+**`docs/backlog_po_audycie.md` (Specification Document):** Pełną, szczegółową propozycję rozwiązania — włączając scenariusz US-D07, analizę trzech etapów oraz uzasadnienie decyzji odrzucenia `django-guardian` — proponuję zamknąć ten audyt w statusie "Specification". Treść specyfikacji została przekazana do dokumentu `docs/backlog_po_audycie.md`.
+
+---
+---
+
+### [AUDYT-056] Otwarta Decyzja Architektoniczna (PD-02): Strategia Partycjonowania Tabeli `AscentLog`
+🟢 **Status:** `ZAKOŃCZONO` (Specification Completed)  
+**Obszar:** `Architektura / Baza Danych`  
+**Priorytet:** `🟡 ŚREDNI (Faza Skalowania)`
+
+**Diagnoza Audytora:** 
+Audytor wprost stawia przed nami wymóg wyboru ścieżki partycjonowania dla tabeli przechowującej wpisy turystów, która jako jedyna w systemie będzie rosnąć nielimitowanie (logi wejść). Ostrzega przed podziałem wyłącznie po dacie, jeśli główne zapytania aplikacji operują na przekrojach terytorialnych lub identyfikatorach turystów (co jest prawdą, nasza Czysta Domena pyta zawsze o konkretnego turystę).
+
+**Propozycja Rozwiązania (Specyfikacja Zarchitektoniczna):**
+
+Przeprowadzono analizę czystej domeny w kontekście `VerifyBadgeUseCase` i `get_unconsumed_ascents`. Silnik bazodanowy nigdy nie pyta "co wydarzyło się w 2024 roku?" — pyta "daj mi wszystkie wejścia turysty o ID 15".
+
+**Dlaczego RANGE partitioning (po dacie) zawiedzie:**
+Jeśli podzielimy `AscentLog` na partycje roczne (`ascent_log_2012`, ... `ascent_log_2026`), a turysta miał wejścia w 15 różnych latach, baza musiałaby otworzyć i przeszukać wszystkie 15 partycji (Scatter-Gather Querying). Przy 10 milionach wierszy — katastrofalny spadek wydajności i eksplozja pamięci RAM. To **Partition Pruning Failure**.
+
+**Propozycja: HASH partitioning na fundamencie `profile_id`:**
+PostgreSQL narysuje stałą liczbę partycji (np. 16 szuflad) i użyje deterministycznej funkcji hash na `profile_id`:
+
+- **Jan (ID: 42)** → Szuflada nr 7 (`ascent_log_p7`)
+- **Ewa (ID: 95)** → Szuflada nr 3 (`ascent_log_p3`)
+
+**Zalety:**
+- **Perfect Partition Pruning:** Query `WHERE profile_id=42` omija 15 pozostałych szuflad — skanuje tylko jedną małą tabelę.
+- **Izolacja historii:** Wszystkie wejścia turysty (nawet z lat 2005–2026) w jednej partycji.
+- **Równomierne obciążenie:** HASH naturalnie rozkłada turystów, unikając "ciężkich" i "pustych" partycji.
+
+**Konsekwencja architektoniczna (ADR-024):**
+Transformacja istniejącej tabeli w tabelę partycjonowaną nie jest możliwa "w locie" w PostgreSQL. Wymagana jest faza skalowania z cyklem `Expand & Contract`:
+1. Stworzyć nową tabelę `AscentLogPartitioned`
+2. Asynchroniczny backfill przez Celery
+3. Dual-write (zapis do obu tabel) w `LogAscentUseCase`
+4. Usunięcie starej tabeli
+
+**Specyfikacja techniczna:**
+- Liczba partycji: 16 (dostosowana do liczby rdzeni CPU)
+- Klucz partycjonowania: `profile_id` (klucz główny + klucz partycjonowania w PostgreSQL)
+
+**Action Items:**
+- [x] Przeprowadzono analizę wektorów zapytań Czystej Domeny — `profile_id` jest kluczem, nie `ascent_date`.
+- [x] Odrzucono `RANGE PARTITIONING` z powodu Partition Pruning Failure.
+- [x] Zatwierdzono doktrynę **HASH Partitioning po `profile_id`**.
+- [ ] Wdrożyć partycjonowanie w momencie zaobserwowania degradacji przy progu 1 miliona logów (etap `Expand & Contract` zgodny z ADR-024).
+
+**Komentarz Architekta:**
+Wspaniała prewencja przed spadkiem wydajności zapytań. Nasz Use Case sprawdza wszystkie wejścia danego turysty naraz. HASH na `profile_id` gwarantuje, że przy weryfikacji wieloletniej historii Jana, baza skanuje tylko szufladę nr 7, nie mysząc po 15 pozostałych.
 
 ---

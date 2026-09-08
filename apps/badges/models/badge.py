@@ -5,6 +5,9 @@ Importuje ``OrganizerModel`` z ``apps.badges.models.organizer`` oraz
 ``TouristObject`` z ``apps.badges.models.osm`` dla kluczy obcych.
 """
 
+from datetime import date
+
+from django.core.exceptions import ValidationError
 from django.db import models
 from django_jsonform.models.fields import JSONField
 from tinymce.models import HTMLField
@@ -64,6 +67,13 @@ class BadgeVersionModel(models.Model):
         verbose_name="Wersja (np. v2024)",
     )
     valid_from = models.DateField(verbose_name="Obowiązuje od")
+    valid_to = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Ważna do",
+        help_text="Pozostaw puste dla wersji obowiązującej w nieskończoność. "
+        "Wersja otwarta w przeszłości blokuje dodanie nowej wersji.",
+    )
     # Zarządzanie linkami (Wzorzec Archiwum)
     official_link = models.URLField(
         max_length=500,
@@ -114,8 +124,35 @@ class BadgeVersionModel(models.Model):
         verbose_name_plural = "Wersje Regulaminów"
 
     def __str__(self) -> str:
-        """Reprezentacja tekstowa wersji odznaki."""
+        """Reprezentacja tekstowa wersji odznki."""
         return f"{self.badge.name} ({self.version_code})"
+
+    def clean(self) -> None:
+        """Temporal Collision Detection — End-Date Policy.
+
+        Zapobiega powstawaniu "nieskońiczonych" wersji w przeszłości,
+        które byłyby niejednoznaczne dla najnowszego turysty. Umożliwia
+        jednak okresy pokrywania się (Overlap/Grace Period) w przyszłości.
+        """
+        super().clean()
+
+        today = date.today()
+
+        siblings = BadgeVersionModel.objects.filter(badge=self.badge).exclude(pk=self.pk)
+        open_past_versions = siblings.filter(valid_to__isnull=True, valid_from__lte=today)
+
+        if open_past_versions.exists():
+            raise ValidationError(
+                {
+                    "valid_to": (
+                        f"Błąd: Nie możesz dodać kolejnej Wersji dla odznaki "
+                        f"'{self.badge.name}'. Zakończ najpierw obowiązywanie "
+                        f"starej wersji, ustawiając jej datę końcową w polu "
+                        f"'Ważna do' (dopuszczalne jest ustawienie daty w "
+                        f"przyszłości, co stworzy okres przejściowy)."
+                    )
+                }
+            )
 
 
 class LevelType(models.TextChoices):

@@ -297,3 +297,39 @@ class TestBadgeVersionDateResolution:
         result = self.repo.get_version_id_for_date("KGP", date(2024, 1, 1))
 
         assert result is None
+
+    @pytest.mark.django_db(transaction=True)
+    def test_get_latest_badge_version_excludes_expired_versions(self):
+        """Anchor Guard: wygasłe wersje (valid_to < today) nie są zwracane."""
+        from apps.badges.models import BadgeModel, BadgeVersionModel
+
+        badge = BadgeModel.objects.create(code="KGP", name="KGP", organizer=_create_organizer())
+        BadgeVersionModel.objects.create(
+            badge=badge, version_code="v_old", valid_from=date(2020, 1, 1), valid_to=date(2022, 1, 1)
+        )
+        active = BadgeVersionModel.objects.create(
+            badge=badge, version_code="v_active", valid_from=date(2024, 1, 1), valid_to=None
+        )
+
+        result = self.repo.get_latest_badge_version("KGP")
+
+        assert result is not None
+        assert result.version_id == active.id
+
+    @pytest.mark.django_db(transaction=True)
+    def test_get_latest_badge_version_returns_overlap_newer(self):
+        """W okresie pokrywania się (Overlap/Grace Period) zwracana jest nowsza wersja."""
+        from apps.badges.models import BadgeModel, BadgeVersionModel
+
+        badge = BadgeModel.objects.create(code="KGP", name="KGP", organizer=_create_organizer())
+        BadgeVersionModel.objects.create(
+            badge=badge, version_code="v_old", valid_from=date(2024, 1, 1), valid_to=date(2026, 12, 31)
+        )
+        new = BadgeVersionModel.objects.create(
+            badge=badge, version_code="v_new", valid_from=date(2026, 5, 1), valid_to=None
+        )
+
+        result = self.repo.get_latest_badge_version("KGP")
+
+        assert result is not None
+        assert result.version_id == new.id

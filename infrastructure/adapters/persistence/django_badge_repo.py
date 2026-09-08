@@ -3,6 +3,8 @@
 import logging
 from datetime import date
 
+from django.db import models
+
 from application.ports.badge_repository_port import BadgeRepositoryPort
 from apps.badges.models import BadgeVersionModel
 from domain.entities.badge_version import BadgeTierDomain, BadgeVersionDomain
@@ -124,10 +126,14 @@ class DjangoBadgeRepository(BadgeRepositoryPort):
         )
 
     def get_latest_badge_version(self, badge_code: str) -> BadgeVersionDomain | None:
-        """
+        """Pobiera najnowszą wersję odznaki ważną dziś (Anchor Guard).
+
+        Działa jako "anchor" zapobiegający zduplikowanemu wpadaniu turysty
+        podczas okresów pokrywania się (Overlap/Grace Period). Sortuje
+        malejąco po ``valid_from`` i ``pk`` gwarantuje jednoznaczny wybór
+        nawet gdy dwie wersje zaczynają obowiązywać tego samego dnia.
 
         Args:
-          badge_code: str:
           badge_code: str:
 
         Returns:
@@ -135,11 +141,15 @@ class DjangoBadgeRepository(BadgeRepositoryPort):
         """
         from django.utils import timezone
 
-        from apps.badges.models import BadgeVersionModel
+        today = timezone.now().date()
 
         version_model = (
-            BadgeVersionModel.objects.filter(badge__code=badge_code, valid_from__lte=timezone.now().date())
-            .order_by("-valid_from")
+            BadgeVersionModel.objects.filter(
+                badge__code=badge_code,
+                valid_from__lte=today,
+            )
+            .filter(models.Q(valid_to__isnull=True) | models.Q(valid_to__gte=today))
+            .order_by("-valid_from", "-pk")
             .first()
         )
 

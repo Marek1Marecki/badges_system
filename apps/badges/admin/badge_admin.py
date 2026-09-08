@@ -1,6 +1,9 @@
 """Panele administracyjne dla hierarchii odznak (Badge -> Version -> Tier)."""
 
+from datetime import date
+
 from django.contrib import admin
+from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 
 from apps.badges.admin.filters import PeakInBadgeFilter
@@ -49,7 +52,7 @@ class BadgeVersionAdmin(ModelAdmin):
             kwargs["queryset"] = TouristObject.objects.filter(status="READY")
         return super().formfield_for_manytomany(db_field, request, **kwargs)
 
-    list_display = ("badge", "version_code", "valid_from")
+    list_display = ("badge", "version_code", "valid_from", "valid_to", "temporal_status_label")
     list_filter = ("badge", "valid_from", PeakInBadgeFilter)
 
     search_fields = ("version_code", "badge__name", "pool_peaks__name")
@@ -59,7 +62,7 @@ class BadgeVersionAdmin(ModelAdmin):
     inlines = [BadgeTierInline]
 
     fieldsets = (
-        ("Metadane", {"fields": ("badge", "version_code", "valid_from")}),
+        ("Metadane", {"fields": ("badge", "version_code", "valid_from", "valid_to")}),
         ("Archiwum Regulaminu", {"fields": ("official_link", "rules_link", "rules_text", "booklet_template_image")}),
         ("Reguły Biznesowe (Czysta Domena)", {"fields": ("rules",)}),
         (
@@ -72,3 +75,17 @@ class BadgeVersionAdmin(ModelAdmin):
             },
         ),
     )
+
+    @admin.display(description="Status Czasowy", ordering="valid_to")
+    def temporal_status_label(self, obj: BadgeVersionModel) -> str:
+        """Etykieta UX końcówki okresu obowiązywania (AKTYWNA / WYGASŁA / Zbliża się)."""
+        today = date.today()
+        if obj.valid_to is None:
+            return str(format_html('<span style="color:green">🟢 AKTYWNA</span>'))
+        if obj.valid_to < today:
+            return str(format_html('<span style="color:red">🔴 WYGASŁA</span>'))
+        if (obj.valid_to - today).days <= 30:
+            return str(
+                format_html('<span style="color:orange">🟠 ZAMYKA SIĘ ZA {} DNI</span>', (obj.valid_to - today).days)
+            )
+        return str(format_html("<span>🔵 AKTYWNA</span>"))

@@ -89,7 +89,7 @@ class TestBadgeVersionAdmin:
 
     def test_badge_version_admin_list_display(self):
         """Test pól list_display."""
-        expected = ("badge", "version_code", "valid_from")
+        expected = ("badge", "version_code", "valid_from", "valid_to", "temporal_status_label")
         assert BadgeVersionAdmin.list_display == expected
 
     def test_badge_version_admin_list_filter(self):
