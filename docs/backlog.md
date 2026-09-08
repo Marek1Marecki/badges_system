@@ -87,7 +87,6 @@ W środowisku pojedynczego serwera z Docker Compose jest to ryzyko akceptowalne.
 
 ---
 
-
 ### [x] [AUDYT-055] [PD-01 ACCEPTED] Normalizacja Hierarchii Regionów → Ltree
 **Obszar:** `Architektura / Model Danych`  
 **Priorytet:** `🟡 ŚREDNI (Faza Skalowania)`  
