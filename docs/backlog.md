@@ -154,6 +154,7 @@ Wspaniała diagnoza. Architektura "Zawsze Połączony" nie sprawdza się w Biesz
 ---
 
 ### [AUDYT-067] Brak polityki wsparcia Wielojęzyczności (i18n)
+🟢 **Status:** `ZAKOŃCZONO (Wont-Fix / Risk Accepted)`
 **Obszar:** `Django / Architektura Informacji`  
 **Priorytet:** `🟢 NISKI`  
 
@@ -164,8 +165,16 @@ Domena, raporty błędów RFC 7807 oraz szablony HTMX są wbudowane "na sztywno"
 - [ ] Dodać konfigurację `i18n` do `settings.py` oraz `app_settings.py`.
 - [ ] Zmodyfikować DTO wyjściowe i Exception Handlery, aby wywoływały funkcję `ugettext_lazy` przed serializacją JSON-a.
 
-**Komentarz Architekta:**
-Jest to standardowe założenie odłożone na później w fazie MVP, jednak warto o nim pamiętać przy projektowaniu bazy.
+**Decyzja Architektoniczna (Wont-Fix):**
+Zgadzam się w 100% z oceną: **rezygnujemy ze wsparcia wielojęzyczności**.
+
+System operuje wokół regulaminów Polskiego Towarzystwa Turystyczno-Krajoznawczego (PTTK), którego jedyną grupą docelową jest turysta **polskojęzyczny**. Wdrożenie `gettext_lazy`, tagów `{% trans %}` oraz utrzymanie plików `.po` to **przedwczesna optymalizacja** (Premature Internationalization) — szkodliwy "podatek inżynieryjny" bez szans na zwrot z inwestycji (ROI). Dodatkowo:
+- Turysta polskojęzyczny zdobywa szczyty w Czechach/Słowacji **w ramach polskiego regulaminu** — nie potrzebuje czeskiej/Słowackiej wersji UI.
+- Logika domenowa (reguły biznesowe PTTK) i modele (np. `DomainStatus` w języku polskim) są fundamentalnie zakorzenione w konkretnej kulturze górskiej.
+
+**Zaktualizowano:** Językiem wbudowanym na stałe w warstwę prezentacji (Hardcoded) pozostaje język polski. Wszelkie próby internacjonalizacji w przyszłości będą wymagały świadomej decyzji biznesowej i ponownego rozważenia tego punktu.
+
+**Pełna deklaracja w archiwum:** Treść decyzji została zarchiwizowana w `docs/backlog_po_audycie.md` (sekcja "Zarchiwizowane Decyzje Wont-Fix").
 
 ---
 
@@ -329,43 +338,6 @@ Plik `API_CONTRACTS.md` definiuje ścieżki w formacie `/api/v1/`, ale nie defin
 
 **Komentarz Architekta:**
 Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał, kiedy ucinamy wsparcie. Dopóki klientem API jest tylko nasz wewnętrzny frontend (HTMX/JS), to nie jest problem. Jeśli otworzymy to dla aplikacji mobilnych, to jest punkt krytyczny.
-
----
-
-### [AUDYT-100] Brak procesu dla "Osieroconych Wejść" (P-02) przy zmianie regulaminu
-🟢 **Status:** `ZAKOŃCZONO` (Implementation Completed)
-**Obszar:** `Biznes / Logika Weryfikacji`
-**Priorytet:** `🔴 KRYTYCZNY`
-
-**Diagnoza Audytora:** 
-Jeśli turysta w 2024 roku zdobył 15 z 20 szczytów z puli "Wersji A", a w 2025 roku zechce porzucić stare zasady (na starych zasadach brakuje mu jednego trudnego szczytu) i dobrowolnie przełączyć się na "Wersję B" (nowy regulamin), system nie definiuje, co ma się stać z jego 15 starymi wejściami. Jeśli w "Wersji B" 3 z tych 15 szczytów wyleciały z puli, turysta nagle "utraci" je ze swojego postępu. 
-
-**Dieta Rozwiązania (AUDYT-099 — Overlapping Temporal Validation):**
-
-Wdrożyliśmy **Opcję C (The Grandfather's Bin)** — transparentne "Wysypiskanie" w Czystej Domenie, bez Time-Travel Rules.
-
-**Implementacja:**
-- **`BadgeVersionDomain.evaluate()`** (`domain/entities/badge_version.py`) — Sito odrzuca wejścia spoza `pool_peaks` (jak poprzednio), ale dzięki `AscentLifecycle` każde wejście otrzymuje status:
-  - `ACTIVE` — wejście ważne dla tej wersji (points=1).
-  - `ORPHANED` — wejście fizycznie istnieje, ale "Sito" odrzuciło je (points=0). To wejście na górę, której nie ma w nowej puli.
-  - `EXHAUSTED` — (zarezerwowany dla przyszłości, P-02: zużyte w poprzednim cyklu).
-
-- **`AscentStatus` Value Object** (`domain/value_objects/ascent_status.py`) — `object_id`, `ascent_date`, `lifecycle`, `points`.
-
-- **`VerificationResult`** (`domain/value_objects/verification_result.py`) — nowe pole `ascents_with_status: list[AscentStatus]`.
-
-- **`VerifyBadgeResponseDTO`** (`application/dto/verify_badge_dto.py`) — `ascents_with_status` dostępne w API.
-
-- **Szablon `/badge_detail/`** (`apps/templates/tourists/badge_detail.html`) — sekcja "📜 Wyjścia wykluczone z regulaminu" wyświetla ORPHANED wejścia w estetycznej tabeli.
-
-**Action Items:**
-- [x] Uzupełniono Czystą Domenę o `AscentStatus` + `AscentLifecycle` enum (AUDYT-099).
-- [x] Dodać sekcję "Wejścia nie liczące się do tej wersji regulaminu" w UI (`badge_detail.html`).
-- [x] Turysta widzi każde wejście (historyczny dziennik), z punktacją 0 dla ORPHANED.
-- [x] Odrzucono Opcję B (Kredyty Przejściowe) — Time-Travel Rules niszczą architekturę.
-
-**Komentarz Architekta:**
-Wejścia nie znikają — stają się pamiątką (`AscentStatus`). Sito pozostaje czyste (ADR-009). Logika nie zależy od `ascent_date` względem historycznych wersji — tylko od aktualnej puli (`pool_peaks`). Turysta wie: "Giewont był, tylko nie liczy się do tej wersji regulaminu."
 
 ---
 
@@ -2903,7 +2875,6 @@ System DevSecOps osiągnął pełną dojrzałość. Posiadamy analizę statyczn�
 **Priorytet:** `🟠 WYSOKI`
 **Status:** `🟢 ZAKOŃCZONO — Zrealizowano`
 
-
 **Diagnoza Architekta:**
 Posiadamy ponad 20 działających scenariuszy E2E (nawigacja, profile, katalog, rankingi). Znakomicie omijamy logowanie za pomocą mechanizmu `create_test_session` (Bypass Auth w `conftest.py`). Brakuje jednak choćby jednego "prawdziwego" testu, który fizycznie wchodzi na `/accounts/login/` i weryfikuje UI procesu logowania Google OAuth (np. czy przycisk jest widoczny, czy przekierowuje do poprawnego dostawcy).
 
@@ -3120,5 +3091,42 @@ Zamiast automatycznych skryptów "uciszających" stare odznki, dodamy etykiety w
 
 **Komentarz Architekta:**
 Zgodnie z AUDYT-012 (Cinderella Bug) — `order_by("-valid_from")` zapewnia spójny wektor czasu nawet podczas pokrywania się wersji. Kod nie zgadnie intencji PTTK, ale wymusi jedną, krystaliczną prawidłowość: nie ma wersji otwartych "na zawsze" w przeszłości.
+
+---
+
+### [AUDYT-100] Brak procesu dla "Osieroconych Wejść" (P-02) przy zmianie regulaminu
+🟢 **Status:** `ZAKOŃCZONO` (Implementation Completed)
+**Obszar:** `Biznes / Logika Weryfikacji`
+**Priorytet:** `🔴 KRYTYCZNY`
+
+**Diagnoza Audytora:** 
+Jeśli turysta w 2024 roku zdobył 15 z 20 szczytów z puli "Wersji A", a w 2025 roku zechce porzucić stare zasady (na starych zasadach brakuje mu jednego trudnego szczytu) i dobrowolnie przełączyć się na "Wersję B" (nowy regulamin), system nie definiuje, co ma się stać z jego 15 starymi wejściami. Jeśli w "Wersji B" 3 z tych 15 szczytów wyleciały z puli, turysta nagle "utraci" je ze swojego postępu. 
+
+**Dieta Rozwiązania (AUDYT-099 — Overlapping Temporal Validation):**
+
+Wdrożyliśmy **Opcję C (The Grandfather's Bin)** — transparentne "Wysypiskanie" w Czystej Domenie, bez Time-Travel Rules.
+
+**Implementacja:**
+- **`BadgeVersionDomain.evaluate()`** (`domain/entities/badge_version.py`) — Sito odrzuca wejścia spoza `pool_peaks` (jak poprzednio), ale dzięki `AscentLifecycle` każde wejście otrzymuje status:
+  - `ACTIVE` — wejście ważne dla tej wersji (points=1).
+  - `ORPHANED` — wejście fizycznie istnieje, ale "Sito" odrzuciło je (points=0). To wejście na górę, której nie ma w nowej puli.
+  - `EXHAUSTED` — (zarezerwowany dla przyszłości, P-02: zużyte w poprzednim cyklu).
+
+- **`AscentStatus` Value Object** (`domain/value_objects/ascent_status.py`) — `object_id`, `ascent_date`, `lifecycle`, `points`.
+
+- **`VerificationResult`** (`domain/value_objects/verification_result.py`) — nowe pole `ascents_with_status: list[AscentStatus]`.
+
+- **`VerifyBadgeResponseDTO`** (`application/dto/verify_badge_dto.py`) — `ascents_with_status` dostępne w API.
+
+- **Szablon `/badge_detail/`** (`apps/templates/tourists/badge_detail.html`) — sekcja "📜 Wyjścia wykluczone z regulaminu" wyświetla ORPHANED wejścia w estetycznej tabeli.
+
+**Action Items:**
+- [x] Uzupełniono Czystą Domenę o `AscentStatus` + `AscentLifecycle` enum (AUDYT-099).
+- [x] Dodać sekcję "Wejścia nie liczące się do tej wersji regulaminu" w UI (`badge_detail.html`).
+- [x] Turysta widzi każde wejście (historyczny dziennik), z punktacją 0 dla ORPHANED.
+- [x] Odrzucono Opcję B (Kredyty Przejściowe) — Time-Travel Rules niszczą architekturę.
+
+**Komentarz Architekta:**
+Wejścia nie znikają — stają się pamiątką (`AscentStatus`). Sito pozostaje czyste (ADR-009). Logika nie zależy od `ascent_date` względem historycznych wersji — tylko od aktualnej puli (`pool_peaks`). Turysta wie: "Giewont był, tylko nie liczy się do tej wersji regulaminu."
 
 ---
