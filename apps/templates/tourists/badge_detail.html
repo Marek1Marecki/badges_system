@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load badge_extras %}
 {% block content %}
     <!-- Przekazanie kodu odznaki do pliku map.js -->
     <script>window.BADGE_FILTER_CODE = "{{ badge.code }}";</script>
@@ -95,6 +96,32 @@
                                 </div>
                             {% endfor %}
                         </div>
+                    {% endif %}
+                    <!-- AUDYT-099: Wejścia wykluczone z regulaminu (Grandfather's Bin) -->
+                    {% if evaluation and evaluation.ascents_with_status %}
+                        {% if evaluation.ascents_with_status|filter_by_lifecycle:"ORPHANED"|length > 0 %}
+                            <div class="mt-8 border-t border-gray-200 pt-6">
+                                <h3 class="text-xl font-bold text-slate-800 mb-4">📜 Wyjścia wykluczone z regulaminu</h3>
+                                <p class="text-sm text-gray-500 mb-3 italic">
+                                    Wejścia, które zdobyłeś/aś, ale nie wchodzą w skład tej wersji regulaminu
+                                    (góra nie figuruje w puli szczytów). Pamiątka historyczna.
+                                </p>
+                                <div class="space-y-2">
+                                    {% for asc in evaluation.ascents_with_status %}
+                                        {% if asc.lifecycle == "ORPHANED" %}
+                                            <div class="flex justify-between items-center bg-gray-50 hover:bg-gray-100 transition p-3 rounded-lg border border-gray-200">
+                                                <span class="text-sm text-gray-600">
+                                                    Obiekt #{{ asc.object_id }} — {{ asc.ascent_date }}
+                                                </span>
+                                                <span class="text-xs font-bold px-2 py-1 rounded bg-gray-300 text-gray-600">
+                                                    0 pkt
+                                                </span>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
                     {% endif %}
                     <!-- OSOBISTY KANBAN (Logistyka) -> Wyświetlane TYLKO gdy matematyka = COMPLETED -->
                     {% if evaluation and evaluation.verified %}

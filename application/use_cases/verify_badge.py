@@ -9,7 +9,11 @@ Zawiera rozdzielone ścieżki (Command/Query Responsibility Segregation):
 2. UpdateBadgeProgressCommand - Wymuszenie fizycznego zapisu do bazy.
 """
 
-from application.dto.verify_badge_dto import TierResultResponseDTO, VerifyBadgeResponseDTO
+from application.dto.verify_badge_dto import (
+    AscentStatusResponseDTO,
+    TierResultResponseDTO,
+    VerifyBadgeResponseDTO,
+)
 from application.exceptions import ResourceNotFoundError
 from application.ports.badge_repository_port import BadgeRepositoryPort
 from application.ports.clock_port import ClockPort
@@ -129,6 +133,15 @@ class EvaluateBadgeProgressQuery:
                     required_count=t.required_count,
                 )
                 for t in domain_result.tiers
+            ],
+            ascents_with_status=[
+                AscentStatusResponseDTO(
+                    object_id=asc.object_id,
+                    ascent_date=asc.ascent_date.isoformat(),
+                    lifecycle=asc.lifecycle,
+                    points=asc.points,
+                )
+                for asc in domain_result.ascents_with_status
             ],
         )
 

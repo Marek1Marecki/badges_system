@@ -37,3 +37,22 @@ class LogisticStatus(StrEnum):
     WAITING_FOR_VERIFICATION = "WAITING_FOR_VERIFICATION"
     WAITING_FOR_RECEIVING = "WAITING_FOR_RECEIVING"
     ALBUM = "ALBUM"
+
+
+class AscentLifecycle(StrEnum):
+    """Cykl życia wejścia w kontekście wersji odznaki.
+
+    Stosowane przez Czystą Domenę (BadgeVersionDomain.evaluate) i warstwę
+    aplikacji (VerifyBadgeResponseDTO), aby turysta mógł zobaczyć:
+
+    - ACTIVE: wejście jest ważne dla aktualnej wersji regulaminu.
+    - ORPHANED: wejście fizycznie istnieje, ale "Sito" (pool_peaks)
+      odrzuciło je — góra nie figuruje w tej wersji regulaminu.
+      Główny scenariusz: zmiana regulaminu (AUDYT-099, Opcja C).
+    - EXHAUSTED: wejście było zużyte w poprzednim cyklu (P-02).
+      Zachowane dla spójności modelu; aktualnie nie emitowane przez Sito.
+    """
+
+    ACTIVE = "ACTIVE"
+    ORPHANED = "ORPHANED"
+    EXHAUSTED = "EXHAUSTED"

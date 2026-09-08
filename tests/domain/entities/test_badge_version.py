@@ -77,9 +77,9 @@ class TestBadgeVersionDomain:
 
         result = domain.evaluate(ascents, ctx)
 
-        # Current behavior: errors are collected but not returned, verified depends only on completion
+        # AUDYT-099: Poprawiono — errors są teraz poprawnie propagowane (był poprzednio bugowane jako [])
         assert result.verified is True  # 1 ascent meets required_count=1
-        assert result.errors == []  # errors are not returned in current implementation
+        assert result.errors == ["Błąd 1", "Błąd 2"]  # errors are now returned
 
     def test_evaluate_with_empty_ascents_list(self, ctx: VerificationContext) -> None:
         """Weryfikuje pusta listę wejść."""

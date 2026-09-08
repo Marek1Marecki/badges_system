@@ -7,9 +7,10 @@ regulaminu oraz progów stopni.
 from dataclasses import dataclass
 from typing import cast
 
-from domain.enums import DomainStatus
+from domain.enums import AscentLifecycle, DomainStatus
 from domain.rules.badge_rules import BadgeRule
 from domain.value_objects.ascent import Ascent
+from domain.value_objects.ascent_status import AscentStatus
 from domain.value_objects.verification_context import VerificationContext
 from domain.value_objects.verification_result import TierResult, VerificationResult
 
@@ -56,32 +57,58 @@ class BadgeVersionDomain:
         Returns:
           Wynik weryfikacji ze statusem i szczegółami stopni.
         """
-        # 1. Sito przestrzenne (Odrzucenie szczytów spoza Menu)
+        # Sito przestrzeni (Odrzucenie szczytów spoza Menu)
         if self.pool_peak_ids:
             valid_ascents = [a for a in ascents if a.object_id in self.pool_peak_ids]
         else:
             valid_ascents = ascents.copy()
 
         # Zabezpieczenie przed duplikatami wejść na ten sam szczyt
-        unique_ascents = []
-        seen_peaks = set()
+        unique_ascents: list[Ascent] = []
+        seen_peaks: set[int] = set()
         for a in sorted(valid_ascents, key=lambda x: x.ascent_date):
             if a.object_id not in seen_peaks:
                 unique_ascents.append(a)
                 seen_peaks.add(a.object_id)
 
-        errors = []
+        # AUDYT-099: Raport każdego wejścia + status (ACTIVE / ORPHANED)
+        ascents_with_status: list[AscentStatus] = []
+        valid_obj_ids: set[int] = set()
+        for a in unique_ascents:
+            ascents_with_status.append(
+                AscentStatus(
+                    object_id=a.object_id,
+                    ascent_date=a.ascent_date,
+                    lifecycle=AscentLifecycle.ACTIVE,
+                    points=1,
+                )
+            )
+            valid_obj_ids.add(a.object_id)
 
-        # 2. Sito Reguł Biznesowych (Wzorzec Strategii)
+        # Wejścia poza pulą (ORPHANED) — AUDYT-099 Opcja C (Grandfather's Bin)
+        for a in ascents:
+            if a.object_id not in valid_obj_ids:
+                ascents_with_status.append(
+                    AscentStatus(
+                        object_id=a.object_id,
+                        ascent_date=a.ascent_date,
+                        lifecycle=AscentLifecycle.ORPHANED,
+                        points=0,
+                    )
+                )
+
+        errors: list[str] = []
+
+        # Sito Reguł Biznesowych (Wzorzec Strategii)
         for rule in self.rules:
             rule_errors = rule.validate(unique_ascents, context)
             errors.extend(rule_errors)
 
         climbed_count = len(unique_ascents)
 
-        # 3. Ewaluacja Stopni (Tiers)
+        # Ewaluacja Stopni (Tiers)
         sorted_tiers = sorted(self.tiers, key=lambda t: t.order)
-        evaluated_tiers = []
+        evaluated_tiers: list[dict] = []
         all_completed = True
 
         if sorted_tiers:
@@ -124,6 +151,7 @@ class BadgeVersionDomain:
             verified=all_completed,
             status=global_status,
             valid_ascents_count=climbed_count,
-            errors=[],
+            errors=errors,
             tiers=tier_results,
+            ascents_with_status=ascents_with_status,
         )

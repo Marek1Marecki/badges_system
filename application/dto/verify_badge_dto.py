@@ -6,6 +6,8 @@ zastępując luźne `dict[str, Any]` (Primitive Obsession).
 
 from pydantic import BaseModel, Field
 
+from domain.enums import AscentLifecycle
+
 
 class VerifyBadgeRequestDTO(BaseModel):
     """Żądanie weryfikacji postępu zdobywania odznaki."""
@@ -24,6 +26,15 @@ class TierResultResponseDTO(BaseModel):
     required_count: int
 
 
+class AscentStatusResponseDTO(BaseModel):
+    """Pojedynczy wpis w raporcie wejść (AUDYT-099 — Grandfather's Bin)."""
+
+    object_id: int
+    ascent_date: str
+    lifecycle: AscentLifecycle
+    points: int
+
+
 class VerifyBadgeResponseDTO(BaseModel):
     """Wynik weryfikacji odznaki (typowany OutputDTO — AUDYT-124).
 
@@ -39,3 +50,5 @@ class VerifyBadgeResponseDTO(BaseModel):
     valid_ascents_count: int
     errors: list[str] = Field(default_factory=list)
     tiers: list[TierResultResponseDTO] = Field(default_factory=list)
+    # AUDYT-099: Pełny raport każdego wejścia (ACTIVE / ORPHANED)
+    ascents_with_status: list[AscentStatusResponseDTO] = Field(default_factory=list)
