@@ -117,17 +117,7 @@ class TestRegionFlatModel:
         assert "PL" in result
 
 
-class TestRegionFlatModelStr:
-    """Testy __str__ modeli."""
-
-    def test_region_flat_model_str(self):
-        """Test __str__ RegionFlatModel."""
-        region = MagicMock()
-        region.name = "Polska"
-        region.code = "PL"
-        result = RegionFlatModel.__str__(region)
-        assert "Polska" in result
-        assert "PL" in result
+class TestBadgeVersionModelStr:
 
     def test_badge_model_str(self):
         """Test __str__ BadgeModel."""

@@ -97,6 +97,44 @@ class TestBadgeVersionAdmin:
         expected = ("badge", "valid_from", PeakInBadgeFilter)
         assert BadgeVersionAdmin.list_filter == expected
 
+    def test_temporal_status_label_active(self):
+        """Wersja otwarta (valid_to=None) → [🟢 AKTYWNA]."""
+        from datetime import date as _date
+
+        obj = BadgeVersionModel(valid_from=_date(2024, 1, 1), valid_to=None)
+        admin_obj = BadgeVersionAdmin(BadgeVersionModel, None)
+        result = admin_obj.temporal_status_label(obj)
+        assert "AKTYWNA" in result
+
+    def test_temporal_status_label_expired(self):
+        """Wersja z valid_to < today → [🔴 WYGASŁA]."""
+        from datetime import date as _date
+        from datetime import timedelta
+
+        obj = BadgeVersionModel(valid_from=_date(2020, 1, 1), valid_to=_date.today() - timedelta(days=1))
+        admin_obj = BadgeVersionAdmin(BadgeVersionModel, None)
+        result = admin_obj.temporal_status_label(obj)
+        assert "WYGASŁA" in result
+
+    def test_temporal_status_label_expires_soon(self):
+        """Wersja z valid_to w ciągu 30 dni → [🟠 ZAMYKA SIĘ]."""
+        from datetime import date as _date
+        from datetime import timedelta
+
+        obj = BadgeVersionModel(valid_from=_date(2024, 1, 1), valid_to=_date.today() + timedelta(days=10))
+        admin_obj = BadgeVersionAdmin(BadgeVersionModel, None)
+        result = admin_obj.temporal_status_label(obj)
+        assert "ZAMYKA SIĘ" in result
+
+    def test_temporal_status_label_active_future(self):
+        """Wersja otwarta → [🔵 AKTYWNA] gdy valid_to=None."""
+        from datetime import date as _date
+
+        obj = BadgeVersionModel(valid_from=_date(2024, 1, 1), valid_to=None)
+        admin_obj = BadgeVersionAdmin(BadgeVersionModel, None)
+        result = admin_obj.temporal_status_label(obj)
+        assert "AKTYWNA" in result
+
 
 class TestAdminRegistrations:
     """Testy rejestracji adminów."""

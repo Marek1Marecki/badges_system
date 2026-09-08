@@ -3,7 +3,6 @@
 from datetime import date
 
 from django.contrib import admin
-from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 
 from apps.badges.admin.filters import PeakInBadgeFilter
@@ -79,13 +78,15 @@ class BadgeVersionAdmin(ModelAdmin):
     @admin.display(description="Status Czasowy", ordering="valid_to")
     def temporal_status_label(self, obj: BadgeVersionModel) -> str:
         """Etykieta UX końcówki okresu obowiązywania (AKTYWNA / WYGASŁA / Zbliża się)."""
+        from django.utils.safestring import mark_safe
+
         today = date.today()
         if obj.valid_to is None:
-            return str(format_html('<span style="color:green">🟢 AKTYWNA</span>'))
+            return mark_safe('<span style="color:green">🟢 AKTYWNA</span>')
         if obj.valid_to < today:
-            return str(format_html('<span style="color:red">🔴 WYGASŁA</span>'))
+            return mark_safe('<span style="color:red">🔴 WYGASŁA</span>')
         if (obj.valid_to - today).days <= 30:
-            return str(
-                format_html('<span style="color:orange">🟠 ZAMYKA SIĘ ZA {} DNI</span>', (obj.valid_to - today).days)
+            return mark_safe(  # noqa: S308 — (obj.valid_to - today).days to int, brak XSS
+                f'<span style="color:orange">🟠 ZAMYKA SIĘ ZA {(obj.valid_to - today).days} DNI</span>'
             )
-        return str(format_html("<span>🔵 AKTYWNA</span>"))
+        return mark_safe("<span>🔵 AKTYWNA</span>")
