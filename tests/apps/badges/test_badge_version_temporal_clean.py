@@ -18,6 +18,7 @@ def badge(organizer):
     return BadgeModel.objects.create(code="KGP", name="KGP", organizer=organizer)
 
 
+@pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 class TestBadgeVersionModelTemporalClean:
     """End-Date Policy — Temporal Collision Detection."""
