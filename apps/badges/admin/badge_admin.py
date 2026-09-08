@@ -82,11 +82,13 @@ class BadgeVersionAdmin(ModelAdmin):
 
         today = date.today()
         if obj.valid_to is None:
-            return mark_safe('<span style="color:green">🟢 AKTYWNA</span>')
+            return str(mark_safe('<span style="color:green">🟢 AKTYWNA</span>'))
         if obj.valid_to < today:
-            return mark_safe('<span style="color:red">🔴 WYGASŁA</span>')
+            return str(mark_safe('<span style="color:red">🔴 WYGASŁA</span>'))
         if (obj.valid_to - today).days <= 30:
-            return mark_safe(  # noqa: S308 — (obj.valid_to - today).days to int, brak XSS
-                f'<span style="color:orange">🟠 ZAMYKA SIĘ ZA {(obj.valid_to - today).days} DNI</span>'
+            return str(
+                mark_safe(  # noqa: S308 — (obj.valid_to - today).days to int, brak XSS
+                    f'<span style="color:orange">🟠 ZAMYKA SIĘ ZA {(obj.valid_to - today).days} DNI</span>'
+                )
             )
-        return mark_safe("<span>🔵 AKTYWNA</span>")
+        return str(mark_safe("<span>🔵 AKTYWNA</span>"))
