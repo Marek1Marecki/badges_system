@@ -332,71 +332,6 @@ Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał
 
 ---
 
-
-### [AUDYT-099] Niezdefiniowany proces wygasania starych wersji regulaminów
-🟢 **Status:** `ZAKOŃCZONO` (Specification Completed)
-**Obszar:** `Biznes / Prawa Nabyte`
-**Priorytet:** `🟠 WYSOKI`
-
-**Diagnoza Audytora:** 
-Obecny model Praw Nabytych (`US-C05`) opiera się na polu `valid_to` w `BadgeVersionModel`. Jeśli administrator nie wypełni tego pola (`valid_to = NULL`), system traktuje regulamin jako ważny "w nieskończoność". Problem polega na tym, że jeśli PTTK wyda nową wersję odznki w 2026 roku, ale administrator zapomni ręcznie ustawić daty końcowej dla wersji z 2020 roku, nowi turyści bez historii logów będą automatycznie zakotwiczani w obu wersjach, lub system wybierze starą wersję z powodu błędnego sortowania.
-
-**Diagnoza Architekta: Dlaczego domyślna propozycja Audytora to pułapka:**
-
-Audytor zaproponował: (1) walidację `clean()` blokującą nową wersję, jeśli stara nie ma `valid_to`, i (2) skrypt "Auto-Close" ustawiający `valid_to` na wczorajszego dnia.
-
-To **Over-Constraint Nightmare**:
-
-- PTTK może świadomie chcieć **okresu przejściowego** — nowa odznka obowiązuje od 2026-05-01, a stara może być używana jeszcze do końca 2026 roku.
-- Administrator może chcieć dodać wersję "DRAFT" na przyszły rok — nie może być blokowany.
-
-**Propozycja Rozwiązania: Model Nakładający (Overlapping Temporal Validation):**
-
-**Krok 1 — End-Date Policy w `BadgeVersionModel.clean()`:**
-System wymusza dyscyplinę, ale pozwala PTTK na kontrolę:
-- Jeśli tworzona jest kolejna wersja, system sprawdzi, czy jakakolwiek poprzednia wersja ma `valid_to IS NULL` (otwarta w przeszłości).
-- Jeśli tak → `ValidationError`: *"Zakończ najpierw obowiązywanie starej wersji, ustawiając jej datę końcową w polu 'Ważna do' (dopuszczalne jest ustawienie daty w przyszłości, co stworzy okres przejściowy)."*
-
-**Krok 2 — Anchor Guard (`get_latest_badge_version`):**
-Komenda: `BadgeVersionModel.objects.filter(valid_from__lte=today).order_by("-valid_from").first()`
-Sortując malejąco po dacie startu — mimo okresu pokrywania się — system **natywnie** wskazuje najnowszą wersję obowiązującą danego dnia. Turysta nigdy nie zostanie "zrzucony w pustkę".
-
-**Krok 3 — UX dla Administratora:**
-Zamiast automatycznych skryptów "uciszających" stare odznki, dodamy etykiety w Django Admin: `[AKTYWNA]`, `[WYGASŁA]`, `[ZAMYKA SIĘ ZA 30 DNI]`. Przenosimy odpowiedzialność na Głównego Kuratora.
-
-**Action Items:**
-- [x] Odrzucono walidację `clean()` blokującą wszystko — nie ma miejsca na okres przejściowy.
-- [x] Odrzucono skrypt "Auto-Close" z `valid_to = yesterday` — niszczy biznesowy wyjątek.
-- [x] Przyjęto model `Overlapping Temporal Validation`: `clean()` blokuje tylko otwarte wersje w **przeszłości**.
-- [x] Dodano pole `valid_to` do `BadgeVersionModel` (`apps/badges/models/badge.py:66-73`).
-- [x] Zaimplementowano `clean()` — End-Date Policy w `BadgeVersionModel.clean()` (`apps/badges/models/badge.py:122-139`).
-- [x] Uzupełniono `get_latest_badge_version` o filtr `valid_to` + deterministyczny `pk` (`infrastructure/adapters/persistence/django_badge_repo.py:126-156`).
-- [x] Wdrożyć etykiety `[AKTYWNA]`, `[WYGASŁA]`, `[ZAMYKA SIĘ ZA 30 DNI]` w Django Admin (`BadgeVersionAdmin.temporal_status_label`).
-- [x] Przenieść odpowiedzialność za zamykanie wersji na Głównego Kuratora (zamiast automatyzacji).
-
-**Implementacja kodu:**
-
-- **`apps/badges/models/badge.py:66-73`** — pole `valid_to = models.DateField(null=True, blank=True)`.
-- **`apps/badges/models/badge.py:122-139`** — `clean()` z End-Date Policy:
-  - Weryfikuje `open_past_versions` (valid_to IS NULL AND valid_from ≤ today).
-  - Wyrzuca `ValidationError` z komunikatem o konieczności zamknięcia starej wersji.
-- **`infrastructure/adapters/persistence/django_badge_repo.py:126-156`** — Anchor Guard:
-  - `.filter(valid_to__isnull=True | Q(valid_to__gte=today))` — wyklucza wygasłe wersje.
-  - `.order_by("-valid_from", "-pk")` — deterministyczny wybór najnowszej przy pokrywaniu się.
-- **`apps/badges/admin/badge_admin.py`** — `temporal_status_label()` z etykietami UX.
-- **`apps/badges/migrations/0008_add_valid_to_badge_version.py`** — migracja pola `valid_to`.
-- **`tests/apps/badges/test_badge_version_temporal_clean.py`** — 5 testów End-Date Policy.
-- **`tests/infrastructure/adapters/persistence/test_django_badge_repo.py`** — 2 testy Anchor Guard (wygasła, overlap).
-
-**Status testów:** 175/175 testów (apps, use_cases, repo) ✅ | mypy ✅ | ruff ✅.
-
-**Komentarz Architekta:**
-Zgodnie z AUDYT-012 (Cinderella Bug) — `order_by("-valid_from")` zapewnia spójny wektor czasu nawet podczas pokrywania się wersji. Kod nie zgadnie intencji PTTK, ale wymusi jedną, krystaliczną prawidłowość: nie ma wersji otwartych "na zawsze" w przeszłości.
-
----
-
-**Pełna specyfikacja w `docs/backlog_po_audycie.md`:** Treść dogłębnej analizy — włączając scenariusz wersji 2020/2026, porównanie z propozycją Audytora oraz trójkrokowy plan implementacji — została zapisana dokumentem `docs/backlog_po_audycie.md`.
-
 ### [AUDYT-100] Brak procesu dla "Osieroconych Wejść" (P-02) przy zmianie regulaminu
 **Obszar:** `Biznes / Logika Weryfikacji`  
 **Priorytet:** `🔴 KRYTYCZNY`  
@@ -3102,5 +3037,67 @@ Transformacja istniejącej tabeli w tabelę partycjonowaną nie jest możliwa "w
 
 **Komentarz Architekta:**
 Wspaniała prewencja przed spadkiem wydajności zapytań. Nasz Use Case sprawdza wszystkie wejścia danego turysty naraz. HASH na `profile_id` gwarantuje, że przy weryfikacji wieloletniej historii Jana, baza skanuje tylko szufladę nr 7, nie mysząc po 15 pozostałych.
+
+---
+
+### [AUDYT-099] Niezdefiniowany proces wygasania starych wersji regulaminów
+🟢 **Status:** `ZAKOŃCZONO` (Specification Completed)
+**Obszar:** `Biznes / Prawa Nabyte`
+**Priorytet:** `🟠 WYSOKI`
+
+**Diagnoza Audytora:** 
+Obecny model Praw Nabytych (`US-C05`) opiera się na polu `valid_to` w `BadgeVersionModel`. Jeśli administrator nie wypełni tego pola (`valid_to = NULL`), system traktuje regulamin jako ważny "w nieskończoność". Problem polega na tym, że jeśli PTTK wyda nową wersję odznki w 2026 roku, ale administrator zapomni ręcznie ustawić daty końcowej dla wersji z 2020 roku, nowi turyści bez historii logów będą automatycznie zakotwiczani w obu wersjach, lub system wybierze starą wersję z powodu błędnego sortowania.
+
+**Diagnoza Architekta: Dlaczego domyślna propozycja Audytora to pułapka:**
+
+Audytor zaproponował: (1) walidację `clean()` blokującą nową wersję, jeśli stara nie ma `valid_to`, i (2) skrypt "Auto-Close" ustawiający `valid_to` na wczorajszego dnia.
+
+To **Over-Constraint Nightmare**:
+
+- PTTK może świadomie chcieć **okresu przejściowego** — nowa odznka obowiązuje od 2026-05-01, a stara może być używana jeszcze do końca 2026 roku.
+- Administrator może chcieć dodać wersję "DRAFT" na przyszły rok — nie może być blokowany.
+
+**Propozycja Rozwiązania: Model Nakładający (Overlapping Temporal Validation):**
+
+**Krok 1 — End-Date Policy w `BadgeVersionModel.clean()`:**
+System wymusza dyscyplinę, ale pozwala PTTK na kontrolę:
+- Jeśli tworzona jest kolejna wersja, system sprawdzi, czy jakakolwiek poprzednia wersja ma `valid_to IS NULL` (otwarta w przeszłości).
+- Jeśli tak → `ValidationError`: *"Zakończ najpierw obowiązywanie starej wersji, ustawiając jej datę końcową w polu 'Ważna do' (dopuszczalne jest ustawienie daty w przyszłości, co stworzy okres przejściowy)."*
+
+**Krok 2 — Anchor Guard (`get_latest_badge_version`):**
+Komenda: `BadgeVersionModel.objects.filter(valid_from__lte=today).order_by("-valid_from").first()`
+Sortując malejąco po dacie startu — mimo okresu pokrywania się — system **natywnie** wskazuje najnowszą wersję obowiązującą danego dnia. Turysta nigdy nie zostanie "zrzucony w pustkę".
+
+**Krok 3 — UX dla Administratora:**
+Zamiast automatycznych skryptów "uciszających" stare odznki, dodamy etykiety w Django Admin: `[AKTYWNA]`, `[WYGASŁA]`, `[ZAMYKA SIĘ ZA 30 DNI]`. Przenosimy odpowiedzialność na Głównego Kuratora.
+
+**Action Items:**
+- [x] Odrzucono walidację `clean()` blokującą wszystko — nie ma miejsca na okres przejściowy.
+- [x] Odrzucono skrypt "Auto-Close" z `valid_to = yesterday` — niszczy biznesowy wyjątek.
+- [x] Przyjęto model `Overlapping Temporal Validation`: `clean()` blokuje tylko otwarte wersje w **przeszłości**.
+- [x] Dodano pole `valid_to` do `BadgeVersionModel` (`apps/badges/models/badge.py:66-73`).
+- [x] Zaimplementowano `clean()` — End-Date Policy w `BadgeVersionModel.clean()` (`apps/badges/models/badge.py:122-139`).
+- [x] Uzupełniono `get_latest_badge_version` o filtr `valid_to` + deterministyczny `pk` (`infrastructure/adapters/persistence/django_badge_repo.py:126-156`).
+- [x] Wdrożyć etykiety `[AKTYWNA]`, `[WYGASŁA]`, `[ZAMYKA SIĘ ZA 30 DNI]` w Django Admin (`BadgeVersionAdmin.temporal_status_label`).
+- [x] Przenieść odpowiedzialność za zamykanie wersji na Głównego Kuratora (zamiast automatyzacji).
+
+**Implementacja kodu:**
+
+- **`apps/badges/models/badge.py:66-73`** — pole `valid_to = models.DateField(null=True, blank=True)`.
+- **`apps/badges/models/badge.py:122-139`** — `clean()` z End-Date Policy:
+  - Weryfikuje `open_past_versions` (valid_to IS NULL AND valid_from ≤ today).
+  - Wyrzuca `ValidationError` z komunikatem o konieczności zamknięcia starej wersji.
+- **`infrastructure/adapters/persistence/django_badge_repo.py:126-156`** — Anchor Guard:
+  - `.filter(valid_to__isnull=True | Q(valid_to__gte=today))` — wyklucza wygasłe wersje.
+  - `.order_by("-valid_from", "-pk")` — deterministyczny wybór najnowszej przy pokrywaniu się.
+- **`apps/badges/admin/badge_admin.py`** — `temporal_status_label()` z etykietami UX.
+- **`apps/badges/migrations/0008_add_valid_to_badge_version.py`** — migracja pola `valid_to`.
+- **`tests/apps/badges/test_badge_version_temporal_clean.py`** — 5 testów End-Date Policy.
+- **`tests/infrastructure/adapters/persistence/test_django_badge_repo.py`** — 2 testy Anchor Guard (wygasła, overlap).
+
+**Status testów:** 175/175 testów (apps, use_cases, repo) ✅ | mypy ✅ | ruff ✅.
+
+**Komentarz Architekta:**
+Zgodnie z AUDYT-012 (Cinderella Bug) — `order_by("-valid_from")` zapewnia spójny wektor czasu nawet podczas pokrywania się wersji. Kod nie zgadnie intencji PTTK, ale wymusi jedną, krystaliczną prawidłowość: nie ma wersji otwartych "na zawsze" w przeszłości.
 
 ---
