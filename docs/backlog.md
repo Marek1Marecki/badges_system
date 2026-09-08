@@ -333,18 +333,39 @@ Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał
 ---
 
 ### [AUDYT-100] Brak procesu dla "Osieroconych Wejść" (P-02) przy zmianie regulaminu
-**Obszar:** `Biznes / Logika Weryfikacji`  
-**Priorytet:** `🔴 KRYTYCZNY`  
+🟢 **Status:** `ZAKOŃCZONO` (Implementation Completed)
+**Obszar:** `Biznes / Logika Weryfikacji`
+**Priorytet:** `🔴 KRYTYCZNY`
 
 **Diagnoza Audytora:** 
 Jeśli turysta w 2024 roku zdobył 15 z 20 szczytów z puli "Wersji A", a w 2025 roku zechce porzucić stare zasady (na starych zasadach brakuje mu jednego trudnego szczytu) i dobrowolnie przełączyć się na "Wersję B" (nowy regulamin), system nie definiuje, co ma się stać z jego 15 starymi wejściami. Jeśli w "Wersji B" 3 z tych 15 szczytów wyleciały z puli, turysta nagle "utraci" je ze swojego postępu. 
 
-**Action Items (Do wdrożenia):**
-- [ ] W dokumencie `STORIES.md` uzupełnić US-C05 o regułę: "Jeśli turysta zmienia wersję na nowszą, akceptuje fakt, że wejścia historyczne na szczyty nieobecne w nowej puli przestają się liczyć do jego progresu".
-- [ ] (Alternatywa) Zaimplementować "Kredyty Przejściowe" (Transitional Credits) w Czystej Domenie, które uznają każdy dawny szczyt za ważny, jeśli był ważny w momencie logowania wejścia (bardzo skomplikowane architektonicznie).
+**Dieta Rozwiązania (AUDYT-099 — Overlapping Temporal Validation):**
+
+Wdrożyliśmy **Opcję C (The Grandfather's Bin)** — transparentne "Wysypiskanie" w Czystej Domenie, bez Time-Travel Rules.
+
+**Implementacja:**
+- **`BadgeVersionDomain.evaluate()`** (`domain/entities/badge_version.py`) — Sito odrzuca wejścia spoza `pool_peaks` (jak poprzednio), ale dzięki `AscentLifecycle` każde wejście otrzymuje status:
+  - `ACTIVE` — wejście ważne dla tej wersji (points=1).
+  - `ORPHANED` — wejście fizycznie istnieje, ale "Sito" odrzuciło je (points=0). To wejście na górę, której nie ma w nowej puli.
+  - `EXHAUSTED` — (zarezerwowany dla przyszłości, P-02: zużyte w poprzednim cyklu).
+
+- **`AscentStatus` Value Object** (`domain/value_objects/ascent_status.py`) — `object_id`, `ascent_date`, `lifecycle`, `points`.
+
+- **`VerificationResult`** (`domain/value_objects/verification_result.py`) — nowe pole `ascents_with_status: list[AscentStatus]`.
+
+- **`VerifyBadgeResponseDTO`** (`application/dto/verify_badge_dto.py`) — `ascents_with_status` dostępne w API.
+
+- **Szablon `/badge_detail/`** (`apps/templates/tourists/badge_detail.html`) — sekcja "📜 Wyjścia wykluczone z regulaminu" wyświetla ORPHANED wejścia w estetycznej tabeli.
+
+**Action Items:**
+- [x] Uzupełniono Czystą Domenę o `AscentStatus` + `AscentLifecycle` enum (AUDYT-099).
+- [x] Dodać sekcję "Wejścia nie liczące się do tej wersji regulaminu" w UI (`badge_detail.html`).
+- [x] Turysta widzi każde wejście (historyczny dziennik), z punktacją 0 dla ORPHANED.
+- [x] Odrzucono Opcję B (Kredyty Przejściowe) — Time-Travel Rules niszczą architekturę.
 
 **Komentarz Architekta:**
-To uderza w samo sedno filozofii PTTK. Jeśli PTTK wyrzuca szczyt ze wzniesień, bo ścieżka stała się zbyt niebezpieczna, to raczej nie chcemy, aby zaliczał się on do nowych odznak. Wymaga konsultacji biznesowej.
+Wejścia nie znikają — stają się pamiątką (`AscentStatus`). Sito pozostaje czyste (ADR-009). Logika nie zależy od `ascent_date` względem historycznych wersji — tylko od aktualnej puli (`pool_peaks`). Turysta wie: "Giewont był, tylko nie liczy się do tej wersji regulaminu."
 
 ---
 
