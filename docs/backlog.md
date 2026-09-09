@@ -29,14 +29,19 @@ Implementacja wymaga migracji bazy (`apps/tourists/models.py` + migration). Zost
 ### [AUDYT-093] Brak zautomatyzowanej kwarantanny dla złośliwych danych OSM
 **Obszar:** `Dane Referencyjne / DataOps`  
 **Priorytet:** `🟠 WYSOKI`  
-**Status:** `🟢 ZREALIZOWANO`  
+**Status:** `🔴 OTWARTE`  
 
 **Diagnoza Audytora:** 
 Obecny mechanizm "Nocnego Stróża" (`RunOsmNightWatchmanUseCase`) potrafi zgłaszać konflikty do skrzynki odbiorczej (Inbox), ale brakuje mu systemu odporności na celowe zatruwanie danych. Atakujący w OpenStreetMap może edytować znany szczyt PTTK (np. Rysy), zmieniając jego współrzędne tak, by znalazł się na Alasce, co zniszczyłoby wyliczanie CQRS i weryfikację. Nasz system aktualizuje tagi w `osm_raw_tags` w tle, nie alarmując o drastycznych anomaliach przestrzennych.
 
-**Action Items (Do wdrożenia w Fazy SRE):**
+**Wdrożenie (status techniczny):**
 - [ ] Zdefiniować próg kwarantanny geolokacyjnej (np. "przesunięcie wierzchołka o więcej niż 500 metrów" lub "zmiana wysokości o więcej niż 10%").
 - [ ] Zaprojektować regułę w `OsmRepositoryPort`, która wstrzyma cichą aktualizację `osm_raw_tags` przy przekroczeniu progu, blokując synchronizację do czasu interwencji administratora.
+
+**Status techniczny (werdykt kodu):**
+- ⚠️ **Status `🟢 ZAKOŃCZONO` w dokumencie = BŁĄD.** Kod (`osm_repository.py:detect_and_save_conflicts`) ma **tylko `altitude` + `wikipedia_link`** jako conflict checks. **Brak walidacji przestrzennej (geometry drift)**.
+- ⚠️ `RunOsmNightWatchmanUseCase:117-124` nadpisuje `osm_raw_tags` i geometrię **cicho** (`update_object_after_sync`) bez progu >500m.
+- ⚠️ `ST_Distance` / geofencing nie istnie w kodzie (potwierdzone grepem).
 
 **Komentarz Architekta:**
 Klasyczny "Blind Spot" integracji zewnętrznych. Całkowite zaufanie do otwartego API (OSM) to ryzyko wandalizmu (Vandalism Attack). Ciche wstrzymanie (Quarantine) zabezpieczy nas przed rozpadem siatki MVT.
@@ -55,46 +60,6 @@ Plik `API_CONTRACTS.md` definiuje ścieżki w formacie `/api/v1/`, ale nie defin
 
 **Komentarz Architekta:**
 Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał, kiedy ucinamy wsparcie. Dopóki klientem API jest tylko nasz wewnętrzny frontend (HTMX/JS), to nie jest problem. Jeśli otworzymy to dla aplikacji mobilnych, to jest punkt krytyczny.
-
----
-
-### [AUDYT-134] Bezpieczeństwo migracji kluczy M2M (`dumpdata` z `--natural-foreign`)
-**Obszar:** `DataOps / Eksport Danych`  
-**Priorytet:** `🟡 ŚREDNI`  
-**Status:** `⏸️ ZDEFEROWANY — Cost/Benefit negatywny na MVP`  
-
-**Diagnoza Audytora:** 
-Obecny skrypt `export_reference_data` korzysta ze standardowego wywołania `call_command("dumpdata", ...)`. Powoduje to zapisywanie w JSON-ach twardych kluczy numerycznych (ID) dla relacji, m.in. dla puli szczytów w odznakach (`BadgeVersionModel.pool_peaks` M2M → `TouristObject`). Jeśli na produkcji po długim czasie wgramy snapshot wyeksportowany z DEV, gdzie kolejność ID szczytów (Primary Keys) mogła ulec zmianie po czyszczeniu bazy, relacje w odznakach wskażą na niewłaściwe góry.
-
-**Analiza Cost/Benefit:**
-
-**Status Quo (twarde ID) jest bezpieczny dzięki ADR-023 (Tombstone Pattern):**
-- Klucze `id` obiektów referencyjnych są trwałe, nigdy nie podlegają ponownemu wykorzystaniu (ADR-023:49).
-- PROD nie generuje nowych danych referencyjnych — wszystko płynie z DEV przez `loaddata` (ADR-020).
-- Zasada *Soft Delete* chroni historycznej integralności — usunięty szczyt to "nagrobek", ID nie zostaje zwolnione.
-
-**Plan (wstrzymany — wymaga migracji schematu):**
-- [ ] Dodać `natural_key()` + `get_by_natural_key()` do modeli referencyjnych.
-- [ ] Dodać `--natural-foreign-key --natural-primary-key` do `dumpdata`.
-- [ ] Dodać test snapshot/roundtrip.
-
-**ZDECYZOWANO — ZDEFEROWAĆ wdrożenie na Fazę Skalowania (mikroserwisy CMS).**
-
-Uzasadnienie architektoniczne:
-1. **Neutralizacja ryzyka operacyjnego:** ADR-023 Tombstone eliminacja "rozjazdu ID" przez zakaz usunięcia rekordów na DEV. Ryzyko przenoszenia błędnych M2M ≈ znikome.
-2. **Koszt refaktoryzacji bazy:** `OrganizerModel.name` nie jest `unique` → wymaga migracji dodających pola unikalne + transformacji danych + menedżerów `get_by_natural_key`. Ogromna praca dla 5 modeli.
-3. **Mutowalność Natural Keys:** `OrganizerModel.name` / `TouristObject.code` mogą ulec zmianie → Natural Keys psują referencje historyczne. Twarde ID (immutable PK) są odporne na to.
-4. **Spadek wydajności loaddata:** Rozwiązywanie Natural Keys ("znajdź Szczyt po kodzie") wydłuża `restore_reference_data` vs `bulk_insert` z ID.
-
-**Powiązane:**
-- **ADR-020** — Architektura Wdrożeń (SRE): "PROD nie tworzy danych referencyjnych".
-- **ADR-023** — Cykl Życia Danych Referencyjnych (Tombstone Pattern): "Klucze główne są trwałe, nigdy nie podlegają ponownemu wykorzystaniu".
-
-**Trigger for Review:**
-- Rozbicie monolitu danych referencyjnych na zewnętrzny CMS (gdyby dane szczytów przychodziły z zewnętrznego źródła, twarde ID stałyby się niemożliwe do synchronizacji).
-
-**Komentarz Architekta:**
-Wspaniałe wyłapanie klasycznego błędu `loaddata`. Obecnie nasz system działa, bo wszystkie środowiska startują od zera. Przy aktualizacjach działającej produkcji na przestrzeni lat, twarde ID to tykająca bomba.
 
 ---
 
@@ -3317,5 +3282,45 @@ Audytor słusznie wskazuje, że projekt z tak potężną architekturą (Hexagona
 
 **Komentarz Architekta:**
 Bardzo mądre spojrzenie na bezpieczeństwo kodu z perspektywy ludzkiej (Human Risk). Zabezpieczenie przed samowolą Junior Deweloperów.
+
+---
+
+### [AUDYT-134] Bezpieczeństwo migracji kluczy M2M (`dumpdata` z `--natural-foreign`)
+**Obszar:** `DataOps / Eksport Danych`  
+**Priorytet:** `🟡 ŚREDNI`  
+**Status:** `⏸️ ZDEFEROWANY — Cost/Benefit negatywny na MVP`  
+
+**Diagnoza Audytora:** 
+Obecny skrypt `export_reference_data` korzysta ze standardowego wywołania `call_command("dumpdata", ...)`. Powoduje to zapisywanie w JSON-ach twardych kluczy numerycznych (ID) dla relacji, m.in. dla puli szczytów w odznakach (`BadgeVersionModel.pool_peaks` M2M → `TouristObject`). Jeśli na produkcji po długim czasie wgramy snapshot wyeksportowany z DEV, gdzie kolejność ID szczytów (Primary Keys) mogła ulec zmianie po czyszczeniu bazy, relacje w odznakach wskażą na niewłaściwe góry.
+
+**Analiza Cost/Benefit:**
+
+**Status Quo (twarde ID) jest bezpieczny dzięki ADR-023 (Tombstone Pattern):**
+- Klucze `id` obiektów referencyjnych są trwałe, nigdy nie podlegają ponownemu wykorzystaniu (ADR-023:49).
+- PROD nie generuje nowych danych referencyjnych — wszystko płynie z DEV przez `loaddata` (ADR-020).
+- Zasada *Soft Delete* chroni historycznej integralności — usunięty szczyt to "nagrobek", ID nie zostaje zwolnione.
+
+**Plan (wstrzymany — wymaga migracji schematu):**
+- [ ] Dodać `natural_key()` + `get_by_natural_key()` do modeli referencyjnych.
+- [ ] Dodać `--natural-foreign-key --natural-primary-key` do `dumpdata`.
+- [ ] Dodać test snapshot/roundtrip.
+
+**ZDECYZOWANO — ZDEFEROWAĆ wdrożenie na Fazę Skalowania (mikroserwisy CMS).**
+
+Uzasadnienie architektoniczne:
+1. **Neutralizacja ryzyka operacyjnego:** ADR-023 Tombstone eliminacja "rozjazdu ID" przez zakaz usunięcia rekordów na DEV. Ryzyko przenoszenia błędnych M2M ≈ znikome.
+2. **Koszt refaktoryzacji bazy:** `OrganizerModel.name` nie jest `unique` → wymaga migracji dodających pola unikalne + transformacji danych + menedżerów `get_by_natural_key`. Ogromna praca dla 5 modeli.
+3. **Mutowalność Natural Keys:** `OrganizerModel.name` / `TouristObject.code` mogą ulec zmianie → Natural Keys psują referencje historyczne. Twarde ID (immutable PK) są odporne na to.
+4. **Spadek wydajności loaddata:** Rozwiązywanie Natural Keys ("znajdź Szczyt po kodzie") wydłuża `restore_reference_data` vs `bulk_insert` z ID.
+
+**Powiązane:**
+- **ADR-020** — Architektura Wdrożeń (SRE): "PROD nie tworzy danych referencyjnych".
+- **ADR-023** — Cykl Życia Danych Referencyjnych (Tombstone Pattern): "Klucze główne są trwałe, nigdy nie podlegają ponownemu wykorzystaniu".
+
+**Trigger for Review:**
+- Rozbicie monolitu danych referencyjnych na zewnętrzny CMS (gdyby dane szczytów przychodziły z zewnętrznego źródła, twarde ID stałyby się niemożliwe do synchronizacji).
+
+**Komentarz Architekta:**
+Wspaniałe wyłapanie klasycznego błędu `loaddata`. Obecnie nasz system działa, bo wszystkie środowiska startują od zera. Przy aktualizacjach działającej produkcji na przestrzeni lat, twarde ID to tykająca bomba.
 
 ---
