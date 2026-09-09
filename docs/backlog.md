@@ -8,27 +8,6 @@
 
 ---
 
-### [AUDYT-082] Refaktoryzacja `peak_id` na `object_id` w Czystej Domenie
-**Obszar:** `Domena / Value Objects`
-**Priorytet:** `🟢 NISKI (Jakość Kodu)`
-**Status:** `✅ ZAKOŃCZONE` (już wdrożone)
-
-**Diagnoza Audytora:** 
-Value Object `Ascent` (Wejście) w katalogu `domain/value_objects/ascent.py` zawiera pole nazwane `peak_id`. Stanowi to wyciek z "języka potocznego" do Domeny. Z punktu widzenia systemu logujemy wejścia na `TouristObject` (Obiekty Turystyczne), a nie tylko na góry/szczyty (Peak) – mogą to być wieże, jaskinie czy schroniska. Domena nie powinna zakładać typu geograficznego obiektu.
-
-**Wdrożenie:**
-- [x] Zmieniono nazwę pola w `Ascent` z `peak_id` na `object_id` (`domain/value_objects/ascent.py:11`).
-- [x] Wszystkie klasy testowe i metody używające `Ascent(object_id=...)` — zaktualizowane.
-
-**Wnioski:**
-- `Ascent` VO używa `object_id` — Domena jest neutralna wobec typu obiektu geograficznego.
-- Pozostałe użycia `peak_id` w repozejtrum (np. `AscentLog.peak_id` model Django) **nie dotyczą AUDYT-082** — to nazwa kolumny DB, inny koncern.
-- `peak_id` w `AscentRequestDTO`, `pool_peak_ids` w regułach biznesowych — to API/DTO i reguły PTTK, które celowo odnoszą się do "szczytów" (Peak) w języku regulaminu.
-
-**Commit:** `212ecc7` — "feat: AUDYT-082 peak_id→object_id in domain".
-
----
-
 ### [AUDYT-089] Brak ochrony przed martwymi wpisami w "Czarnych Listach" (Cofanie Weryfikacji)
 **Obszar:** `Aplikacja / Osobisty Kanban`  
 **Priorytet:** `🟡 Specification`  
@@ -127,19 +106,20 @@ Klasyczny problem DDD. Odklejenie logiki bazodanowej zmusza do tworzenia "mostó
 ---
 
 ### [AUDYT-108] Brak `TouristProfile` jako Agregatu Domenowego
-**Obszar:** `Domena / Ubiquitous Language`  
-**Priorytet:** `🟢 NISKI (Długoterminowy)`  
+**Obszar:** `Domena / Ubiquitous Language`
+**Priorytet:** `🟢 NISKI (Długoterminowy)`
+**Status:** `✅ ZAKOŃCZONE` (wdrożone jako AUDYT-037)
 
 **Diagnoza Audytora:** 
 Obecnie w katalogu `domain/` brakuje podstawowego aktora biznesowego: Turysty (`Tourist`). Zamiast tego do reguł przepychany jest techniczny konstrukt `VerificationContext`. Stanowi to dowód na "Anemiczny Model Domenowy", w którym cała koncepcja człowieka, jego limitów Freemium i historii wejść, "uwięziona" jest na dole, w modelach infrastrukturalnych (ORM) w `apps/tourists/models.py`.
 
-**Action Items (Do wdrożenia w Fazy Rozwoju Społecznościowego - Faza D):**
-- [ ] Utworzyć agregat `Tourist` (lub `TouristProfileDomain`) w katalogu `domain/entities/`.
-- [ ] Przenieść logikę sprawdzania limitów Freemium z warstwy `Application` (np. ze `StartBadgeProgressUseCase`) prosto do metod tego agregatu (np. `tourist.can_start_new_badge()`).
-- [ ] Zastąpić `VerificationContext` wstrzykiwaniem tego prawdziwego obiektu domenowego.
+**Wdrożenie:**
+- [x] Utworzono agregat `TouristProfileDomain` w `domain/entities/tourist_profile.py` (commit `14bb0ce`, AUDYT-037).
+- [x] Logika Freemium (`can_log_ascent()`, `can_track_new_badge()`) przeniesiona do metod agregatu — używana już w `StartBadgeProgressUseCase:65-74`.
+- [x] `StartBadgeProgressUseCase` hydratuje `TouristProfileDomain` z DTO (nie z ORM) i używa jego metod do walidacji limitów (AUDYT-144 — deleguje do `profile.can_track_new_badge()`).
+- [ ] `VerificationContext` nadal używany w `verify_badge.py` — **celowo**: VC to argument *wejściowy do reguły* (czas, kluby), nie opis turysty. Wymiana na `TouristProfileDomain` nie ma sensu — reguły weryfikacyjne (np. `MinAgeRule`, `RequiresClubJoinDateRule`) nie potrzebują całego profilu, tylko jej fragment.
 
-**Komentarz Architekta:**
-Audytor dotknął sedna. Ograniczenie Czystej Domeny tylko do "Silnika Weryfikacyjnego" to pójście na skróty. Docelowo PTTK to nie tylko matematyka, to społeczność. Wraz ze wzrostem aplikacji turysta musi stać się pierwszoplanową encją w czystym Pythonie.
+**Commit:** `14bb0ce` — "feat(aggregate): AUDYT-037 — TouristProfileDomain aggregating Freemium limits".
 
 ---
 
@@ -3264,3 +3244,25 @@ Raport uderza w brak jakiejkolwiek procedury operacyjnej dla obsługi tzw. "Awar
 **Status:** ZAMKNIĘTE — formalizowane w `docs/ops/Disaster_Recovery_Plan.md`.
 
 ---
+
+### [AUDYT-082] Refaktoryzacja `peak_id` na `object_id` w Czystej Domenie
+**Obszar:** `Domena / Value Objects`
+**Priorytet:** `🟢 NISKI (Jakość Kodu)`
+**Status:** `✅ ZAKOŃCZONE` (już wdrożone)
+
+**Diagnoza Audytora:** 
+Value Object `Ascent` (Wejście) w katalogu `domain/value_objects/ascent.py` zawiera pole nazwane `peak_id`. Stanowi to wyciek z "języka potocznego" do Domeny. Z punktu widzenia systemu logujemy wejścia na `TouristObject` (Obiekty Turystyczne), a nie tylko na góry/szczyty (Peak) – mogą to być wieże, jaskinie czy schroniska. Domena nie powinna zakładać typu geograficznego obiektu.
+
+**Wdrożenie:**
+- [x] Zmieniono nazwę pola w `Ascent` z `peak_id` na `object_id` (`domain/value_objects/ascent.py:11`).
+- [x] Wszystkie klasy testowe i metody używające `Ascent(object_id=...)` — zaktualizowane.
+
+**Wnioski:**
+- `Ascent` VO używa `object_id` — Domena jest neutralna wobec typu obiektu geograficznego.
+- Pozostałe użycia `peak_id` w repozejtrum (np. `AscentLog.peak_id` model Django) **nie dotyczą AUDYT-082** — to nazwa kolumny DB, inny koncern.
+- `peak_id` w `AscentRequestDTO`, `pool_peak_ids` w regułach biznesowych — to API/DTO i reguły PTTK, które celowo odnoszą się do "szczytów" (Peak) w języku regulaminu.
+
+**Commit:** `212ecc7` — "feat: AUDYT-082 peak_id→object_id in domain".
+
+---
+
