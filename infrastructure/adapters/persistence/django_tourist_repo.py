@@ -409,6 +409,14 @@ class DjangoUserProgressRepository(UserProgressRepositoryPort):
         )
         return cast(int, prog.id)
 
+    def update_version_id(self, progress_id: int, new_version_id: int) -> None:
+        """AUDYT-090: Przełącza wersję regulaminu dla niezakończonego postępu."""
+        from apps.tourists.models import UserBadgeProgress
+
+        UserBadgeProgress.objects.exclude(domain_status="COMPLETED").filter(id=progress_id).update(
+            version_id=new_version_id
+        )
+
     def update_domain_status(self, progress_id: int, status: str) -> None:
         """
 

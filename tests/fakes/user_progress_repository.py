@@ -107,6 +107,21 @@ class FakeTouristRepository(
         self.progresses[prog_id] = dto
         return prog_id
 
+    def update_version_id(self, progress_id: int, new_version_id: int) -> None:
+        if progress_id in self.progresses:
+            p = self.progresses[progress_id]
+            if p.domain_status != "COMPLETED":
+                self.progresses[progress_id] = BadgeProgressDomainDTO(
+                    progress_id=p.progress_id,
+                    profile_id=p.profile_id,
+                    badge_code=p.badge_code,
+                    version_id=new_version_id,
+                    cycle_number=p.cycle_number,
+                    domain_status=p.domain_status,
+                    logistic_status=p.logistic_status,
+                    logistic_status_date=p.logistic_status_date,
+                )
+
     def update_domain_status(self, progress_id: int, status: str) -> None:
         if progress_id in self.progresses:
             # Pydantic jest zamrożony, trzeba stworzyć nową instancję z zaktualizowanym polem

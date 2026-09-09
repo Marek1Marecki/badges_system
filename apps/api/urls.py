@@ -10,6 +10,7 @@ from apps.api.views import (
     BadgeLogisticsView,
     BadgeProgressView,
     BadgeSubscribeView,
+    BadgeVersionSwitchView,
     BulkAscentLogView,
     GpxAnalyzeView,
     MapObjectsView,
@@ -31,6 +32,9 @@ urlpatterns = [
     path("v1/badges/<str:badge_code>/progress/", BadgeProgressView.as_view(), name="badge_progress"),
     path("v1/map/objects/", MapObjectsView.as_view(), name="map_objects"),
     path("v1/progress/<int:progress_id>/logistics/", BadgeLogisticsView.as_view(), name="badge_logistics"),
+    path(
+        "v1/progress/<int:progress_id>/switch_version/", BadgeVersionSwitchView.as_view(), name="badge_switch_version"
+    ),
     path("v1/tiles/<str:layer>/<int:z>/<int:x>/<int:y>.pbf", VectorTileView.as_view(), name="vector_tiles"),
     path("v1/objects/<int:object_id>/nearby/", NearbyObjectsView.as_view(), name="nearby_objects"),
     path("v1/profiles/<int:profile_id>/", ProfileSettingsView.as_view(), name="profile_settings"),

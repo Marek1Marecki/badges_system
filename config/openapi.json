@@ -330,6 +330,53 @@
         }
       }
     },
+    "/api/v1/progress/{progress_id}/switch_version/": {
+      "patch": {
+        "summary": "Switch badge version",
+        "description": "Allows a tourist to voluntarily switch to a newer badge regulation version (AUDYT-090).",
+        "parameters": [
+          {
+            "name": "progress_id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version_code": {"type": "string"}
+                },
+                "required": ["version_code"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Version switched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {"type": "string"},
+                    "version_code": {"type": "string"}
+                  }
+                }
+              }
+            }
+          },
+          "404": {"description": "Not Found"},
+          "409": {"description": "Conflict - badge already completed"},
+          "422": {"description": "Validation Failed"}
+        }
+      }
+    },
     "/api/v1/tiles/{layer}/{z}/{x}/{y}.pbf": {
       "get": {
         "security": [],

@@ -118,7 +118,6 @@ class TestRegionFlatModel:
 
 
 class TestBadgeVersionModelStr:
-
     def test_badge_model_str(self):
         """Test __str__ BadgeModel."""
         badge = MagicMock()

@@ -102,3 +102,37 @@ class StartBadgeProgressUseCase:
             self._event_publisher.publish(UserProgressStateChanged(profile_id=profile_id))
 
         return CreatedResourceResultDTO(id=progress_id, type="user_progress")
+
+    def switch_version(self, profile_id: int, progress_id: int, new_version_code: str) -> None:
+        """Przełącza wersję regulaminu odznaki na nowszą (AUDYT-090).
+
+        Pozwala turystowi dobrowolnie przełączyć się na nowszy regulamin odznaki
+        (Prawa Nabyte).
+
+        Args:
+            profile_id: ID profilu turysty (weryfikacja własności).
+            progress_id: ID postępu do modyfikacji.
+            new_version_code: Kod docelowej wersji regulaminu (np. "2024-01").
+
+        Raises:
+            UseCaseError: Jeśli postęp nie istnieje, należy do innego profilu,
+                jest już zakończony (COMPLETED), albo wersja nie istnieje.
+        """
+        progress = self._progress_repo.get_progress_by_id(profile_id, progress_id)
+        if progress is None:
+            raise UseCaseError(f"Nie znaleziono postępu o ID {progress_id} dla profilu.")
+
+        if progress.domain_status == "COMPLETED":
+            raise UseCaseError("Nie można zmienić wersji regulaminu dla zakończonej odznaki.")
+
+        badge_version = self._badge_repo.get_badge_version(
+            badge_code=progress.badge_code, version_code=new_version_code
+        )
+        if badge_version is None:
+            raise UseCaseError(
+                f"Nie znaleziono wersji regulaminu '{new_version_code}' dla odznaki '{progress.badge_code}'."
+            )
+
+        with self._uow:
+            self._progress_repo.update_version_id(progress_id, int(badge_version.version_id))
+            self._event_publisher.publish(UserProgressStateChanged(profile_id=profile_id))

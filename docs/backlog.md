@@ -8,22 +8,6 @@
 
 ---
 
-### [AUDYT-066] Wymóg wsparcia dla wersji Offline (Local-First Architecture)
-**Obszar:** `Frontend / UX / Aplikacja Mobilna`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Architektura aplikacji jest obecnie w 100% "Online". Mapa renderuje MVT pobierane z serwera, a logowanie wymaga HTTP do Django. Brak dostępu do sieci w górach uniemożliwia korzystanie z aplikacji. Zbliżające się wejście w obszar PWA (Progressive Web App - US-D05) natrafi na mur w postaci braku lokalnego stanu przeglądarki.
-
-**Action Items (Do wdrożenia w Fazy D / Rozwoju PWA):**
-- [ ] Zaimplementować lokalny Service Worker z polityką Cache-First dla podkładów mapowych (MVT / Raster).
-- [ ] Wdrożyć mechanizm Offline Queue (kolejkowanie asynchroniczne) w HTMX/JS, by wejścia logowane na szlaku zapisywały się w IndexedDB, a po złapaniu zasięgu sieć automatycznie wysyłała payload HTTP POST.
-
-**Komentarz Architekta:**
-Wspaniała diagnoza. Architektura "Zawsze Połączony" nie sprawdza się w Bieszczadach. Kolejkowanie akcji to trudny, ale niezbędny krok dla UX.
-
----
-
 ### [AUDYT-067] Brak polityki wsparcia Wielojęzyczności (i18n)
 🟢 **Status:** `ZAKOŃCZONO (Wont-Fix / Risk Accepted)`
 **Obszar:** `Django / Architektura Informacji`  
@@ -46,22 +30,6 @@ System operuje wokół regulaminów Polskiego Towarzystwa Turystyczno-Krajoznawc
 **Zaktualizowano:** Językiem wbudowanym na stałe w warstwę prezentacji (Hardcoded) pozostaje język polski. Wszelkie próby internacjonalizacji w przyszłości będą wymagały świadomej decyzji biznesowej i ponownego rozważenia tego punktu.
 
 **Pełna deklaracja w archiwum:** Treść decyzji została zarchiwizowana w `docs/backlog_po_audycie.md` (sekcja "Zarchiwizowane Decyzje Wont-Fix").
-
----
-
-### [AUDYT-077] Brak precyzyjnego wsparcia dla pracy Offline
-**Obszar:** `Frontend / Architektura Mobilna`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Obecny system PTTK wymaga ciągłego połączenia z serwerem Django do weryfikacji postępów i logowania wejść. W warunkach górskich (brak zasięgu sieci komórkowej) turysta jest odcięty od aplikacji. Architektura SSR (Server-Side Rendering) i HTMX nie wspiera natywnie pracy bez sieci.
-
-**Action Items (Do wdrożenia w Fazy Rozwoju PWA):**
-- [ ] Opracować strategię Offline-First: wdrożenie Service Workera buforującego kafelki MVT (MapLibre wspiera to natywnie).
-- [ ] Zaprojektować lokalną bazę danych w przeglądarce (IndexedDB) oraz mechanizm "Sync when back online", aby turysta mógł kliknąć "Zaloguj wejście", a aplikacja wysłała payload po złapaniu zasięgu.
-
-**Komentarz Architekta:**
-Zgodnie z naszymi wczesnymi ustaleniami, PWA (Progressive Web App) to ostateczny krok rozwoju interfejsu (Faza D). Bez tego aplikacja nie zdobędzie serc turystów na szlakach głębokich Bieszczad.
 
 ---
 
@@ -259,22 +227,6 @@ Raport uderza w brak jakiejkolwiek procedury operacyjnej dla obsługi tzw. "Awar
 
 **Komentarz Architekta:**
 Klasyczny przypadek przejścia z projektu "Programistycznego" na "Produkcyjny". Administratorzy muszą mieć pod ręką gotowe, przetestowane komendy Bash/SQL na wypadek kryzysu u turystów. Zabezpiecza nas to przed paniką.
-
----
-
-### [AUDYT-117] Brak korelacji Logów (Request ID) między HTTP a Celery
-**Obszar:** `Observability / Logi Asynchroniczne`  
-**Priorytet:** `🔴 KRYTYCZNY`  
-
-**Diagnoza Audytora:** 
-Nasz genialny system `RFC7807ErrorMiddleware` nadaje każdemu żądaniu HTTP unikalne `request_id`, które ląduje w logach. Jeśli jednak widok odpala operację asynchroniczną (np. przeliczanie punktów przez Celery), a ta operacja wybuchnie błędem w tle, logi Celery **nie zawierają** `request_id`. Uniemożliwia to powiązanie błędu asynchronicznego z turystą, który kliknął przycisk na stronie.
-
-**Action Items (Do wdrożenia w Fazy SRE):**
-- [ ] Zmodyfikować klasę `CeleryEventPublisher` lub adaptery asynchroniczne tak, aby "łapały" `request_id` z wątku HTTP i przekazywały go w `kwargs` wywoływanego zadania (Taska).
-- [ ] Opcjonalnie wdrożyć bibliotekę OpenTelemetry, która robi to automatycznie (Distributed Tracing).
-
-**Komentarz Architekta:**
-Wspaniałe uderzenie. Rozproszony system bez skorelowanych logów to koszmar przy naprawianiu awarii na produkcji.
 
 ---
 
@@ -3201,5 +3153,100 @@ Wdrożono jedno SQL zapytanie z `Subquery` w `django_tourist_repo.py:117`:
 **Komentarz Architekta:**
 Wspaniała porada DBA. Podzapytania (Subqueries) to technika pozwalająca na gigantyczne oszczędności czasu zapytania z ominięciem zaciągania danych po kablu do serwera Django. Zostawiamy to jako zadanie dla inżyniera danych.
 → **Uzupełnienie:** AUDYT-100 został zakończony, a Composite Index wdrożony (AUDYT-090), więc brak już przeszkód na drodze. `test_get_oldest_ascent_date` (test infra/django_tourist_repo.py:106) powinien przejść bez zmian — logika równoważna.
+
+---
+
+### [AUDYT-117] Brak korelacji Logów (Request ID) między HTTP a Celery
+**Obszar:** `Observability / Logi Asynchroniczne`  
+**Priorytet:** `🔴 KRYTYCZNY`  
+
+**Diagnoza Audytora:** 
+Nasz genialny system `RFC7807ErrorMiddleware` nadaje każdemu żądaniu HTTP unikalne `request_id`, które ląduje w logach. Jeśli jednak widok odpala operację asynchroniczną (np. przeliczanie punktów przez Celery), a ta operacja wybuchnie błędem w tle, logi Celery **nie zawierają** `request_id`. Uniemożliwia to powiązanie błędu asynchronicznego z turystą, który kliknął przycisk na stronie.
+
+**Action Items (Wdrożone w Fazie SRE):**
+- [x] Zmodyfikowano `CeleryEventPublisher` — propagacja `request_id` przez `headers` Celery (implementacja w `infrastructure/adapters/celery_event_publisher.py`).
+- [x] Zastosowano ContextVar (`infrastructure/request_context.py`) jako lekki mechanizem Distributed Tracing — alternatywa dla OpenTelemetry (ADR-030).
+
+**Wnioski Audytu:**
+Zależność `request_id` została całkowicie usunięta z Domeny (`UserProgressStateChanged`) i Use Cases (`log_ascent.py:execute()`), przywracając czystość architektury Heksagonalnej. Logi Celery i Gunicorn są skorelowane. Pełna dokumentacja w ADR-030.
+
+**Status:** ZAMKNIĘTE (2026-09-09) — formalizowane przez ADR-030.
+
+**Komentarz Architekta:**
+Wspaniałe uderzenie. Rozproszony system bez skorelowanych logów to koszmar przy naprawianiu awarii na produkcji.
+
+---
+Model 1:39 PM
+
+To jest punkt styku, gdzie inżynieria zderza się z brutalną fizyką i geografią świata rzeczywistego (brak BTS-ów w dolinach górskich). Zjawisko to, w architekturze, nazywamy Local-First lub Offline-Tolerant Architecture.
+
+Przeanalizujmy, czy wdrażanie PWA (Progressive Web App) i trybu Offline jest warte zachodu w naszej obecnej architekturze zdominowanej przez HTMX i Server-Side Rendering (SSR).
+Analiza: Offline-First w architekturze HTMX (SSR)
+Co dzieje się teraz?
+
+Aplikacja PTTK Badges to "Cienki Klient" (Thin Client). Przeglądarka wyświetla to, co przyśle Django. Kiedy klikasz przycisk "Zaloguj wejście", HTMX wysyła HTTP POST do serwera, serwer waliduje wejście (bitemporalność, limity konta), Celery punktuje, a na końcu Django przesyła odświeżony kawałek HTML (pasek postępu).
+Bez internetu: klikasz przycisk i nic się nie dzieje, a ostatecznie przeglądarka wyświetla błąd o braku sieci (dinozaur w Chrome).
+ZALETY przejścia na Offline-First (Za)
+
+    Gigantyczny skok UX (Product-Market Fit): W górach faktycznie nie ma zasięgu. Turysta chce wyciągnąć telefon na wietrznym szczycie Śnieżki, wpisać "Zalogowane" i schować telefon do kieszeni, mając pewność, że to nie przepadnie. To buduje bezwzględne zaufanie do aplikacji.
+
+    Oszczędność Transferu / Baterii: Pobranie i zbuforowanie (Cache) kafelków wektorowych (MVT) i rastrowych w Service Workerze (lokalnej bazie PWA na telefonie) sprawia, że ładowanie mapy przy słabym zasięgu E/3G na szlaku jest błyskawiczne i nie zżera baterii na ciągłe pobieranie obrazków.
+
+    Możliwość instalacji na ekranie głównym: PWA pozwala na "zainstalowanie" strony internetowej jako natywnej ikonki na iOS i Androidzie, zdejmując z nas wymóg budowania drogich aplikacji w Swift/Kotlin i wrzucania ich do App Store.
+
+WADY i RYZYKA przejścia na Offline-First (Przeciw)
+
+To jest najtrudniejsza część. Architektura SSR (Django + HTMX) jest natywnie wroga dla trybu Offline.
+
+    Illuzja Paska Postępu (State Desync): Jeśli turysta "zaloguje" wejście offline, wrzucimy to w telefonie do kolejki IndexedDB. Ale co z Paskiem Postępu Odznaki na ekranie telefonu? Przecież pasek postępu liczy nasza Czysta Domena w Pythonie na serwerze! Pasek w telefonie nie drgnie (albo będziemy musieli duplikować logikę weryfikacyjną w JavaScript w telefonie, co złamie cały nasz system DDD).
+
+    Konflikty po powrocie z lasu (Eventual Consistency Hell): Co jeśli turysta offline zaloguje wejście na "Zniszczoną Wieżę" (błąd bitemporalny T-01)? System w kolejce na telefonie powie "OK", a trzy godziny później, gdy turysta wróci do hotelu z Wi-Fi, paczka doleci do Django, a Django ją odrzuci (błąd 422). Turysta obudzi się rano bez wejścia i będzie wściekły.
+
+    Ogromny koszt wdrożeniowy (Complexity): Service Workery są niesamowicie trudne do debugowania. Skonfigurowanie cyklu życia (kiedy odświeżyć cache HTML-a na nową wersję wdrożeniową z ADR-022) to praca na pełen etat dla inżyniera Frontendu.
+
+Mój Architektoniczny Werdykt: Czy Wdrażać?
+
+Krótka odpowiedź: TAK dla Cache Mapy (Read-Only), NIE dla Logowania Wejść Offline (Write).
+
+Dlaczego Taki Kompromis?
+Rozwijanie duplikatu logiki domenowej w JavaScripcie, by obsługiwać błędy kolejek offline, zniszczy nasz budżet i architekturę. Jesteśmy aplikacją B2C, a nie ratunkową aplikacją medyczną.
+
+Zastosujemy wariant Degraded Online (Ograniczona Użyteczność):
+
+    Wdrażamy Service Workera (PWA) w warstwie odczytu: Pozwalamy użytkownikowi "zainstalować" aplikację. Buforujemy na dysku telefonu (Cache API) pliki CSS, szablony i pobrane kafelki MVT. Dzięki temu w górach aplikacja otworzy się błyskawicznie i pozwoli na nawigację po szczytach.
+
+    Ale Mutacje pozostają Online: Jeśli turysta nie ma zasięgu, a kliknie "Dodaj Wejście", przechwycimy zdarzenie w JS i wyświetlimy piękny Toast: "Brak zasięgu. Odznacz szczyt po powrocie do schroniska lub wgraj ślad GPX wieczorem".
+    Większość turystów i tak loguje wejścia wieczorem, w hotelu przy piwie, lub po prostu zrzuca ślad ze swojego zegarka Garmin do formatu GPX (którą to genialną funkcję już masz zrealizowaną w API!).
+
+Jak to wpisać do Backlogu?
+
+Zróbmy z tego formalną wytyczną dla Fazy D. Otwórz docs/backlog_po_audycie.md i zarchiwizuj obydwa połączone punkty:
+code Markdown
+
+### [x] [AUDYT-066 / 077] Wymóg wsparcia dla wersji Offline (Local-First Architecture)
+**Obszar:** `Frontend / UX / Aplikacja Mobilna`  
+**Priorytet:** `🟡 ŚREDNI`  
+**Zrealizowano (Specification / Partial Adoption):** Odrzucono koncepcję budowy pełnej architektury "Offline-First" z asynchroniczną kolejką zapisu (IndexedDB) z powodu niekompatybilności z modelem Server-Side Rendering (HTMX) oraz niemożliwości ewaluacji Czystej Domeny w trybie offline. Wdrożenie asynchronicznych zapisów z telefonu groziło masowymi odrzuceniami wejść po powrocie do sieci (łamanie T-01) bez możliwości powiadomienia turysty w czasie rzeczywistym. 
+Zamiast tego zatwierdzono model **"Graceful Degradation (Read-Only Offline)"**:
+1. Wdrożenie PWA (Service Worker) wyłącznie do agresywnego buforowania plików statycznych oraz kafelków wektorowych mapy (MVT). Aplikacja załaduje się na szlaku bez zasięgu jako interaktywna mapa do orientacji.
+2. Próby zapisu (mutacje HTMX) w trybie braku połączenia będą natychmiast przechwytywane na froncie z komunikatem doradzającym logowanie po powrocie do zasięgu lub skorzystanie z modułu masowego importu śladu GPS (GPX) udostępnionego w systemie.
+
+To zachowuje powagę sytuacji, ratuje UX, a nam zdejmuje gigantyczny ból utrzymaniowy z barków. Zgadzasz się na takie "odcięcie" wymagań offline?
+
+---
+
+### [AUDYT-077] Brak precyzyjnego wsparcia dla pracy Offline
+**Obszar:** `Frontend / Architektura Mobilna`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Obecny system PTTK wymaga ciągłego połączenia z serwerem Django do weryfikacji postępów i logowania wejść. W warunkach górskich (brak zasięgu sieci komórkowej) turysta jest odcięty od aplikacji. Architektura SSR (Server-Side Rendering) i HTMX nie wspiera natywnie pracy bez sieci.
+
+**Action Items (Do wdrożenia w Fazy Rozwoju PWA):**
+- [ ] Opracować strategię Offline-First: wdrożenie Service Workera buforującego kafelki MVT (MapLibre wspiera to natywnie).
+- [ ] Zaprojektować lokalną bazę danych w przeglądarce (IndexedDB) oraz mechanizm "Sync when back online", aby turysta mógł kliknąć "Zaloguj wejście", a aplikacja wysłała payload po złapaniu zasięgu.
+
+**Komentarz Architekta:**
+Zgodnie z naszymi wczesnymi ustaleniami, PWA (Progressive Web App) to ostateczny krok rozwoju interfejsu (Faza D). Bez tego aplikacja nie zdobędzie serc turystów na szlakach głębokich Bieszczad.
 
 ---

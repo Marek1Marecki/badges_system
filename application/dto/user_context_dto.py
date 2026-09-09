@@ -55,6 +55,12 @@ class LogisticStatusUpdateDomainDTO(BaseModel):
     status_date: date
 
 
+class VersionSwitchRequestDTO(BaseModel):
+    """Waliduje żądanie przełączenia wersji regulaminu odznaki (AUDYT-090)."""
+
+    version_code: str
+
+
 class UpdateProfileRequestDTO(BaseModel):
     """Waliduje dane aktualizacji profilu przez API."""
 

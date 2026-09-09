@@ -28,6 +28,7 @@ from application.dto.map_dto import MapExploreRequestDTO
 from application.dto.user_context_dto import (
     LogisticStatusUpdateDomainDTO,
     UpdateProfileRequestDTO,
+    VersionSwitchRequestDTO,
 )
 from application.exceptions import (
     ApplicationException,
@@ -505,6 +506,77 @@ class BadgeLogisticsView(View):
             return _handle_application_exception(request, exc)
 
         return JsonResponse({"status": "UPDATED", "logistic_status": dto.logistic_status}, status=200)
+
+
+class BadgeVersionSwitchView(View):
+    """PATCH /api/v1/progress/{progress_id}/switch_version/
+
+    Pozwala turystowi dobrowolnie przełączyć zakotwiczoną wersję regulaminu
+    odznaki na nowszą (AUDYT-090 — UX dla Praw Nabytonych).
+
+    Args:
+        progress_id: ID postępu do modyfikacji.
+
+    Returns:
+        200: {"status": "VERSION_SWITCHED", "version_code": str}
+        401/404/422/409: RFC 7807 Problem Details.
+    """
+
+    def patch(self, request, progress_id: int):
+        """Przełącza wersję regulaminu dla istniejącego postępu.
+
+        Args:
+            request: Żądanie HTTP z JSON body zawierającym `version_code`.
+            progress_id: ID postępu do modyfikacji.
+
+        Returns:
+            200: {"status": "VERSION_SWITCHED"}
+            401/404/422: RFC 7807 Problem Details.
+        """
+        auth_error = _require_auth(request)
+        if auth_error:
+            return auth_error
+
+        try:
+            body = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            return _problem_detail(request, "validation-failed", "Błąd Walidacji", 422, "Ciało żądania musi być JSON.")
+
+        try:
+            dto = VersionSwitchRequestDTO(**body)
+        except ValidationError:
+            return _problem_detail(
+                request,
+                "validation-failed",
+                "Błąd Walidacji",
+                422,
+                "Pole `version_code` (string) jest wymagane.",
+            )
+
+        version_code = dto.version_code
+        profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id
+
+        try:
+            use_case = request.app_container.start_badge_progress
+            use_case.switch_version(
+                profile_id=profile_id,
+                progress_id=progress_id,
+                new_version_code=version_code,
+            )
+        except UseCaseError as exc:
+            if "zakończonej" in str(exc):
+                return _problem_detail(
+                    request,
+                    "conflict",
+                    "Stan niekompatybilny",
+                    409,
+                    "Nie można zmienić wersji dla zakończonej odznaki.",
+                )
+            return _problem_detail(request, "not-found", "Nie znaleziono", 404, str(exc))
+        except ApplicationException as exc:
+            return _handle_application_exception(request, exc)
+
+        return JsonResponse({"status": "VERSION_SWITCHED", "version_code": version_code}, status=200)
 
 
 class VectorTileView(View):

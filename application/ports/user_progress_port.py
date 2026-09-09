@@ -84,6 +84,14 @@ class UserProgressRepositoryPort(Protocol):
         Trwale zakotwicza turystę w wersji (Prawa Nabyte).
         """
 
+    def update_version_id(self, progress_id: int, new_version_id: int) -> None:
+        """Zmienia wersję regulaminu dla istniejącego postępu.
+
+        Zgodnie z AUDYT-090 — turysta może dobrowolnie przejść
+        na nowszy regulamin. Operacja dozwolona tylko dla
+        niezakończonych (COMPLETED) postępów.
+        """
+
     def update_domain_status(self, progress_id: int, status: str) -> None:
         """Zapisuje wynik wyliczony przez Czystą Domenę (np.
 

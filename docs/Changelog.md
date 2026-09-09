@@ -10,6 +10,9 @@
 
 ## [Unreleased]
 
+### Dodano
+- **Distributed Tracing (AUDYT-117):** Lekki mechanizm Distributed Tracing oparty na `ContextVar` i Celery `headers`, korelujący logi HTTP (Gunicorn) z logami asynchronicznymi (Celery). Formalizowany w ADR-030.
+
 ---
 
 ## [0.6.0] - 2026-07-02
