@@ -68,20 +68,24 @@ Implementacja wymaga migracji bazy (`apps/tourists/models.py` + migration). Zost
 ---
 
 ### [AUDYT-090] Brakujący Interfejs (UX) do Przełączania Praw Nabytych
-**Obszar:** `API / UX`  
-**Priorytet:** `🟠 WYSOKI`  
-**Status:** `🟡 Partial`  
+**Obszar:** `API / UX / Prawa Nabyte`
+**Priorytet:** `🟠 WYSOKI`
+**Status:** `✅ Zakończone — Wdrożone` (2026-09-09)
 
 **Diagnoza Audytora:** 
-`US-C05` gwarantuje turyście "Świadomy wybór Regulaminu". Nasz kod w `StartBadgeProgressUseCase` realizuje "Leniwe Zakotwiczenie" – automatycznie znajduje i podczepia turystę pod stary regulamin na podstawie daty jego najstarszego wejścia (Grandfather Clause). Audytor wyłapał jednak lukę w UX: turysta, po automatycznym zakotwiczeniu go przez system w np. regulaminie z 2018 roku, **nie posiada na ekranie przycisku (Switch Version)**, który pozwoliłby mu dobrowolnie zrezygnować ze starych praw i przejść na najnowszą, obecną wersję odznaki, jeśli woli zdobywać ją po nowemu!
+`US-C05` gwarantuje turyście "Świadomy wybór Regulaminu". Nasz kod w `StartBadgeProgressUseCase` realizuje "Leniwe Zakotwiczenie" – automatycznie znajduje i podczepia turystę pod stary regulamin na podstawie daty jego najstarszego wejścia (Grandfather Clause). Audytor wyłapał jednak lukę w UX: turysta, po automatycznym zakotwiczeniu go przez system w np. regulaminie z 2018 roku, **nie posiadał na ekranie przycisku (Switch Version)**, który pozwoliłby mu dobrowolnie przejść na najnowszą wersję odznaki.
 
-**Action Items (Do wdrożenia w Fazy C / UX Refinements):**
-- [ ] Zbudować endpoint `PATCH /api/v1/progress/{id}/switch_version` w `apps/api/views.py`.
-- [ ] W klasie Use Case `StartBadgeProgress` dopisać osobną metodę `switch_version` weryfikującą, czy odznaka nie ma jeszcze podpiętych w tym cyklu wejść z datą uniemożliwiającą przejście, lub pozwalającą na twardą zmianę `version_id`.
-- [ ] Dodać przycisk "Zmień na nowszy regulamin" na stronie `/badge/{code}/`.
+**Wdrożenie (pełny cykl portów i adapterów):**
+- [x] **Port:** `update_version_id()` w `UserProgressRepositoryPort`.
+- [x] **Adapter:** `DjangoTouristRepo.update_version_id()` — `exclude(domain_status="COMPLETED")` chroni przed mutacją zakończonych odznak.
+- [x] **UseCase:** `StartBadgeProgressUseCase.switch_version()` — pełna walidacja (własność, COMPLETED→409, brak wersji→404).
+- [x] **API:** `PATCH /api/v1/progress/{progress_id}/switch_version/` (`BadgeVersionSwitchView`).
+- [x] **DTO:** `VersionSwitchRequestDTO` — wymuszone gated tests architektonicznych.
+- [x] **OpenAPI:** `/progress/{progress_id}/switch_version/` — wymuszone testem path consistency.
+- [x] **Fake:** `FakeUserProgressRepository.update_version_id()` do testów Use Case.
 
 **Komentarz Architekta:**
-Klasyczne "odcięcie frontendu od backendu". Backend to umie (bo przyjmuje parametr `version_id`), ale turysta nie ma jak wywołać tego żądania. Krytyczne dla zgodności z oryginalną intencją biznesową.
+Brak luki UX dozwolony w architekturze Clean Architecture. Turysta może przejść na nowszy regulamin w dowolnym momencie, aż do zakończenia odznaki. Pełna specyfikacja w archiwum `backlog_po_audycie.md` oraz ADR-007 (werSIONOWANIE).
 
 ---
 
