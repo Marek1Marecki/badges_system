@@ -115,26 +115,22 @@ class DjangoAscentLogRepository(AscentLogRepositoryPort):
         return bool(qs.exists())
 
     def get_oldest_ascent_date(self, profile_id: int, badge_code: str) -> date | None:
+        """Zwraca najstarszą datę wejścia turysty na szczyty należące do odznaki.
+
+        Optymalizacja AUDYT-032: całe zapytanie zrealizowane jako jedno SQL
+        Subquery — brak materializacji listy ID szczytów w Pythonie.
+        Współpracuje z Composite Indexem ``AscentLog(profile_id, ascent_date)``.
         """
+        from django.db.models import Subquery
 
-        Args:
-          profile_id: int:
-          badge_code: str:
-          profile_id: int:
-          badge_code: str:
-
-        Returns:
-
-        """
         from apps.badges.models import BadgeVersionModel
         from apps.tourists.models import AscentLog
 
-        # Wyciągamy ID szczytów z puli wszystkich historycznych i obecnych wersji tej odznaki
-        peak_ids = (
-            BadgeVersionModel.objects.filter(badge__code=badge_code).values_list("pool_peaks__id", flat=True).distinct()
+        peak_subquery = BadgeVersionModel.objects.filter(badge__code=badge_code).values_list(
+            "pool_peaks__id", flat=True
         )
 
-        result = AscentLog.objects.filter(profile_id=profile_id, peak_id__in=peak_ids).aggregate(
+        result = AscentLog.objects.filter(profile_id=profile_id, peak_id__in=Subquery(peak_subquery)).aggregate(
             oldest=Min("ascent_date")
         )
         return cast(date | None, result["oldest"])
