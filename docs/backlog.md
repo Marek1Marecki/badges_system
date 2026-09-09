@@ -58,36 +58,25 @@ Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał
 
 ---
 
-### [AUDYT-101] Brak mechanizmu wstrzymywania długotrwałych operacji (Cancellation Token)
-**Obszar:** `UX / Backend`
-**Priorytet:** `🟢 NISKI`
-**Status:** `🟡 CZĘŚCIOWO — Frontend Done (AbortController)`
-
-**Diagnoza Audytora:** 
-Procesy takie jak wgrywanie pliku GPX, odpytywanie Overpass API, czy przeliczanie CQRS mogą trwać od kilku do kilkunastu sekund. W przypadku błędu API na zewnątrz (zawieszenie połączenia), turysta w aplikacji mobilnej lub webowej pozostaje uwięziony na ekranie ładowania. Brak mechanizmu Pollingu (odpytywania o status) lub przycisku "Anuluj" sprawia, że aplikacja wydaje się zamrożona.
-
-**Wdrożenie:**
-- [x] **`AbortController` w `dashboard.html`** — przycisk "Anuluj" (`cancelGpxUpload()`) fizycznie zrywa gniazdo TCP do `/api/v1/gpx/analyze/` poprzez `fetch({ signal: controller.signal })`. Eliminacja 90% ryzyka (zatykanie gniazd Gunicorna przez zombie requests).
-- [ ] **Celery `revoke` + endpoint statusu** (`DELETE/P GET /api/tasks/{id}`) — **celowy tech debt** dla Fazy Skalowania.
-
-**Komentarz Architekta:**
-Frontend Quick Win (AbortController) eliminuje główne ryzyko kosztem 15 minut kodu. Celery revoke odłożony — brak potrzeby dla MVP, a mechanizm ma koszt operacyjny (worker termination). Ryzyko zombie-processów w Celery minimalne (zadania są idempotentne, a Overpass API ma timeouty wbudowane).
-
----
-
 ### [AUDYT-112] Wdrożenie Automatycznego Wersjonowania (Tag Release Policy)
-**Obszar:** `Proces / GitOps`  
-**Priorytet:** `🟡 ŚREDNI`  
+**Obszar:** `Proces / GitOps`
+**Priorytet:** `🟡 ŚREDNI`
+**Status:** `✅ ZAKOŃCZONE`
 
 **Diagnoza Audytora:** 
 Mimo że prowadzimy wspaniały, niezwykle precyzyjny `CHANGELOG.md` (z wydaniami np. `0.6.0`), w repozytorium Git nie znajduje się ani jeden tag wersji (tzw. `git tag`). Łamie to zasadę zdefiniowaną w naszym `Manifest/13-release-tagging.md`. Bez formalnych tagów w Gicie nie można automatyzować wdrażania za pomocą Release Registry (`ADR-022`), ponieważ CI/CD nie ma możliwości odwołania się do stabilnej rewizji kodu.
 
-**Action Items (Do wdrożenia PRZEZ CIEBIE po zakodowaniu Playwrighta):**
-- [ ] Wywołać `git tag -a v0.6.0 -m "Zakończenie Fazy C"` dla ostatniego stabilnego commita.
-- [ ] Dodać do workflowu lokalnego zasadę: Po każdej aktualizacji `CHANGELOG.md` o nową wersję, przed komendą `git push` wywołać nadanie tagu.
+**Wdrożenie:**
+- [x] **Tagi istnieją:** `git tag` → `v0.4.3` ("Release v0.4.3 — DR plan..."), `v0.6.0` ("Zakończenie Fazy C") — oba poprawnie oznaczone i opisane.
+- [x] **Zasada w `AGENTS.md:5-13`:** przed `git push` — sprawdzanie `CHANGELOG.md` na nową wersję → auto-tag `git tag -a v<version> -m "Release v<version>"` → `git push origin v<version>`.
+- [x] **Referencja do `docs/Manifest/13-release-tagging.md`** — opisuje pełny proces tagowania.
+
+**Wnioski:**
+- CI/CD może odwoływać się do stabilnych rewizji kodu (`v0.6.0`) dla Release Registry (ADR-022).
+- Nowi deweloperzy widzą politykę natychmiast po otwarciu `AGENTS.md` (Kilo instructions section).
 
 **Komentarz Architekta:**
-Wdrożenie tego to 15 sekund pracy, a z punktu widzenia DevOps i audytów zamyka to najczęstszą dziurę w procesie dostarczania oprogramowania (CI/CD).
+Wdrożenie tego to 15 sekund pracy, a z punku widzenia DevOps i audytów zamyka to najczęstszą dziurę w procesie dostarczania oprogramowania (CI/CD).
 
 ---
 
@@ -3281,3 +3270,21 @@ W scenariuszu `US-C17` wgrywamy ślad GPX, by znaleźć pobliskie szczyty. Jeże
 Czysta sprawa UX, zapobiegająca konfuzji turysty.
 
 ---
+
+### [AUDYT-101] Brak mechanizmu wstrzymywania długotrwałych operacji (Cancellation Token)
+**Obszar:** `UX / Backend`
+**Priorytet:** `🟢 NISKI`
+**Status:** `🟡 CZĘŚCIOWO — Frontend Done (AbortController)`
+
+**Diagnoza Audytora:** 
+Procesy takie jak wgrywanie pliku GPX, odpytywanie Overpass API, czy przeliczanie CQRS mogą trwać od kilku do kilkunastu sekund. W przypadku błędu API na zewnątrz (zawieszenie połączenia), turysta w aplikacji mobilnej lub webowej pozostaje uwięziony na ekranie ładowania. Brak mechanizmu Pollingu (odpytywania o status) lub przycisku "Anuluj" sprawia, że aplikacja wydaje się zamrożona.
+
+**Wdrożenie:**
+- [x] **`AbortController` w `dashboard.html`** — przycisk "Anuluj" (`cancelGpxUpload()`) fizycznie zrywa gniazdo TCP do `/api/v1/gpx/analyze/` poprzez `fetch({ signal: controller.signal })`. Eliminacja 90% ryzyka (zatykanie gniazd Gunicorna przez zombie requests).
+- [ ] **Celery `revoke` + endpoint statusu** (`DELETE/P GET /api/tasks/{id}`) — **celowy tech debt** dla Fazy Skalowania.
+
+**Komentarz Architekta:**
+Frontend Quick Win (AbortController) eliminuje główne ryzyko kosztem 15 minut kodu. Celery revoke odłożony — brak potrzeby dla MVP, a mechanizm ma koszt operacyjny (worker termination). Ryzyko zombie-processów w Celery minimalne (zadania są idempotentne, a Overpass API ma timeouty wbudowane).
+
+---
+
