@@ -27,14 +27,22 @@ Implementacja wymaga migracji bazy (`apps/tourists/models.py` + migration). Zost
 ---
 
 ### [AUDYT-092] Pusta odpowiedź z API przy braku obiektów (Silent Success)
-**Obszar:** `API / UX GPX`  
-**Priorytet:** `🟢 NISKI`  
+**Obszar:** `API / UX GPX`
+**Priorytet:** `🟢 NISKI`
+**Status:** `✅ ZAKOŃCZONE`
 
 **Diagnoza Audytora:** 
 W scenariuszu `US-C17` wgrywamy ślad GPX, by znaleźć pobliskie szczyty. Jeżeli ślad znajduje się np. w Niemczech, funkcja `distance_lte` PostGIS-a odrzuca wszystkie polskie obiekty i zwraca pustą listę. API odpowiada cichym `200 OK` z pustą listą. Brak odpowiedniej obsługi tego stanu (np. `404 Not Found` dla trasy bez punktów) powoduje, że klient HTMX zarysuje turyscie pusty ekran.
 
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Dodać wyraźny komunikat i obsługę stanu "Empty State" (Pusty Koszyk) w kodzie widoku `gpx_upload.html` lub wymusić na Use Case w `AnalyzeGpxTrackUseCase` rzucanie błędu biznesowego `Brak obiektów PTTK w promieniu 200m od wyznaczonej trasy.`
+**Wdrożenie:**
+- [x] `AnalyzeGpxTrackUseCase:42-46` — rzuca `UseCaseError("Brak obiektów PTTK w promieniu 200m od wyznaczonej trasy. Upewnij się, że ślad mieści się w polskich górach.")` gdy PostGIS nie znajdzie obiektów.
+- [x] `GpxAnalyzeView` (views.py:765-769) — łapie `ApplicationException` przez `_handle_application_exception`, zwracając RFC 7807 Problem Details z `detail`.
+- [x] Frontend (`dashboard.html:129-136`) — `.catch()` obsługuje błąd: `msg = errData.detail || errData.title` → wyświetla komunikat w UI zamiast pustego ekranu.
+
+**Wnioski:**
+- Turysta widzi konkretny komunikat: "Brak obiektów PTTK..." zamiast pustego ekranu.
+- `200 OK` z pustą listą zastąpiony przez `404` + RFC 7807 (HTTP-idiomatyczne).
+- Pełny "most" UseCase (logika) ↔ API (contract) ↔ Frontend (UX) obsługuje ten stan.
 
 **Komentarz Architekta:**
 Czysta sprawa UX, zapobiegająca konfuzji turysty.
@@ -86,29 +94,6 @@ Procesy takie jak wgrywanie pliku GPX, odpytywanie Overpass API, czy przeliczani
 
 **Komentarz Architekta:**
 W fazie MVP zakładamy, że użytkownik po prostu odświeży stronę (F5) w razie zawieszenia. Gdy zaczniemy budować interfejsy dla tysięcy osób, te mechanizmy będą obowiązkowe.
-
----
-
-### [AUDYT-103] Wiedza Ukryta: Struktura i rola `VerificationContext`
-**Obszar:** `Dokumentacja / Domena`
-**Priorytet:** `🟡 ŚREDNI`
-**Status:** `✅ ZAKOŃCZONE`
-
-**Diagnoza Audytora:** 
-`VerificationContext` to nasz genialny obiekt wstrzykujący stan zewnętrzny (czas, datę urodzenia turysty, mapę klubów PTTK) prosto do Czystej Domeny, zabezpieczając Invariant T-02. Jednak jego pełna rola (oraz struktury, z jakich korzysta, np. `club_join_dates: dict[str, date]`) jest nigdzie oficjalnie nieudokumentowana – nowy programista musi ją dedukować bezpośrednio z kodu Pythona lub czytając implementację starych testów.
-
-**Wdrożenie:**
-- [x] Sekcja `### VerificationContext (Kontekst Weryfikacyjny)` w `docs/Domain Model.md:113` — opis roli "mostu" między Blueprintem a User State.
-- [x] Invariant T-02 (Determinizm Czasu) — jawnie opisany: Domena nie wywołuje `datetime.now()`.
-- [x] Diagram Mermaid budowy `VerificationContext` w `VerifyBadgeUseCase` (HttpRequest → UseCase → TouristProfileDTO + ClockPort + completed_badges → VC → `BadgeVersionDomain.evaluate`).
-- [x] Tabela atrybutów z typami domenowymi, wymagalnością i uzasadnieniem (evaluation_time, tourist_birth_date, club_join_dates, completed_badge_codes).
-
-**Wnioski:**
-- Dokumentacja obejmuje wszystkie pola `VerificationContext` VO (`domain/value_objects/verification_context.py:16-20`).
-- Odniesienia do `ClockPort`, `TD-02`, oraz invariantów zapewniają spójność z resztą dokumentacji.
-
-**Komentarz Architekta:**
-Klasyczny problem DDD. Odklejenie logiki bazodanowej zmusza do tworzenia "mostów" (Contexts). Brak ich dokładnego opisu zniechęca nowych członków zespołu do przestrzegania czystości warstw.
 
 ---
 
@@ -3270,5 +3255,28 @@ Obecnie w katalogu `domain/` brakuje podstawowego aktora biznesowego: Turysty (`
 - [ ] `VerificationContext` nadal używany w `verify_badge.py` — **celowo**: VC to argument *wejściowy do reguły* (czas, kluby), nie opis turysty. Wymiana na `TouristProfileDomain` nie ma sensu — reguły weryfikacyjne (np. `MinAgeRule`, `RequiresClubJoinDateRule`) nie potrzebują całego profilu, tylko jej fragment.
 
 **Commit:** `14bb0ce` — "feat(aggregate): AUDYT-037 — TouristProfileDomain aggregating Freemium limits".
+
+---
+
+### [AUDYT-103] Wiedza Ukryta: Struktura i rola `VerificationContext`
+**Obszar:** `Dokumentacja / Domena`
+**Priorytet:** `🟡 ŚREDNI`
+**Status:** `✅ ZAKOŃCZONE`
+
+**Diagnoza Audytora:** 
+`VerificationContext` to nasz genialny obiekt wstrzykujący stan zewnętrzny (czas, datę urodzenia turysty, mapę klubów PTTK) prosto do Czystej Domeny, zabezpieczając Invariant T-02. Jednak jego pełna rola (oraz struktury, z jakich korzysta, np. `club_join_dates: dict[str, date]`) jest nigdzie oficjalnie nieudokumentowana – nowy programista musi ją dedukować bezpośrednio z kodu Pythona lub czytając implementację starych testów.
+
+**Wdrożenie:**
+- [x] Sekcja `### VerificationContext (Kontekst Weryfikacyjny)` w `docs/Domain Model.md:113` — opis roli "mostu" między Blueprintem a User State.
+- [x] Invariant T-02 (Determinizm Czasu) — jawnie opisany: Domena nie wywołuje `datetime.now()`.
+- [x] Diagram Mermaid budowy `VerificationContext` w `VerifyBadgeUseCase` (HttpRequest → UseCase → TouristProfileDTO + ClockPort + completed_badges → VC → `BadgeVersionDomain.evaluate`).
+- [x] Tabela atrybutów z typami domenowymi, wymagalnością i uzasadnieniem (evaluation_time, tourist_birth_date, club_join_dates, completed_badge_codes).
+
+**Wnioski:**
+- Dokumentacja obejmuje wszystkie pola `VerificationContext` VO (`domain/value_objects/verification_context.py:16-20`).
+- Odniesienia do `ClockPort`, `TD-02`, oraz invariantów zapewniają spójność z resztą dokumentacji.
+
+**Komentarz Architekta:**
+Klasyczny problem DDD. Odklejenie logiki bazodanowej zmusza do tworzenia "mostów" (Contexts). Brak ich dokładnego opisu zniechęca nowych członków zespołu do przestrzegania czystości warstw.
 
 ---
