@@ -26,37 +26,26 @@ Implementacja wymaga migracji bazy (`apps/tourists/models.py` + migration). Zost
 
 ---
 
-### [AUDYT-093] Brak zautomatyzowanej kwarantanny dla złośliwych danych OSM
-**Obszar:** `Dane Referencyjne / DataOps`  
-**Priorytet:** `🟠 WYSOKI`  
-**Status:** `🔴 OTWARTE`  
-
-**Diagnoza Audytora:** 
-Obecny mechanizm "Nocnego Stróża" (`RunOsmNightWatchmanUseCase`) potrafi zgłaszać konflikty do skrzynki odbiorczej (Inbox), ale brakuje mu systemu odporności na celowe zatruwanie danych. Atakujący w OpenStreetMap może edytować znany szczyt PTTK (np. Rysy), zmieniając jego współrzędne tak, by znalazł się na Alasce, co zniszczyłoby wyliczanie CQRS i weryfikację. Nasz system aktualizuje tagi w `osm_raw_tags` w tle, nie alarmując o drastycznych anomaliach przestrzennych.
-
-**Wdrożenie (status techniczny):**
-- [ ] Zdefiniować próg kwarantanny geolokacyjnej (np. "przesunięcie wierzchołka o więcej niż 500 metrów" lub "zmiana wysokości o więcej niż 10%").
-- [ ] Zaprojektować regułę w `OsmRepositoryPort`, która wstrzyma cichą aktualizację `osm_raw_tags` przy przekroczeniu progu, blokując synchronizację do czasu interwencji administratora.
-
-**Status techniczny (werdykt kodu):**
-- ⚠️ **Status `🟢 ZAKOŃCZONO` w dokumencie = BŁĄD.** Kod (`osm_repository.py:detect_and_save_conflicts`) ma **tylko `altitude` + `wikipedia_link`** jako conflict checks. **Brak walidacji przestrzennej (geometry drift)**.
-- ⚠️ `RunOsmNightWatchmanUseCase:117-124` nadpisuje `osm_raw_tags` i geometrię **cicho** (`update_object_after_sync`) bez progu >500m.
-- ⚠️ `ST_Distance` / geofencing nie istnie w kodzie (potwierdzone grepem).
-
-**Komentarz Architekta:**
-Klasyczny "Blind Spot" integracji zewnętrznych. Całkowite zaufanie do otwartego API (OSM) to ryzyko wandalizmu (Vandalism Attack). Ciche wstrzymanie (Quarantine) zabezpieczy nas przed rozpadem siatki MVT.
-
----
-
 ### [AUDYT-097] Brak strategii wersjonowania API (API Versioning Policy)
-**Obszar:** `Dokumentacja / API`  
-**Priorytet:** `🟡 ŚREDNI`  
+**Obszar:** `Dokumentacja / API`
+**Priorytet:** `🟡 ŚREDNI`
+**Status:** `✅ ZAKOŃCZONE`
 
 **Diagnoza Audytora:** 
 Plik `API_CONTRACTS.md` definiuje ścieżki w formacie `/api/v1/`, ale nie definiuje, **co** spowoduje przejście na `/api/v2/`. Kiedy wprowadzić nową wersję? Czy usunięcie pola z payloadu łamie wsteczną kompatybilność? Brakuje formalnego kontraktu.
 
-**Action Items (Do wdrożenia w Fazy Rozwoju API):**
-- [ ] Dodać sekcję "Strategia Wersjonowania API" do `API_CONTRACTS.md` lub stworzyć dedykowany `ADR` wyjaśniający, co stanowi *Breaking Change* w naszym systemie (np. usunięcie pola, zmiana typu, zmiana wymogów CSRF).
+**Wdrożenie:**
+- [x] **Sekcja odwołująca do ADR** w `API Contracts.md:10` — opisuje prefix `/api/v1/`, odsyła do `ADR-027`.
+- [x] **`ADR-027 — Strategia Wersjonowania API i Definicja Breaking Change.md`** — pełny dokument (101 linii):
+  - **Opcja A:** URL Path Versioning (`ADR-027:56`)
+  - **Breaking Changes (wymagają `v1→v2`):** usunięcie pola, zmiana typu, zmiana wymogów CSRF, zmiana enum (`ADR-027:62-70`)
+  - **NIE Breaking:** dodanie endpointu, pola opcjonalnego, `200→201` (`ADR-027:71-78`)
+  - **Polityka deprecjacji:** `v1` wspierane min. 3 miesiące po `v2`, `deprecated: true` w OpenAPI (`ADR-027:74`)
+- [x] **Trigger for Review:** utworzenie `apps/api/v2/urls.py` i `config/openapi.v2.json` (`ADR-027:93`)
+
+**Wnioski:**
+- Formalny kontrakt definiujący *Breaking Change* — gotowy dla przyszłych `v2`.
+- Frontend (HTMX/JS) nie jest już jedynym krytycznym klientem — strategia chroni przed nieświadomym uszkodzeniem zewnętrznych konsumentów API.
 
 **Komentarz Architekta:**
 Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał, kiedy ucinamy wsparcie. Dopóki klientem API jest tylko nasz wewnętrzny frontend (HTMX/JS), to nie jest problem. Jeśli otworzymy to dla aplikacji mobilnych, to jest punkt krytyczny.
@@ -3322,5 +3311,27 @@ Uzasadnienie architektoniczne:
 
 **Komentarz Architekta:**
 Wspaniałe wyłapanie klasycznego błędu `loaddata`. Obecnie nasz system działa, bo wszystkie środowiska startują od zera. Przy aktualizacjach działającej produkcji na przestrzeni lat, twarde ID to tykająca bomba.
+
+---
+
+### [AUDYT-093] Brak zautomatyzowanej kwarantanny dla złośliwych danych OSM
+**Obszar:** `Dane Referencyjne / DataOps`  
+**Priorytet:** `🟠 WYSOKI`  
+**Status:** `🔴 OTWARTE`  
+
+**Diagnoza Audytora:** 
+Obecny mechanizm "Nocnego Stróża" (`RunOsmNightWatchmanUseCase`) potrafi zgłaszać konflikty do skrzynki odbiorczej (Inbox), ale brakuje mu systemu odporności na celowe zatruwanie danych. Atakujący w OpenStreetMap może edytować znany szczyt PTTK (np. Rysy), zmieniając jego współrzędne tak, by znalazł się na Alasce, co zniszczyłoby wyliczanie CQRS i weryfikację. Nasz system aktualizuje tagi w `osm_raw_tags` w tle, nie alarmując o drastycznych anomaliach przestrzennych.
+
+**Wdrożenie (status techniczny):**
+- [ ] Zdefiniować próg kwarantanny geolokacyjnej (np. "przesunięcie wierzchołka o więcej niż 500 metrów" lub "zmiana wysokości o więcej niż 10%").
+- [ ] Zaprojektować regułę w `OsmRepositoryPort`, która wstrzyma cichą aktualizację `osm_raw_tags` przy przekroczeniu progu, blokując synchronizację do czasu interwencji administratora.
+
+**Status techniczny (werdykt kodu):**
+- ⚠️ **Status `🟢 ZAKOŃCZONO` w dokumencie = BŁĄD.** Kod (`osm_repository.py:detect_and_save_conflicts`) ma **tylko `altitude` + `wikipedia_link`** jako conflict checks. **Brak walidacji przestrzennej (geometry drift)**.
+- ⚠️ `RunOsmNightWatchmanUseCase:117-124` nadpisuje `osm_raw_tags` i geometrię **cicho** (`update_object_after_sync`) bez progu >500m.
+- ⚠️ `ST_Distance` / geofencing nie istnie w kodzie (potwierdzone grepem).
+
+**Komentarz Architekta:**
+Klasyczny "Blind Spot" integracji zewnętrznych. Całkowite zaufanie do otwartego API (OSM) to ryzyko wandalizmu (Vandalism Attack). Ciche wstrzymanie (Quarantine) zabezpieczy nas przed rozpadem siatki MVT.
 
 ---
