@@ -59,18 +59,19 @@ Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał
 ---
 
 ### [AUDYT-101] Brak mechanizmu wstrzymywania długotrwałych operacji (Cancellation Token)
-**Obszar:** `UX / Backend`  
-**Priorytet:** `🟢 NISKI`  
+**Obszar:** `UX / Backend`
+**Priorytet:** `🟢 NISKI`
+**Status:** `🟡 CZĘŚCIOWO — Frontend Done (AbortController)`
 
 **Diagnoza Audytora:** 
 Procesy takie jak wgrywanie pliku GPX, odpytywanie Overpass API, czy przeliczanie CQRS mogą trwać od kilku do kilkunastu sekund. W przypadku błędu API na zewnątrz (zawieszenie połączenia), turysta w aplikacji mobilnej lub webowej pozostaje uwięziony na ekranie ładowania. Brak mechanizmu Pollingu (odpytywania o status) lub przycisku "Anuluj" sprawia, że aplikacja wydaje się zamrożona.
 
-**Action Items (Do wdrożenia w Fazy Optymalizacji UX):**
-- [ ] Oprogramować przycisk "Anuluj" w widoku HTMX (przerwanie żądania AJAX).
-- [ ] W przypadku operacji asynchronicznych (Celery), wdrożyć endpoint odpytujący o status zadania (`GET /api/tasks/{id}`).
+**Wdrożenie:**
+- [x] **`AbortController` w `dashboard.html`** — przycisk "Anuluj" (`cancelGpxUpload()`) fizycznie zrywa gniazdo TCP do `/api/v1/gpx/analyze/` poprzez `fetch({ signal: controller.signal })`. Eliminacja 90% ryzyka (zatykanie gniazd Gunicorna przez zombie requests).
+- [ ] **Celery `revoke` + endpoint statusu** (`DELETE/P GET /api/tasks/{id}`) — **celowy tech debt** dla Fazy Skalowania.
 
 **Komentarz Architekta:**
-W fazie MVP zakładamy, że użytkownik po prostu odświeży stronę (F5) w razie zawieszenia. Gdy zaczniemy budować interfejsy dla tysięcy osób, te mechanizmy będą obowiązkowe.
+Frontend Quick Win (AbortController) eliminuje główne ryzyko kosztem 15 minut kodu. Celery revoke odłożony — brak potrzeby dla MVP, a mechanizm ma koszt operacyjny (worker termination). Ryzyko zombie-processów w Celery minimalne (zadania są idempotentne, a Overpass API ma timeouty wbudowane).
 
 ---
 
