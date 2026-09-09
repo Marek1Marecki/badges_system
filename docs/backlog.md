@@ -8,31 +8,6 @@
 
 ---
 
-### [AUDYT-067] Brak polityki wsparcia Wielojęzyczności (i18n)
-🟢 **Status:** `ZAKOŃCZONO (Wont-Fix / Risk Accepted)`
-**Obszar:** `Django / Architektura Informacji`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-Domena, raporty błędów RFC 7807 oraz szablony HTMX są wbudowane "na sztywno" w języku polskim. Brak zastosowania tagów tłumaczeń Django (`{% trans %}` lub `_("...")`). W przypadku wejścia na rynek czeski lub słowacki, będzie to wymagało przepisania całej warstwy prezentacji. Dodatkowo model `TouristObject` wyciąga nazwy lokalne z JSONB, ale nie istnieje w widokach mechanizm decydujący, który język wyświetlić.
-
-**Action Items (Do wdrożenia w przypadku internacjonalizacji):**
-- [ ] Dodać konfigurację `i18n` do `settings.py` oraz `app_settings.py`.
-- [ ] Zmodyfikować DTO wyjściowe i Exception Handlery, aby wywoływały funkcję `ugettext_lazy` przed serializacją JSON-a.
-
-**Decyzja Architektoniczna (Wont-Fix):**
-Zgadzam się w 100% z oceną: **rezygnujemy ze wsparcia wielojęzyczności**.
-
-System operuje wokół regulaminów Polskiego Towarzystwa Turystyczno-Krajoznawczego (PTTK), którego jedyną grupą docelową jest turysta **polskojęzyczny**. Wdrożenie `gettext_lazy`, tagów `{% trans %}` oraz utrzymanie plików `.po` to **przedwczesna optymalizacja** (Premature Internationalization) — szkodliwy "podatek inżynieryjny" bez szans na zwrot z inwestycji (ROI). Dodatkowo:
-- Turysta polskojęzyczny zdobywa szczyty w Czechach/Słowacji **w ramach polskiego regulaminu** — nie potrzebuje czeskiej/Słowackiej wersji UI.
-- Logika domenowa (reguły biznesowe PTTK) i modele (np. `DomainStatus` w języku polskim) są fundamentalnie zakorzenione w konkretnej kulturze górskiej.
-
-**Zaktualizowano:** Językiem wbudowanym na stałe w warstwę prezentacji (Hardcoded) pozostaje język polski. Wszelkie próby internacjonalizacji w przyszłości będą wymagały świadomej decyzji biznesowej i ponownego rozważenia tego punktu.
-
-**Pełna deklaracja w archiwum:** Treść decyzji została zarchiwizowana w `docs/backlog_po_audycie.md` (sekcja "Zarchiwizowane Decyzje Wont-Fix").
-
----
-
 ### [AUDYT-082] Refaktoryzacja `peak_id` na `object_id` w Czystej Domenie
 **Obszar:** `Domena / Value Objects`  
 **Priorytet:** `🟢 NISKI (Jakość Kodu)`  
@@ -64,28 +39,6 @@ Invariant S-04 (`docs/Invariants.md:114` — Zakaz Kasowania Faktów) definiuje,
 
 **Komentarz Architekta:**
 Implementacja wymaga migracji bazy (`apps/tourists/models.py` + migration). Zostało na później niż AUDYT-089 (0.5h) by uniknąć ryzyka w trakcie Push 8. Invariant S-04 jest udokumentowany i aktywny jako met-test.
-
----
-
-### [AUDYT-090] Brakujący Interfejs (UX) do Przełączania Praw Nabytych
-**Obszar:** `API / UX / Prawa Nabyte`
-**Priorytet:** `🟠 WYSOKI`
-**Status:** `✅ Zakończone — Wdrożone` (2026-09-09)
-
-**Diagnoza Audytora:** 
-`US-C05` gwarantuje turyście "Świadomy wybór Regulaminu". Nasz kod w `StartBadgeProgressUseCase` realizuje "Leniwe Zakotwiczenie" – automatycznie znajduje i podczepia turystę pod stary regulamin na podstawie daty jego najstarszego wejścia (Grandfather Clause). Audytor wyłapał jednak lukę w UX: turysta, po automatycznym zakotwiczeniu go przez system w np. regulaminie z 2018 roku, **nie posiadał na ekranie przycisku (Switch Version)**, który pozwoliłby mu dobrowolnie przejść na najnowszą wersję odznaki.
-
-**Wdrożenie (pełny cykl portów i adapterów):**
-- [x] **Port:** `update_version_id()` w `UserProgressRepositoryPort`.
-- [x] **Adapter:** `DjangoTouristRepo.update_version_id()` — `exclude(domain_status="COMPLETED")` chroni przed mutacją zakończonych odznak.
-- [x] **UseCase:** `StartBadgeProgressUseCase.switch_version()` — pełna walidacja (własność, COMPLETED→409, brak wersji→404).
-- [x] **API:** `PATCH /api/v1/progress/{progress_id}/switch_version/` (`BadgeVersionSwitchView`).
-- [x] **DTO:** `VersionSwitchRequestDTO` — wymuszone gated tests architektonicznych.
-- [x] **OpenAPI:** `/progress/{progress_id}/switch_version/` — wymuszone testem path consistency.
-- [x] **Fake:** `FakeUserProgressRepository.update_version_id()` do testów Use Case.
-
-**Komentarz Architekta:**
-Brak luki UX dozwolony w architekturze Clean Architecture. Turysta może przejść na nowszy regulamin w dowolnym momencie, aż do zakończenia odznaki. Pełna specyfikacja w archiwum `backlog_po_audycie.md` oraz ADR-007 (werSIONOWANIE).
 
 ---
 
@@ -218,19 +171,24 @@ Bardzo mądre spojrzenie na bezpieczeństwo kodu z perspektywy ludzkiej (Human R
 ---
 
 ### [AUDYT-115] Opracowanie strategii awaryjnej i "Data Recovery" dla Użytkowników
-**Obszar:** `Operacje / Wdrożenie (SRE)`  
-**Priorytet:** `🟠 WYSOKI (Przed oficjalnym startem PROD)`  
+**Obszar:** `Operacje / Wdrożenie (SRE)`
+**Priorytet:** `🟠 WYSOKI (Przed oficjalnym startem PROD)`
+**Status:** `✅ Zakończone — Dokumentacja wdrożona` (2026-09-09)
 
 **Diagnoza Audytora:** 
 Raport uderza w brak jakiejkolwiek procedury operacyjnej dla obsługi tzw. "Awarii Klienta". System posiada doskonały `Runbook.md` dla dewelopera, ale brakuje w nim zdefiniowania procesu: co ma zrobić Administrator Systemu, jeśli turysta napisze maila "Usunąłem przez przypadek swój profil i straciłem odznaki, proszę o przywrócenie!", albo "Baza danych padła, musimy odtworzyć stan z wczoraj z S3".
 
-**Action Items (Do wdrożenia PRZED wpuszczeniem użytkowników):**
-- [ ] Zaktualizować lub stworzyć dokument `docs/ops/Disaster_Recovery_Plan.md`.
-- [ ] Opisać krok po kroku komendy potrzebne do zrzutu i odtworzenia bazy PostGIS ze środowiska produkcyjnego używając wypracowanych w `ADR-021` kopii S3 (Konta Operatorskiego).
-- [ ] Zdefiniować jasną politykę biznesową: czy przywracamy pojedyncze profile na żądanie (niezwykle kosztowne inżynieryjnie), czy odmawiamy ze względów bezpieczeństwa.
+**Wdrożenie:**
+- [x] Utworzono dokument `docs/ops/Disaster_Recovery_Plan.md` — operacyjny plan krok-po-kroku dla SRE/Administratora.
+- [x] Opisano komendy `pg_dump`/`pg_restore` przez `docker compose exec db` (wersja produkcyjna `compose.prod.yml`), pobieranie z S3 (konto `backup-recovery`, Object Lock WORM), healthcheck po odtworzeniu.
+- [x] Zdefiniowano politykę biznesową:
+  - **Profil na żądanie:** możliwe, ale wymaga ręcznego QA i potwierdzenia Lead Developera (~30–60 min), nie gwarantowane <4h.
+  - **Pełna odbudowa bazy:** maksymalny czas RTO 8h, procedura odizolowana.
+  - Otwartym zadaniem pozostaje `prod-backup.sh`/`prod-restore.sh` (na razie istnieją tylko `dev-`).
 
-**Komentarz Architekta:**
-Klasyczny przypadek przejścia z projektu "Programistycznego" na "Produkcyjny". Administratorzy muszą mieć pod ręką gotowe, przetestowane komendy Bash/SQL na wypadek kryzysu u turystów. Zabezpiecza nas to przed paniką.
+**Powiązane:** ADR-021 (RPO/RTO/S3), `docs/Runbook.md`, `scripts/dev-backup.sh` (referencja).
+
+**Status:** ZAMKNIĘTE — formalizowane w `docs/ops/Disaster_Recovery_Plan.md`.
 
 ---
 
@@ -3252,5 +3210,52 @@ Obecny system PTTK wymaga ciągłego połączenia z serwerem Django do weryfikac
 
 **Komentarz Architekta:**
 Zgodnie z naszymi wczesnymi ustaleniami, PWA (Progressive Web App) to ostateczny krok rozwoju interfejsu (Faza D). Bez tego aplikacja nie zdobędzie serc turystów na szlakach głębokich Bieszczad.
+
+---
+
+### [AUDYT-090] Brakujący Interfejs (UX) do Przełączania Praw Nabytych
+**Obszar:** `API / UX / Prawa Nabyte`
+**Priorytet:** `🟠 WYSOKI`
+**Status:** `✅ Zakończone — Wdrożone` (2026-09-09)
+
+**Diagnoza Audytora:** 
+`US-C05` gwarantuje turyście "Świadomy wybór Regulaminu". Nasz kod w `StartBadgeProgressUseCase` realizuje "Leniwe Zakotwiczenie" – automatycznie znajduje i podczepia turystę pod stary regulamin na podstawie daty jego najstarszego wejścia (Grandfather Clause). Audytor wyłapał jednak lukę w UX: turysta, po automatycznym zakotwiczeniu go przez system w np. regulaminie z 2018 roku, **nie posiadał na ekranie przycisku (Switch Version)**, który pozwoliłby mu dobrowolnie przejść na najnowszą wersję odznaki.
+
+**Wdrożenie (pełny cykl portów i adapterów):**
+- [x] **Port:** `update_version_id()` w `UserProgressRepositoryPort`.
+- [x] **Adapter:** `DjangoTouristRepo.update_version_id()` — `exclude(domain_status="COMPLETED")` chroni przed mutacją zakończonych odznak.
+- [x] **UseCase:** `StartBadgeProgressUseCase.switch_version()` — pełna walidacja (własność, COMPLETED→409, brak wersji→404).
+- [x] **API:** `PATCH /api/v1/progress/{progress_id}/switch_version/` (`BadgeVersionSwitchView`).
+- [x] **DTO:** `VersionSwitchRequestDTO` — wymuszone gated tests architektonicznych.
+- [x] **OpenAPI:** `/progress/{progress_id}/switch_version/` — wymuszone testem path consistency.
+- [x] **Fake:** `FakeUserProgressRepository.update_version_id()` do testów Use Case.
+
+**Komentarz Architekta:**
+Brak luki UX dozwolony w architekturze Clean Architecture. Turysta może przejść na nowszy regulamin w dowolnym momencie, aż do zakończenia odznaki. Pełna specyfikacja w archiwum `backlog_po_audycie.md` oraz ADR-007 (werSIONOWANIE).
+
+---
+
+### [AUDYT-067] Brak polityki wsparcia Wielojęzyczności (i18n)
+🟢 **Status:** `ZAKOŃCZONO (Wont-Fix / Risk Accepted)`
+**Obszar:** `Django / Architektura Informacji`  
+**Priorytet:** `🟢 NISKI`  
+
+**Diagnoza Audytora:** 
+Domena, raporty błędów RFC 7807 oraz szablony HTMX są wbudowane "na sztywno" w języku polskim. Brak zastosowania tagów tłumaczeń Django (`{% trans %}` lub `_("...")`). W przypadku wejścia na rynek czeski lub słowacki, będzie to wymagało przepisania całej warstwy prezentacji. Dodatkowo model `TouristObject` wyciąga nazwy lokalne z JSONB, ale nie istnieje w widokach mechanizm decydujący, który język wyświetlić.
+
+**Action Items (Do wdrożenia w przypadku internacjonalizacji):**
+- [ ] Dodać konfigurację `i18n` do `settings.py` oraz `app_settings.py`.
+- [ ] Zmodyfikować DTO wyjściowe i Exception Handlery, aby wywoływały funkcję `ugettext_lazy` przed serializacją JSON-a.
+
+**Decyzja Architektoniczna (Wont-Fix):**
+Zgadzam się w 100% z oceną: **rezygnujemy ze wsparcia wielojęzyczności**.
+
+System operuje wokół regulaminów Polskiego Towarzystwa Turystyczno-Krajoznawczego (PTTK), którego jedyną grupą docelową jest turysta **polskojęzyczny**. Wdrożenie `gettext_lazy`, tagów `{% trans %}` oraz utrzymanie plików `.po` to **przedwczesna optymalizacja** (Premature Internationalization) — szkodliwy "podatek inżynieryjny" bez szans na zwrot z inwestycji (ROI). Dodatkowo:
+- Turysta polskojęzyczny zdobywa szczyty w Czechach/Słowacji **w ramach polskiego regulaminu** — nie potrzebuje czeskiej/Słowackiej wersji UI.
+- Logika domenowa (reguły biznesowe PTTK) i modele (np. `DomainStatus` w języku polskim) są fundamentalnie zakorzenione w konkretnej kulturze górskiej.
+
+**Zaktualizowano:** Językiem wbudowanym na stałe w warstwę prezentacji (Hardcoded) pozostaje język polski. Wszelkie próby internacjonalizacji w przyszłości będą wymagały świadomej decyzji biznesowej i ponownego rozważenia tego punktu.
+
+**Pełna deklaracja w archiwum:** Treść decyzji została zarchiwizowana w `docs/backlog_po_audycie.md` (sekcja "Zarchiwizowane Decyzje Wont-Fix").
 
 ---
