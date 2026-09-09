@@ -58,38 +58,29 @@ Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał
 
 ---
 
-### [AUDYT-112] Wdrożenie Automatycznego Wersjonowania (Tag Release Policy)
-**Obszar:** `Proces / GitOps`
-**Priorytet:** `🟡 ŚREDNI`
-**Status:** `✅ ZAKOŃCZONE`
-
-**Diagnoza Audytora:** 
-Mimo że prowadzimy wspaniały, niezwykle precyzyjny `CHANGELOG.md` (z wydaniami np. `0.6.0`), w repozytorium Git nie znajduje się ani jeden tag wersji (tzw. `git tag`). Łamie to zasadę zdefiniowaną w naszym `Manifest/13-release-tagging.md`. Bez formalnych tagów w Gicie nie można automatyzować wdrażania za pomocą Release Registry (`ADR-022`), ponieważ CI/CD nie ma możliwości odwołania się do stabilnej rewizji kodu.
-
-**Wdrożenie:**
-- [x] **Tagi istnieją:** `git tag` → `v0.4.3` ("Release v0.4.3 — DR plan..."), `v0.6.0` ("Zakończenie Fazy C") — oba poprawnie oznaczone i opisane.
-- [x] **Zasada w `AGENTS.md:5-13`:** przed `git push` — sprawdzanie `CHANGELOG.md` na nową wersję → auto-tag `git tag -a v<version> -m "Release v<version>"` → `git push origin v<version>`.
-- [x] **Referencja do `docs/Manifest/13-release-tagging.md`** — opisuje pełny proces tagowania.
-
-**Wnioski:**
-- CI/CD może odwoływać się do stabilnych rewizji kodu (`v0.6.0`) dla Release Registry (ADR-022).
-- Nowi deweloperzy widzą politykę natychmiast po otwarciu `AGENTS.md` (Kilo instructions section).
-
-**Komentarz Architekta:**
-Wdrożenie tego to 15 sekund pracy, a z punku widzenia DevOps i audytów zamyka to najczęstszą dziurę w procesie dostarczania oprogramowania (CI/CD).
-
----
-
 ### [AUDYT-113] Formalizacja Szablonów Współpracy (PR & Issue Templates)
-**Obszar:** `Proces / Zarządzanie Zespołem`  
-**Priorytet:** `🟢 NISKI`  
+**Obszar:** `Proces / Zarządzanie Zespołem`
+**Priorytet:** `🟢 NISKI`
+**Status:** `✅ ZAKOŃCZONE`
 
 **Diagnoza Audytora:** 
 Audytor słusznie wskazuje, że projekt z tak potężną architekturą (Hexagonal, DDD) jest całkowicie "bezbronny" w przypadku dołączenia do niego nowych ludzi. Brak jest formalnych mechanizmów Githuba zmuszających współpracownika do udowodnienia, że przeczytał ADR-y, zanim wrzuci kod. Dokument `REVIEWER.md` jest na razie instrukcją tylko dla agentów AI.
 
-**Action Items (Do wdrożenia w przypadku wejścia w fazę Open Source / Zespół):**
-- [ ] Stworzyć plik `.github/PULL_REQUEST_TEMPLATE.md` zawierający obowiązkową checklistę dla nowego programisty (m.in.: *Czy kod przeszedł `make check`? Czy nowa encja nie łamie `ADR-002`? Czy dołączyłeś testy?*).
-- [ ] Dodać plik `CODEOWNERS` wymuszający zatwierdzenie zmian w katalogach `/docs/` i `/domain/` przez Głównego Architekta przed procesem `git merge`.
+**Wdrożenie:**
+- [x] `.github/PULL_REQUEST_TEMPLATE.md` — obowiązkowa checklistka:
+  - `make check` (≥865 testów, ruff, mypy, audit)
+  - Coverage ≥ 80%
+  - Testy dla nowej funkcjonalności
+  - ADR-002 (PostGIS geometry), AUDYT-016 (cross-app ports/adapters), import-linter
+  - CHANGELOG.md → `git tag -a v<X>`
+  - Konwencja commitów: `feat|fix|refactor(doc): AUDYT-NN opis`
+- [x] `.github/CODEOWNERS` — `@Marek1Marecki` (Główny Architekt) wymagany dla:
+  - `/docs/`, `/domain/`, `/application/`, `/infrastructure/`, `/.github/`, Dockerfile, compose
+  - `/tests/` → open (`*`)
+
+**Wnioski:**
+- Nowi deweloperzy widzą checklistę natychmiast po otwarciu PR — zmusza do przeczytania ADRów.
+- Zmiany w Domenie / docs wymagają ręcznego zatwierdzenia Architekta (Human Risk mitigation).
 
 **Komentarz Architekta:**
 Bardzo mądre spojrzenie na bezpieczeństwo kodu z perspektywy ludzkiej (Human Risk). Zabezpieczenie przed samowolą Junior Deweloperów.
@@ -3288,3 +3279,25 @@ Frontend Quick Win (AbortController) eliminuje główne ryzyko kosztem 15 minut 
 
 ---
 
+
+### [AUDYT-112] Wdrożenie Automatycznego Wersjonowania (Tag Release Policy)
+**Obszar:** `Proces / GitOps`
+**Priorytet:** `🟡 ŚREDNI`
+**Status:** `✅ ZAKOŃCZONE`
+
+**Diagnoza Audytora:** 
+Mimo że prowadzimy wspaniały, niezwykle precyzyjny `CHANGELOG.md` (z wydaniami np. `0.6.0`), w repozytorium Git nie znajduje się ani jeden tag wersji (tzw. `git tag`). Łamie to zasadę zdefiniowaną w naszym `Manifest/13-release-tagging.md`. Bez formalnych tagów w Gicie nie można automatyzować wdrażania za pomocą Release Registry (`ADR-022`), ponieważ CI/CD nie ma możliwości odwołania się do stabilnej rewizji kodu.
+
+**Wdrożenie:**
+- [x] **Tagi istnieją:** `git tag` → `v0.4.3` ("Release v0.4.3 — DR plan..."), `v0.6.0` ("Zakończenie Fazy C") — oba poprawnie oznaczone i opisane.
+- [x] **Zasada w `AGENTS.md:5-13`:** przed `git push` — sprawdzanie `CHANGELOG.md` na nową wersję → auto-tag `git tag -a v<version> -m "Release v<version>"` → `git push origin v<version>`.
+- [x] **Referencja do `docs/Manifest/13-release-tagging.md`** — opisuje pełny proces tagowania.
+
+**Wnioski:**
+- CI/CD może odwoływać się do stabilnych rewizji kodu (`v0.6.0`) dla Release Registry (ADR-022).
+- Nowi deweloperzy widzą politykę natychmiast po otwarciu `AGENTS.md` (Kilo instructions section).
+
+**Komentarz Architekta:**
+Wdrożenie tego to 15 sekund pracy, a z punku widzenia DevOps i audytów zamyka to najczęstszą dziurę w procesie dostarczania oprogramowania (CI/CD).
+
+---
