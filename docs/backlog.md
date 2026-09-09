@@ -26,29 +26,6 @@ Implementacja wymaga migracji bazy (`apps/tourists/models.py` + migration). Zost
 
 ---
 
-### [AUDYT-092] Pusta odpowiedź z API przy braku obiektów (Silent Success)
-**Obszar:** `API / UX GPX`
-**Priorytet:** `🟢 NISKI`
-**Status:** `✅ ZAKOŃCZONE`
-
-**Diagnoza Audytora:** 
-W scenariuszu `US-C17` wgrywamy ślad GPX, by znaleźć pobliskie szczyty. Jeżeli ślad znajduje się np. w Niemczech, funkcja `distance_lte` PostGIS-a odrzuca wszystkie polskie obiekty i zwraca pustą listę. API odpowiada cichym `200 OK` z pustą listą. Brak odpowiedniej obsługi tego stanu (np. `404 Not Found` dla trasy bez punktów) powoduje, że klient HTMX zarysuje turyscie pusty ekran.
-
-**Wdrożenie:**
-- [x] `AnalyzeGpxTrackUseCase:42-46` — rzuca `UseCaseError("Brak obiektów PTTK w promieniu 200m od wyznaczonej trasy. Upewnij się, że ślad mieści się w polskich górach.")` gdy PostGIS nie znajdzie obiektów.
-- [x] `GpxAnalyzeView` (views.py:765-769) — łapie `ApplicationException` przez `_handle_application_exception`, zwracając RFC 7807 Problem Details z `detail`.
-- [x] Frontend (`dashboard.html:129-136`) — `.catch()` obsługuje błąd: `msg = errData.detail || errData.title` → wyświetla komunikat w UI zamiast pustego ekranu.
-
-**Wnioski:**
-- Turysta widzi konkretny komunikat: "Brak obiektów PTTK..." zamiast pustego ekranu.
-- `200 OK` z pustą listą zastąpiony przez `404` + RFC 7807 (HTTP-idiomatyczne).
-- Pełny "most" UseCase (logika) ↔ API (contract) ↔ Frontend (UX) obsługuje ten stan.
-
-**Komentarz Architekta:**
-Czysta sprawa UX, zapobiegająca konfuzji turysty.
-
----
-
 ### [AUDYT-093] Brak zautomatyzowanej kwarantanny dla złośliwych danych OSM
 **Obszar:** `Dane Referencyjne / DataOps`  
 **Priorytet:** `🟠 WYSOKI`  
@@ -3278,5 +3255,28 @@ Obecnie w katalogu `domain/` brakuje podstawowego aktora biznesowego: Turysty (`
 
 **Komentarz Architekta:**
 Klasyczny problem DDD. Odklejenie logiki bazodanowej zmusza do tworzenia "mostów" (Contexts). Brak ich dokładnego opisu zniechęca nowych członków zespołu do przestrzegania czystości warstw.
+
+---
+
+### [AUDYT-092] Pusta odpowiedź z API przy braku obiektów (Silent Success)
+**Obszar:** `API / UX GPX`
+**Priorytet:** `🟢 NISKI`
+**Status:** `✅ ZAKOŃCZONE`
+
+**Diagnoza Audytora:** 
+W scenariuszu `US-C17` wgrywamy ślad GPX, by znaleźć pobliskie szczyty. Jeżeli ślad znajduje się np. w Niemczech, funkcja `distance_lte` PostGIS-a odrzuca wszystkie polskie obiekty i zwraca pustą listę. API odpowiada cichym `200 OK` z pustą listą. Brak odpowiedniej obsługi tego stanu (np. `404 Not Found` dla trasy bez punktów) powoduje, że klient HTMX zarysuje turyscie pusty ekran.
+
+**Wdrożenie:**
+- [x] `AnalyzeGpxTrackUseCase:42-46` — rzuca `UseCaseError("Brak obiektów PTTK w promieniu 200m od wyznaczonej trasy. Upewnij się, że ślad mieści się w polskich górach.")` gdy PostGIS nie znajdzie obiektów.
+- [x] `GpxAnalyzeView` (views.py:765-769) — łapie `ApplicationException` przez `_handle_application_exception`, zwracając RFC 7807 Problem Details z `detail`.
+- [x] Frontend (`dashboard.html:129-136`) — `.catch()` obsługuje błąd: `msg = errData.detail || errData.title` → wyświetla komunikat w UI zamiast pustego ekranu.
+
+**Wnioski:**
+- Turysta widzi konkretny komunikat: "Brak obiektów PTTK..." zamiast pustego ekranu.
+- `200 OK` z pustą listą zastąpiony przez `404` + RFC 7807 (HTTP-idiomatyczne).
+- Pełny "most" UseCase (logika) ↔ API (contract) ↔ Frontend (UX) obsługuje ten stan.
+
+**Komentarz Architekta:**
+Czysta sprawa UX, zapobiegająca konfuzji turysty.
 
 ---

@@ -86,7 +86,8 @@
                 <div id="gpx-peaks-list" class="space-y-2"></div>
             </div>
             <div class="p-4 bg-white border-t flex justify-end gap-3">
-                <button onclick="closeGpxModal()"
+                <button id="btn-cancel-upload"
+                        onclick="cancelGpxUpload()"
                         class="px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded hover:bg-gray-200 font-medium transition text-sm">Anuluj</button>
                 <button data-testid="gpx-submit-btn"
                         onclick="submitGpxAscents()"
@@ -98,6 +99,16 @@
         </div>
     </div>
     <script>
+    // AUDYT-101: Kontroler globalny żądań GPX — pozwala anulować upload
+    let currentGpxRequestController = null;
+
+    function cancelGpxUpload() {
+        if (currentGpxRequestController) {
+            currentGpxRequestController.abort();
+        }
+        closeGpxModal();
+    }
+
     // Obsługa wyboru pliku GPX
     document.getElementById('gpx-file-input').addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -111,10 +122,17 @@
         const formData = new FormData();
         formData.append('file', file);
 
+        // AUDYT-101: AbortController — natychmiastowe przerwanie fetch()
+        if (currentGpxRequestController) {
+            currentGpxRequestController.abort();
+        }
+        currentGpxRequestController = new AbortController();
+
         // KROK 1: Analiza pliku (bez zapisu do bazy)
         fetch('/api/v1/gpx/analyze/', {
             method: 'POST',
-            body: formData
+            body: formData,
+            signal: currentGpxRequestController.signal
         })
         .then(response => {
             if(!response.ok) throw response;
@@ -130,12 +148,20 @@
             btn.innerHTML = originalText;
             btn.disabled = false;
             e.target.value = "";
+            // Ignorujemy błąd jeśli to było nasze własne anulowanie
+            if (err.name === 'AbortError') {
+                console.log('WGrywanie anulowane przez użytkownika.');
+                return;
+            }
             let msg = "Wystąpił problem z połączeniem.";
             if(err.json) {
                 const errData = await err.json();
                 msg = errData.detail || errData.title;
             }
             alert("❌ Błąd analizy: " + msg);
+        })
+        .finally(() => {
+            currentGpxRequestController = null;
         });
     });
 
