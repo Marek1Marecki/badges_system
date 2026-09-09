@@ -15,6 +15,8 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpRequest, JsonResponse
 from loguru import logger
 
+from infrastructure.request_context import set_request_id
+
 
 def _problem_detail(
     request: HttpRequest,
@@ -64,6 +66,9 @@ class RFC7807ErrorMiddleware:
         # Propagacja request_id: preferuj X-Request-ID z zewnątrz, w przeciwnym razie wygeneruj nowy.
         request_id = request.headers.get("X-Request-ID") or f"req_{uuid.uuid4().hex[:8]}"
         request.request_id = request_id
+
+        # AUDYT-117: Zapis do ContextVar dla poprzednictwa asynchronicznego (Celery).
+        set_request_id(request.request_id)
 
         # Loguru kontekst owija całe żądanie
         with logger.contextualize(request_id=request.request_id):

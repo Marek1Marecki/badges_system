@@ -22,6 +22,7 @@ digraph G {
     "domain.services.badge_eligibility_domain_service" [fillcolor="lightblue"];
     "domain.value_objects" [fillcolor="lightblue"];
     "domain.value_objects.ascent" [fillcolor="lightblue"];
+    "domain.value_objects.ascent_status" [fillcolor="lightblue"];
     "domain.value_objects.verification_context" [fillcolor="lightblue"];
     "domain.value_objects.verification_result" [fillcolor="lightblue"];
   }
@@ -114,6 +115,7 @@ digraph G {
     "infrastructure.logging.log_config" [fillcolor="orange"];
     "infrastructure.middleware" [fillcolor="orange"];
     "infrastructure.middleware.error_handling" [fillcolor="orange"];
+    "infrastructure.request_context" [fillcolor="orange"];
   }
 
   subgraph cluster_interface {
@@ -153,6 +155,7 @@ digraph G {
     "apps.badges.migrations.0005_migrate_region_neighbors_m2m" [fillcolor="pink"];
     "apps.badges.migrations.0006_alter_objectregioncache_region_id_fk" [fillcolor="pink"];
     "apps.badges.migrations.0007_drop_legacy_regions" [fillcolor="pink"];
+    "apps.badges.migrations.0008_add_valid_to_badge_version" [fillcolor="pink"];
     "apps.badges.models" [fillcolor="pink"];
     "apps.badges.models.badge" [fillcolor="pink"];
     "apps.badges.models.news" [fillcolor="pink"];
@@ -165,6 +168,8 @@ digraph G {
     "apps.badges.reference_data.constants" [fillcolor="pink"];
     "apps.badges.rules_schema" [fillcolor="pink"];
     "apps.badges.tasks" [fillcolor="pink"];
+    "apps.badges.templatetags" [fillcolor="pink"];
+    "apps.badges.templatetags.badge_extras" [fillcolor="pink"];
     "apps.badges.tests" [fillcolor="pink"];
     "apps.badges.views" [fillcolor="pink"];
     "apps.tourists" [fillcolor="pink"];
@@ -183,6 +188,7 @@ digraph G {
 
   "application.dto.ascent_dto" -> "domain.value_objects.ascent";
   "application.dto.tourist_views_dto" -> "application.dto.verify_badge_dto";
+  "application.dto.verify_badge_dto" -> "domain.enums";
   "application.ports.badge_repository_port" -> "domain.entities.badge_version";
   "application.ports.event_publisher_port" -> "domain.events";
   "application.ports.explore_queries_port" -> "application.dto.tourist_views_dto";
@@ -331,6 +337,7 @@ digraph G {
   "apps.badges.rules_schema" -> "domain.rules.builders";
   "apps.badges.rules_schema" -> "domain.rules.registry";
   "apps.badges.tasks" -> "application.exceptions";
+  "apps.badges.tasks" -> "infrastructure.request_context";
   "apps.tourists.admin" -> "apps.tourists.models";
   "apps.tourists.apps" -> "apps.tourists.signals";
   "apps.tourists.context_processors" -> "apps.tourists.models";
@@ -344,6 +351,7 @@ digraph G {
   "domain.entities.badge_version" -> "domain.enums";
   "domain.entities.badge_version" -> "domain.rules.badge_rules";
   "domain.entities.badge_version" -> "domain.value_objects.ascent";
+  "domain.entities.badge_version" -> "domain.value_objects.ascent_status";
   "domain.entities.badge_version" -> "domain.value_objects.verification_context";
   "domain.entities.badge_version" -> "domain.value_objects.verification_result";
   "domain.entities.tourist_profile" -> "domain.events";
@@ -356,9 +364,12 @@ digraph G {
   "domain.services.badge_eligibility_domain_service" -> "domain.entities.badge_version";
   "domain.services.badge_eligibility_domain_service" -> "domain.value_objects.ascent";
   "domain.services.badge_eligibility_domain_service" -> "domain.value_objects.verification_context";
+  "domain.value_objects.ascent_status" -> "domain.enums";
+  "domain.value_objects.verification_result" -> "domain.value_objects.ascent_status";
   "infrastructure.adapters.celery_event_publisher" -> "application.ports.event_publisher_port";
   "infrastructure.adapters.celery_event_publisher" -> "apps.tourists.models";
   "infrastructure.adapters.celery_event_publisher" -> "domain.events";
+  "infrastructure.adapters.celery_event_publisher" -> "infrastructure.request_context";
   "infrastructure.adapters.django_cache" -> "application.ports.cache_port";
   "infrastructure.adapters.django_uow" -> "application.ports.uow_port";
   "infrastructure.adapters.gpx_parser" -> "application.ports.gpx_port";
@@ -408,4 +419,5 @@ digraph G {
   "infrastructure.factories.badge_rule_factory" -> "domain.rules.builders";
   "infrastructure.factories.badge_rule_factory" -> "domain.rules.registry";
   "infrastructure.logging" -> "infrastructure.logging.log_config";
+  "infrastructure.middleware.error_handling" -> "infrastructure.request_context";
 }

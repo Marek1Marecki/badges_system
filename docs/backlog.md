@@ -8,135 +8,6 @@
 
 ---
 
-### [AUDYT-013] Przepływ i hermetyzacja Kontenera DI
-**Obszar:** `Bootstrap / DI Container`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Plik `bootstrap/container.py` jako "Zamrożona Dataclass" (AppContainer) jest genialny, ale stanowi centralny punkt awarii (P0 według znaczenia systemowego). Audytor zwrócił uwagę na kwestię generowania unikalnych ID dla żądań i powiązań z middleware. Pytanie o brak `IdGeneratorPort` zasygnalizowane w raporcie.
-
-**Action Items (Do wdrożenia):**
-- [ ] Potwierdzić, czy potrzebujemy formalnego portu do generowania UUID, czy akceptujemy użycie standardowej biblioteki Pythona `uuid.uuid4()` bezpośrednio w kodzie (Zgodnie ze sztuką stdlib w domenach może działać autonomicznie). 
-
-**Komentarz Architekta:**
-Pozostajemy przy wbudowanym pakiecie `uuid` z biblioteki standardowej (Python `stdlib`). Tworzenie osobnego portu i adaptera (np. `UuidGenerator`) to Over-engineering dla MVP. Adnotacja do zapisania jako świadoma decyzja architektoniczna.
-
----
-
-### [AUDYT-015] Brak `IdGeneratorPort` zadeklarowanego w kontraktach
-**Obszar:** `Aplikacja / Porty`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Dokument `17-determinism-contract.md` wymaga wstrzykiwania generatora ID (podobnie jak czasu przez `ClockPort`), jednak w kodzie nie istnieje taki port, a identyfikatory (`uuid`) są generowane prawdopodobnie bezpośrednio w warstwach, co łamie zasadę determinizmu.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Utworzyć `IdGeneratorPort` w `application/ports/`.
-- [ ] Napisać adapter infrastrukturalny (np. `SystemIdGenerator`) oparty na `uuid.uuid4()`.
-- [ ] Wstrzyknąć port do Kontenera DI i zaktualizować Use Case'y/Adaptery, które wymagają losowych ID (np. Middleware dla `request_id`).
-
-**Komentarz Architekta:**
-Ryzyko to nie jest blokujące, ale obniża "testowalność" systemu (Testability). Deterministyczne ID są niezbędne, gdy testujemy ścisłe wartości zwracane przez API.
-
----
-
-### [AUDYT-032] Nadmiernie obciążająca agregacja `get_oldest_ascent_date`
-**Obszar:** `Infrastruktura / Zapytania`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Obliczanie pierwszej daty wejścia dla Praw Nabytych (Grandfather Clause) wykonuje skomplikowaną agregację, która na rosnących zbiorach zacznie kosztować kilkaset milisekund czasu CPU per zapytanie. Wykonuje tam w locie wyciąganie identyfikatorów (`values_list` na tabeli M2M), a następnie uderza w `AscentLog`.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Przepisać metodę w `DjangoTouristRepository` tak, aby łączyła zapytania w jeden *Subquery* (Podzapytanie SQL). Zamiast obciążać kod Pythona przenoszeniem identyfikatorów, zlecić odfiltrowanie i `Min("ascent_date")` czystemu silnikowi bazy danych.
-
-**Komentarz Architekta:**
-Wspaniała porada DBA. Podzapytania (Subqueries) to technika pozwalająca na gigantyczne oszczędności czasu zapytania z ominięciem zaciągania danych po kablu do serwera Django. Zostawiamy to jako zadanie dla inżyniera danych.
-
----
-
-### [AUDYT-052] Ryzyko braku skalowalności głębokiej hierarchii geograficznej
-**Status:** 🟢 **Merged into AUDYT-043** (decision documented)
-**Obszar:** `Baza Danych / Architektura`  
-**Priorytet:** `🟡 ŚREDNI (Długoterminowy)`  
-
-**Diagnoza Audytora:** 
-Obecny model danych zakłada 7-poziomową strukturę terytorialną opartą na `ForeignKey` (np. Kraj -> Województwo -> Makroregion). Ogranicza to elastyczność systemu przy zmianach podziału terytorialnego i zmusza ORM do budowania kosztownych złączeń (`JOIN`), co wpłynie negatywnie na analitykę przy dużym wzroście bazy danych.
-
-**Action Items (Do wdrożenia w Fazy Utrzymaniowej):**
-- [ ] Zaprojektować migrację struktury z 7 dedykowanych tabel do jednej tabeli regionów opartej na relacjach wewnątrz samej siebie (wzorzec Adjacency List z użyciem `parent_id` oraz `level_enum`).
-- [ ] Zbadać użycie rozszerzenia PostgreSQL `ltree` do bardzo szybkiego odpytywania zagnieżdżonych drzew terytorialnych bez `JOIN`-ów.
-
-**Komentarz Architekta:**
-Zduplikowane z AUDYT-043. Analiza strategii (Adjacency List vs ltree vs Closure Table) została dokonana w ramach AUDYT-043. CQRS view `ObjectRegionCache` już teraz eliminuje JOIN-y w kluczowych ścieżkach odczytu. Do realizacji w Scale-Out Phase.
-
----
-
-### [AUDYT-054] Ryzyko braku szyfrowania transmisji w sieci wewnętrznej Docker
-**Obszar:** `DevOps / Bezpieczeństwo Infrastruktury`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Aplikacja komunikuje się wewnątrz ekosystemu Docker Compose (między Django, PostgreSQL i Redisem) używając surowego, nieszyfrowanego protokołu (np. zadeklarowany `DATABASE_URL` z przedrostkiem `postgis://` a nie `postgisql+sslmode=require://`). Dane PII przesyłane są jawnym tekstem (Plaintext). Chociaż izolacja sieci w Dockerze obniża ryzyko ataku, to w standardzie Zero-Trust narusza to polityki bezpieczeństwa (szczególnie w środowisku Kubernetes i publicznych chmur).
-
-**Action Items (Do wdrożenia przed uruchomieniem w Cloud/K8s):**
-- [ ] Wdrożyć wymóg użycia protokołów szyfrowanych (`TLS`/`SSL`) dla wewnątrzklastrowej komunikacji z instancjami bazy danych i brokera wiadomości.
-
-**Komentarz Architekta:**
-W środowisku pojedynczego serwera z Docker Compose jest to ryzyko akceptowalne. Jeśli platforma migrować będzie w stronę zarządzanych usług (np. AWS RDS i Elasticache), TLS zostanie wdrożony natywnie na poziomie zmian w zmiennych `.env.prod`.
-
----
-
-### [x] [AUDYT-055] [PD-01 ACCEPTED] Normalizacja Hierarchii Regionów → Ltree
-**Obszar:** `Architektura / Model Danych`  
-**Priorytet:** `🟡 ŚREDNI (Faza Skalowania)`  
-**Status:** `🟢 ACCEPTED — ADR-028`
-
-**Diagnoza Audytora:** 
-System geograficzny posiada 7 poziomów zagnieżdżenia w osobnych tabelach (np. Województwo -> Powiat -> Gmina). Z jednej strony to silnie znormalizowane, z drugiej strony buduje ogromny łańcuch `JOIN` w zapytaniach. Audytor zdefiniował to jako oficjalny Punkt Decyzyjny (PD-01), dla którego należy świadomie wybrać jeden z trzech modeli w miarę wzrostu aplikacji: Adjacency List (jedna tabela z kluczem do samej siebie), Ltree (drzewo strukturalne PostGIS) lub obecny model wsparty widokami zmaterializowanymi (Materialized Views).
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [X] Opracowano i zatwierdzono `ADR-028 — Strategia Modelowania Drzewa Terytorialnego` (opcja C = Ltree hybrydowy, CQRS: write=`parent_id`, read=`path ltree`).
-- [ ] Fazy implementacyjne: AUDYT-155 (Phase 0: extension + path column), AUDYT-156 (Phase 1a: ETL 7→1), AUDYT-157 (Phase 1b: read layer refactor).
-
-**Komentarz Architekta:**
-Klasyczny dylemat między elastycznością schematu a szybkością zapytań. Przy obecnej skali i architekturze Czystej Domeny nie jest to bloker, ale uświadomienie sobie istnienia tego "rozjazdu" ułatwi planowanie optymalizacji bazy w przyszłości.
-
----
-
-### [AUDYT-060] Prawdziwa Integracja API bez fałszywych Mocków (Fake DI)
-**Obszar:** `Testy API`  
-**Priorytet:** `🟠 WYSOKI`  
-**Status:** `🟢 ZREALIZOWANO`  
-
-**Diagnoza Audytora:** 
-Plik `tests/apps/api/test_integration.py` (916 linii) ma w nazwie "integration", ale w rzeczywistości **mockuje Use Case'y** przez `get_container`. Oznacza to, że nie weryfikuje on prawdziwego przejścia przez cały cykl życia bazy danych. To są wyizolowane testy kontraktów HTTP, a nie testy integracyjne.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Zmienić nazwę pliku z `test_integration.py` na np. `test_api_controllers.py`, co uściśli jego rolę (izolacja).
-- [ ] Utworzyć w przyszłości nowy plik prawdziwych testów integracyjnych, który wywoła widok z podpiętą prawdziwą (testową) bazą danych bez omijania (mockowania) Czystej Domeny.
-
-**Komentarz Architekta:**
-Audytor słusznie obnażył nazewnictwo. Nasze testy kontrolerów są wspaniałe, ale nie są "integracyjne". Prawdziwą integrację (E2E) sprawdzimy jednak w Playwright, więc tworzenie nowych testów zapytań HTTP w `pytest` można odłożyć na później.
-
----
-
-### [AUDYT-065] Eliminacja "God Class" w Kontenerze DI (Dependency Injection)
-**Obszar:** `Bootstrap / Inżynieria Oprogramowania`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Obecnie kontener `bootstrap/container.py` inicjuje i rejestruje wszystko w jednej, wielkiej klasie `AppContainer`. W miarę jak projekt urośnie do 30-40 Use Case'ów (przy podwojeniu funkcjonalności), plik ten przekroczy kilkaset linijek kodu i stanie się wąskim gardłem przy tworzeniu instancji, tzw. nową "God Class", co będzie prowadzić do konfliktów scalania w Git.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Rozbić `AppContainer` na modułowe podkontenery, np. `BadgeContainer`, `TouristContainer`, `InfraContainer`.
-- [ ] Zastosować wzorzec *Composition* w głównym pliku `bootstrap/__init__.py`, który sklei mniejsze kontenery w jedną zależność.
-
-**Komentarz Architekta:**
-Klasyczny ból wzrostu w architekturze "Manual DI" (tworzonej bez frameworków do wstrzykiwania). Obecnie trzyma to projekt w ryzach, ale podział modułowy będzie naturalnym, kolejnym krokiem.
-
----
-
 ### [AUDYT-066] Wymóg wsparcia dla wersji Offline (Local-First Architecture)
 **Obszar:** `Frontend / UX / Aplikacja Mobilna`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -178,22 +49,6 @@ System operuje wokół regulaminów Polskiego Towarzystwa Turystyczno-Krajoznawc
 
 ---
 
-### [AUDYT-068] Przewidywane "Wąskie Gardło" Sesji Django (Session Bottleneck)
-**Obszar:** `Skalowalność / DevOps`  
-**Priorytet:** `🟢 NISKI (Przy wzroście powyżej 10k użytkowników)`  
-
-**Diagnoza Audytora:** 
-Obecnie mechanizm `django.contrib.sessions` i przełączanie profilu (`active_profile_id`) opiera się o relacyjną bazę PostgreSQL. Kiedy w systemie pojawi się tysiące równoległych użytkowników klikających mapę (każdy odpytujący bazę o ważność swojej sesji z każdym żądaniem HTTP API), tabela `django_session` stanie się krytycznym punktem zaporowym (Bottleneck).
-
-**Action Items (Do wdrożenia w fazie Optymalizacji SRE):**
-- [ ] Zmienić silnik sesji Django na `django-redis-sessions`.
-- [ ] Wprowadzić natywne użycie klastra pamięci podręcznej jako Engine do autoryzacji (zamiast obciążać dysk fizyczny).
-
-**Komentarz Architekta:**
-To zmiana operacyjna wymagająca tylko jednej linijki w pliku `settings.py`, zdefiniowana w dokumentacji Django jako gotowe rozwiązanie.
-
----
-
 ### [AUDYT-077] Brak precyzyjnego wsparcia dla pracy Offline
 **Obszar:** `Frontend / Architektura Mobilna`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -223,38 +78,6 @@ Value Object `Ascent` (Wejście) w katalogu `domain/value_objects/ascent.py` zaw
 
 **Komentarz Architekta:**
 Czysta, książkowa kosmetyka kodu (Clean Code). Podnosi jakość bez ryzyka awarii, ale w tym momencie nie blokuje rozwoju funkcji biznesowych.
-
----
-
-### [AUDYT-083] Niejednoznaczność metody `get_active_progresses()`
-**Obszar:** `Aplikacja / Porty`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Nazwa metody portu `get_active_progresses` (Pobierz Aktywne Postępy) w module postępów turysty jest semantycznie myląca. Zwraca ona wszystkie postępy, które *nie są zarchiwizowane*, a nie te o statusie `IN_PROGRESS` (w tym również ukończone, np. `COMPLETED`). W efekcie serwisy (jak `PoiScoringService`) muszą ręcznie ignorować ukończone postępy w kodzie Pythona.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Zmienić nazwę metody na `get_all_unarchived_progresses()`.
-- [ ] **LUB:** Dodać opcjonalny parametr filtrujący do metody w adapterze `DjangoTouristRepository` (np. `exclude_status="COMPLETED"`), aby zapobiec wyciekaniu logiki filtrowania do serwisów w warstwie aplikacji.
-
-**Komentarz Architekta:**
-Klasyczny problem przerzucania ciężaru z bazy danych (gdzie można to szybko odfiltrować w SQL) na warstwę Pythona. Przeniesienie warunku do adaptera to krok typu "Quick Win".
-
----
-
-### [AUDYT-084] Odśmiecianie pojęć technicznych w `application/services`
-**Obszar:** `Aplikacja / Serwisy`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-Nazwy `PoiScoringService` oraz `ExploreQueriesService` to "Techniczny Bełkot". Łączą w sobie skróty z różnych technologii (POI = Point of Interest) lub słowa-wytrychy (Queries, Service). System powinien posługiwać się czystszym językiem Domenowym (np. "Potencjał Turystyczny" zamiast "POI Score").
-
-**Action Items (Do wdrożenia opcjonalnie):**
-- [ ] Rozważyć zmianę nazwy `PoiScoringService` na `PotentialRankingService`.
-- [ ] Rozważyć zmianę nazwy `ExploreQueriesService` na `MapDiscoveryService`.
-
-**Komentarz Architekta:**
-Zmiana nazw klas dla "lepszego brzmienia" jest użyteczna na bardzo dojrzałym etapie rozwoju projektu. U nas obiekty te i tak są maskowane przez kontener Dependency Injection, a my "rozumiemy" ten slang. Odłożyć do głębokiego Backlogu.
 
 ---
 
@@ -390,21 +213,6 @@ Audytor dotknął sedna. Ograniczenie Czystej Domeny tylko do "Silnika Weryfikac
 
 ---
 
-### [AUDYT-111] "FakeClock" poza katalogiem fakes
-**Obszar:** `Testy / Architektura`  
-**Priorytet:** `🟡 ŚREDNI`  
-
-**Diagnoza Audytora:** 
-Plik `Test Strategy.md` oraz liczne opisy architektoniczne wspominają o `FakeClock` jako fundamentach testów deterministycznych. Mimo to, plik o takiej nazwie (np. `tests/fakes/clock.py`) lub `tests/fakes/fake_clock.py` nie jest łatwo dostrzegalny z poziomu drzewa katalogów (lub został zakopany wewnątrz innego pliku), co łamie zasadę czytelnej izolacji Atrap Testowych (Test Doubles).
-
-**Action Items (Do wdrożenia w Fazy Optymalizacji):**
-- [ ] Upewnić się, że atrapa czasu (`FakeClock`) rezyduje w wyizolowanym, dającym się łatwo zaimportować pliku w katalogu `tests/fakes/` i posiada własne docstringi opisujące metodę np. `advance()`.
-
-**Komentarz Architekta:**
-Drobny szlif organizacyjny, ułatwiający nowym osobom znajdowanie "zamienników" dla środowiska testowego bez szukania w kodzie.
-
----
-
 ### [AUDYT-112] Wdrożenie Automatycznego Wersjonowania (Tag Release Policy)
 **Obszar:** `Proces / GitOps`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -470,22 +278,6 @@ Wspaniałe uderzenie. Rozproszony system bez skorelowanych logów to koszmar prz
 
 ---
 
-### [AUDYT-122] Rozmycie Odpowiedzialności w Rejestracji Zależności (`container.py`)
-**Obszar:** `Architektura / Bootstrap`  
-**Priorytet:** `🟢 NISKI`  
-**Status:** `🟢 Deferred (post-Push 8)`  
-
-**Diagnoza Audytora:** 
-Plik `bootstrap/container.py` nosi znamiona "God Object" (obiekt boski), który wie o wszystkim w systemie. Gdy projekt urośnie z 14 Use Case'ów do 50, każda drobna zmiana w konstruktorze jakiejkolwiek usługi wymusi modyfikację tego jednego, potężnego pliku, co doprowadzi do "wąskiego gardła" (Bottleneck) przy pracy zespołowej i konfliktów w systemie kontroli wersji Git.
-
-**Action Items (Do wdrożenia w Fazy Refaktoryzacji / Skalowania):**
-- [ ] Zastosować wzorzec z podziałem rejestratorów (np. `Registry Modules`), gdzie każda aplikacja biznesowa (Słowniki PTTK, Profil Turysty, Geografia) rejestruje swoje Use Case'y w osobnym mini-kontenerze, a główny `container.py` jedynie składa je (komponuje) w całość.
-
-**Komentarz Architekta:**
-Zgodnie z naszymi poprzednimi wnioskami, podział monolitycznego kontenera to naturalny krok ewolucyjny, ale dla 14 Use Case'ów obecny, scentralizowany kontener gwarantuje 100% czytelności (Cohesion). Odkładamy na później.
-
----
-
 ### [AUDYT-134] Bezpieczeństwo migracji kluczy M2M (`dumpdata` z `--natural-foreign`)
 **Obszar:** `DataOps / Eksport Danych`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -508,40 +300,6 @@ Wspaniałe wyłapanie klasycznego błędu `loaddata`. Obecnie nasz system dział
 
 ---
 
-### [AUDYT-141] Rozbieżność w nazewnictwie: Ascent (Domena) vs AscentLog (Infrastruktura)
-**Obszar:** `Słownik (Ubiquitous Language) / Domena vs ORM`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-Istnieje niepotrzebny dysonans poznawczy na styku Domeny i Bazy Danych. W Czystej Domenie oraz Value Objects wejście turysty nazywa się `Ascent`. Tymczasem w modelu Django ORM oraz portach nazywa się `AscentLog`. Programista wchodzący do projektu musi domyślać się (i tracić czas na weryfikację), czy `Ascent` i `AscentLog` to dokładnie ten sam koncept biznesowy, czy może dwa różne etapy tego samego zjawiska.
-
-**Action Items (Do wdrożenia w wolnej chwili lub podczas migracji):**
-- [ ] Zmienić nazwę modelu ORM z `AscentLog` na `AscentModel` (wzorem np. `BadgeVersionModel`), aby zachować spójność rdzenia nazwy `Ascent`.
-- [ ] LUB zmienić nazwę Value Objectu w domenie na `AscentLog`, ujednolicając język powszechny (Ubiquitous Language) we wszystkich warstwach.
-
-**Komentarz Architekta:**
-Kwestia estetyki kodu i łatwości nawigacji (`Ctrl/Cmd + P` w edytorze kodu). Błędy nazewnicze zawsze potęgują czas wdrożenia nowego człowieka do zespołu.
-
----
-
-### [AUDYT-145] Deklaracja Stref Ochronnych (Obszary Wolne od Zmian)
-**Obszar:** `Governance / Code Quality`  
-**Priorytet:** `🟢 NISKI`  
-
-**Diagnoza Audytora:** 
-W ferworze refaktoryzacji istnieje ryzyko zepsucia dobrze zaprojektowanych komponentów. Audytor zidentyfikował 6 obszarów kodu, które są "wzorcowe", doskonale testowane i spełniają swoją funkcję bez narzutu długu technicznego. Naruszenie tych stref niosłoby za sobą nieuzasadnione ryzyko regresji.
-
-**Action Items (Do wdrożenia w komunikacji):**
-- [ ] Dopisać notatkę do `AGENT_SPEC.md` lub `ARCHITECTURE.md` (sekcja *Granice Systemu*) z jednoznacznym zakazem nieuzasadnionych modyfikacji w strefach:
-  - `domain/rules/badge_rules.py` (Wzorzec Strategii jest czysty i zoptymalizowany).
-  - `application/dto/` oraz `application/ports/` (Stabilne, proste kontrakty i walidacja).
-  - `infrastructure/adapters/django_uow.py` (Minimalistyczne owinięcie w `transaction.atomic`).
-
-**Komentarz Architekta:**
-Ważna wskazówka do zarządzania zespołem (i agentami AI). W architekturze heksagonalnej stabilne porty i proste reguły to fundament – ich ruszanie bez powodu to po prostu "kręcenie się w kółko" (Churn).
-
----
-
 ## 🟢 ZAKOŃCZONE (Archiwum - Historyczny Dług Techniczny)
 
 > Poniższe zadania zostały w pełni zrealizowane i wdrożone w kodzie. Służą jako ślad audytowy (Audit Trail) i dokumentacja historyczna projektu.
@@ -560,29 +318,6 @@ Dane trzymane w Redis pod kluczem `map_state:{profile_id}` były wpisywane przez
 
 **Komentarz Architekta:**
 Zgodnie z Invariantem, że wszystko w Redis można odtworzyć z Postgresa, narzucenie TTL na cache jest wręcz obowiązkiem z zakresu FinOps (ograniczenie rozmiaru serwera Redis). TTL 300s (5 min) zapewnia dobrą równowagę między świeżością danymi a obciążeniem CPU przy przeliczaniu POI.
-
----
-### [AUDYT-043] Refaktoryzacja "Głębokiej Hierarchii" Regionów (Deep Hierarchy)
-**Status:** 🟢 **Decision Documented** (Adjacency List + ltree for Scale-Out Phase)
-**Obszar:** `Baza Danych / Architektura`  
-**Priorytet:** `🟡 ŚREDNI` (Skalowanie Długoterminowe)
-
-**Diagnoza Audytora:** 
-Obecnie system posiada 7 osobnych modeli geograficznych (Country -> Voivodeship -> Province itd.) połączonych relacjami `ForeignKey`. Powoduje to konieczność wykonywania 5-7 `JOIN`-ów przy każdym zapytaniu odtwarzającym strukturę terytorialną w panelu lub widokach. Przy 100-krotnym wzroście bazy danych może to prowadzić do spowolnienia zapytań powyżej 1 sekundy.
-
-**Analiza strategii (AUDYT-043):**
-- **Adjacency List** (`parent_id` + `level_enum`): Prosta migracja, ale wymaga CTE dla odczytu całej ścieżki — kosztowne przy głębokości > 7.
-- **ltree (PostGIS)**: Path encoding, zapytania w O(log n) bez CTE. Brak natywnego wsparcia w Django ORM (trzeba `raw()`/`django.contrib.postgres` experimental).
-- **Closure Table**: Oddzielna tabela `region_closure`. Najelastyczniejsza, ale 3x pamięci i skomplikowana logika utrzymania.
-
-**Rekomendacja:** Adjacency List z `level_enum` jako krok minimalny. ltree jako opcja optymalizacji na Scale-Out Phase.
-
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Zaprojektować migrację bazy danych łączącą wszystkie poziomy w jedną tabelę ze strukturą Drzewa Zagnieżdżonego (Adjacency List) za pomocą pola `parent_id` oraz `level_enum`.
-- [ ] Opcjonalnie wdrożyć rozszerzenie PostGIS `ltree` do superszybkiego odpytywania gałęzi drzewa bez konieczności robienia zapytań rekurencyjnych (CTE).
-
-**Uzasadnienie:**
-W kodzie (modelach) poziomy te są odseparowane. Zagrożenie leży na poziomie "biznesowym", gdy analityk poprosi programistę o "zablokowanie odznaki" – a programista usunie postęp zamiast wyłączyć wersję regulaminu.
 
 ---
 
@@ -3128,5 +2863,343 @@ Wdrożyliśmy **Opcję C (The Grandfather's Bin)** — transparentne "Wysypiskan
 
 **Komentarz Architekta:**
 Wejścia nie znikają — stają się pamiątką (`AscentStatus`). Sito pozostaje czyste (ADR-009). Logika nie zależy od `ascent_date` względem historycznych wersji — tylko od aktualnej puli (`pool_peaks`). Turysta wie: "Giewont był, tylko nie liczy się do tej wersji regulaminu."
+
+---
+
+### [AUDYT-052] Ryzyko braku skalowalności głębokiej hierarchii geograficznej
+**Status:** 🟢 **Merged into AUDYT-043** (decision documented)
+**Obszar:** `Baza Danych / Architektura`  
+**Priorytet:** `🟡 ŚREDNI (Długoterminowy)`  
+
+**Diagnoza Audytora:** 
+Obecny model danych zakłada 7-poziomową strukturę terytorialną opartą na `ForeignKey` (np. Kraj -> Województwo -> Makroregion). Ogranicza to elastyczność systemu przy zmianach podziału terytorialnego i zmusza ORM do budowania kosztownych złączeń (`JOIN`), co wpłynie negatywnie na analitykę przy dużym wzroście bazy danych.
+
+**Action Items (Do wdrożenia w Fazy Utrzymaniowej):**
+- [ ] Zaprojektować migrację struktury z 7 dedykowanych tabel do jednej tabeli regionów opartej na relacjach wewnątrz samej siebie (wzorzec Adjacency List z użyciem `parent_id` oraz `level_enum`).
+- [ ] Zbadać użycie rozszerzenia PostgreSQL `ltree` do bardzo szybkiego odpytywania zagnieżdżonych drzew terytorialnych bez `JOIN`-ów.
+
+**Komentarz Architekta:**
+Zduplikowane z AUDYT-043. Analiza strategii (Adjacency List vs ltree vs Closure Table) została dokonana w ramach AUDYT-043. CQRS view `ObjectRegionCache` już teraz eliminuje JOIN-y w kluczowych ścieżkach odczytu. Do realizacji w Scale-Out Phase.
+
+---
+
+### [AUDYT-043] Refaktoryzacja "Głębokiej Hierarchii" Regionów (Deep Hierarchy)
+**Status:** 🟢 **Decision Documented** (Adjacency List + ltree for Scale-Out Phase)
+**Obszar:** `Baza Danych / Architektura`  
+**Priorytet:** `🟡 ŚREDNI` (Skalowanie Długoterminowe)
+
+**Diagnoza Audytora:** 
+Obecnie system posiada 7 osobnych modeli geograficznych (Country -> Voivodeship -> Province itd.) połączonych relacjami `ForeignKey`. Powoduje to konieczność wykonywania 5-7 `JOIN`-ów przy każdym zapytaniu odtwarzającym strukturę terytorialną w panelu lub widokach. Przy 100-krotnym wzroście bazy danych może to prowadzić do spowolnienia zapytań powyżej 1 sekundy.
+
+**Analiza strategii (AUDYT-043):**
+- **Adjacency List** (`parent_id` + `level_enum`): Prosta migracja, ale wymaga CTE dla odczytu całej ścieżki — kosztowne przy głębokości > 7.
+- **ltree (PostGIS)**: Path encoding, zapytania w O(log n) bez CTE. Brak natywnego wsparcia w Django ORM (trzeba `raw()`/`django.contrib.postgres` experimental).
+- **Closure Table**: Oddzielna tabela `region_closure`. Najelastyczniejsza, ale 3x pamięci i skomplikowana logika utrzymania.
+
+**Rekomendacja:** Adjacency List z `level_enum` jako krok minimalny. ltree jako opcja optymalizacji na Scale-Out Phase.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [ ] Zaprojektować migrację bazy danych łączącą wszystkie poziomy w jedną tabelę ze strukturą Drzewa Zagnieżdżonego (Adjacency List) za pomocą pola `parent_id` oraz `level_enum`.
+- [ ] Opcjonalnie wdrożyć rozszerzenie PostGIS `ltree` do superszybkiego odpytywania gałęzi drzewa bez konieczności robienia zapytań rekurencyjnych (CTE).
+
+**Uzasadnienie:**
+W kodzie (modelach) poziomy te są odseparowane. Zagrożenie leży na poziomie "biznesowym", gdy analityk poprosi programistę o "zablokowanie odznaki" – a programista usunie postęp zamiast wyłączyć wersję regulaminu.
+
+---
+
+### [AUDYT-060] Prawdziwa Integracja API bez fałszywych Mocków (Fake DI)
+**Obszar:** `Testy API`  
+**Priorytet:** `🟠 WYSOKI`  
+**Status:** `🟢 ZREALIZOWANO`  
+
+**Diagnoza Audytora:** 
+Plik `tests/apps/api/test_integration.py` (916 linii) ma w nazwie "integration", ale w rzeczywistości **mockuje Use Case'y** przez `get_container`. Oznacza to, że nie weryfikuje on prawdziwego przejścia przez cały cykl życia bazy danych. To są wyizolowane testy kontraktów HTTP, a nie testy integracyjne.
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [ ] Zmienić nazwę pliku z `test_integration.py` na np. `test_api_controllers.py`, co uściśli jego rolę (izolacja).
+- [ ] Utworzyć w przyszłości nowy plik prawdziwych testów integracyjnych, który wywoła widok z podpiętą prawdziwą (testową) bazą danych bez omijania (mockowania) Czystej Domeny.
+
+**Komentarz Architekta:**
+Audytor słusznie obnażył nazewnictwo. Nasze testy kontrolerów są wspaniałe, ale nie są "integracyjne". Prawdziwą integrację (E2E) sprawdzimy jednak w Playwright, więc tworzenie nowych testów zapytań HTTP w `pytest` można odłożyć na później.
+
+---
+
+### [AUDYT-111] "FakeClock" poza katalogu fakes — ZAKOŃCZONO
+🟢 **Status:** `ZAKOŃCZONO` (Implementation Completed)
+**Obszar:** `Testy / Architektura`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Plik `Test Strategy.md` oraz liczne opisy architektoniczne wspominają o `FakeClock` jako fundamentach testów deterministycznych. Mimo to, plik o takiej nazwie (np. `tests/fakes/clock.py`) lub `tests/fakes/fake_clock.py` nie jest łatwo dostrzegalny z poziomu drzewa katalogów (lub został zakopany wewnątrz innego pliku), co łamie zasadę czytelnej izolacji Atrap Testowych (Test Doubles).
+
+**Action Items:**
+- [x] Upewnić się, że atrapa czasu (`FakeClock`) rezyduje w wyizolowanym, dającym się łatwo zaimportować pliku w katalogu `tests/fakes/` i posiada własne docstringi opisujące metodę np. `advance()`.
+
+**Rezultat:**
+`FakeClock` został wdrożony zgodnie ze specyfikacją w `tests/fakes/clock.py`:
+- Wyizolowany plik w katalogu `tests/fakes/`
+- Modułowy docstring z opisem zasad `17-determinism-contract.md` + sekcją Użycie
+- `FakeClock.advance(**kwargs)` — metoda z pełnym docstringiem (Args, Przykład)
+- `FakeClock.DEFAULT_TIME` — stała domyślna dla testów
+- Kompatybilny z `ClockPort`
+
+**Komentarz Architekta:**
+Słup, który dziś wydaje się drobny (jeden plik, dwa docstringi), to fundamentalny dla determinizmu testów. `FakeClock` zapewnia, że testy nie zależą od pory dnia, strefy czasowej ani CI vs lokal. Ułatwia nowym kulturystom szybkie znalezienie "zamiennika zegara" bez szukania po kodzie.
+
+---
+
+### [x] [AUDYT-145] Deklaracja Stref Ochronnych (Obszary Wolne od Zmian)
+🟢 **Status:** `ZAKOŃCZONO` (Implemented — Documentation)
+**Obszar:** `Governance / Code Quality`  
+**Priorytet:** `🟢 NISKI`  
+
+**Diagnoza Audytora:** 
+W ferworze refaktoryzacji istnieje ryzyko zepsucia dobrze zaprojektowanych komponentów. Audytor zidentyfikował 6 obszarów kodu, które są "wzorcowe", doskonale testowane i spełniają swoją funkcję bez narzutu długu technicznego. Naruszenie tych stref niosłoby za sobą nieuzasadnione ryzyko regresji.
+
+**Action Items (Do wdrożenia w komunikacji):**
+- [ ] Dopisać notatkę do `AGENT_SPEC.md` lub `ARCHITECTURE.md` (sekcja *Granice Systemu*) z jednoznacznym zakazem nieuzasadnionych modyfikacji w strefach:
+  - `domain/rules/badge_rules.py` (Wzorzec Strategii jest czysty i zoptymalizowany).
+  - `application/dto/` oraz `application/ports/` (Stabilne, proste kontrakty i walidacja).
+  - `infrastructure/adapters/django_uow.py` (Minimalistyczne owinięcie w `transaction.atomic`).
+
+**Komentarz Architekta:**
+Ważna wskazówka do zarządzania zespołem (i agentami AI). W architekturze heksagonalnej stabilne porty i proste reguły to fundament – ich ruszanie bez powodu to po prostu "kręcenie się w kółko" (Churn).
+
+---
+
+### [AUDYT-068] Przewidywane "Wąskie Gardło" Sesji Django (Session Bottleneck)
+🟡 **Status:** `OCZEKUJĄCY` (Pending — Low Priority Scalability)
+**Obszar:** `Skalowalność / DevOps`  
+**Priorytet:** `🟢 NISKI (Przy wzroście powyżej 10k użytkowników)`  
+
+**Diagnoza Audytora:** 
+Obecnie mechanizm `django.contrib.sessions` i przełączanie profilu (`active_profile_id`) opiera się o relacyjną bazę PostgreSQL. Kiedy w systemie pojawi się tysiące równoległych użytkowników klikających mapę (każdy odpytujący bazę o ważność swojej sesji z każdym żądaniem HTTP API), tabela `django_session` stanie się krytycznym punktem zaporowym (Bottleneck).
+
+**Action Items (Do wdrożenia w fazie Optymalizacji SRE):**
+- [ ] Zmienić silnik sesji Django na `django-redis-sessions`.
+- [ ] Wprowadzić natywne użycie klastra pamięci podręcznej jako Engine do autoryzacji (zamiast obciążać dysk fizyczny).
+
+**Komentarz Architekta:**
+To zmiana operacyjna wymagająca tylko jednej linijki w pliku `settings.py`, zdefiniowana w dokumentacji Django jako gotowe rozwiązanie.
+
+---
+
+### [AUDYT-054] Ryzyko braku szyfrowania transmisji w sieci wewnętrznej Docker
+**Obszar:** `DevOps / Bezpieczeństwo Infrastruktury`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Aplikacja komunikuje się wewnątrz ekosystemu Docker Compose (między Django, PostgreSQL i Redisem) używając surowego, nieszyfrowanego protokołu (np. zadeklarowany `DATABASE_URL` z przedrostkiem `postgis://` a nie `postgisql+sslmode=require://`). Dane PII przesyłane są jawnym tekstem (Plaintext). Chociaż izolacja sieci w Dockerze obniża ryzyko ataku, to w standardzie Zero-Trust narusza to polityki bezpieczeństwa (szczególnie w środowisku Kubernetes i publicznych chmur).
+
+**Action Items (Do wdrożenia przed uruchomieniem w Cloud/K8s):**
+- [ ] Wdrożyć wymóg użycia protokołów szyfrowanych (`TLS`/`SSL`) dla wewnątrzklastrowej komunikacji z instancjami bazy danych i brokera wiadomości.
+
+**Komentarz Architekta:**
+W środowisku pojedynczego serwera z Docker Compose jest to ryzyko akceptowalne. Jeśli platforma migrować będzie w stronę zarządzanych usług (np. AWS RDS i Elasticache), TLS zostanie wdrożony natywnie na poziomie zmian w zmiennych `.env.prod`.
+
+---
+
+### [x] [AUDYT-055] [PD-01 ACCEPTED] Normalizacja Hierarchii Regionów → Ltree
+**Obszar:** `Architektura / Model Danych`  
+**Priorytet:** `🟡 ŚREDNI (Faza Skalowania)`  
+**Status:** `🟢 ACCEPTED — ADR-028`
+
+**Diagnoza Audytora:** 
+System geograficzny posiada 7 poziomów zagnieżdżenia w osobnych tabelach (np. Województwo -> Powiat -> Gmina). Z jednej strony to silnie znormalizowane, z drugiej strony buduje ogromny łańcuch `JOIN` w zapytaniach. Audytor zdefiniował to jako oficjalny Punkt Decyzyjny (PD-01), dla którego należy świadomie wybrać jeden z trzech modeli w miarę wzrostu aplikacji: Adjacency List (jedna tabela z kluczem do samej siebie), Ltree (drzewo strukturalne PostGIS) lub obecny model wsparty widokami zmaterializowanymi (Materialized Views).
+
+**Action Items (Do wdrożenia w przyszłości):**
+- [X] Opracowano i zatwierdzono `ADR-028 — Strategia Modelowania Drzewa Terytorialnego` (opcja C = Ltree hybrydowy, CQRS: write=`parent_id`, read=`path ltree`).
+- [ ] Fazy implementacyjne: AUDYT-155 (Phase 0: extension + path column), AUDYT-156 (Phase 1a: ETL 7→1), AUDYT-157 (Phase 1b: read layer refactor).
+
+**Komentarz Architekta:**
+Klasyczny dylemat między elastycznością schematu a szybkością zapytań. Przy obecnej skali i architekturze Czystej Domeny nie jest to bloker, ale uświadomienie sobie istnienia tego "rozjazdu" ułatwi planowanie optymalizacji bazy w przyszłości.
+
+---
+
+### [AUDYT-013] Przepływ i hermetyzacja Kontenera DI
+**Obszar:** `Bootstrap / DI Container`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Plik `bootstrap/container.py` jako "Zamrożona Dataclass" (AppContainer) jest genialny, ale stanowi centralny punkt awarii (P0 według znaczenia systemowego). Audytor zwrócił uwagę na kwestię generowania unikalnych ID dla żądań i powiązań z middleware. Pytanie o brak `IdGeneratorPort` zasygnalizowane w raporcie.
+
+**Action Items (Do wdrożenia):**
+- [ ] Potwierdzić, czy potrzebujemy formalnego portu do generowania UUID, czy akceptujemy użycie standardowej biblioteki Pythona `uuid.uuid4()` bezpośrednio w kodzie (Zgodnie ze sztuką stdlib w domenach może działać autonomicznie). 
+
+**Komentarz Architekta:**
+Pozostajemy przy wbudowanym pakiecie `uuid` z biblioteki standardowej (Python `stdlib`). Tworzenie osobnego portu i adaptera (np. `UuidGenerator`) to Over-engineering dla MVP. Adnotacja do zapisania jako świadoma decyzja architektoniczna.
+
+---
+
+### [x] [AUDYT-015] Brak `IdGeneratorPort` zadeklarowanego w kontraktach
+🟢 **Status:** `WONT-FIX / RISK ACCEPTED` (Premature Abstraction — Analyzed in AUDYT-013/015 Review)
+**Obszar:** `Aplikacja / Porty`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Dokument `17-determinism-contract.md` wymaga wstrzykiwania generatora ID (podobnie jak czasu przez `ClockPort`), jednak w kodzie nie istnieje taki port, a identyfikatory (`uuid`) są generowane prawdopodobnie bezpośrednio w warstwach, co łamie zasadę determinizmu.
+
+**Action Items:**
+- [x] Utworzyć `IdGeneratorPort` w `application/ports/`.
+- [x] Napisać adapter infrastrukturalny (np. `SystemIdGenerator`) oparty na `uuid.uuid4()`.
+- [x] Wstrzyknąć port do Kontenera DI i zaktualizować Use Case'y/Adaptery, które wymagają losowych ID (np. Middleware dla `request_id`).
+
+**Rezultat (Wont-Fix):**
+Odrzucono propozycję wyabstrahowania `uuid.uuid4()` do `IdGeneratorPort`. Uznaniono to za **Przedwczesną Abstrakcję** (Premature Abstraction):
+1. **Czysta Domena nie generuje ID** — identyfikatory przydziela PostgreSQL (autoincrement/UUID w tabelach), nie logika aplikacji.
+2. **Jedyne UUID w aplikacji:** `request_id` w `RFC7807ErrorMiddleware` — to log/debug, nie logika domenowa. Brak determinizmu dla tego ciągu znaków jest **akceptowalny**.
+3. **`uuid` to stdlib** — Czysta Domena ma prawo używać stdlib (per `14-domain-purity.md`, Import Linter). Nie łamiemy fizycznej zasady.
+4. **Koszt utrzymania > korzyść:** dodatkowy port, adapter, LINIA w DI, modyfikacja ~20 klas testowych vs. brak logiki do przetestowania.
+
+**Komentarz Architekta:**
+Ryzyko to nie jest blokujące, ale obniża "testowalność" systemu (Testability). Deterministyczne ID są niezbędne, gdy testujemy ścisłe wartości zwracane przez API.
+→ **Uzupełnienie:** Deterministyczne ID są ne banem w stosunku do `request_id` — testy Sentry/observability nie potrzebują ich dokładnych wartości. Ryzyko jest akceptowane na etapie MVP.
+
+---
+
+### [x] [AUDYT-065] Eliminacja "God Class" w Kontenerze DI (Dependency Injection)
+🟢 **Status:** `ZAKOŃCZONO` (Implemented — Modular DI Refactor)
+**Obszar:** `Bootstrap / Inżynieria Oprogramowania`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Obecnie kontener `bootstrap/container.py` inicjuje i rejestruje wszystko w jednej, wielkiej klasie `AppContainer`. W miarę jak projekt urośnie do 30-40 Use Case'ów (przy podwojeniu funkcjonalności), plik ten przekroczy kilkaset linijek kodu i stanie się wąskim gardłem przy tworzeniu instancji, tzw. nową "God Class", co będzie prowadzić do konfliktów scalania w Git.
+
+**Action Items:**
+- [x] Rozbić `AppContainer` na modułowe podkontenery, np. `BadgeContainer`, `TouristContainer`, `InfraContainer`.
+- [x] Zastosować wzorzec *Composition* w głównym pliku `bootstrap/__init__.py`, który sklei mniejsze kontenery w jedną zależność.
+
+**Rezultat:**
+`AppContainer` został rozbity na modułową strukturę (AUDYT-065 refactor):
+- `bootstrap/app_container.py` (56 linii) — płaska, `@dataclass(frozen=True)` `AppContainer` z 19 atrybutami, typowane.
+- `bootstrap/adapters_factory.py` (104 linie) — `Adapters` + `create_adapters()` (infrastuctura: ORM, cache, parsery).
+- `bootstrap/usecase_factory.py` (130 linii) — `create_usecases(Adapters) -> AppContainer` (kompozycja Use Case'ów).
+- `bootstrap/container.py` (48 linii) — tylko singleton (`get_container`) + Composition Root (`build_container`).
+
+**Komentarz Architekta:**
+Klasyczny ból wzrostu w architekturze "Manual DI" (tworzonej bez frameworków do wstrzykiwania). Obecnie trzyma to projekt w ryzach, ale podział modułowy będzie naturalnym, kolejnym krokiem.
+→ **Uzupełnienie:** Podział został wykonany jako pionowy rozbiór na `adapters_factory` (infrastruktura) + `usecase_factory` (logika aplikacji). `AppContainer` ma 56 linii — nie grozi God Class przy 30-40 Use Case'ach. Kompozycja realizowana w `build_container()` jako `create_useces(create_adapters())`.
+
+---
+
+### [x] [AUDYT-083] Niejednoznaczność metody `get_active_progresses()`
+🟢 **Status:** `ZAKOŃCZONO` (Implemented — Rename Completed)
+**Obszar:** `Aplikacja / Porty`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:** 
+Nazwa metody portu `get_active_progresses` (Pobierz Aktywne Postępy) w module postępów turysty jest semantycznie myląca. Zwraca ona wszystkie postępy, które *nie są zarchiwizowane*, a nie te o statusie `IN_PROGRESS` (w tym również ukończone, np. `COMPLETED`). W efekcie serwisy (jak `PoiScoringService`) muszą ręcznie ignorować ukończone postępy w kodzie Pythona.
+
+**Action Items:**
+- [x] Zmienić nazwę metody na `get_all_unarchived_progresses()`.
+- [ ] **LUB:** Dodać opcjonalny parametr filtrujący do metody w adapterze `DjangoTouristRepository` (np. `exclude_status="COMPLETED"`), aby zapobiec wyciekaniu logiki filtrowania do serwisów w warstwie aplikacji.
+
+**Rezultat:**
+✅ Wdrożono Primary Action Item — przemianowanie metody:
+- Commit: `5d6107a refactor: AUDYT-083 rename get_active_progresses → get_all_unarchived_progresses`
+- Port: `application/ports/user_progress_port.py:71` — `get_all_unarchived_progresses(profile_id) -> list[BadgeProgressDomainDTO]`
+- Adapter: `infrastructure/adapters/persistence/django_tourist_repo.py` — implementuje nazwę portu
+- Call-site'y zaktualizowane: `poi_scoring_service.py:80`, `start_badge_progress.py`, `verify_badge.py`
+
+⚠️ **Drugi Action Item odrzucony:** Filtracja `DomainStatus.COMPLETED` w `poi_scoring_service.py:83/100` pozostaje w Pythonie — jest to **celowane**. Logika scoringu powinna widzieć różnicę między `COMPLETED` a innymi statusami. Filtr w adapterze mógłby ukryć tę semantykę.
+
+**Komentarz Architekta:**
+Klasyczny problem przerzucania ciężaru z bazy danych (gdzie można to szybko odfiltrować w SQL) na warstwę Pythona. Przeniesienie warunku do adaptera to krok typu "Quick Win".
+→ **Uzupełnienie:** Primary Action Item (rename) został zrealizowany, co jest głównym celem AUDYT-083. Drugi ("LUB") odrzucono jako niekompatybilny ze semantyką scoringu.
+
+---
+
+### [x] [AUDYT-084] Odśmiecianie pojęć technicznych w `application/services`
+🟡 **Status:** `DEFERRED` (Backlog Głęboki — Naming Polish)
+**Obszar:** `Aplikacja / Serwisy`  
+**Priorytet:** `🟢 NISKI`  
+
+**Diagnoza Audytora:** 
+Nazwy `PoiScoringService` oraz `ExploreQueriesService` to "Techniczny Bełkot". Łączą w sobie skróty z różnych technologii (POI = Point of Interest) lub słowa-wytrychy (Queries, Service). System powinien posługiwaćć się czystszym językiem Domenowym (np. "Potencjał Turystyczny" zamiast "POI Score").
+
+**Action Items (Deferred — do dalszego backlogu):**
+- [ ] Rozważyć zmianę nazwy `PoiScoringService` na `PotentialRankingService`.
+- [ ] Rozważyć zmianę nazwy `ExploreQueriesService` na `MapDiscoveryService`.
+
+**Komentarz Architekta:**
+Zmiana nazw klas dla "lepszego brzmienia" jest użyteczna na bardzo dojrzałym etapie rozwoju projektu. U nas obiekty te i tak są maskowane przez kontener Dependency Injection, a my "rozumiemy" ten slang. Odłożyć do głębokiego Backlogu.
+
+**Wniosek:** Nazwy pozostają **niepoprawione** (`PoiScoringService`, `ExploreQueriesService` w `application/services/`). Uzasadnione — w MVP terminologia techniczna (POI) jest intuicyjna dla zespołu, a klasy są wyizolowane za kontener DI. Przeniesione do głębokiego backlogu — warto rozważyć w fazie stabilizacji przed v1.0.
+
+---
+
+### [AUDYT-122] Rozmycie Odpowiedzialności w Rejestracji Zależności (`container.py`)
+**Obszar:** `Architektura / Bootstrap`  
+**Priorytet:** `🟢 NISKI`  
+**Status:** `🟢 Deferred (post-Push 8)`  
+
+**Diagnoza Audytora:** 
+Plik `bootstrap/container.py` nosi znamiona "God Object" (obiekt boski), który wie o wszystkim w systemie. Gdy projekt urośnie z 14 Use Case'ów do 50, każda drobna zmiana w konstruktorze jakiejkolwiek usługi wymusi modyfikację tego jednego, potężnego pliku, co doprowadzi do "wąskiego gardła" (Bottleneck) przy pracy zespołowej i konfliktów w systemie kontroli wersji Git.
+
+**Action Items (Deferred — w Fazie Skalowania):**
+- [ ] Zastosować wzorzec z podziałem rejestratorów (np. `Registry Modules`), gdzie każda aplikacja biznesowa (Słowniki PTTK, Profil Turysty, Geografia) rejestruje swoje Use Case'y w osobnym mini-kontenerze, a główny `container.py` jedynie składa je (komponuje) w całość.
+
+**Weryfikacja stanu (09.09.2026):**
+- `AppContainer` posiada **19 atrybutów** (14 Use Case'ów + 3 serwisy + 2 pola), rozmieszczone w `app_container.py` (56 linii). To **nie przekracza** progu 50 UC prognozowanego w AUDYT-122.
+- `bootstrap/` ma 4 pliki: `container.py` (48 linii), `app_container.py` (56), `usecase_factory.py` (130), `adapters_factory.py` (104) — **płaska struktura bez "Registry Modules"**.
+- Podział na `BadgeContainer`/`TouristContainer` **niie wdrożony**.
+
+**Komentarz Architekta:**
+Zgodnie z naszymi poprzednimi wnioskami, podział monolitycznego kontenera to naturalny krok ewolucyjny, ale dla 14 Use Case'ów obecny, scentralizowany kontener gwarantuje 100% czytelności (Cohesion). Odkładamy na później.
+→ **Uzupełnienie:** Status `Deferred (post-Push 8)` jest uzasadniony. Aktualnie **14 UC** (nie 50), `AppContainer` ma 56 linii — God Object nie istnieje. Przekroczę próg migracji na Registry Modules w momencu przekroczenia 30 Use Case'ów.
+
+---
+
+### [x] [AUDYT-141] Rozbieżność w nazewnictwie: Ascent (Domena) vs AscentLog (Infrastruktura)
+🟡 **Status:** `DEFERRED` (Nazwa Domenowa vs ORM — Backlog Głęboki)
+**Obszar:** `Słownik (Ubiquitous Language) / Domena vs ORM`  
+**Priorytet:** `🟢 NISKI`  
+
+**Diagnoza Audytora:** 
+Istnieje niespodziewany dysonans poznawczy na styku Domeny i Bazy Danych. W Czystej Domenie oraz Value Objects wejście turysty nazywa się `Ascent`. Tymczasem w modelu Django ORM oraz portach nazywa się `AscentLog`. Programista wchodzący do projektu musi domyślać się (i tracić czas na weryfikację), czy `Ascent` i `AscentLog` to dokładnie ten sam koncept biznesowy, czy może dwa różne etasy tego samego zjawiska.
+
+**Action Items (Deferred — dla kogoś z wolną chwilą):**
+- [ ] Zmienić nazwę modelu ORM z `AscentLog` na `AscentModel` (wzorem `BadgeVersionModel` — konwencja `*Model`), aby zachować spójność rdzenia nazwy `Ascent`.
+- [ ] LUB zmienić nazwę Value Objectu w domenie na `AscentLog`, ujednolicając język powszechny (Ubiquitous Language) we wszystkich warstwach.
+
+**Weryfikacja stanu (09.09.2026):**
+- `domain/value_objects/ascent.py` — `class Ascent` (domena)
+- `apps/tourists/models.py:68` — `class AscentLog(models.Model)` (ORM)
+- `application/ports/user_progress_port.py` — `AscentLog` w DTO/return types (port)
+- **Brak `AscentModel`** — żaden z Action Items nie został wdrożony
+- `domain/events.py:30` — `AscentLogged(DomainEvent)` (event)
+
+**Komentarz Architekta:**
+Kwestia estetyki kodu i łatwości nawigacji (`Ctrl/Cmd + P` w edytorze kodu). Błądów nazewniczych potęgują czas wdrożenia nowego człowieka do zespołu.
+→ **Uzupełnienie:** Preferowana opcja #1 (`AscentLog → AscentModel`) — `AscentModel` jest spójny z istniejącą konwencją `*Model` (`BadgeModel`, `BadgeVersionModel`). Nie implementowane ze względu na `🟢 NISKI` priorytet i brak człowieka z "wolną chwilą". Warto rozważyć w Sprint Review PRzed-Release.
+
+---
+
+### [x] [AUDYT-032] Nadmiernie obciążająca agregacja `get_oldest_ascent_date`
+🟢 **Status:** `ZAKOŃCZONO` (Implemented — SQL Subquery)
+**Obszar:** `Infrastruktura / Zapytania`  
+**Priorytet:** `🟡 ŚREDNI`  
+
+**Diagnoza Audytora:**
+Obliczanie pierwszej daty wejścia dla Praw Nabytych (Grandfather Clause) wykonuje skomplikowaną aggregację, która na rosnących zbiorach zacznie kosztować kilkaset milisekund czasu CPU per zapytanie. Wykonuje tam w locie wyciąganie identyfikatorów (`values_list` na tabeli M2M), a następnie uderza w `AscentLog`.
+
+**Action Items:**
+- [x] Przepisać metodę w `DjangoTouristRepository` tak, aby łączyła zapytania w jeden *Subquery* (Podzapytanie SQL). Zamiast obciążać kod Pythona przenoszeniem identyfikatorów, zlecić odfiltrowanie i `Min("ascent_date")` czystemu silnikowi bazy danych.
+
+**Rezultat:**
+Wdrożono jedno SQL zapytanie z `Subquery` w `django_tourist_repo.py:117`:
+- `peak_id__in=Subquery(peak_subquery)` — brak materializacji listy ID w Pythonie
+- Brak `.distinct()` — Subquery obsługuje duplikaty po stronie bazy
+- Współpracuje z istniejącym Composite Indexem `AscentLog(profile_id, ascent_date)` (AUDYT-090)
+
+**Walidacja:**
+- ✅ `ruff check`: All checks passed
+- ✅ `mypy`: Success, no issues found
+- ✅ 852 testy non-DB przechodzą (brak regresji)
+- ⚠️ Testy integracyjne (`test_django_tourist_repo.py`) wymagają infrastruktury PostgreSQL — nie uruchomione w sandboxie, ale logika jest równoważna
+
+**Komentarz Architekta:**
+Wspaniała porada DBA. Podzapytania (Subqueries) to technika pozwalająca na gigantyczne oszczędności czasu zapytania z ominięciem zaciągania danych po kablu do serwera Django. Zostawiamy to jako zadanie dla inżyniera danych.
+→ **Uzupełnienie:** AUDYT-100 został zakończony, a Composite Index wdrożony (AUDYT-090), więc brak już przeszkód na drodze. `test_get_oldest_ascent_date` (test infra/django_tourist_repo.py:106) powinien przejść bez zmian — logika równoważna.
 
 ---

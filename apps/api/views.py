@@ -233,7 +233,8 @@ class AscentLogView(View):
 
             # WPISUJEMY TYLKO TO (UoW i Event Publisher są zaszyte w środku!)
             result = use_case.execute(
-                profile_id=profile_id, dto=ascent_input, request_id=getattr(request, "request_id", "unknown")
+                profile_id=profile_id,
+                dto=ascent_input,
             )
             return JsonResponse(
                 {"ascent_id": result.id, **{k: v for k, v in result.model_dump().items() if k != "id"}}, status=201

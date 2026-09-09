@@ -83,6 +83,17 @@ ignore_imports =
     # naruszenia apps -> infrastructure.
     apps.badges.tasks -> bootstrap
     apps.badges.tasks -> bootstrap.container
+    apps.badges.tasks -> infrastructure.request_context
+
+    # EXC-002: apps.badges.tasks -> infrastructure.request_context
+    # Powód: Task Celery musi odczytać request_id z ContextVar (propagowanego
+    #        z warstwy HTTP przez CeleryEventPublisher jako header Celery,
+    #        a następnie poprzez task_prerun hook w config/celery.py)
+    #        w celu skorelowania logów asynchronicznych z logami HTTP (AUDYT-117).
+    #        request_context.py to czysta infrastruktura (ContextVar only),
+    #        nie logika ani zależność od DI container.
+    # Target: Brak — ContextVar jest właściwym podejściem dla request-scoped
+    #         correlation ID w Django/Celery (zgodne z dokumentacją Loguru).
 
 # ==============================================================================
 # 4. INFRASTRUKTURA: ZAKAZ INWERSJI KONTROLI (Kontener DI)

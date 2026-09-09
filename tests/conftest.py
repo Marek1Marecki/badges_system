@@ -10,6 +10,21 @@ from tests.fakes.clock import FakeClock
 from tests.fakes.mocks import MockEventPublisher, MockUnitOfWork
 
 
+@pytest.fixture(autouse=True)
+def _reset_request_context():
+    """AUDYT-117: Reset ContextVar (request_id) między testami.
+
+    pytest-randomly może przypadkowo wykonać test ustawiający ContextVar
+    przed testem, który zakłada czysty stan. Ten fixture gwarantuje,
+    że każdy test zaczyna z `request_id=None`.
+    """
+    from infrastructure.request_context import set_request_id
+
+    set_request_id(None)
+    yield
+    set_request_id(None)
+
+
 @pytest.fixture
 def fake_clock() -> FakeClock:
     """Deterministic clock aligned with FakeClock.DEFAULT_TIME."""

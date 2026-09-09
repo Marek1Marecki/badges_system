@@ -155,23 +155,29 @@ def run_osm_night_watchman_task(batch_size: int = 50) -> str:
         raise
 
 
-@shared_task
-def recalculate_poi_scores_task(profile_id: int, request_id: str = "unknown") -> str:
+@shared_task(bind=True)
+def recalculate_poi_scores_task(self: Any, profile_id: int) -> str:
     """Przelicza ranking szczytów (100/n) i inwaliduje cache Redis (ADR-015).
 
     Zadanie to jest wyzwalane asynchronicznie przez transakcje API,
     gwarantując niezaburzanie pracy wątku HTTP (Event-Driven Invalidation).
 
-    AUDYT-117: request_id jest przekazywany z warstwy HTTP, aby skorelować
-    logi Celery z logami HTTP w pipeline’ie Request ID.
+    AUDYT-117: request_id jest pobierany z ContextVar (propagowanego z
+    nagłówków Celery przez task_prerun hook w config/celery.py), aby
+    skorelować logi Celery z logami HTTP bez wycieku do Czystej Domeny.
 
     Args:
+      self: Task instance (dla kompatybilności z bind=True).
       profile_id: int:
-      request_id: str: ID żądania HTTP (AUDYT-117).
 
     Returns:
     """
     from bootstrap import get_container
+    from infrastructure.request_context import get_request_id
+
+    # AUDYT-117: request_id pobierany z ContextVar (propagowanego z headerów
+    # Celery przez task_prerun hook w config/celery.py).
+    request_id = get_request_id() or "unknown"
 
     with logger.contextualize(request_id=request_id):
         try:

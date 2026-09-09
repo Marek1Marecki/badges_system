@@ -39,15 +39,12 @@ class LogAscentUseCase:
         self._uow = uow
         self._event_publisher = event_publisher
 
-    def execute(
-        self, profile_id: int, dto: AscentRequestDTO, request_id: str | None = None
-    ) -> CreatedResourceResultDTO:
+    def execute(self, profile_id: int, dto: AscentRequestDTO) -> CreatedResourceResultDTO:
         """Wykonuje operację logowania wejścia.
 
         Args:
           profile_id: ID turysty z kontekstu sesji (API).
           dto: Zwalidowane dane wejściowe.
-          request_id: ID żądania HTTP (AUDYT-117 — korelacja logów Celery).
 
         Returns:
           : `CreatedResourceResultDTO` z ID utworzonego logu wejścia.
@@ -76,7 +73,7 @@ class LogAscentUseCase:
                 ascent_date=dto.ascent_date,
             )
             # Uruchamiamy powiadomienie (odpali to Celery, gdy transakcja z commituje się w db)
-            self._event_publisher.publish(UserProgressStateChanged(profile_id=profile_id, request_id=request_id))
+            self._event_publisher.publish(UserProgressStateChanged(profile_id=profile_id))
             # Audit trail: kto (profil) zalogował wejście na który szczyt i kiedy (AUDYT-051)
             self._event_publisher.publish(
                 AscentLogged(

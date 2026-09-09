@@ -22,23 +22,34 @@ class TestCeleryEventPublisher:
         mock_send.assert_called_once_with(
             "apps.badges.tasks.recalculate_poi_scores_task",
             args=[1],
-            kwargs={"request_id": "unknown"},
+            headers={"request_id": "unknown"},
         )
 
     def test_request_id_propagated_in_eager_mode(self) -> None:
-        """AUDYT-117: request_id z eventu jest propagowany jako kwarg taska Celery."""
+        """AUDYT-117: request_id z ContextVar (HTTP) jest propagowany jako header Celery.
+
+        Po refaktoryzacji AUDYT-117 request_id nie jest już częścią DomainEvent.
+        Zamiast tego ContextVar jest ustawiany w middleware HTTP i odczytywany
+        w CeleryEventPublisher jako header Celery — Czysta Domena nie zna o request_id.
+        """
+        from infrastructure.request_context import set_request_id
+
         publisher = CeleryEventPublisher()
-        event = UserProgressStateChanged(profile_id=1, request_id="req_trace_42")
+        event = UserProgressStateChanged(profile_id=1)
 
-        with patch("celery.current_app.send_task") as mock_send:
-            with patch("django.conf.settings.CELERY_TASK_ALWAYS_EAGER", True):
-                publisher.publish(event)
+        set_request_id("req_trace_42")
+        try:
+            with patch("celery.current_app.send_task") as mock_send:
+                with patch("django.conf.settings.CELERY_TASK_ALWAYS_EAGER", True):
+                    publisher.publish(event)
 
-        mock_send.assert_called_once_with(
-            "apps.badges.tasks.recalculate_poi_scores_task",
-            args=[1],
-            kwargs={"request_id": "req_trace_42"},
-        )
+            mock_send.assert_called_once_with(
+                "apps.badges.tasks.recalculate_poi_scores_task",
+                args=[1],
+                headers={"request_id": "req_trace_42"},
+            )
+        finally:
+            set_request_id(None)
 
     def test_publishes_user_progress_event_on_commit(self) -> None:
         """Publikuje zdarzenie po commicie gdy CELERY_TASK_ALWAYS_EAGER=False."""

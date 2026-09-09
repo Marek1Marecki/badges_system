@@ -23,7 +23,7 @@ class UserProgressStateChanged(DomainEvent):
     """
 
     profile_id: int
-    request_id: str | None = None
+    # request_id usunięty (AUDYT-117): ContextVar w infrastructure.request_context
 
 
 @dataclass(frozen=True)

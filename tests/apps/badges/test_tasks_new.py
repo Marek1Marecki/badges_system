@@ -177,7 +177,7 @@ class TestRecalculatePoiScoresTask:
         """Przelicza i cacheuje wyniki scoringu POI dla profilu."""
         mock_get_container.return_value = mock_container
 
-        result = recalculate_poi_scores_task(42)
+        result = recalculate_poi_scores_task.__wrapped__(profile_id=42)
 
         mock_container.poi_scoring_service.recalculate_and_cache_for_profile.assert_called_once_with(42)
         assert "Sukces" in result
@@ -190,7 +190,7 @@ class TestRecalculatePoiScoresTask:
         mock_container.poi_scoring_service.recalculate_and_cache_for_profile.side_effect = Exception("Unexpected")
 
         with pytest.raises(Exception, match="Unexpected"):
-            recalculate_poi_scores_task(99)
+            recalculate_poi_scores_task.__wrapped__(profile_id=99)
 
 
 class TestFetchBadgeNewsTask:

@@ -35,12 +35,11 @@ class TestRecalculatePoiScoresTask:
             mock_container.poi_scoring_service = mock_service
             mock_get_container.return_value = mock_container
 
-            result = recalculate_poi_scores_task(1)
+            result = recalculate_poi_scores_task.__wrapped__(profile_id=1)
 
-            assert "Sukces" in result
-            assert "1" in result
-            # POPRAWKA: Sprawdzamy nową nazwę metody (profil zamiast usera)
-            mock_service.recalculate_and_cache_for_profile.assert_called_once_with(1)
+        assert "Sukces" in result
+        assert "1" in result
+        mock_service.recalculate_and_cache_for_profile.assert_called_once_with(1)
 
     def test_unexpected_error_logs_and_raises(self) -> None:
         """W przypadku awarii, task loguje błąd i propaguje wyjątek."""
@@ -51,19 +50,25 @@ class TestRecalculatePoiScoresTask:
         ):
             mock_container = MagicMock()
             mock_service = MagicMock()
-            # POPRAWKA: Rzucamy wyjątek z nowej metody
             mock_service.recalculate_and_cache_for_profile.side_effect = Exception("Redis padł")
             mock_container.poi_scoring_service = mock_service
             mock_get_container.return_value = mock_container
 
             with pytest.raises(Exception, match="Redis padł"):
-                recalculate_poi_scores_task(1)
+                recalculate_poi_scores_task.__wrapped__(profile_id=1)
 
             mock_logger.error.assert_called_once()
             assert "Nieoczekiwany błąd w recalculate_poi_scores_task" in mock_logger.error.call_args[0][0]
 
     def test_request_id_propagated_to_logs(self) -> None:
-        """AUDYT-117: request_id jest przekazywany z HTTP i łączy logi Celery z HTTP."""
+        """AUDYT-117: request_id z ContextVar łączy logi Celery z HTTP.
+
+        Po refaktoryzacji ContextVar jest ustawiany w middleware HTTP /
+        task_prerun hook (z headers Celery), a task go odczytuje
+        bez dostępu do self.request — czyste dla testów.
+        """
+        from infrastructure.request_context import set_request_id
+
         with (
             patch("bootstrap.get_container") as mock_get_container,
             patch("apps.badges.tasks.logger") as mock_logger,
@@ -74,7 +79,13 @@ class TestRecalculatePoiScoresTask:
             mock_get_container.return_value = mock_container
 
             mock_logger.contextualize = MagicMock(return_value=mock_logger)
-            recalculate_poi_scores_task(1, request_id="req_abc123")
+
+            set_request_id("req_abc123")
+            try:
+                recalculate_poi_scores_task.__wrapped__(profile_id=1)
+            finally:
+                set_request_id(None)
+
             assert mock_logger.contextualize.call_args.kwargs.get("request_id") == "req_abc123"
 
 
