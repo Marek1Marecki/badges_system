@@ -90,36 +90,25 @@ W fazie MVP zakładamy, że użytkownik po prostu odświeży stronę (F5) w razi
 ---
 
 ### [AUDYT-103] Wiedza Ukryta: Struktura i rola `VerificationContext`
-**Obszar:** `Dokumentacja / Domena`  
-**Priorytet:** `🟡 ŚREDNI`  
+**Obszar:** `Dokumentacja / Domena`
+**Priorytet:** `🟡 ŚREDNI`
+**Status:** `✅ ZAKOŃCZONE`
 
 **Diagnoza Audytora:** 
 `VerificationContext` to nasz genialny obiekt wstrzykujący stan zewnętrzny (czas, datę urodzenia turysty, mapę klubów PTTK) prosto do Czystej Domeny, zabezpieczając Invariant T-02. Jednak jego pełna rola (oraz struktury, z jakich korzysta, np. `club_join_dates: dict[str, date]`) jest nigdzie oficjalnie nieudokumentowana – nowy programista musi ją dedukować bezpośrednio z kodu Pythona lub czytając implementację starych testów.
 
-**Action Items (Do wdrożenia w przyszłości):**
-- [ ] Zaktualizować plik `DOMAIN_MODEL.md` w sekcji `VerificationContext`.
-- [ ] Jawnie opisać, dlaczego domena nie pobiera dat samodzielnie i jak warstwa aplikacji (`VerifyBadgeUseCase`) buduje ten kontekst na podstawie profilu z bazy.
+**Wdrożenie:**
+- [x] Sekcja `### VerificationContext (Kontekst Weryfikacyjny)` w `docs/Domain Model.md:113` — opis roli "mostu" między Blueprintem a User State.
+- [x] Invariant T-02 (Determinizm Czasu) — jawnie opisany: Domena nie wywołuje `datetime.now()`.
+- [x] Diagram Mermaid budowy `VerificationContext` w `VerifyBadgeUseCase` (HttpRequest → UseCase → TouristProfileDTO + ClockPort + completed_badges → VC → `BadgeVersionDomain.evaluate`).
+- [x] Tabela atrybutów z typami domenowymi, wymagalnością i uzasadnieniem (evaluation_time, tourist_birth_date, club_join_dates, completed_badge_codes).
+
+**Wnioski:**
+- Dokumentacja obejmuje wszystkie pola `VerificationContext` VO (`domain/value_objects/verification_context.py:16-20`).
+- Odniesienia do `ClockPort`, `TD-02`, oraz invariantów zapewniają spójność z resztą dokumentacji.
 
 **Komentarz Architekta:**
 Klasyczny problem DDD. Odklejenie logiki bazodanowej zmusza do tworzenia "mostów" (Contexts). Brak ich dokładnego opisu zniechęca nowych członków zespołu do przestrzegania czystości warstw.
-
----
-
-### [AUDYT-108] Brak `TouristProfile` jako Agregatu Domenowego
-**Obszar:** `Domena / Ubiquitous Language`
-**Priorytet:** `🟢 NISKI (Długoterminowy)`
-**Status:** `✅ ZAKOŃCZONE` (wdrożone jako AUDYT-037)
-
-**Diagnoza Audytora:** 
-Obecnie w katalogu `domain/` brakuje podstawowego aktora biznesowego: Turysty (`Tourist`). Zamiast tego do reguł przepychany jest techniczny konstrukt `VerificationContext`. Stanowi to dowód na "Anemiczny Model Domenowy", w którym cała koncepcja człowieka, jego limitów Freemium i historii wejść, "uwięziona" jest na dole, w modelach infrastrukturalnych (ORM) w `apps/tourists/models.py`.
-
-**Wdrożenie:**
-- [x] Utworzono agregat `TouristProfileDomain` w `domain/entities/tourist_profile.py` (commit `14bb0ce`, AUDYT-037).
-- [x] Logika Freemium (`can_log_ascent()`, `can_track_new_badge()`) przeniesiona do metod agregatu — używana już w `StartBadgeProgressUseCase:65-74`.
-- [x] `StartBadgeProgressUseCase` hydratuje `TouristProfileDomain` z DTO (nie z ORM) i używa jego metod do walidacji limitów (AUDYT-144 — deleguje do `profile.can_track_new_badge()`).
-- [ ] `VerificationContext` nadal używany w `verify_badge.py` — **celowo**: VC to argument *wejściowy do reguły* (czas, kluby), nie opis turysty. Wymiana na `TouristProfileDomain` nie ma sensu — reguły weryfikacyjne (np. `MinAgeRule`, `RequiresClubJoinDateRule`) nie potrzebują całego profilu, tylko jej fragment.
-
-**Commit:** `14bb0ce` — "feat(aggregate): AUDYT-037 — TouristProfileDomain aggregating Freemium limits".
 
 ---
 
@@ -3266,3 +3255,20 @@ Value Object `Ascent` (Wejście) w katalogu `domain/value_objects/ascent.py` zaw
 
 ---
 
+### [AUDYT-108] Brak `TouristProfile` jako Agregatu Domenowego
+**Obszar:** `Domena / Ubiquitous Language`
+**Priorytet:** `🟢 NISKI (Długoterminowy)`
+**Status:** `✅ ZAKOŃCZONE` (wdrożone jako AUDYT-037)
+
+**Diagnoza Audytora:** 
+Obecnie w katalogu `domain/` brakuje podstawowego aktora biznesowego: Turysty (`Tourist`). Zamiast tego do reguł przepychany jest techniczny konstrukt `VerificationContext`. Stanowi to dowód na "Anemiczny Model Domenowy", w którym cała koncepcja człowieka, jego limitów Freemium i historii wejść, "uwięziona" jest na dole, w modelach infrastrukturalnych (ORM) w `apps/tourists/models.py`.
+
+**Wdrożenie:**
+- [x] Utworzono agregat `TouristProfileDomain` w `domain/entities/tourist_profile.py` (commit `14bb0ce`, AUDYT-037).
+- [x] Logika Freemium (`can_log_ascent()`, `can_track_new_badge()`) przeniesiona do metod agregatu — używana już w `StartBadgeProgressUseCase:65-74`.
+- [x] `StartBadgeProgressUseCase` hydratuje `TouristProfileDomain` z DTO (nie z ORM) i używa jego metod do walidacji limitów (AUDYT-144 — deleguje do `profile.can_track_new_badge()`).
+- [ ] `VerificationContext` nadal używany w `verify_badge.py` — **celowo**: VC to argument *wejściowy do reguły* (czas, kluby), nie opis turysty. Wymiana na `TouristProfileDomain` nie ma sensu — reguły weryfikacyjne (np. `MinAgeRule`, `RequiresClubJoinDateRule`) nie potrzebują całego profilu, tylko jej fragment.
+
+**Commit:** `14bb0ce` — "feat(aggregate): AUDYT-037 — TouristProfileDomain aggregating Freemium limits".
+
+---
