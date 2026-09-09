@@ -9,18 +9,23 @@
 ---
 
 ### [AUDYT-082] Refaktoryzacja `peak_id` na `object_id` w Czystej Domenie
-**Obszar:** `Domena / Value Objects`  
-**Priorytet:** `🟢 NISKI (Jakość Kodu)`  
+**Obszar:** `Domena / Value Objects`
+**Priorytet:** `🟢 NISKI (Jakość Kodu)`
+**Status:** `✅ ZAKOŃCZONE` (już wdrożone)
 
 **Diagnoza Audytora:** 
 Value Object `Ascent` (Wejście) w katalogu `domain/value_objects/ascent.py` zawiera pole nazwane `peak_id`. Stanowi to wyciek z "języka potocznego" do Domeny. Z punktu widzenia systemu logujemy wejścia na `TouristObject` (Obiekty Turystyczne), a nie tylko na góry/szczyty (Peak) – mogą to być wieże, jaskinie czy schroniska. Domena nie powinna zakładać typu geograficznego obiektu.
 
-**Action Items (Do wdrożenia przy okazji refaktoringu):**
-- [ ] Zmienić nazwę pola w `Ascent` z `peak_id` na `object_id`.
-- [ ] Zaktualizować wszystkie klasy testowe i metody używające tej nazwy argumentu.
+**Wdrożenie:**
+- [x] Zmieniono nazwę pola w `Ascent` z `peak_id` na `object_id` (`domain/value_objects/ascent.py:11`).
+- [x] Wszystkie klasy testowe i metody używające `Ascent(object_id=...)` — zaktualizowane.
 
-**Komentarz Architekta:**
-Czysta, książkowa kosmetyka kodu (Clean Code). Podnosi jakość bez ryzyka awarii, ale w tym momencie nie blokuje rozwoju funkcji biznesowych.
+**Wnioski:**
+- `Ascent` VO używa `object_id` — Domena jest neutralna wobec typu obiektu geograficznego.
+- Pozostałe użycia `peak_id` w repozejtrum (np. `AscentLog.peak_id` model Django) **nie dotyczą AUDYT-082** — to nazwa kolumny DB, inny koncern.
+- `peak_id` w `AscentRequestDTO`, `pool_peak_ids` w regułach biznesowych — to API/DTO i reguły PTTK, które celowo odnoszą się do "szczytów" (Peak) w języku regulaminu.
+
+**Commit:** `212ecc7` — "feat: AUDYT-082 peak_id→object_id in domain".
 
 ---
 
