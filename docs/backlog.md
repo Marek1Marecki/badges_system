@@ -170,28 +170,6 @@ Bardzo mądre spojrzenie na bezpieczeństwo kodu z perspektywy ludzkiej (Human R
 
 ---
 
-### [AUDYT-115] Opracowanie strategii awaryjnej i "Data Recovery" dla Użytkowników
-**Obszar:** `Operacje / Wdrożenie (SRE)`
-**Priorytet:** `🟠 WYSOKI (Przed oficjalnym startem PROD)`
-**Status:** `✅ Zakończone — Dokumentacja wdrożona` (2026-09-09)
-
-**Diagnoza Audytora:** 
-Raport uderza w brak jakiejkolwiek procedury operacyjnej dla obsługi tzw. "Awarii Klienta". System posiada doskonały `Runbook.md` dla dewelopera, ale brakuje w nim zdefiniowania procesu: co ma zrobić Administrator Systemu, jeśli turysta napisze maila "Usunąłem przez przypadek swój profil i straciłem odznaki, proszę o przywrócenie!", albo "Baza danych padła, musimy odtworzyć stan z wczoraj z S3".
-
-**Wdrożenie:**
-- [x] Utworzono dokument `docs/ops/Disaster_Recovery_Plan.md` — operacyjny plan krok-po-kroku dla SRE/Administratora.
-- [x] Opisano komendy `pg_dump`/`pg_restore` przez `docker compose exec db` (wersja produkcyjna `compose.prod.yml`), pobieranie z S3 (konto `backup-recovery`, Object Lock WORM), healthcheck po odtworzeniu.
-- [x] Zdefiniowano politykę biznesową:
-  - **Profil na żądanie:** możliwe, ale wymaga ręcznego QA i potwierdzenia Lead Developera (~30–60 min), nie gwarantowane <4h.
-  - **Pełna odbudowa bazy:** maksymalny czas RTO 8h, procedura odizolowana.
-  - Otwartym zadaniem pozostaje `prod-backup.sh`/`prod-restore.sh` (na razie istnieją tylko `dev-`).
-
-**Powiązane:** ADR-021 (RPO/RTO/S3), `docs/Runbook.md`, `scripts/dev-backup.sh` (referencja).
-
-**Status:** ZAMKNIĘTE — formalizowane w `docs/ops/Disaster_Recovery_Plan.md`.
-
----
-
 ### [AUDYT-134] Bezpieczeństwo migracji kluczy M2M (`dumpdata` z `--natural-foreign`)
 **Obszar:** `DataOps / Eksport Danych`  
 **Priorytet:** `🟡 ŚREDNI`  
@@ -3257,5 +3235,27 @@ System operuje wokół regulaminów Polskiego Towarzystwa Turystyczno-Krajoznawc
 **Zaktualizowano:** Językiem wbudowanym na stałe w warstwę prezentacji (Hardcoded) pozostaje język polski. Wszelkie próby internacjonalizacji w przyszłości będą wymagały świadomej decyzji biznesowej i ponownego rozważenia tego punktu.
 
 **Pełna deklaracja w archiwum:** Treść decyzji została zarchiwizowana w `docs/backlog_po_audycie.md` (sekcja "Zarchiwizowane Decyzje Wont-Fix").
+
+---
+
+### [AUDYT-115] Opracowanie strategii awaryjnej i "Data Recovery" dla Użytkowników
+**Obszar:** `Operacje / Wdrożenie (SRE)`
+**Priorytet:** `🟠 WYSOKI (Przed oficjalnym startem PROD)`
+**Status:** `✅ Zakończone — Dokumentacja wdrożona` (2026-09-09)
+
+**Diagnoza Audytora:** 
+Raport uderza w brak jakiejkolwiek procedury operacyjnej dla obsługi tzw. "Awarii Klienta". System posiada doskonały `Runbook.md` dla dewelopera, ale brakuje w nim zdefiniowania procesu: co ma zrobić Administrator Systemu, jeśli turysta napisze maila "Usunąłem przez przypadek swój profil i straciłem odznaki, proszę o przywrócenie!", albo "Baza danych padła, musimy odtworzyć stan z wczoraj z S3".
+
+**Wdrożenie:**
+- [x] Utworzono dokument `docs/ops/Disaster_Recovery_Plan.md` — operacyjny plan krok-po-kroku dla SRE/Administratora.
+- [x] Opisano komendy `pg_dump`/`pg_restore` przez `docker compose exec db` (wersja produkcyjna `compose.prod.yml`), pobieranie z S3 (konto `backup-recovery`, Object Lock WORM), healthcheck po odtworzeniu.
+- [x] Zdefiniowano politykę biznesową:
+  - **Profil na żądanie:** możliwe, ale wymaga ręcznego QA i potwierdzenia Lead Developera (~30–60 min), nie gwarantowane <4h.
+  - **Pełna odbudowa bazy:** maksymalny czas RTO 8h, procedura odizolowana.
+  - Otwartym zadaniem pozostaje `prod-backup.sh`/`prod-restore.sh` (na razie istnieją tylko `dev-`).
+
+**Powiązane:** ADR-021 (RPO/RTO/S3), `docs/Runbook.md`, `scripts/dev-backup.sh` (referencja).
+
+**Status:** ZAMKNIĘTE — formalizowane w `docs/ops/Disaster_Recovery_Plan.md`.
 
 ---

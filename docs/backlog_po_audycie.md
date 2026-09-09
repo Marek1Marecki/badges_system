@@ -126,4 +126,36 @@ Implementacja obejmuje wszystkie warstwy (Masterclass w czystej architekturze):
 - **ADR-007:** Hierarchia i Wersjonowanie Odznak (Temporal Modeling).
 - **ADR-030:** Distributed Tracing (ContextVar reset w conftest.py).
 
+---
+
+### [x] [AUDYT-115] Opracowanie strategii awaryjnej i "Data Recovery" dla Użytkowników
+**Obszar:** `Operacje / Wdrożenie (SRE)`
+**Priorytet:** `🟠 WYSOKI (Przed oficjalnym startem PROD)`
+**Status:** `Zamknięte — Dokumentacja wdrożona` (2026-09-09)
+
+**Decision:**
+Wdrożono operacyjny **Disaster Recovery Plan** (`docs/ops/Disaster_Recovery_Plan.md`) jako oficjalną "Biblię SRE". Plan obejmuje:
+
+1. **Pełna odbudowa bazy PROD** — krok-po-kroku: `pg_dump` → S3 (bucket `pttk-badges-prod-backups`, Object Lock WORM), pobranie na izolowany serwer DR, `pg_restore` przez `docker compose exec db` (unikanie rozjazdu wersji klienta PostgreSQL). Healthcheck + reprezentatywne zapytanie.
+2. **Odtworzenie pojedynczego profilu** — polityka biznesowa: **możliwe na żądanie**, ale wymaga ręcznego SQL-a i potwierdzenia Lead Developera (~30–60 min), nie gwarantowane <4h. Uzasadnienie: Prawa Nabyte są rekonstruowalne z logów wejść; profil można odtworzyć, ale koszt operacyjny nie zwaloryzowany jest jako natychmiastowy.
+3. **Procedura przed migracją** — backup ad-hoc `prod-backup.sh` zwykły przed `Database Release` (ADR-021, punkt 5).
+4. **Checklista 30-minutowa** — tabelaryczny plan akcji dla pierwszych 30 minut incydentu (zablokuj PROD, znajdź backup, potwierdź ticket, odtwórz, healthcheck, powiadom).
+
+**Krytyczne zasady operacyjne:**
+- **RPO:** 24h (max utrata danych).
+- **RTO:** 8h (max downtime).
+- **3-2-1 Rule:** 3 kopie, 2 media, 1 off-site (S3 Object Lock).
+- **pg_dump/pg_restore ALASWY** przez `docker compose.exec db` (por. `scripts/dev-backup.sh`).
+
+**Otwarty dług:**
+- Skrypty `prod-backup.sh` i `prod-restore.sh` istnieją tylko w wersji `dev-`. Tworzenie wersji PROD to otwarte zadanie.
+
+**Powiązane:**
+- **ADR-021:** Strategia Backupów i Disaster Recovery.
+- **ADR-020:** Architektura Wdrożeń (SRE).
+- **ADR-026:** PostgreSQL Volume Layout.
+- **docs/Runbook.md:** Operacje codzienne, migracje schematu.
+- **scripts/dev-backup.sh** | **scripts/dev-restore.sh:** Referencja dla wersji PROD.
+
+
 
