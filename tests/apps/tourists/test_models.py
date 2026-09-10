@@ -83,6 +83,28 @@ class TestAscentLogStr:
         assert "2024-01-15" in result
 
 
+class TestAscentLogRejection:
+    """Testy pola is_rejected modelu AscentLog (AUDYT-089 — Czarna Lista)."""
+
+    def test_is_rejected_defaults_to_false(self) -> None:
+        """Nowe wejście domyślnie ma is_rejected=False (nie na czarnej liście)."""
+        ascent = AscentLog(is_rejected=True)
+
+        assert ascent.is_rejected is True
+
+    def test_str_marks_rejected_entry(self) -> None:
+        """__str__ powinien wskazywać odrzucony wpis."""
+        ascent = MagicMock()
+        ascent.is_rejected = True
+        ascent.profile = MagicMock(nickname="Odrzucony")
+        ascent.peak = MagicMock(name="Rysy")
+        ascent.ascent_date = "2024-01-15"
+
+        result = AscentLog.__str__(ascent)
+
+        assert "Odrzucony" in result
+
+
 class TestUserBadgeProgressStr:
     """Testy metody __str__ modelu UserBadgeProgress."""
 

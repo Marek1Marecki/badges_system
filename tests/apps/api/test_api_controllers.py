@@ -185,6 +185,50 @@ class TestAscentLogView:
         assert "request_id" in data
 
 
+class TestAscentLogRejectView:
+    """Testy endpointu odrzucania wejść (AUDYT-089 — Czarna Lista)."""
+
+    def test_reject_returns_200_with_ascent_id(self, factory, mock_user, use_cases) -> None:
+        """PATCH /ascents/{id}/reject/ flags the log as is_rejected=True."""
+        from apps.api.views import AscentLogRejectView
+
+        # Tworzymy mock logu wejścia
+        mock_ascent = MagicMock()
+        mock_ascent.id = 42
+
+        with patch("apps.api.views.AscentLog") as MockAscentLog:
+            MockAscentLog.objects.select_related.return_value.get.return_value = mock_ascent
+            request = factory.patch("/api/v1/ascents/42/reject/")
+            request.user = mock_user
+            request.session = {"active_profile_id": 1}
+
+            response = AscentLogRejectView.as_view()(request, ascent_id=42)
+
+        assert response.status_code == 200
+        data = json.loads(response.content)
+        assert data["status"] == "REJECTED"
+        assert data["ascent_id"] == 42
+        mock_ascent.save.assert_called_once_with(update_fields=["is_rejected"])
+
+    def test_reject_not_found_returns_404(self, factory, mock_user, use_cases) -> None:
+        """Jeśli log nie istnieje, zwraca 404."""
+        from apps.api.views import AscentLogRejectView
+
+        with patch("apps.api.views.AscentLog") as MockAscentLog:
+            from django.core.exceptions import ObjectDoesNotExist
+
+            MockAscentLog.objects.select_related.return_value.get.side_effect = ObjectDoesNotExist()
+            request = factory.patch("/api/v1/ascents/999/reject/")
+            request.user = mock_user
+            request.session = {"active_profile_id": 1}
+
+            response = AscentLogRejectView.as_view()(request, ascent_id=999)
+
+        assert response.status_code == 404
+        data = json.loads(response.content)
+        assert "request_id" in data
+
+
 class TestBadgeSubscribeView:
     """Testy endpointu subskrypcji odznak."""
 

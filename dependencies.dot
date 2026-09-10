@@ -181,6 +181,7 @@ digraph G {
     "apps.tourists.migrations.0002_alter_ascentlog_profile_and_more" [fillcolor="pink"];
     "apps.tourists.migrations.0003_ascentlog_ascent_profile_date_idx_and_more" [fillcolor="pink"];
     "apps.tourists.migrations.0004_alter_ascentlog_souvenir_image_auditlog" [fillcolor="pink"];
+    "apps.tourists.migrations.0005_ascentlog_is_rejected" [fillcolor="pink"];
     "apps.tourists.models" [fillcolor="pink"];
     "apps.tourists.signals" [fillcolor="pink"];
     "apps.tourists.views" [fillcolor="pink"];

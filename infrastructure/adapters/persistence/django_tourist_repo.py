@@ -193,6 +193,8 @@ class DjangoAscentLogRepository(AscentLogRepositoryPort):
         qs = AscentLog.objects.filter(profile_id=profile_id, peak_id__in=peak_ids)
         if cutoff_date:
             qs = qs.filter(ascent_date__gt=cutoff_date)
+        # AUDYT-089: pomiń odrzucone wejścia (Czarna Lista, Invariant S-04)
+        qs = qs.exclude(is_rejected=True)
 
         # Przebieg 1: strumień po ascents, by zebrać unikalne peak_ids (chunk_size=2000)
         fetched_peak_ids: set[int] = set()

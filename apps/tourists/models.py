@@ -92,6 +92,16 @@ class AscentLog(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # AUDYT-089: Cofnięcie weryfikacji → wejście na Czarnej Liście.
+    # Pole chroni przed "martwymi wpisami" (phantom ascents) po odrzuceniu weryfikacji.
+    # Invariant S-04: nie modyfikujemy danych historycznych — flagujemy.
+    is_rejected = models.BooleanField(
+        default=False,
+        verbose_name="Odrzucony (Czarna Lista)",
+        help_text="AUDYT-089 (Invariant S-04): wejście odrzucone (np. błąd weryfikacji) "
+        "nie jest brane pod uwagę przy weryfikacji odznak. Nie jest usuwane — chroni historię.",
+    )
+
     class Meta:
         """Konfiguracja modelu AscentLog."""
 

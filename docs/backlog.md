@@ -8,50 +8,6 @@
 
 ---
 
-### [AUDYT-089] Brak ochrony przed martwymi wpisami w "Czarnych Listach" (Cofanie Weryfikacji)
-**Obszar:** `Aplikacja / Osobisty Kanban`  
-**Priorytet:** `🟡 Specification`  
-**Status:** `🟡 Needs Migration`
-
-**Diagnoza Audytora:**
-Invariant S-04 (`docs/Invariants.md:114` — Zakaz Kasowania Faktów) definiuje, że cofnięta weryfikacja → wejście na czarnej liście. Brak fizycznego mechanizmu.
-
-**Action Items (Requires DB migration):**
-- [ ] Dodać kolumnę `is_rejected: bool` do `AscentLog` (migration + model)
-- [ ] Filtr `get_unconsumed_ascents` pomija `is_rejected=True`
-- [ ] Endpoint PTTK → add to blacklist
-
-**Komentarz Architekta:**
-Implementacja wymaga migracji bazy (`apps/tourists/models.py` + migration). Zostało na później niż AUDYT-089 (0.5h) by uniknąć ryzyka w trakcie Push 8. Invariant S-04 jest udokumentowany i aktywny jako met-test.
-
----
-
-### [AUDYT-097] Brak strategii wersjonowania API (API Versioning Policy)
-**Obszar:** `Dokumentacja / API`
-**Priorytet:** `🟡 ŚREDNI`
-**Status:** `✅ ZAKOŃCZONE`
-
-**Diagnoza Audytora:** 
-Plik `API_CONTRACTS.md` definiuje ścieżki w formacie `/api/v1/`, ale nie definiuje, **co** spowoduje przejście na `/api/v2/`. Kiedy wprowadzić nową wersję? Czy usunięcie pola z payloadu łamie wsteczną kompatybilność? Brakuje formalnego kontraktu.
-
-**Wdrożenie:**
-- [x] **Sekcja odwołująca do ADR** w `API Contracts.md:10` — opisuje prefix `/api/v1/`, odsyła do `ADR-027`.
-- [x] **`ADR-027 — Strategia Wersjonowania API i Definicja Breaking Change.md`** — pełny dokument (101 linii):
-  - **Opcja A:** URL Path Versioning (`ADR-027:56`)
-  - **Breaking Changes (wymagają `v1→v2`):** usunięcie pola, zmiana typu, zmiana wymogów CSRF, zmiana enum (`ADR-027:62-70`)
-  - **NIE Breaking:** dodanie endpointu, pola opcjonalnego, `200→201` (`ADR-027:71-78`)
-  - **Polityka deprecjacji:** `v1` wspierane min. 3 miesiące po `v2`, `deprecated: true` w OpenAPI (`ADR-027:74`)
-- [x] **Trigger for Review:** utworzenie `apps/api/v2/urls.py` i `config/openapi.v2.json` (`ADR-027:93`)
-
-**Wnioski:**
-- Formalny kontrakt definiujący *Breaking Change* — gotowy dla przyszłych `v2`.
-- Frontend (HTMX/JS) nie jest już jedynym krytycznym klientem — strategia chroni przed nieświadomym uszkodzeniem zewnętrznych konsumentów API.
-
-**Komentarz Architekta:**
-Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał, kiedy ucinamy wsparcie. Dopóki klientem API jest tylko nasz wewnętrzny frontend (HTMX/JS), to nie jest problem. Jeśli otworzymy to dla aplikacji mobilnych, to jest punkt krytyczny.
-
----
-
 ## 🟢 ZAKOŃCZONE (Archiwum - Historyczny Dług Techniczny)
 
 > Poniższe zadania zostały w pełni zrealizowane i wdrożone w kodzie. Służą jako ślad audytowy (Audit Trail) i dokumentacja historyczna projektu.
@@ -3335,3 +3291,47 @@ Obecny mechanizm "Nocnego Stróża" (`RunOsmNightWatchmanUseCase`) potrafi zgła
 Klasyczny "Blind Spot" integracji zewnętrznych. Całkowite zaufanie do otwartego API (OSM) to ryzyko wandalizmu (Vandalism Attack). Ciche wstrzymanie (Quarantine) zabezpieczy nas przed rozpadem siatki MVT.
 
 ---
+
+### [AUDYT-097] Brak strategii wersjonowania API (API Versioning Policy)
+**Obszar:** `Dokumentacja / API`
+**Priorytet:** `🟡 ŚREDNI`
+**Status:** `✅ ZAKOŃCZONE`
+
+**Diagnoza Audytora:** 
+Plik `API_CONTRACTS.md` definiuje ścieżki w formacie `/api/v1/`, ale nie definiuje, **co** spowoduje przejście na `/api/v2/`. Kiedy wprowadzić nową wersję? Czy usunięcie pola z payloadu łamie wsteczną kompatybilność? Brakuje formalnego kontraktu.
+
+**Wdrożenie:**
+- [x] **Sekcja odwołująca do ADR** w `API Contracts.md:10` — opisuje prefix `/api/v1/`, odsyła do `ADR-027`.
+- [x] **`ADR-027 — Strategia Wersjonowania API i Definicja Breaking Change.md`** — pełny dokument (101 linii):
+  - **Opcja A:** URL Path Versioning (`ADR-027:56`)
+  - **Breaking Changes (wymagają `v1→v2`):** usunięcie pola, zmiana typu, zmiana wymogów CSRF, zmiana enum (`ADR-027:62-70`)
+  - **NIE Breaking:** dodanie endpointu, pola opcjonalnego, `200→201` (`ADR-027:71-78`)
+  - **Polityka deprecjacji:** `v1` wspierane min. 3 miesiące po `v2`, `deprecated: true` w OpenAPI (`ADR-027:74`)
+- [x] **Trigger for Review:** utworzenie `apps/api/v2/urls.py` i `config/openapi.v2.json` (`ADR-027:93`)
+
+**Wnioski:**
+- Formalny kontrakt definiujący *Breaking Change* — gotowy dla przyszłych `v2`.
+- Frontend (HTMX/JS) nie jest już jedynym krytycznym klientem — strategia chroni przed nieświadomym uszkodzeniem zewnętrznych konsumentów API.
+
+**Komentarz Architekta:**
+Klasyczny błąd startupów. Zbudowaliśmy wersję `v1`, ale nikt nie pomyślał, kiedy ucinamy wsparcie. Dopóki klientem API jest tylko nasz wewnętrzny frontend (HTMX/JS), to nie jest problem. Jeśli otworzymy to dla aplikacji mobilnych, to jest punkt krytyczny.
+
+---
+
+
+### [AUDYT-089] Brak ochrony przed martwymi wpisami w "Czarnych Listach" (Cofanie Weryfikacji)
+**Obszar:** `Aplikacja / Osobisty Kanban`  
+**Priorytet:** `🟡 Specification`
+**Status:** `✅ ZAKOŃCZONE`
+
+**Diagnoza Audytora:**
+Invariant S-04 (`docs/Invariants.md:114` — Zakaz Kasowania Faktów) definiuje, że cofnięta weryfikacja → wejście na czarnej liście. Brak fizycznego mechanizmu.
+
+**Action Items (Requires DB migration):**
+- [x] Dodać kolumnę `is_rejected: bool` do `AscentLog` (migration + model)
+- [x] Filtr `get_unconsumed_ascents` pomija `is_rejected=True`
+- [x] Endpoint `PATCH /api/v1/ascents/{ascent_id}/reject/` (View + OpenAPI)
+- [x] Testy: `TestAscentLogRejectView` w `tests/apps/api/test_api_controllers.py`
+
+**Komentarz Architekta:**
+Implementacja wymaga migracji bazy (`apps/tourists/models.py` + migration). Zostało na później niż AUDYT-089 (0.5h) by uniknąć ryzyka w trakcie Push 8. Invariant S-04 jest udokumentowany i aktywny jako met-test.

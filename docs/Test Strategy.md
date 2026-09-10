@@ -192,6 +192,7 @@ Zanim uznasz, że napisałeś poprawny test dla Invariantu (np. `TimeLimitRule`)
 - Każda nowa klasa dziedzicząca po `BadgeRule` musi mieć minimum dwa testy: `test_rule_name_success` oraz `test_rule_name_failure`.
 - Jeśli łatana jest usterka zapisana w `EDGE_CASES.md`, test zapobiegający regresji musi nosić jej prefiks i numer, np. `def test_EC020_badge_tier_requires_explicit_choice_to_save():`.
 - **BDD Mapping (Behavior-Driven Design):** Testy jednostkowe i integracyjne nie mogą opisywać technicznej implementacji (np. `test_badge_engine_resolves_json`), lecz muszą opisywać intencję biznesową i zachowanie systemu (np. `test_user_earns_badge_after_3_peaks_in_region_respecting_grandfather_clause`). Zgodnie z architekturą, testy te mapują się bezpośrednio z User Stories i służą jako "Living Documentation".
+- **Zasada Filtracji Odrzutów (Blacklisting Guard):** Testy weryfikujące `AscentLogRepositoryPort.get_unconsumed_ascents()` muszą zawsze asertować, że metoda ta ignoruje wiersze oznaczone flagą `is_rejected=True`. Zgodnie z Invariantem `S-04`, odrzucone wejścia nigdy nie "wyciekają" z infrastruktury do Czystej Domeny.
 
 ---
 

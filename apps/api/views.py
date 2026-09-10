@@ -245,6 +245,52 @@ class AscentLogView(View):
             return _handle_application_exception(request, exc)
 
 
+class AscentLogRejectView(View):
+    """PATCH /api/v1/ascents/{ascent_id}/reject/
+
+    Dodaje wejście na Czarną Listę (Invariant S-04, AUDYT-089).
+
+    Args:
+        ascent_id: ID logu wejścia do odrzucenia.
+
+    Returns:
+        200: {"status": "REJECTED", "ascent_id": int}
+        401/404: RFC 7807 Problem Details.
+    """
+
+    def patch(self, request, ascent_id: int):
+        """Odrzuca wejście (dodaje do Czarnej Listy).
+
+        Args:
+            request: Żądanie HTTP.
+            ascent_id: ID logu wejścia do odrzucenia.
+
+        Returns:
+            200: {"status": "REJECTED"}
+            401/404: RFC 7807 Problem Details.
+        """
+        auth_error = _require_auth(request)
+        if auth_error:
+            return auth_error
+
+        from apps.tourists.models import AscentLog
+
+        profile_id = request.session.get("active_profile_id") or request.user.profiles.first().id
+
+        try:
+            ascent = AscentLog.objects.select_related("profile").get(id=ascent_id, profile_id=profile_id)
+        except AscentLog.DoesNotExist:
+            return _problem_detail(request, "not-found", "Nie znaleziono", 404, "Log wejścia nie istnieje.")
+        except ApplicationException as exc:
+            return _handle_application_exception(request, exc)
+
+        # AUDYT-089: flaga is_rejected zamiast DELETE (Invariant S-04 — nie niszczymy faktu)
+        ascent.is_rejected = True
+        ascent.save(update_fields=["is_rejected"])
+
+        return JsonResponse({"status": "REJECTED", "ascent_id": ascent_id}, status=200)
+
+
 class BadgeSubscribeView(View):
     """POST /api/v1/badges/{badge_code}/subscribe/
 

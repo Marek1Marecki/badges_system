@@ -6,6 +6,7 @@ Rejestracja w głównym urls.py projektu:     path("api/v1/", include("apps.api.
 from django.urls import path
 
 from apps.api.views import (
+    AscentLogRejectView,
     AscentLogView,
     BadgeLogisticsView,
     BadgeProgressView,
@@ -25,6 +26,7 @@ app_name = "api"
 urlpatterns = [
     # Logi wejść
     path("v1/ascents/", AscentLogView.as_view(), name="ascents"),
+    path("v1/ascents/<int:ascent_id>/reject/", AscentLogRejectView.as_view(), name="ascent_reject"),
     path("v1/ascents/bulk/", BulkAscentLogView.as_view(), name="ascents_bulk"),  # <--- DODANE
     path("v1/gpx/analyze/", GpxAnalyzeView.as_view(), name="gpx_analyze"),  # <--- DODANE
     # Odznaki
