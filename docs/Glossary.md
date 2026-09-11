@@ -361,6 +361,30 @@ Ta sekcja mapuje uniwersalne wzorce inżynierii oprogramowania na ich **konkretn
 
 ---
 
+## Odznaki — rygory nazewnicze (AUDYT-081)
+
+> **Status:** `accepted`
+> **źródło:** `docs/glossary.md` (sekcja została scalona z tym plikiem; oryginał usunięty)
+
+Słowo **"Odznaka"** w projekcie jest homonimem. Aby uniknąć nieporozumień w komunikacji, używaj następujących terminów:
+
+| Termin          | Znaczenie                                           | Model danych (techniczny)   |
+|-----------------|-----------------------------------------------------|------------------------------|
+| **Odznaka** (Badge) | Nadrzędny agregat — ogólna koncepcja odznaki (np. "Korona Gór Polski"). | `BadgeModel` |
+| **Regulamin** / **Wersja** | Zestaw reguł obowiązujący w określonym czasie (np. "KGP 2024"). | `BadgeVersionModel` |
+| **Zdobycie** / **Wyzwanie** | Postęp turysty wobec konkretnej wersji regulaminu. | `UserBadgeProgress` |
+
+### Przykłady poprawnej komunikacji
+
+- ✅ "Wyłączmy **regulamin** odznaki X na season 2025." → dezaktywacja `BadgeVersionModel`.
+- ❌ "Zablokujmy odznakę X." → niejasne — wyłączamy regulamin (wersję), czy postęp użytkownika?
+
+### Dlaczego to ważne
+
+W kodzie (modelach) poziomy te są idealnie odseparowane. Zagrożenie leży na poziomie biznesowym: analityk prosząc o "zablokowanie odznaki" może przez całą rozmowę oznaczać różne rzeczy, co grozi mylącym zadaniem dla programistów.
+
+---
+
 ## Historia zmian
 
 | Wersja | Data | Autor | Opis zmiany |

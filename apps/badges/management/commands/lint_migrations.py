@@ -36,7 +36,7 @@ przeszłoby tego lintera, niezależnie od tego, co napisze ten zespół.
 
 To narzędzie jest DRUGĄ linią obrony (uruchamianą przez
 scripts/release-database.sh bezpośrednio przed `migrate`), nie zastępuje
-kontroli w CI na etapie PR — patrz README-infra.md, sekcja "Znane luki".
+kontroli w CI na etapie PR — patrz docs/architecture/README-infra.md, sekcja "Znane luki".
 """
 
 from pathlib import Path

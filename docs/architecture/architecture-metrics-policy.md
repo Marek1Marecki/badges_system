@@ -243,7 +243,7 @@ Porównuj wyniki z poprzednim tygodniem.
 
 1. Pobierz `complexity-trend.txt` z CI artifacts
 2. Porównaj trendy z poprzednim miesiącem
-3. Zaktualizuj `docs/architecture-metrics-trends.md`
+3. Zaktualizuj `docs/architecture/architecture-metrics-trends.md`
 
 ### Interpretacja trendów
 
@@ -288,9 +288,9 @@ Wymagania:
 
 Szczegóły dotyczące dokumentacji i wizualizacji architektury znajdują się w:
 
-- **`docs/architecture-documentation.md`** — polityka dokumentacji architektury
-- **`docs/architecture-metrics-baseline.md`** — baseline metryk
-- **`docs/architecture-metrics-trends.md`** — trendy miesięczne
+- **`docs/architecture/architecture-documentation.md`** — polityka dokumentacji architektury
+- **`docs/architecture/architecture-metrics-baseline.md`** — baseline metryk
+- **`docs/architecture/architecture-metrics-trends.md`** — trendy miesięczne
 
 ## Historia zmian
 

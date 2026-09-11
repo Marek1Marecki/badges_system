@@ -5,7 +5,7 @@ set -e
 # dev-up.sh — bezpieczne uruchomienie środowiska DEV
 #
 # Zasada: Declarative Infrastructure, Imperative Operations (patrz
-# README-infra.md). compose*.yml opisuje WYŁĄCZNIE stan docelowy (kontenery,
+# docs/architecture/README-infra.md). compose*.yml opisuje WYŁĄCZNIE stan docelowy (kontenery,
 # sieci, wolumeny, healthchecki) — nigdy kolejność akcji wdrożeniowych.
 # Ten skrypt jest jedynym miejscem, które wie, w jakiej kolejności rzeczy
 # mają się wydarzyć na DEV. `make dev-up` jest tylko cienkim aliasem do niego

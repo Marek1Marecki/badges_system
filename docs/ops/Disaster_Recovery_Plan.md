@@ -196,5 +196,5 @@ aws s3 cp ./backups/*.dump \
 - **ADR-021** — Strategia Backupów i Disaster Recovery (definicja RPO/RTO, S3, 3-2-1).
 - **ADR-020** — Architektura Wdrożeń (SRE).
 - **ADR-026** — PostgreSQL Volume Layout.
-- **docs/Runbook.md** — Operacje codzienne, migracje schematu.
+- **docs/guides/Runbook.md** — Operacje codzienne, migracje schematu.
 - **scripts/dev-backup.sh** | **scripts/dev-restore.sh** — wersje developerskie (referencja formatów).

@@ -274,6 +274,7 @@ Słowo "Odznaka" w projekcie to niebezpieczny homonim. W dokumentacji i rozmowac
   - `Odznaka (Badge)` → zawsze nadrzędny agregat (`BadgeModel`).
   - `Regulamin / Wersja` → zawsze zestaw reguł (`BadgeVersionModel`).
   - `Zdobycie / Wyzwanie` → zawsze postęp turysty (`UserBadgeProgress`).
+  - 📝 *Nota:* treść `docs/glossary.md` została 2026-09-11 scalona jako sekcja "Odznaki — rygory nazewniczy (AUDYT-081)" w `docs/Glossary.md`; plik `docs/glossary.md` usunięty.
 - [X] Dodano przykłady poprawnej vs niepoprawnej komunikacji.
 
 **Uzasadnienie:**
@@ -1040,7 +1041,7 @@ Klasyczna pozostałość (Boilerplate) po sklonowaniu bazowego repozytorium firm
 
 **Diagnoza Audytora:** 
 Wyodrębniono dwa istotne "dryfy" informacyjne:
-1. Niespójność wersji: `Architecture.md` wspomina Pythona `3.14`, podczas gdy `pyproject.toml` blokuje `>=3.14,<3.15` (choć to akurat bezpieczne doprecyzowanie, wymaga ujednolicenia np. w starych plikach instalacyjnych).
+1. Niespójność wersji: `docs/architecture/Architecture.md` wspomina Pythona `3.14`, podczas gdy `pyproject.toml` blokuje `>=3.14,<3.15` (choć to akurat bezpieczne doprecyzowanie, wymaga ujednolicenia np. w starych plikach instalacyjnych).
 2. Niespójność terminologii w najstarszych plikach dokumentacyjnych (z Fazy A/B), gdzie pojęcia `User`, `Tourist` i `Profile` są używane zamiennie. Zgodnie z nowym `ADR-016` (Konta Rodzinne) pojęcia te mają teraz twarde, odseparowane znaczenie.
 
 **Action Items (Do wdrożenia w przyszłości):**
@@ -1397,12 +1398,53 @@ Obecnie system walidacji architektonicznej (`make check`, `import-linter`, `audi
 **Uzasadnienie decyzji:**
 Zdecydowano się na dedykowany skrypt zamiast zewnętrznych narzędzi (SonarQube, CodeClimate) — zero dodatkowych zależności, pełną kontrolę nad miarami, i pełną integrację z istniejącym pipelinem CI. Health Score to średnia ważona z 7 kluczowych konturów.
 
+**Podsumowanie (AUDYT-058 — Sprawozdanie pełne):**
+- ✅ Status: `zrealizowany`
+- ✅ `scripts/architecture-scorecard.py` — 8 grup metryk, `health_score` (0–100)
+- ✅ `tests/architecture/test_scoreboard_metrics.py` — 19 testów FF, `scope="module"` auto-regeneracja
+- ✅ `make scorecard` + CI step (`continue-on-error: true`) + `diagnostic-artifacts`
+- ✅ FF-024 zarejestrowany w `docs/architecture/fitness-functions.md`; `governance.md`: 23→24
+- ✅ `health_score` = Σ(weight)/8 × 100; `pass`=1.0, `warn`=0.5, `fail`=0.0
+- ⚠️ Ograniczenia: nie blokuje CI; brak trend engine; `security` = heurystyka słowna; TDD ratio może obniżać score
+- ✅ `make check` nie zaburzone — 864 testów, 80.70% cov, 5/5 contracts KEPT
+
 
 ---
 
 ---
 
-### [AUDYT-119] Cykliczna zależność między `apps/` a `infrastructure/`
+### [AUDYT-016] Strict Type Checking na warstwie infrastructure
+**Status:** ✅ **ZREALIZOWANO**
+**Obszar:** `Infrastruktura / Type Safety`
+**Priorytet:** `🟡 ŚREDNI`
+**Data:** 2026-09-02
+
+**Diagnoza Audytora:** Brak formalnego etapu `mypy --strict` na warstwie `infrastructure/` — błędy typizacji mogą przechodzić niezaubane w `make check`.
+
+**Wdrożenie (016 — Strict Typing):**
+- [X] Komenda diagnostyczna `make strict-infra-check` (`mypy infrastructure/ --strict`)
+- [X] Naprawiono 7 rzeczywistych błędów typowych w 4 plikach (`error_handling.py`, `celery_event_publisher.py`, `django_tourist_repo.py`, `explore_queries_dto.py`)
+- [X] 34 pozostałych błędów to ograniczenia frameworków (Django ORM bez `django-stubs`, Celery `@shared_task` bez stubów) — **nie** błędy logiczne
+- [X] W warstwie `infrastructure/` brak błędów typowych dla logiki biznesowej — wszystkie to `misc`/`untyped-decorator`
+
+**Znaleziska:**
+- Błędy nie występują w `domain/` ani `application/` (objęte `mypy --strict` w CI)
+- Rekomendacja: nie dążyć do "0 errors --strict" bez `django-stubs[mypy]` — inwestycja niespropsowa
+- Rekomendacja: AUDYT-062 (`mypy --strict infrastructure/ — PASS`) → roadmapa
+
+**Weryfikacja:** `mypy infrastructure/ --strict` → 34 errors w 9 plikach (7 usuniętych); `make check` → 843 passed, 5/5 contracts KEPT
+
+**Known Limitations:**
+| # | Ograniczenie | Wpływ | Kompensacja |
+|---|--------------|-------|-------------|
+| 1 | `mypy --strict infrastructure/` nie jest czysty | Nie można dodać do Gate (`make check`) | 7 błędów naprawionych; 34 to ograniczenia frameworków |
+| 2 | Django ORM bez `django-stubs` | `Class cannot subclass "Model"` | `infrastructure.*` ma `disallow_untyped_defs = false` |
+| 3 | Celery `@shared_task` bez stubów | `Untyped decorator` | Taski nie deklarują typów — naturalny brak typowalności |
+
+> **Uwaga:** AUDYT-016 numeracja jest **zajęta** przez sekcję "[AUDYT-016] Importy modele między niezależnymi aplikacjami Django" (więcej niż 180 linii dalej w tym pliku). Ta sekcja (Strict Typing) **zastępuje** niżej w kolejności — oryginalne sprawozdanie `docs/audyt-sprawozdania/audit-016-strict-typing-infrastructure.md` przeniesione do archiwum.
+
+---
+
 **Status:** ✅ **ZREALIZOWANO**
 **Obszar:** `Architektura Heksagonalna / Granice Modułów`  
 **Priorytet:** `🔴 KRYTYCZNY`  
@@ -2367,6 +2409,22 @@ Po udanej migracji danych do płaskiej tabeli `regions_flat` (migracje 0003/0004
 **Migracje (etap DB):**
 - `0005_migrate_region_neighbors_m2m.py` — ETL: kopiowanie M2M `TouristRegionModel` sąsiadów do `RegionFlatModel.neighbors`
 - `0006_alter_objectregioncache_region_id_fk.py` — ETL: `region_id` (BigInteger) → `region` (FK → `RegionFlatModel`); `SeparateDatabaseAndState` (DB: `AlterField` na istniejącej kolumnie + `RunPython` cleanup orphaned cache)
+
+**Wdrożenie (Phase 2 — Refaktoryzacja logiki, z `CHANGELOG.md`):**
+- ✅ `apps/badges/models/read_model.py` — `ObjectRegionCache.region_id` (BigIntegerField) → `ForeignKey` → `RegionFlatModel` (referential integrity)
+- ✅ `infrastructure/adapters/persistence/django_region_cache_repo.py` — refaktoryzacja na `RegionFlatModel`:
+  - `recalculate_all_region_levels`: 6 zapytań po starych modelach → 1 po `RegionFlatModel.filter(level__in=...)`
+  - `get_related_regions`/`recalculate_tourist_regions`: M2M z `TouristRegionModel` → `RegionFlatModel.neighbors`
+- ✅ `infrastructure/adapters/persistence/django_region_geometry_repo.py` — refaktoryzacja na `RegionFlatModel`
+- ✅ `infrastructure/adapters/persistence/django_mvt_repo.py` (MVT): mapa warstw → filtr `level` w `regions_flat` (jedna warstwa MVT z `regions_flat`, zamiast 7 warstw → 7 tabel)
+
+**Notatki migracyjne (z `CHANGELOG.md`):**
+- Baza danych wymaga migracji do `0007` — migracja ETL `0004` kopiuje dane 1:1 z zachowaniem PK, `0006` przekształca `region_id` na FK (ETL usunie orphaned), `0007` usuwa stare tabele.
+- **Usunięte 7 historycznych tabel:** `odznaki_country`, `odznaki_voivodeship`, ..., `odznaki_tourist_region`.
+- **Usunięte klasy modeli:** `CountryModel`, `VoivodeshipModel`, `ProvinceModel`, `SubprovinceModel`, `MacroregionModel`, `MesoregionModel`, `TouristRegionModel`, `RegionBaseModel`, `PhysicalRegionMixin`, `RegionLevelType` (zastąpiony przez `RegionLevel`).
+- **Django Admin:** jeden `RegionFlatAdmin` z `list_filter("level")` i `filter_horizontal("neighbors")` zastępuje 7 osobnych paneli.
+- **Zarządzane poprzez** `scripts/dev-up.sh` / `scripts/release-database.sh`.
+- ✅ `make check` nie zaburzone — 843 passed, 5/5 lint-imports KEPT, mypy 0 errors (160 files).
 - `0007_drop_legacy_regions.py` — `DeleteModel` dla wszystkich 7 histor. modeli (DROP TABLE CASCADE)
 
 **Weryfikacja:** 86 testów nie-DB (`test_models.py`, `test_admin.py`) ✅ zdrowe; `make lint` ✅ 0 błędów; `make type-check` ✅ 0 błędów (161 plików); `test_django_tourist_repo.py` wymaga kontenera Postgres do uruchomienia.

@@ -139,7 +139,7 @@ Aplikacja operuje na dwóch fundamentalnie różnych typach danych, które podle
 | [ADR-013] | Vector Tiles & Client-Side Styling | MVT tylko dla statycznej geometrii (anonimowe). GeoJSON z BBox tylko dla dynamicznych stanów (`peak_color`). |
 | [ADR-014] | Separacja Postępu od Logistyki | Domena wydaje wyrok `COMPLETED`, a proces śledzenia blachy to niezależny Kanban Turysty. |
 | [ADR-015] | Ranking Potencjału (100/n) | Asynchroniczny silnik liczący opłacalność celów z systemem Event-Driven Cache Invalidation. |
-*(Pełna dokumentacja decyzji dostępna w folderze `/docs/adr/`)*.
+*(Pełna dokumentacja decyzji dostępna w folderze `docs/adrs/`)*.
 
 ---
 

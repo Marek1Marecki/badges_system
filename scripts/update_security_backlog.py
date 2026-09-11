@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Update docs/security-backlog.md from Trivy JSON report.
+"""Update docs/security/security-backlog.md from Trivy JSON report.
 
 Usage:
     python scripts/update_security_backlog.py trivy-report.json
@@ -7,7 +7,7 @@ Usage:
 Reads the Trivy report, classifies vulnerabilities by severity and
 availability, and regenerates the security-backlog.md file.
 
-Outputs to docs/security-backlog.md by default. Use --output to override.
+Outputs to docs/security/security-backlog.md by default. Use --output to override.
 """
 
 from __future__ import annotations
@@ -305,8 +305,8 @@ def main() -> int:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("docs/security-backlog.md"),
-        help="Output markdown file (default: docs/security-backlog.md)",
+        default=Path("docs/security/security-backlog.md"),
+        help="Output markdown file (default: docs/security/security-backlog.md)",
     )
     parser.add_argument(
         "--dry-run",

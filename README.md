@@ -17,12 +17,12 @@ Projekt posiada wyczerpującą dokumentację w katalogu `docs/`. **Zapoznanie si
 * [Glossary.md](docs/Glossary.md) — Słownik Języka Wszechobecnego (Ubiquitous Language).
 * [Invariants.md](docs/Invariants.md) — Niezmienniki systemu (twarde reguły architektoniczne).
 * [Domain Model.md](docs/Domain Model.md) — Opis encji i relacji biznesowych.
-* [Architecture.md](docs/Architecture.md) i [Module Map.md](docs/Module Map.md) — Tech stack i zasady importów.
+* [Architecture.md](docs/architecture/Architecture.md) i [Module Map.md](docs/architecture/Module%20Map.md) — Tech stack i zasady importów.
 * [Data Flow Diagram.md](docs/Data Flow Diagram.md) — Przepływ danych w systemie (CQRS, Asynchronia).
 * [Dependencies.md](docs/Dependencies.md) — Uzasadnienie użytych bibliotek.
 * [Edge Cases.md](docs/Edge Cases.md) — Znane problemy (WAF, OSM) i workaroundy.
-* [Runbook.md](docs/Runbook.md) — Podręcznik uruchamiania i Troubleshooting.
-* [Test Strategy.md](docs/Test Strategy.md) — Strategia testowania (Test Doubles, Fakes).
+* [Runbook.md](docs/guides/Runbook.md) — Podręcznik uruchamiania i Troubleshooting.
+* [Test Strategy.md](docs/testing/Test%20Strategy.md) — Strategia testowania (Test Doubles, Fakes).
 * **Decyzje Architektoniczne:** Katalog `docs/adrs/` (ADR-001 do ADR-031).
 
 > **Dla Agentów AI:** Przed rozpoczęciem pracy, agent musi przeczytać plik `SYSTEM_PROMPT.md` oraz zasady zawarte w `.cursorrules`.

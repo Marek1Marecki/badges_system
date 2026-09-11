@@ -49,7 +49,7 @@ services:
       # Wymagane WYŁĄCZNIE przez `docker compose exec web ./scripts/bootstrap.sh`
       # (manage.py createsuperuser --noinput czyta je bezpośrednio z
       # os.environ kontenera, nie z pliku .env.dev czytanego przez Pydantic —
-      # to dwie różne warstwy, patrz nagłówek pliku i README-infra.md).
+      # to dwie różne warstwy, patrz nagłówek pliku i docs/architecture/README-infra.md).
       - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:?Ustaw DJANGO_SUPERUSER_USERNAME w pliku .env}
       - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:?Ustaw DJANGO_SUPERUSER_EMAIL w pliku .env}
       - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:?Ustaw DJANGO_SUPERUSER_PASSWORD w pliku .env}

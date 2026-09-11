@@ -8,7 +8,7 @@ from pathlib import Path
 
 ADRS_DIR = Path("docs/adrs")
 TEMPLATE = Path("docs/adrs/ADR-TEMPLATE.md")
-INDEX = Path("docs/architecture/decisions/README.md")
+INDEX = Path("docs/architecture/README.md")
 
 
 def next_adr_number() -> int:
