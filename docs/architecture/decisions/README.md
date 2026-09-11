@@ -37,6 +37,7 @@
 | [ADR-024](adrs/ADR-024%20%E2%80%94%20Strategia%20Migracji%20(Expand%20and%20Contract).md) | Strategia Migracji (Expand and Contract) | accepted | 2026-07-23 | Database |
 | [ADR-025](adrs/ADR-025%20-%20%C5%9Arodowisko%20TEST%20aplikacji%20Badges%20System.md) | Środowisko TEST aplikacji Badges System | accepted | 2026-07-19 | Operations |
 | [ADR-026](adrs/ADR-026%20-%20PostgreSQL%20Volume%20Layout%20(PostgreSQL%2018%2B).md) | PostgreSQL Volume Layout | accepted | 2026-08-25 | Infrastructure |
+| [ADR-031](adrs/ADR-031%20%E2%80%94%20Konwencja%20Nazewnictwa%20DTO.md) | Konwencja Nazewnictwa DTO | accepted | 2026-09-04 | Domain |
 
 ---
 

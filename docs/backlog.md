@@ -2982,12 +2982,51 @@ code Markdown
 ### [x] [AUDYT-066 / 077] Wymóg wsparcia dla wersji Offline (Local-First Architecture)
 **Obszar:** `Frontend / UX / Aplikacja Mobilna`  
 **Priorytet:** `🟡 ŚREDNI`  
-**Zrealizowano (Specification / Partial Adoption):** Odrzucono koncepcję budowy pełnej architektury "Offline-First" z asynchroniczną kolejką zapisu (IndexedDB) z powodu niekompatybilności z modelem Server-Side Rendering (HTMX) oraz niemożliwości ewaluacji Czystej Domeny w trybie offline. Wdrożenie asynchronicznych zapisów z telefonu groziło masowymi odrzuceniami wejść po powrocie do sieci (łamanie T-01) bez możliwości powiadomienia turysty w czasie rzeczywistym. 
-Zamiast tego zatwierdzono model **"Graceful Degradation (Read-Only Offline)"**:
-1. Wdrożenie PWA (Service Worker) wyłącznie do agresywnego buforowania plików statycznych oraz kafelków wektorowych mapy (MVT). Aplikacja załaduje się na szlaku bez zasięgu jako interaktywna mapa do orientacji.
-2. Próby zapisu (mutacje HTMX) w trybie braku połączenia będą natychmiast przechwytywane na froncie z komunikatem doradzającym logowanie po powrocie do zasięgu lub skorzystanie z modułu masowego importu śladu GPS (GPX) udostępnionego w systemie.
+**Status:** `Zamknięte — Graceful Degradation (Read-Only Offline) przyjęte`  
 
-To zachowuje powagę sytuacji, ratuje UX, a nam zdejmuje gigantyczny ból utrzymaniowy z barków. Zgadzasz się na takie "odcięcie" wymagań offline?
+**Context:**
+Turysta PTTK wchodzi na szczyty w górach, gdzie zasięg jest niestabilny lub nieistniejący. Oryginalny wymóg (AUDYT-066) wymagał pełnej architektury Offline-First (Local-First) z kolejką asynchroniczną zapisu do IndexedDB, umożliwiając logowanie wejść offline i synchronizację po powrocie do zasięgu.
+
+**Diagnoza Audytora:**
+Aplikacja PTTK Badges opiera się na architekturze **Server-Side Rendering (HTMX)** — przeglądka renderuje HTML w Django. Czysta Domena (reguły weryfikacyjne, bitemporalność T-01, limity konta Freemium) jest ewaluowana wyłącznie po stronie serwera.
+
+Wdrożenie pełnego trybu Offline-First wiąże się z niekompatybilnością architektoniczną:
+
+1. **Illuzja Paska Postępu:** Pasek Odznaki na smartfonie nie może być aktualizowany natychmiastowo — reguły liczone są w Pythonie, nie w JavaScript. Duplikacja logiki domenowej w JS złamałaby kontrakt czystości Domeny (ADR — Hexagonal Architecture).
+2. **Eventual Consistency Hell (T-01):** Wejście zalogowane offline może zostać odrzucone serwerem (np. błąd bitemporalny T-01 "logowanie w przyszłości") dopiero trzy godziny później po powrocie z lasu. Brak możliwości powiadomienia turysty w czasie rzeczywistym = **zaufanie do aplikacji jest naruszane**.
+3. **Complexity Bomb:** Service Workery wymagają pełnego modelu cyklu życia cache (aktualizacja HTML po wdrożeniu ADR-022, konflikty wersji, debugowanie w Safari iOS). To nie jest koszt usprawiedliwiający się w budżecie B2C.
+
+**Decision — Wdrożenie kompromisu:**
+
+**Wariant:** `Graceful Degradation (Read-Only Offline)` — tylko odczyt offline, zapis online.
+
+**Wdrożenie:**
+1. **Service Worker (PWA)** — agresywne buforowanie:
+   - Plików statycznych: CSS, szablony HTMX, ikony.
+   - Kafelków wektorowych mapy (MVT) — Cache API + IndexedDB.
+   - Efekt: aplikacja otworzy się jako **interaktywna mapa orientacyjna** nawet bez zasięgu.
+2. **Mutacje HTMX offline-aware:**
+   - JS przechwytuje próbę zapisu (POST/PUT/DELETE) bez połączenia.
+   - Wyświetla Toast: `"🔌 Brak zasięgu. Zaloguj wejście po powrocie do schroniska lub wgraj ślad GPX (→ Import GPS)."`.
+   - Brak żadnych danych w lokalnej kolejce — **zero desyncu**.
+3. **PWA Install Prompt** — możliwość "zainstalowania" jako ikony na ekranie głównym (iOS + Android) bez App Store.
+
+**Architektoniczne Zasady (chronione):**
+- Domena NIE jest duplikowana w JS — pozostaje czysta (Hexagonal Architecture).
+- Zero kodu offline-first do utrzymania.
+- Logika zapisu pozostaje w `LogAscentUseCase` (Python), nie ma ryzyka T-01 offline.
+
+**Konsekwencje:**
+- **Pozytywne:** Znaczną poprawa UX na szlaku (mapa działa offline), PWA dostępna na ekranie głównym, energooszczędny cache MVT.
+- **Negatywne:** Turysta nie może logować wejść offline. Kompensacja: moduł masowego importu śladów GPS (GPX) udostępnia prosty workflow wieczorem w hotelu.
+
+**Trigger for Review:**
+- Jeśli turystów offline-logowanie będzie kluczowym wskaźnikiem sukcesu aplikacji (>70% logowań offline).
+- Jeżeli migracja na Mobile-First (React Native natywne) nastąpi — wtedy full offline będzie osiągalny kosztowo.
+
+**Powiązane:**
+- **ADR-017:** Frontend — HTMX + SSR zamiast SPA (decyzja odrzuca SPA, które byłoby lepsze dla offline PWA).
+- **Invariants:** T-01 (Ochrona przed logowaniem w przyszłości) — nie może być obejęty offline bez serwera.
 
 ---
 
@@ -3008,24 +3047,41 @@ Zgodnie z naszymi wczesnymi ustaleniami, PWA (Progressive Web App) to ostateczny
 ---
 
 ### [AUDYT-090] Brakujący Interfejs (UX) do Przełączania Praw Nabytych
-**Obszar:** `API / UX / Prawa Nabyte`
-**Priorytet:** `🟠 WYSOKI`
-**Status:** `✅ Zakończone — Wdrożone` (2026-09-09)
 
-**Diagnoza Audytora:** 
-`US-C05` gwarantuje turyście "Świadomy wybór Regulaminu". Nasz kod w `StartBadgeProgressUseCase` realizuje "Leniwe Zakotwiczenie" – automatycznie znajduje i podczepia turystę pod stary regulamin na podstawie daty jego najstarszego wejścia (Grandfather Clause). Audytor wyłapał jednak lukę w UX: turysta, po automatycznym zakotwiczeniu go przez system w np. regulaminie z 2018 roku, **nie posiadał na ekranie przycisku (Switch Version)**, który pozwoliłby mu dobrowolnie przejść na najnowszą wersję odznaki.
+**Obszar:** `API / UX / Prawa Nabyte`  
+**Priorytet:** `🟠 WYSOKI`  
+**Status:** `Zamknięte — Implementacja wdrożona` (2026-09-09)
 
-**Wdrożenie (pełny cykl portów i adapterów):**
-- [x] **Port:** `update_version_id()` w `UserProgressRepositoryPort`.
-- [x] **Adapter:** `DjangoTouristRepo.update_version_id()` — `exclude(domain_status="COMPLETED")` chroni przed mutacją zakończonych odznak.
-- [x] **UseCase:** `StartBadgeProgressUseCase.switch_version()` — pełna walidacja (własność, COMPLETED→409, brak wersji→404).
-- [x] **API:** `PATCH /api/v1/progress/{progress_id}/switch_version/` (`BadgeVersionSwitchView`).
-- [x] **DTO:** `VersionSwitchRequestDTO` — wymuszone gated tests architektonicznych.
-- [x] **OpenAPI:** `/progress/{progress_id}/switch_version/` — wymuszone testem path consistency.
-- [x] **Fake:** `FakeUserProgressRepository.update_version_id()` do testów Use Case.
+**Context:**
+`US-C05` gwarantuje turystowi "Świadomy wybór Regulaminu" — `StartBadgeProgressUseCase` automatycznie zakotwicza go w starszej wersji regulaminu (Grandfather Clause). Audytor wykrył lukę UX: po zakotwiczeniu turysta **nie miał możliwości dobrowolnego przejścia na nowszy regulamin**.
 
-**Komentarz Architekta:**
-Brak luki UX dozwolony w architekturze Clean Architecture. Turysta może przejść na nowszy regulamin w dowolnym momencie, aż do zakończenia odznaki. Pełna specyfikacja w archiwum `backlog_po_audycie.md` oraz ADR-007 (werSIONOWANIE).
+**Decision — Implementacja pełnego cyklu portów i adapterów:**
+
+Implementacja obejmuje wszystkie warstwy (Masterclass w czystej architekturze):
+
+1. **Port:** `update_version_id()` w `UserProgressRepositoryPort` — czysty interfejs.
+2. **Adapter:** `DjangoTouristRepo.update_version_id()` — `exclude(domain_status="COMPLETED")` chroni przed mutacją zakończonych odznak.
+3. **Use Case:** `StartBadgeProgressUseCase.switch_version()` — pełna walidacja:
+   - Własność postępu (`get_progress_by_id(profile_id, progress_id)`)
+   - Zamknięcie na `COMPLETED` → HTTP 409
+   - Weryfikacja istnienia wersji → HTTP 404
+4. **API:** `PATCH /api/v1/progress/{progress_id}/switch_version/` (`BadgeVersionSwitchView`).
+5. **DTO:** `VersionSwitchRequestDTO` — wymuszone przez test architektoniczny `test_api_views_use_dto_for_mutation` (gating).
+6. **OpenAPI:** `/progress/{progress_id}/switch_version/` — wymuszone przez test `test_django_api_paths_are_subset_of_openapi`.
+7. **Fake:** `FakeUserProgressRepository.update_version_id()` — do testów Use Case.
+8. **Event:** `UserProgressStateChanged` publikowane po przełączeniu (AUDYT-117 — bez `request_id` w Domenie).
+
+**Globalny `autouse fixture` w `tests/conftest.py` (AUDYT-117):** Reset ContextVar (`request_id`) między testami — uniemożliwia "przepływ" `request_id` z jednego testu do drugiego (Flaky Tests under pytest-randomly).
+
+**Konsekwencje:**
+- Turysta może przejść na nowszy regulamin w dowolnym momencie, dopóki odznaka nie jest zakończona.
+- `version_id` w `UserBadgeProgress` aktualizowany dokładnie raz (atomic update via ORM filter).
+- Pełna kompatybilność z istniejącym `verify_badge.py` — po przełączeniu nowa wersja regulaminu jest używana dla dalszych wejść.
+
+**Powiązane:**
+- **US-C05:** Prawa Nabyte (Specyfikacja).
+- **ADR-007:** Hierarchia i Wersjonowanie Odznak (Temporal Modeling).
+- **ADR-030:** Distributed Tracing (ContextVar reset w conftest.py).
 
 ---
 
@@ -3050,29 +3106,36 @@ System operuje wokół regulaminów Polskiego Towarzystwa Turystyczno-Krajoznawc
 
 **Zaktualizowano:** Językiem wbudowanym na stałe w warstwę prezentacji (Hardcoded) pozostaje język polski. Wszelkie próby internacjonalizacji w przyszłości będą wymagały świadomej decyzji biznesowej i ponownego rozważenia tego punktu.
 
-**Pełna deklaracja w archiwum:** Treść decyzji została zarchiwizowana w `docs/backlog_po_audycie.md` (sekcja "Zarchiwizowane Decyzje Wont-Fix").
-
 ---
 
 ### [AUDYT-115] Opracowanie strategii awaryjnej i "Data Recovery" dla Użytkowników
 **Obszar:** `Operacje / Wdrożenie (SRE)`
 **Priorytet:** `🟠 WYSOKI (Przed oficjalnym startem PROD)`
-**Status:** `✅ Zakończone — Dokumentacja wdrożona` (2026-09-09)
+**Status:** `Zamknięte — Dokumentacja wdrożona` (2026-09-09)
 
-**Diagnoza Audytora:** 
-Raport uderza w brak jakiejkolwiek procedury operacyjnej dla obsługi tzw. "Awarii Klienta". System posiada doskonały `Runbook.md` dla dewelopera, ale brakuje w nim zdefiniowania procesu: co ma zrobić Administrator Systemu, jeśli turysta napisze maila "Usunąłem przez przypadek swój profil i straciłem odznaki, proszę o przywrócenie!", albo "Baza danych padła, musimy odtworzyć stan z wczoraj z S3".
+**Decision:**
+Wdrożono operacyjny **Disaster Recovery Plan** (`docs/ops/Disaster_Recovery_Plan.md`) jako oficjalną "Biblię SRE". Plan obejmuje:
 
-**Wdrożenie:**
-- [x] Utworzono dokument `docs/ops/Disaster_Recovery_Plan.md` — operacyjny plan krok-po-kroku dla SRE/Administratora.
-- [x] Opisano komendy `pg_dump`/`pg_restore` przez `docker compose exec db` (wersja produkcyjna `compose.prod.yml`), pobieranie z S3 (konto `backup-recovery`, Object Lock WORM), healthcheck po odtworzeniu.
-- [x] Zdefiniowano politykę biznesową:
-  - **Profil na żądanie:** możliwe, ale wymaga ręcznego QA i potwierdzenia Lead Developera (~30–60 min), nie gwarantowane <4h.
-  - **Pełna odbudowa bazy:** maksymalny czas RTO 8h, procedura odizolowana.
-  - Otwartym zadaniem pozostaje `prod-backup.sh`/`prod-restore.sh` (na razie istnieją tylko `dev-`).
+1. **Pełna odbudowa bazy PROD** — krok-po-kroku: `pg_dump` → S3 (bucket `pttk-badges-prod-backups`, Object Lock WORM), pobranie na izolowany serwer DR, `pg_restore` przez `docker compose exec db` (unikanie rozjazgu wersji klienta PostgreSQL). Healthcheck + reprezentatywne zapytanie.
+2. **Odtworzenie pojedynczego profilu** — polityka biznesowa: **możliwe na żądanie**, ale wymaga ręcznego SQL-a i potwierdzenia Lead Developera (~30–60 min), nie gwarantowane <4h. Uzasadnienie: Prawa Nabyte są rekonstruowalne z logów wejść; profil można odtworzyć, ale koszt operacyjny nie zwaloryzowany jest jako natychmiastowy.
+3. **Procedura przed migracją** — backup ad-hoc `prod-backup.sh` zwykły przed `Database Release` (ADR-021, punkt 5).
+4. **Checklista 30-minutowa** — tabelaryczny plan akcji dla pierwszych 30 minut incydentu (zablokuj PROD, znajdź backup, potwierdź ticket, odtwórz, healthcheck, powiadom).
 
-**Powiązane:** ADR-021 (RPO/RTO/S3), `docs/Runbook.md`, `scripts/dev-backup.sh` (referencja).
+**Krytyczne zasady operacyjne:**
+- **RPO:** 24h (max utrata danych).
+- **RTO:** 8h (max downtime).
+- **3-2-1 Rule:** 3 kopie, 2 media, 1 off-site (S3 Object Lock).
+- **pg_dump/pg_restore ALASWY** przez `docker compose.exec db` (por. `scripts/dev-backup.sh`).
 
-**Status:** ZAMKNIĘTE — formalizowane w `docs/ops/Disaster_Recovery_Plan.md`.
+**Otwarty dług:**
+- Skrypty `prod-backup.sh` i `prod-restore.sh` istnieją tylko w wersji `dev-`. Tworzenie wersji PROD to otwarte zadanie.
+
+**Powiązane:**
+- **ADR-021:** Strategia Backupów i Disaster Recovery.
+- **ADR-020:** Architektura Wdrożeń (SRE).
+- **ADR-026:** PostgreSQL Volume Layout.
+- **docs/Runbook.md:** Operacje codzienne, migracje schematu.
+- **scripts/dev-backup.sh** | **scripts/dev-restore.sh:** Referencja dla wersji PROD.
 
 ---
 
