@@ -320,6 +320,7 @@ digraph G {
   "apps.badges.admin.sync_conflict_admin" -> "apps.badges.models";
   "apps.badges.forms" -> "apps.badges.models";
   "apps.badges.management.commands.calculate_neighbors" -> "apps.badges.models";
+  "apps.badges.management.commands.export_reference_data" -> "apps.badges.reference_data.constants";
   "apps.badges.management.commands.restore_reference_data" -> "apps.badges.models";
   "apps.badges.migrations.0004_create_regions_flat_ltree" -> "apps.badges.models.region";
   "apps.badges.models" -> "apps.badges.models.badge";

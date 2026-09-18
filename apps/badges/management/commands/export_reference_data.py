@@ -9,11 +9,12 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
-from badges.reference_data.constants import REFERENCE_DATA_SCHEMA_VERSION
 from django.apps import apps
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
+
+from apps.badges.reference_data.constants import REFERENCE_DATA_SCHEMA_VERSION
 
 
 class Command(BaseCommand):

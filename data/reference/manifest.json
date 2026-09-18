@@ -1,5 +1,5 @@
 {
-    "snapshot_version": "2026-08-07T20:44:00+02:00",
+    "snapshot_version": "2026-09-18",
     "description": "Pe\u0142ny, sp\u00f3jny Snapshot Systemu Referencyjnego PTTK",
     "compatible_schema": "1.0",
     "files": [
@@ -10,11 +10,11 @@
         "05_badge_news.json.gz"
     ],
     "checksums": {
-        "01_regions.json.gz": "5aa92855a69d1d36c0a1f00ccd6bc818dee765e93cd1f4841a3cbe4198c2b7f4",
-        "02_tourist_objects.json.gz": "c923e97b7e84cbf0435cedb4570896b8c5034668fc549e689e4b817b8721991e",
-        "03_badges.json.gz": "0d8245e659cbf8d6d94dc6f171915fb3db5cf292051728208d316b8a893baa9f",
-        "04_osm_mappings.json.gz": "0acec14d115b60253e3cb9691ab4b4d70839cad611f25b6d1b3eebee74d46d5a",
-        "05_badge_news.json.gz": "bca725566b64a87903061e45b64cd4f9e993db6be5d177a78906216716adac11"
+        "01_regions.json.gz": "fe3f33b193e84386b36dd6b46e4e6a8b93b4200606972d4b271f764b0a66f137",
+        "02_tourist_objects.json.gz": "2f62a3d29b97f997e1ba9589131f53d225fc21282210f7bfa21fab04d2044407",
+        "03_badges.json.gz": "c67e832e6adeba7fbbc9a0c967912ae1b3066b41d2510e00e4e0ba44b4cdb3e3",
+        "04_osm_mappings.json.gz": "440a42d73e1bac3bb8e7ac251f87c36031f74ff0d4f5433cc7a9697b2882907e",
+        "05_badge_news.json.gz": "f94c80c65e05b07f499cbc9be4b71e55b8351cb6ec3658f26be055605d1bf8de"
     },
     "statistics": {
         "regions": 695,
@@ -22,10 +22,6 @@
         "badges": 72,
         "badge_versions": 115,
         "osm_mappings": 49,
-        "badge_news": 64
-    },
-    "pg_dump": {
-        "filename": "postgis_dump.custom",
-        "description": "Binarny dump PostgreSQL (pg_dump -Fc) do szybkiego restore w E2E/CI. Nie jest wersjonowany w Gicie \u2014 tworzony w pipeline CI."
+        "badge_news": 93
     }
 }
