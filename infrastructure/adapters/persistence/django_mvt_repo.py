@@ -8,9 +8,17 @@ from apps.badges.models import RegionFlatModel
 # POPRAWNY IMPORT WYJĄTKU (Z infrastruktury, a nie z aplikacji)
 from infrastructure.exceptions import InfrastructureException
 
-# Jedna płaska tabela regions_flat = wszystkie warstwy MVT
-LAYER_TO_MODEL = {
-    "regions_flat": RegionFlatModel,
+# Jedna płaska tabela regions_flat = wszystkie level'e (COUNTRY/.../MESOREGION).
+# Frontend prosi warstwy po nazwach leveli (mesoregion, macroregion, voivodeship).
+# Mapujemy na RegionLevel w bazie.
+LAYER_TO_LEVEL = {
+    "regions_flat": None,  # wszystkie poziomy
+    "country": "COUNTRY",
+    "province": "PROVINCE",
+    "subprovince": "SUBPROVINCE",
+    "voivodeship": "VOIVODESHIP",
+    "macroregion": "MACROREGION",
+    "mesoregion": "MESOREGION",
 }
 
 
@@ -33,26 +41,47 @@ class DjangoMvtRepository(MvtRepositoryPort):
         Returns:
 
         """
-        model = LAYER_TO_MODEL.get(layer_name)
-        if not model:
+        region_level = LAYER_TO_LEVEL.get(layer_name)
+        if region_level is None and layer_name not in LAYER_TO_LEVEL:
             raise InfrastructureException(f"Nieznana warstwa MVT: {layer_name}")
 
-        table_name = model._meta.db_table
+        table_name = RegionFlatModel._meta.db_table
+
+        # Tolerance dla ST_Simplify zależy od zoomu — niższe zoomy = większa tolerancja.
+        # Wartość w metrach (SRID 3857): 40074m (zoom 0-3), 20037m (zoom 4-6), 10019m (zoom 7-9), 501m (zoom 10+).
+        if z <= 3:
+            simplify_tolerance = 40074
+        elif z <= 6:
+            simplify_tolerance = 20037
+        elif z <= 9:
+            simplify_tolerance = 10019
+        else:
+            simplify_tolerance = 501
+
         query = f"""
                 WITH bounds AS (
                     SELECT ST_TileEnvelope(%s, %s, %s) AS geom
                 ),
                 mvtgeom AS (
-                    SELECT ST_AsMVTGeom(ST_Transform(t.shape, 3857), bounds.geom) AS geom,
+                    SELECT ST_AsMVTGeom(
+                        ST_Simplify(ST_Transform(t.shape, 3857), %s::float),
+                        bounds.geom
+                    ) AS geom,
                            t.id, t.id::text AS db_id_str, t.name
                     FROM {table_name} t, bounds
                     WHERE ST_Intersects(ST_Transform(t.shape, 3857), bounds.geom)
+                    {("AND t.level = %s" if region_level else "")}
                 )
                 SELECT ST_AsMVT(mvtgeom, %s) FROM mvtgeom;
                 """  # noqa: S608
 
+        params: list = [z, x, y, simplify_tolerance]
+        if region_level:
+            params.append(region_level)
+        params.append(layer_name)
+
         with connection.cursor() as cursor:
-            cursor.execute(query, [z, x, y, layer_name])
+            cursor.execute(query, params)
             row = cursor.fetchone()
 
             if row and row[0]:

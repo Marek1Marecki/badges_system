@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", function() {
         container: 'map',
         style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
         center: [19.0, 52.0],
-        zoom: 5
+        zoom: 4
     });
 
     if (window.REGION_EXTENT && window.REGION_EXTENT.length === 4) {
@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", function() {
     map.addControl(new GridSwitcherControl(), 'top-left');
 
     map.on('error', (e) => {
-        console.error('Map error:', e);
+        console.error('Map error:', e?.eventData?.error?.message || e?.message || 'unknown map error');
         const isRateLimit = [429, 403].includes(e?.eventData?.status) ||
             e?.message?.includes('429') ||
             e?.message?.includes('403');
@@ -46,5 +46,16 @@ document.addEventListener("DOMContentLoaded", function() {
 
         attachMapEvents(map);
         fetchMapObjects(map, map.getBounds());
+
+        // Trigger initial auto-zoom to sync layer with starting position
+        if (!state.isManualOverride) {
+            setTimeout(() => {
+                const z = map.getZoom();
+                let targetLayer = z < 4.5 ? 'country' : (z < 6.5 ? 'voivodeship' : (z < 8.5 ? 'macroregion' : 'mesoregion'));
+                if (targetLayer !== state.currentMvtLayer) {
+                    loadMvtLayer(map, targetLayer);
+                }
+            }, 100);
+        }
     });
 });

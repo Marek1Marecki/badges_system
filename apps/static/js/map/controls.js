@@ -73,19 +73,31 @@ export class GridSwitcherControl {
         const iconSvg = `<svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>`;
 
         const isAuto = !state.isManualOverride && !state.isGridHidden ? "checked" : "";
+        const isCountry = state.isManualOverride && state.currentMvtLayer === 'country' ? "checked" : "";
         const isV = state.isManualOverride && state.currentMvtLayer === 'voivodeship' ? "checked" : "";
         const isMa = state.isManualOverride && state.currentMvtLayer === 'macroregion' ? "checked" : "";
         const isMe = state.isManualOverride && state.currentMvtLayer === 'mesoregion' ? "checked" : "";
+        const isProv = state.isManualOverride && state.currentMvtLayer === 'province' ? "checked" : "";
+        const isSubp = state.isManualOverride && state.currentMvtLayer === 'subprovince' ? "checked" : "";
         const isNone = state.isGridHidden ? "checked" : "";
 
         this._container.innerHTML = `
             <div class="w-8 h-8 flex items-center justify-center cursor-pointer bg-white rounded-md hover:bg-gray-100">${iconSvg}</div>
-            <div id="grid-menu" class="hidden absolute top-0 left-full ml-2 bg-white rounded-lg shadow-xl border border-gray-200 flex-col p-2 z-50 w-40">
+            <div id="grid-menu" class="hidden absolute top-0 left-full ml-2 bg-white rounded-lg shadow-xl border border-gray-200 flex-col p-2 z-50 w-44">
                 <span class="text-[10px] font-black text-sky-900 uppercase tracking-wider mb-1 block px-2">Siatka PTTK</span>
                 <label class="text-sm flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1.5 rounded font-medium text-gray-800 transition">
                     <input type="radio" name="grid_map" value="auto" class="text-sky-600" ${isAuto}> Auto-Zoom
                 </label>
                 <hr class="my-1 border-gray-100">
+                <label class="text-sm flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1.5 rounded font-medium text-gray-800 transition">
+                    <input type="radio" name="grid_map" value="country" class="text-sky-600" ${isCountry}> Kraje
+                </label>
+                <label class="text-sm flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1.5 rounded font-medium text-gray-800 transition">
+                    <input type="radio" name="grid_map" value="province" class="text-sky-600" ${isProv}> Prowincje
+                </label>
+                <label class="text-sm flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1.5 rounded font-medium text-gray-800 transition">
+                    <input type="radio" name="grid_map" value="subprovince" class="text-sky-600" ${isSubp}> Podprowincje
+                </label>
                 <label class="text-sm flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1.5 rounded font-medium text-gray-800 transition">
                     <input type="radio" name="grid_map" value="voivodeship" class="text-sky-600" ${isV}> Województwa
                 </label>

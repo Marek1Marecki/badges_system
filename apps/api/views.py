@@ -490,7 +490,7 @@ class MapObjectsView(View):
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
 
-        return JsonResponse(geojson_data, status=200)
+        return JsonResponse(geojson_data.model_dump(), status=200)
 
 
 class BadgeLogisticsView(View):

@@ -4,16 +4,20 @@ import { loadMvtLayer } from './layers.js';
 
 export function attachMapEvents(map) {
 
-    // Auto Zoom logic
+    // Auto Zoom logic — dynamiczne przełączanie warstw w zależności od zoomu.
+    // Każdy level ma własne geometrie w regions_flat (voivodeship → macroregion → mesoregion).
     const triggerAutoZoom = () => {
         if (state.isManualOverride || state.isGridHidden || state.activeRegionIdStr) return;
         const z = map.getZoom();
-        let targetLayer = z < 6.5 ? 'voivodeship' : (z < 8.5 ? 'macroregion' : 'mesoregion');
+        let targetLayer = z < 4.5 ? 'country' : (z < 6.5 ? 'voivodeship' : (z < 8.5 ? 'macroregion' : 'mesoregion'));
         if (targetLayer !== state.currentMvtLayer) loadMvtLayer(map, targetLayer);
     };
 
     if (!state.activeRegionIdStr) {
-        map.on('zoomend', triggerAutoZoom);
+        map.on('zoom', () => {
+            clearTimeout(state.zoomDebounceTimer);
+            state.zoomDebounceTimer = setTimeout(triggerAutoZoom, 100);
+        });
         map.on('triggerAutoZoom', triggerAutoZoom);
     }
 

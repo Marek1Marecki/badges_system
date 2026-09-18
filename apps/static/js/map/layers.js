@@ -45,16 +45,31 @@ export function loadMvtLayer(map, layerName) {
     layersToRemove.forEach(l => {
         if (map.getLayer(l)) map.removeLayer(l);
     });
-    if (map.getSource('region_boundaries')) map.removeSource('region_boundaries');
 
-    if (layerName === 'none') return;
+    // Use a fresh source ID each time to force MapLibre to fetch new tiles
+    state.regionSourceId = `regions_${layerName}_${Date.now()}`;
+    const sourceId = state.regionSourceId;
 
     state.currentMvtLayer = layerName;
 
-    map.addSource('region_boundaries', {
+    if (layerName === 'none') return;
+
+    // Clear existing region layers before removing sources
+    const sources = map.getStyle().sources || {};
+    Object.entries(sources).forEach(([id, src]) => {
+        if (id.startsWith('regions_')) {
+            const layers = map.getStyle().layers || [];
+            layers.forEach(l => {
+                if (l.source === id && map.getLayer(l.id)) map.removeLayer(l.id);
+            });
+            map.removeSource(id);
+        }
+    });
+
+    map.addSource(sourceId, {
         type: 'vector',
-        tiles: [window.location.origin + `/api/v1/tiles/${layerName}/{z}/{x}/{y}.pbf?v=8`],
-        minzoom: 4,
+        tiles: [window.location.origin + `/api/v1/tiles/${layerName}/{z}/{x}/{y}.pbf?v=${Date.now()}`],
+        minzoom: layerName === 'country' ? 0 : 4,
         maxzoom: 14
     });
 
@@ -64,7 +79,7 @@ export function loadMvtLayer(map, layerName) {
     const beforeId = map.getLayer('peaks-heat') ? 'peaks-heat' : (map.getLayer('peaks-symbol') ? 'peaks-symbol' : null);
 
     map.addLayer({
-        'id': 'regions-fill', 'type': 'fill', 'source': 'region_boundaries', 'source-layer': layerName,
+        'id': 'regions-fill', 'type': 'fill', 'source': sourceId, 'source-layer': layerName,
         'paint': {
             'fill-color': state.activeRegionIdStr ? ['case', isActiveRegion, '#0ea5e9', '#cbd5e1'] : '#0284c7',
             'fill-opacity': state.activeRegionIdStr ? ['case', isActiveRegion, 0.25, 0.0] : 0.05
@@ -73,17 +88,28 @@ export function loadMvtLayer(map, layerName) {
 
     if (state.activeRegionIdStr) {
         map.addLayer({
-            'id': 'regions-line-neighbors', 'type': 'line', 'source': 'region_boundaries', 'source-layer': layerName,
+            'id': 'regions-line-neighbors', 'type': 'line', 'source': sourceId, 'source-layer': layerName,
             'filter': ['!', isActiveRegion], 'paint': { 'line-color': '#94a3b8', 'line-width': 1, 'line-dasharray': [2, 2] }
         }, beforeId);
         map.addLayer({
-            'id': 'regions-line-active', 'type': 'line', 'source': 'region_boundaries', 'source-layer': layerName,
+            'id': 'regions-line-active', 'type': 'line', 'source': sourceId, 'source-layer': layerName,
             'filter': isActiveRegion, 'paint': { 'line-color': '#0369a1', 'line-width': 4 }
         }, beforeId);
     } else {
-        map.addLayer({
-            'id': 'regions-line-global', 'type': 'line', 'source': 'region_boundaries', 'source-layer': layerName,
-            'paint': { 'line-color': '#0369a1', 'line-width': 1, 'line-dasharray': [2, 2] }
-        }, beforeId);
+    map.addLayer({
+        'id': 'regions-line-global', 'type': 'line', 'source': sourceId, 'source-layer': layerName,
+        'paint': { 'line-color': '#0369a1', 'line-width': 1, 'line-dasharray': [2, 2] }
+    }, beforeId);
     }
+
+    // Force re-render after source/layer swap
+    requestAnimationFrame(() => {
+        map.triggerRepaint();
+        // Double-check filter
+        if (map.getLayer('regions-fill')) {
+            const f = map.getFilter('regions-fill');
+            map.setFilter('regions-fill', ['all']);
+            if (f) map.setFilter('regions-fill', f);
+        }
+    });
 }

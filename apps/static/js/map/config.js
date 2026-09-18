@@ -1,9 +1,11 @@
 export const state = {
-    currentMvtLayer: window.REGION_FILTER_LEVEL ? window.REGION_FILTER_LEVEL.toLowerCase() : 'mesoregion',
+    currentMvtLayer: window.REGION_FILTER_LEVEL ? window.REGION_FILTER_LEVEL.toLowerCase() : 'country',
     activeRegionIdStr: window.REGION_FILTER_ID ? String(window.REGION_FILTER_ID) : null,
     isManualOverride: window.REGION_FILTER_ID ? true : false,
     isGridHidden: false,
-    debounceTimer: null
+    debounceTimer: null,
+    zoomDebounceTimer: null,
+    regionSourceId: null
 };
 
 export const colorMapping = [

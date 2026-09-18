@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from application.dto.map_dto import MapExploreResponseDTO
 from application.dto.result import CreatedResourceResultDTO
 from tests.fakes.clock import FakeClock
 
@@ -322,7 +323,7 @@ class TestMapObjectsView:
         """Zwraca GeoJSON dla poprawnego bounding box."""
         from apps.api.views import MapObjectsView
 
-        use_cases["explore_map"].execute.return_value = {"type": "FeatureCollection", "features": []}
+        use_cases["explore_map"].execute.return_value = MapExploreResponseDTO(type="FeatureCollection", features=[])
 
         request = factory.get("/api/v1/map/objects/?bbox=10,20,30,40")
         request.user = mock_user
@@ -804,7 +805,7 @@ class TestErrorHandling:
         """Przekazuje opcjonalne parametry do use case explore_map."""
         from apps.api.views import MapObjectsView
 
-        use_cases["explore_map"].execute.return_value = {"type": "FeatureCollection", "features": []}
+        use_cases["explore_map"].execute.return_value = MapExploreResponseDTO(type="FeatureCollection", features=[])
 
         request = factory.get(
             "/api/v1/map/objects/?bbox=10,20,30,40&badge_code=KGP&region_level=voivodeship&region_id=5"
