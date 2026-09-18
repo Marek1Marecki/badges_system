@@ -187,8 +187,6 @@ aws s3 cp ./backups/*.dump \
 
 - **DR Drill:** Raz na kwartał wymagana jest próba odtworzenia na odizolowanym serwerze (ADR-021, punkt 6). Wynik dokumentować w ticket systemie.
 - **PITR (Point-in-Time Recovery):** Nie jest jeszcze wdrożony. Jeśli wymagania biznesowe narzuą odtworzenie do konkretnego momentu, należy rozważyć migrację na `pgBackRest` + WAL Archiving (warunek rewizji ADR-021).
-- **Automatyzacja:** Skrypty `prod-backup.sh` i `prod-restore.sh` powinny zostać stworzone (na razie istnieją tylko wersje `dev-`). To otwarte zadanie w backlogu.
-
 ---
 
 ## 8. Powiązane dokumenty
@@ -197,4 +195,6 @@ aws s3 cp ./backups/*.dump \
 - **ADR-020** — Architektura Wdrożeń (SRE).
 - **ADR-026** — PostgreSQL Volume Layout.
 - **docs/guides/Runbook.md** — Operacje codzienne, migracje schematu.
+- **`.github/workflows/prod-backup.yml`** — Codzienny backup PROD do S3 (Cron 02:00 UTC, OIDC auth).
+- **`.github/workflows/reference-data-release.yml`** — Ręczny export snapshotu PTTK z DEV (`workflow_dispatch`).
 - **scripts/dev-backup.sh** | **scripts/dev-restore.sh** — wersje developerskie (referencja formatów).

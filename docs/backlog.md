@@ -8,6 +8,22 @@
 
 ---
 
+## 🟡 DO ZROBIENIA (Aktywne Zadania)
+
+### [AUDYT-160] Implementacja Ochrony Produkcji (Backupy i Snapshoty w chmurze)
+**Priorytet:** `🔴 KRYCYCZNY`  
+**Kategoria:** SRE / Compliance  
+**Diagnoza Audytora:**  
+W systemie (zgodnie z `ADR-021` i `ADR-023`) zadeklarowano surowe zasady ochrony danych, jednak fizycznie brakuje plików wykonawczych (YAML) dla narzędzi CI/CD (GitHub Actions), co czyni dokumentację deklaratywną obietnicą bez pokrycia (Compliance Breach).
+
+**Action Items:**
+- [ ] Utworzyć plik `.github/workflows/prod-backup.yml` wywoływany przez Cron, realizujący procedurę zrzutu logicznego danych użytkowników (z użyciem uprawnień Write-Only na zasobie S3).
+- [ ] Utworzyć plik `.github/workflows/reference-data-release.yml` wywoływany przez zjawisko `workflow_dispatch` do kontrolowanego, asynchronicznego eksportowania Snapshotów PTTK.
+- [ ] W pliku `scripts/dev-backup.sh` zastosować proces pancernego czyszczenia starych plików za pomocą komendy systemowej `find` na bazie parametru `mtime` (retencja czasowa 14 dni), wycofując kruchą logikę opartą na `ls`.
+- [ ] W pliku `scripts/dev-reset.sh` wdrożyć mechanizm wymuszający zgodę użytkownika na zrzut bazy (za pomocą skryptu `dev-backup.sh`) przed uruchomieniem komendy destrukcyjnej `down -v`.
+
+---
+
 ## 🟢 ZAKOŃCZONE (Archiwum - Historyczny Dług Techniczny)
 
 > Poniższe zadania zostały w pełni zrealizowane i wdrożone w kodzie. Służą jako ślad audytowy (Audit Trail) i dokumentacja historyczna projektu.

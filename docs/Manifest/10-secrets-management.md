@@ -66,12 +66,29 @@ if __name__ == "__main__":
 ## Sekrety w Dockerze
 
 - **Zakaz** używania flagi `-e` z wartością sekretu w terminalu (np. `docker run -e API_KEY=tajne`). Zostawia ślady w bash history i liście procesów (`ps aux`).
-- **Dozwolone sposoby przekazywania w runtime:**
+- **Dozwolone sposoby przekasywania w runtime:**
     1. Przez flagę `--env-file .env.prod` (plik musi mieć zablokowane uprawnienia `chmod 600` i być w `.gitignore`)
     2. Przez zewnętrzny system wstrzykiwania (K8s Secrets, ECS Task Definition, HashiCorp Vault)
 - **Zakaz** `ENV SECRET=value` w `Dockerfile` — sekret trafia do historii warstw obrazu
 - **Zakaz** instrukcji `COPY` dla plików z sekretami (`.env`, klucze SSH)
 - `.env`, `.env.dev`, `.env.prod` muszą znajdować się w `.gitignore` we wszystkich repozytoriach
+
+### GitHub Actions — Workflow Secrets
+
+Workflow CI/CD (`prod-backup.yml`, `reference-data-release.yml`) wymagają następujących sekretów skonfigurowanych w **GitHub → Repo Settings → Secrets and variables → Actions**:
+
+| Secret | Opis | Wymagany w workflow |
+|---|---|---|
+| `AWS_ACCOUNT_ID` | ID konta AWS dla roli `backup-writer-prod` | `prod-backup.yml` |
+| `S3_BUCKET_PROD` | Nazwa bucketu S3 na kopie PROD (np. `pttk-badges-prod-backups`) | `prod-backup.yml` |
+| `PROD_HOST` | Adres IP/serwer PROD do SSH (np. `ubuntu@1.2.3.4`) | `prod-backup.yml` |
+| `PROD_DEPLOY_KEY` | Klucz prywatny SSH do PROD (zarejestrowany jako deploy key z `write:packages` dla OIDC) | `prod-backup.yml` |
+| `SLACK_WEBHOOK_BACKUP` | Webhook Slack do powiadomień o backupach | Opcjonalny — oba |
+
+**Bezpieczeństwo:**
+- `prod-backup.yml` używa **OIDC (`id-token: write`)** — nie przechowuje długotrwałych kluczy AWS w sekretach
+- Konto `backup-writer-prod` ma **tylko PUT Object** do S3 (zgodnie z ADR-021)
+- `PROD_DEPLOY_KEY` powinien być ograniczony do jedynie `docker compose exec db pg_dump`
 
 ### Test integralności w CI
 

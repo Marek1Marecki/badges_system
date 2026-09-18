@@ -46,3 +46,6 @@ docker compose exec -T db pg_dump \
 SIZE=$(du -h "${OUTFILE}" | cut -f1)
 echo "Backup zapisany: ${OUTFILE} (${SIZE})"
 echo "Odtworzenie: ./scripts/dev-restore.sh ${OUTFILE}"
+
+# --- Retencja: usuń backupy starsze niż 14 dni ---
+find ./backups -maxdepth 1 -type f -name "badges_system_*.dump" -mtime +14 -delete -print 2>/dev/null || true

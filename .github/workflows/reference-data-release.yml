@@ -1,0 +1,95 @@
+name: Reference Data Release
+
+# AUDYT-160 — Workflow uruchamiany ręcznie (@workflow_dispatch) do
+# kontrolowanego eksportu Snapshotu PTTK z środowiska DEV.
+#
+# Zgodnie z ADR-023 (Reference Data Lifecycle):
+# - Eksport pochodzi ZAWSZE z DEV (autorytatywne Środowisko Autorskie).
+# - Snapshot jest niemutowalny i musi przejść PR do `main`.
+# - Ten workflow nie automatycznie merguje — tylko otwiera PR.
+#
+# Wymaga self-hosted runnera z Dockerem (np. `pc-dev-runner`),
+# który ma dostęp do `data/` i `compose*.yml`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      with_pg_dump:
+        description: 'Dodatkowo utwórz binarny dump pg_dump (do E2E)'
+        required: false
+        default: 'false'
+        type: boolean
+      branch_name:
+        description: 'Nazwa gałęzi roboczej (bez specjalnych znaków)'
+        required: false
+        default: 'snapshot-update'
+        type: string
+
+permissions:
+  contents: write  # Do puschowania na branch i otwierania PR
+
+jobs:
+  export-snapshot:
+    name: Eksport Snapshotu PTTK z DEV
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repozytorium
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          fetch-depth: 0  # Pełna historia dla git push
+
+      - name: Uruchomienie DEV (Docker Compose)
+        run: |
+          docker compose pull --ignore-pull-failures
+          ./scripts/dev-up.sh
+
+      - name: Poczekaj na gotowość bazy
+        run: |
+          docker compose exec -T db bash -c "until pg_isready -U postgres; do sleep 1; done"
+
+      - name: Eksport danych referencyjnych
+        run: |
+          docker compose exec -T web \
+            python manage.py export_reference_data \
+            ${{ inputs.with_pg_dump && '--with-pg-dump' || '' }}
+
+      # --- Zapisz snapshot jako artefakt ---
+      - name: Upload artefaktu ze snapshotem
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: reference-data-snapshot
+          path: |
+            data/reference/*.json.gz
+            data/reference/manifest.json
+            data/reference/postgis_dump.custom
+          retention-days: 7
+
+      # --- Push na branch + otwórz PR ---
+      - name: Konfiguracja Git
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions [BOT]"
+
+      - name: Utwórz branch i push
+        run: |
+          BRANCH_NAME="${{ inputs.branch_name || 'snapshot-update' }}"
+          git checkout -b "${BRANCH_NAME}"
+          git add data/reference/
+          git commit -m "chore(release): regenerate reference data snapshot"
+          git push origin "${BRANCH_NAME}"
+
+      - name: Otwórz Pull Request
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c  # v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ inputs.branch_name || 'snapshot-update' }}
+          base: main
+          title: "chore(release): regenerate reference data snapshot"
+          body: |
+            🤖 Automatyczny snapshot PTTK Reference Data.
+            
+            - Uruchomiony ręcznie przez `workflow_dispatch` z DEV.
+            - Zawiera aktualizację regionów, obiektów, odznak i mapowań OSM.
+            - Przed merge: zweryfikuj manifest i uruchom `restore_reference_data` na TEST.
+          draft: false

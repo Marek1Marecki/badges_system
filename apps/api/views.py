@@ -618,7 +618,14 @@ class BadgeVersionSwitchView(View):
                     409,
                     "Nie można zmienić wersji dla zakończonej odznaki.",
                 )
-            return _problem_detail(request, "not-found", "Nie znaleziono", 404, str(exc))
+            logger.warning("UseCaseError podczas zmiany wersji: %s", exc, exc_info=True)
+            return _problem_detail(
+                request,
+                "not-found",
+                "Nie znaleziono",
+                404,
+                "Nie znaleziono żądanego zasobu.",
+            )
         except ApplicationException as exc:
             return _handle_application_exception(request, exc)
 
