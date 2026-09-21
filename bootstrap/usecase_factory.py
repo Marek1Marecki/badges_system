@@ -77,7 +77,11 @@ def create_usecases(adapters: Adapters) -> AppContainer:
         ),
         build_tourist_region_geometry=BuildTouristRegionGeometryUseCase(geometry_repository=adapters.region_geom_repo),
         explore_map=ExploreMapUseCase(map_repository=adapters.map_repo, cache=adapters.cache),
-        fetch_badge_news=FetchBadgeNewsUseCase(scraper=adapters.news_scraper, repository=adapters.news_repo),
+        fetch_badge_news=FetchBadgeNewsUseCase(
+            scraper=adapters.news_scraper,
+            repository=adapters.news_repo,
+            logger=adapters.logger,
+        ),
         fetch_osm_data=FetchOsmDataUseCase(osm_repository=adapters.osm_repo, clock=adapters.clock),
         run_osm_night_watchman=RunOsmNightWatchmanUseCase(osm_repository=adapters.osm_repo, clock=adapters.clock),
         get_mvt_tile=GetMvtTileUseCase(mvt_repository=adapters.mvt_repo, cache=adapters.cache),

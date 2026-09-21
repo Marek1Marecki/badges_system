@@ -15,6 +15,7 @@ from infrastructure.adapters.clock import SystemClock
 from infrastructure.adapters.django_cache import DjangoCacheAdapter
 from infrastructure.adapters.django_uow import DjangoUnitOfWork
 from infrastructure.adapters.gpx_parser import DjangoGpxParser
+from infrastructure.adapters.log_adapter import LoguruLoggingAdapter
 from infrastructure.adapters.news_scraper import BeautifulSoupNewsScraper
 from infrastructure.adapters.osm_repository import OsmRepository
 from infrastructure.adapters.persistence.django_badge_repo import DjangoBadgeRepository
@@ -54,6 +55,7 @@ class Adapters:
     progress_repo: DjangoUserProgressRepository
     uow: DjangoUnitOfWork
     event_publisher: CeleryEventPublisher
+    logger: LoguruLoggingAdapter
 
 
 def create_adapters() -> Adapters:
@@ -81,6 +83,7 @@ def create_adapters() -> Adapters:
     uow = DjangoUnitOfWork()
     event_publisher = CeleryEventPublisher()
     news_scraper = BeautifulSoupNewsScraper()
+    log_adapter = LoguruLoggingAdapter()
 
     return Adapters(
         clock=clock,
@@ -101,4 +104,5 @@ def create_adapters() -> Adapters:
         progress_repo=progress_repo,
         uow=uow,
         event_publisher=event_publisher,
+        logger=log_adapter,
     )

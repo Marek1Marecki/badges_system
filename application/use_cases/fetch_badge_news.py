@@ -1,17 +1,29 @@
 """Use Case: Pobieranie nowości z portali turystycznych (US-A01)."""
 
-from loguru import logger
-
+from application.exceptions import TransientInfrastructureError
+from application.ports.logging_port import LoggingPort
 from application.ports.news_port import NewsRepositoryPort, NewsScraperPort
 
 
 class FetchBadgeNewsUseCase:
     """Pobiera nowości z portali turystycznych i zapisuje je do bazy."""
 
-    def __init__(self, scraper: NewsScraperPort, repository: NewsRepositoryPort) -> None:
-        """Inicjalizuje use case z scraperem i repozytorium."""
+    def __init__(
+        self,
+        scraper: NewsScraperPort,
+        repository: NewsRepositoryPort,
+        logger: LoggingPort,
+    ) -> None:
+        """Inicjalizuje use case z scraperem, repozytorium i loggerem.
+
+        Args:
+            scraper: Port dla scrapera stron turystycznych.
+            repository: Port dla repozytorium newsów.
+            logger: Port logowania — implementacja w infrastructure/ (loguru).
+        """
         self._scraper = scraper
         self._repo = repository
+        self._logger = logger
 
     def execute(self) -> str:
         """Pobiera newsy i zapisuje je do bazy omijając duplikaty.
@@ -24,8 +36,8 @@ class FetchBadgeNewsUseCase:
         """
         try:
             items = self._scraper.fetch_news()
-        except Exception as e:
-            logger.warning(f"Scraper odznak nie mógł pobrać danych (zignorowano błąd): {e}")
+        except TransientInfrastructureError as e:
+            self._logger.warning("Scraper odznak nie mógł pobrać danych (zignorowano błąd): {}", e)
             return f"PRZERWANO (Ciche niepowodzenie): {e}"
 
         if not items:

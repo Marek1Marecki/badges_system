@@ -10,8 +10,12 @@
 
 ## [Unreleased]
 
+### Zmieniono
+- **FetchBadgeNewsUseCase (US-A01):** Use Case teraz przyjmuje `LoggingPort` przez dependency injection (zamiast bezpośredniego importu `loguru`), a `except` zawęża się do `TransientInfrastructureError` (zamiast broad `Exception`). Dodano `LoggingPort` i `LoguruLoggingAdapter`. Testy zaktualizowane — 3 testy FetchBadgeNews przechodzą.
+
 ### Dodano
 - **Distributed Tracing (AUDYT-117):** Lekki mechanizm Distributed Tracing oparty na `ContextVar` i Celery `headers`, korelujący logi HTTP (Gunicorn) z logami asynchronicznymi (Celery). Formalizowany w ADR-030.
+- **LoggingPort (AUDYT-004/US-A01):** Port logowania w warstwie aplikacji i `LoguruLoggingAdapter` w `infrastructure/adapters/`.
 
 ---
 

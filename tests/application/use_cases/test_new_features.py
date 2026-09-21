@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from application.dto.map_dto import MapExploreRequestDTO
-from application.exceptions import ConflictError, UseCaseError
+from application.exceptions import ConflictError, TransientInfrastructureError, UseCaseError
 
 # 1. LOGISTYKA KANBAN
 from application.use_cases.advance_logistic_status import AdvanceLogisticStatusUseCase
@@ -153,10 +153,11 @@ class TestFetchBadgeNewsUseCase:
     def test_fail_silently_on_scraper_error(self) -> None:
         """Cicho obsługuje błąd scrapera."""
         scraper = MagicMock()
-        scraper.fetch_news.side_effect = Exception("HTTP 500")
+        scraper.fetch_news.side_effect = TransientInfrastructureError("HTTP 500")
         repo = MagicMock()
+        log_adapter = MagicMock()
 
-        uc = FetchBadgeNewsUseCase(scraper, repo)
+        uc = FetchBadgeNewsUseCase(scraper, repo, log_adapter)
         result = uc.execute()
 
         assert "PRZERWANO (Ciche niepowodzenie)" in result
@@ -166,7 +167,9 @@ class TestFetchBadgeNewsUseCase:
         """Zwraca komunikat gdy brak elementów."""
         scraper = MagicMock()
         scraper.fetch_news.return_value = []
-        uc = FetchBadgeNewsUseCase(scraper, MagicMock())
+        log_adapter = MagicMock()
+
+        uc = FetchBadgeNewsUseCase(scraper, MagicMock(), log_adapter)
         assert "Nie znaleziono żadnych elementów" in uc.execute()
 
     def test_saves_new_items_successfully(self) -> None:
@@ -174,10 +177,10 @@ class TestFetchBadgeNewsUseCase:
         scraper = MagicMock()
         scraper.fetch_news.return_value = ["item1", "item2"]
         repo = MagicMock()
-        # Pierwszy wpis nowy (True), drugi to duplikat (False)
         repo.save_news_item.side_effect = [True, False]
+        log_adapter = MagicMock()
 
-        uc = FetchBadgeNewsUseCase(scraper, repo)
+        uc = FetchBadgeNewsUseCase(scraper, repo, log_adapter)
         result = uc.execute()
 
         assert "z czego 1 to nowe wpisy" in result
