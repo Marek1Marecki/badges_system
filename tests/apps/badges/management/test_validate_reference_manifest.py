@@ -74,3 +74,118 @@ class TestValidateJsonSchema:
         with pytest.raises(CommandError) as exc_info:
             cmd._validate_json_schema(manifest, base_data_dir)
         assert "JSON Schema" in str(exc_info.value)
+
+
+class TestValidateStructure:
+    """Testy metody _validate_structure."""
+
+    def test_valid_structure(self, base_data_dir: Path) -> None:
+        """Poprawna struktura manifestu — brak wyjątku."""
+        _write_badge_versions(base_data_dir, [{"pk": 1, "rules": [{"type": "MinAgeRule"}]}])
+        cmd = Command()
+        manifest = json.loads((base_data_dir / "manifest.json").read_text(encoding="utf-8"))
+        cmd._validate_structure(manifest, base_data_dir / "manifest.json")
+
+    def test_missing_required_field(self, base_data_dir: Path) -> None:
+        """Brak wymaganego pola — CommandError."""
+        cmd = Command()
+        manifest = {"description": "test", "files": [], "compatible_schema": "1.0"}
+        with pytest.raises(CommandError, match="nie zawiera wymaganych pól"):
+            cmd._validate_structure(manifest, base_data_dir / "manifest.json")
+
+    def test_wrong_field_type(self, base_data_dir: Path) -> None:
+        """Błędny typ pola — CommandError."""
+        cmd = Command()
+        manifest = {"snapshot_version": "2026-01-01", "description": "test", "files": "not-a-list", "statistics": {}, "compatible_schema": "1.0"}
+        with pytest.raises(CommandError, match="błędny typ"):
+            cmd._validate_structure(manifest, base_data_dir / "manifest.json")
+
+    def test_empty_files_list(self, base_data_dir: Path) -> None:
+        """Pusta lista files — CommandError."""
+        cmd = Command()
+        manifest = {"snapshot_version": "2026-01-01", "description": "test", "files": [], "statistics": {}, "compatible_schema": "1.0"}
+        with pytest.raises(CommandError, match="manifest jest puste"):
+            cmd._validate_structure(manifest, base_data_dir / "manifest.json")
+
+
+class TestValidateSchemaVersion:
+    """Testy metody _validate_schema_version."""
+
+    def test_valid_schema_version(self):
+        """Poprawna wersja schematu — brak wyjątku."""
+        cmd = Command()
+        cmd._validate_schema_version({"compatible_schema": "1.0"})
+
+    def test_invalid_schema_version(self):
+        """Nieprawidłowa wersja schematu — CommandError."""
+        cmd = Command()
+        with pytest.raises(CommandError, match="Niekompatybilny schemat"):
+            cmd._validate_schema_version({"compatible_schema": "2.0"})
+
+
+class TestValidateFilesExist:
+    """Testy metody _validate_files_exist."""
+
+    def test_all_files_exist(self, base_data_dir: Path) -> None:
+        """Wszystkie pliki istnieją — brak wyjątku."""
+        _write_badge_versions(base_data_dir, [{"pk": 1, "rules": [{"type": "MinAgeRule"}]}])
+        cmd = Command()
+        manifest = json.loads((base_data_dir / "manifest.json").read_text(encoding="utf-8"))
+        cmd._validate_files_exist(manifest, base_data_dir)
+
+    def test_missing_files(self, base_data_dir: Path) -> None:
+        """Brakujące pliki — CommandError."""
+        cmd = Command()
+        manifest = {"files": ["nonexistent.json.gz"]}
+        with pytest.raises(CommandError, match="Brakujące pliki"):
+            cmd._validate_files_exist(manifest, base_data_dir)
+
+
+class TestValidateChecksums:
+    """Testy metody _validate_checksums."""
+
+    def test_valid_checksums(self, base_data_dir: Path) -> None:
+        """Poprawne checksums — brak wyjątku."""
+        _write_badge_versions(base_data_dir, [{"pk": 1, "rules": [{"type": "MinAgeRule"}]}])
+        cmd = Command()
+        import hashlib
+        file_path = base_data_dir / "03_badges.json.gz"
+        expected_checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()
+        manifest = {
+            "files": ["03_badges.json.gz"],
+            "checksums": {"03_badges.json.gz": expected_checksum},
+        }
+        cmd._validate_checksums(manifest, base_data_dir)
+
+    def test_missing_checksums_field(self, base_data_dir: Path) -> None:
+        """Brak pola checksums — CommandError."""
+        cmd = Command()
+        manifest = {"files": ["03_badges.json.gz"], "statistics": {}}
+        with pytest.raises(CommandError, match="nie zawiera pola 'checksums'"):
+            cmd._validate_checksums(manifest, base_data_dir)
+
+    def test_checksums_not_dict(self, base_data_dir: Path) -> None:
+        """checksums nie jest słownikiem — CommandError."""
+        cmd = Command()
+        manifest = {"files": ["03_badges.json.gz"], "checksums": "not-a-dict", "statistics": {}}
+        with pytest.raises(CommandError, match="musi być słownikiem"):
+            cmd._validate_checksums(manifest, base_data_dir)
+
+    def test_missing_checksum_for_file(self, base_data_dir: Path) -> None:
+        """Brak checksum dla pliku — CommandError."""
+        cmd = Command()
+        manifest = {"files": ["03_badges.json.gz"], "checksums": {"other.json.gz": "abc"}, "statistics": {}}
+        with pytest.raises(CommandError, match="brak checksum w manifest"):
+            cmd._validate_checksums(manifest, base_data_dir)
+
+    def test_checksum_mismatch(self, base_data_dir: Path) -> None:
+        """Nieprawidłowy checksum — CommandError."""
+        _write_badge_versions(base_data_dir, [{"pk": 1, "rules": [{"type": "MinAgeRule"}]}])
+        cmd = Command()
+        manifest = {
+            "files": ["03_badges.json.gz"],
+            "checksums": {"03_badges.json.gz": "wrong_checksum"},
+            "statistics": {},
+        }
+        with pytest.raises(CommandError, match="checksum mismatch"):
+            cmd._validate_checksums(manifest, base_data_dir)

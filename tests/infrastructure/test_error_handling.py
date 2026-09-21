@@ -1,6 +1,8 @@
 """Testy dla error handling middleware."""
 
-from django.http import HttpRequest, JsonResponse
+import pytest
+from django.core.exceptions import PermissionDenied
+from django.http import Http404, HttpRequest, JsonResponse
 
 from infrastructure.middleware.error_handling import RFC7807ErrorMiddleware, _problem_detail
 
@@ -73,7 +75,10 @@ class TestRFC7807ErrorMiddleware:
 
     def test_init(self):
         """Test inicjalizacji middleware."""
-        get_response = lambda request: None
+
+        def get_response(request):
+            return None
+
         middleware = RFC7807ErrorMiddleware(get_response)
         assert middleware.get_response == get_response
 
@@ -127,6 +132,15 @@ class TestRFC7807ErrorMiddleware:
         assert data["status"] == 500
         assert data["instance"] == "/test/path"
         assert data["request_id"] == "req_12345678"
+
+    @pytest.mark.parametrize("exception", [Http404("Not found"), PermissionDenied("Denied")])
+    def test_process_exception_allows_standard_django_exceptions(self, exception):
+        request = HttpRequest()
+        request.path = "/test/path"
+        request.request_id = "req_12345678"
+        middleware = RFC7807ErrorMiddleware(lambda r: None)
+
+        assert middleware.process_exception(request, exception) is None
 
     def test_process_exception_with_various_exceptions(self):
         """Test process_exception z różnymi typami wyjątków."""

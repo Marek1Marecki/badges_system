@@ -3,7 +3,11 @@
 from datetime import UTC, date, datetime
 
 from application.dto.ascent_dto import AscentRequestDTO, BulkAscentResultDTO
-from application.services.bitemporal_validation_service import BitemporalValidationService
+from application.services.bitemporal_validation_service import (
+    BitemporalValidationResult,
+    BitemporalValidationService,
+    BitemporalViolation,
+)
 from application.use_cases.bulk_log_ascents import BulkLogAscentsUseCase
 from tests.fakes.clock import FakeClock
 from tests.fakes.mocks import MockEventPublisher, MockUnitOfWork
@@ -39,6 +43,16 @@ def _use_case(repo: MockAscentRepository, clock: FakeClock) -> BulkLogAscentsUse
 
 class TestBulkLogAscentsUseCase:
     """Test BulkLogAscentsUseCase."""
+
+    def test_validation_result_reports_violations(self):
+        assert BitemporalValidationResult(accepted=[], violations=[]).has_violations is False
+        assert (
+            BitemporalValidationResult(
+                accepted=[],
+                violations=[BitemporalViolation(object_id=1, reason="Invalid date")],
+            ).has_violations
+            is True
+        )
 
     def test_execute_with_empty_list(self):
         """Test execute with empty ascents list."""

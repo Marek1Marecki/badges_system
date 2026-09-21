@@ -73,6 +73,7 @@ digraph G {
     "application.ports.event_publisher_port" [fillcolor="khaki"];
     "application.ports.explore_queries_port" [fillcolor="khaki"];
     "application.ports.gpx_port" [fillcolor="khaki"];
+    "application.ports.logging_port" [fillcolor="khaki"];
     "application.ports.map_port" [fillcolor="khaki"];
     "application.ports.mvt_port" [fillcolor="khaki"];
     "application.ports.news_port" [fillcolor="khaki"];
@@ -92,6 +93,7 @@ digraph G {
     "infrastructure.adapters.django_cache" [fillcolor="orange"];
     "infrastructure.adapters.django_uow" [fillcolor="orange"];
     "infrastructure.adapters.gpx_parser" [fillcolor="orange"];
+    "infrastructure.adapters.log_adapter" [fillcolor="orange"];
     "infrastructure.adapters.news_scraper" [fillcolor="orange"];
     "infrastructure.adapters.osm_adapter" [fillcolor="orange"];
     "infrastructure.adapters.osm_repository" [fillcolor="orange"];
@@ -235,6 +237,8 @@ digraph G {
   "application.use_cases.explore_map" -> "application.dto.map_dto";
   "application.use_cases.explore_map" -> "application.ports.cache_port";
   "application.use_cases.explore_map" -> "application.ports.map_port";
+  "application.use_cases.fetch_badge_news" -> "application.exceptions";
+  "application.use_cases.fetch_badge_news" -> "application.ports.logging_port";
   "application.use_cases.fetch_badge_news" -> "application.ports.news_port";
   "application.use_cases.fetch_osm_data" -> "application.exceptions";
   "application.use_cases.fetch_osm_data" -> "application.ports.clock_port";
@@ -376,6 +380,7 @@ digraph G {
   "infrastructure.adapters.django_uow" -> "application.ports.uow_port";
   "infrastructure.adapters.gpx_parser" -> "application.ports.gpx_port";
   "infrastructure.adapters.gpx_parser" -> "infrastructure.exceptions";
+  "infrastructure.adapters.log_adapter" -> "application.ports.logging_port";
   "infrastructure.adapters.news_scraper" -> "application.dto.news_dto";
   "infrastructure.adapters.news_scraper" -> "application.ports.news_port";
   "infrastructure.adapters.news_scraper" -> "infrastructure.exceptions";

@@ -1,10 +1,16 @@
 """Testy jednostkowe dla BadgeAwardingDomainService (Grandfather Clause)."""
 
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 
+from domain.entities.badge_version import BadgeVersionDomain
 from domain.services.badge_awarding_domain_service import BadgeAwardingDomainService
+from domain.services.badge_eligibility_domain_service import (
+    BadgeEligibilityDomainService,
+    PeakSimulationResult,
+)
+from domain.value_objects.verification_context import VerificationContext
 from domain.value_objects.verification_result import TierResult, VerificationResult
 
 
@@ -70,10 +76,24 @@ class TestBadgeAwardingDomainService:
         )
         assert anchor == date(2015, 6, 1)
 
-    def test_determine_anchor_date_uses_fallback_when_no_ascent(self, service) -> None:
-        """Brak wejść → data bieżąca (fallback)."""
-        anchor = service.determine_anchor_date(
-            oldest_ascent_date=None,
-            fallback_date=date(2026, 9, 3),
+    def test_simulate_peak_value_returns_gray_for_empty_pool(self) -> None:
+        version = BadgeVersionDomain(
+            version_id="empty",
+            rules=[],
+            pool_peak_ids=frozenset(),
+            tiers=[],
         )
-        assert anchor == date(2026, 9, 3)
+        context = VerificationContext(evaluation_time=datetime(2026, 1, 1))
+
+        result = BadgeEligibilityDomainService().simulate_peak_value(
+            version=version,
+            domain_ascents=[],
+            peak_id=1,
+            today_date=date(2026, 1, 1),
+            current_cycle_peak_ids=frozenset(),
+            all_climbed_peak_ids=frozenset(),
+            context=context,
+            current_valid_count=0,
+        )
+
+        assert result == PeakSimulationResult(color="GRAY", score=0)

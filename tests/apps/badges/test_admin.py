@@ -1,5 +1,7 @@
 """Testy dla konfiguracji Django Admin."""
 
+import pytest
+from django.http import QueryDict
 from unittest.mock import MagicMock, Mock, patch
 
 from leaflet.admin import LeafletGeoAdminMixin
@@ -15,19 +17,26 @@ from apps.badges.admin import (
     OsmTypeMappingAdmin,
     PeakInBadgeFilter,
     PendingMappingFilter,
+    ProximityCandidateAdmin,
     RegionFlatAdmin,
     RegionLevelFilter,
+    ResolutionDirectionFilter,
     TouristObjectAdmin,
 )
+from apps.badges.admin.forms import BadgeTierInlineFormSet
 from apps.badges.models import (
     BadgeModel,
     BadgeTierModel,
     BadgeVersionModel,
     ObjectRegionCache,
     OsmTypeMapping,
+    ProximityCandidate,
     RegionFlatModel,
     TouristObject,
 )
+
+from django import forms
+from django.db.models import F
 
 
 class TestRegionFlatAdmin:
@@ -474,3 +483,179 @@ class TestBadgeTierInline:
         """Test pól inline'a."""
         expected_fields = ("name", "order", "required_peaks_count", "badge_image")
         assert BadgeTierInline.fields == expected_fields
+
+
+class TestPeakInBadgeFilter:
+    """Testy filtra PeakInBadgeFilter."""
+
+    def test_filter_attributes(self):
+        """Test atrybutów filtra."""
+        with patch.object(PeakInBadgeFilter, "lookups", return_value=[]):
+            filter_obj = PeakInBadgeFilter(None, QueryDict(mutable=True), TouristObject, None)
+        assert filter_obj.title == "Zawiera obiekt w puli"
+        assert filter_obj.parameter_name == "has_peak"
+
+    def test_filter_lookups(self):
+        """Test metody lookups."""
+        with patch("apps.badges.models.TouristObject.objects") as mock_objects:
+            mock_objects.filter.return_value.values_list.return_value.distinct.return_value.order_by.return_value = [
+                (1, "Szczyt A"),
+                (2, "Szczyt B"),
+            ]
+            with patch.object(PeakInBadgeFilter, "lookups", return_value=[]):
+                filter_obj = PeakInBadgeFilter(None, QueryDict(mutable=True), TouristObject, None)
+
+            lookups = filter_obj.lookups(None, None)
+            assert lookups == [(1, "Szczyt A"), (2, "Szczyt B")]
+
+    def test_filter_queryset_with_value(self):
+        """Test filtrowania querysetu z wartością."""
+        with patch.object(PeakInBadgeFilter, "lookups", return_value=[]):
+            qd = QueryDict(mutable=True)
+            qd["has_peak"] = "1"
+            filter_obj = PeakInBadgeFilter(None, qd, TouristObject, None)
+
+        mock_queryset = Mock()
+        mock_filtered = Mock()
+        mock_queryset.filter.return_value = mock_filtered
+
+        result = filter_obj.queryset(None, mock_queryset)
+
+        assert result == mock_filtered
+        mock_queryset.filter.assert_called_once_with(pool_peaks__id="1")
+
+    def test_filter_queryset_without_value(self):
+        """Test brak filtrowania gdy nie podano wartości."""
+        with patch.object(PeakInBadgeFilter, "lookups", return_value=[]):
+            filter_obj = PeakInBadgeFilter(None, QueryDict(mutable=True), TouristObject, None)
+
+        mock_queryset = Mock()
+        result = filter_obj.queryset(None, mock_queryset)
+        assert result == mock_queryset
+
+
+class TestResolutionDirectionFilter:
+    """Testy filtra ResolutionDirectionFilter."""
+
+    def test_filter_attributes(self):
+        """Test atrybutów filtra."""
+        with patch.object(ResolutionDirectionFilter, "lookups", return_value=[]):
+            filter_obj = ResolutionDirectionFilter(None, QueryDict(mutable=True), ProximityCandidate, None)
+        assert filter_obj.title == "Kierunek połączenia (Dla Rozwiązanych)"
+        assert filter_obj.parameter_name == "direction"
+
+    def test_filter_lookups(self):
+        """Test metody lookups."""
+        with patch.object(ResolutionDirectionFilter, "lookups", return_value=[]):
+            filter_obj = ResolutionDirectionFilter(None, QueryDict(mutable=True), ProximityCandidate, None)
+
+        lookups = filter_obj.lookups(None, None)
+        assert lookups == (
+            ("A_PARENT", "A jest Rodzicem (A ➔ B)"),
+            ("B_PARENT", "B jest Rodzicem (A ⬅ B)"),
+        )
+
+    def test_filter_queryset_a_parent(self):
+        """Test filtrowania querysetu dla kierunku A_PARENT."""
+        with patch.object(ResolutionDirectionFilter, "lookups", return_value=[]):
+            qd = QueryDict(mutable=True)
+            qd["direction"] = "A_PARENT"
+            filter_obj = ResolutionDirectionFilter(None, qd, ProximityCandidate, None)
+
+        mock_queryset = Mock()
+        mock_filtered = Mock()
+        mock_queryset.filter.return_value = mock_filtered
+
+        result = filter_obj.queryset(None, mock_queryset)
+
+        assert result == mock_filtered
+        mock_queryset.filter.assert_called_once_with(obj_b__parent_object=F("obj_a"))
+
+    def test_filter_queryset_b_parent(self):
+        """Test filtrowania querysetu dla kierunku B_PARENT."""
+        with patch.object(ResolutionDirectionFilter, "lookups", return_value=[]):
+            qd = QueryDict(mutable=True)
+            qd["direction"] = "B_PARENT"
+            filter_obj = ResolutionDirectionFilter(None, qd, ProximityCandidate, None)
+
+        mock_queryset = Mock()
+        mock_filtered = Mock()
+        mock_queryset.filter.return_value = mock_filtered
+
+        result = filter_obj.queryset(None, mock_queryset)
+
+        assert result == mock_filtered
+        mock_queryset.filter.assert_called_once_with(obj_a__parent_object=F("obj_b"))
+
+    def test_filter_queryset_without_value(self):
+        """Test brak filtrowania gdy nie podano wartości."""
+        with patch.object(ResolutionDirectionFilter, "lookups", return_value=[]):
+            filter_obj = ResolutionDirectionFilter(None, QueryDict(mutable=True), ProximityCandidate, None)
+
+        mock_queryset = Mock()
+        result = filter_obj.queryset(None, mock_queryset)
+        assert result == mock_queryset
+
+
+class TestBadgeTierInlineFormSet:
+    """Testy walidacji BadgeTierInlineFormSet."""
+
+    def _create_formset_instance(self, forms_data):
+        class TestableFormSet(BadgeTierInlineFormSet):
+            def __init__(self, forms_data):
+                self._errors = []
+                self.forms = []
+                for data in forms_data:
+                    form = MagicMock()
+                    form.cleaned_data = data
+                    form.errors = []
+                    self.forms.append(form)
+
+        return TestableFormSet(forms_data)
+
+    def test_clean_duplicate_orders(self):
+        """Test wykrywania duplikatów order."""
+        formset_instance = self._create_formset_instance([
+            {"order": 1},
+            {"order": 1},
+        ])
+        with patch.object(forms.BaseInlineFormSet, "clean", return_value=None):
+            with pytest.raises(forms.ValidationError, match="Kolejność zdobywania stopni"):
+                formset_instance.clean()
+
+    def test_clean_unique_orders(self):
+        """Test akceptowania unikalnych order."""
+        formset_instance = self._create_formset_instance([
+            {"order": 1},
+            {"order": 2},
+        ])
+        with patch.object(forms.BaseInlineFormSet, "clean", return_value=None):
+            formset_instance.clean()
+
+    def test_clean_skips_empty_forms(self):
+        """Test pomijania pustych formularzy."""
+        formset_instance = self._create_formset_instance([
+            {},
+            {"order": 1},
+        ])
+        with patch.object(forms.BaseInlineFormSet, "clean", return_value=None):
+            formset_instance.clean()
+
+    def test_clean_skips_deleted_forms(self):
+        """Test pomijania formularzy oznaczonych do usunięcia."""
+        formset_instance = self._create_formset_instance([
+            {"DELETE": True, "order": 1},
+            {"order": 2},
+        ])
+        with patch.object(forms.BaseInlineFormSet, "clean", return_value=None):
+            formset_instance.clean()
+
+    def test_clean_skips_forms_with_errors(self):
+        """Test pomijania formularzy z błędami."""
+        formset_instance = self._create_formset_instance([
+            {"order": 1},
+            {"order": 1},
+        ])
+        formset_instance._errors = ["some error"]
+        with patch.object(forms.BaseInlineFormSet, "clean", return_value=None):
+            formset_instance.clean()

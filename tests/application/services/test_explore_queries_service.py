@@ -1,5 +1,6 @@
 """Testy dla ExploreQueriesService."""
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -211,3 +212,127 @@ class TestExploreQueriesService:
         result = service.get_poi_ranking(1)
 
         assert result.ranking[0].items[0]["color"] == "RED"
+
+    def test_get_catalog_badges_delegates_to_repository(self, service):
+        entries = [object()]
+        service._query_repo.get_catalog_badges.return_value = entries
+
+        result = service.get_catalog_badges(42)
+
+        assert result is entries
+        service._query_repo.get_catalog_badges.assert_called_once_with(42)
+
+    def test_get_badge_details_builds_dto(self, service):
+        badge = SimpleNamespace(organizer=SimpleNamespace(has_publication_consent=True))
+        target_version = object()
+        tier_with_image = SimpleNamespace(
+            name="Standard",
+            required_peaks_count=3,
+            badge_image=SimpleNamespace(url="/badges/standard.png"),
+        )
+        tier_without_image = SimpleNamespace(name="Mini", required_peaks_count=0, badge_image=None)
+        obj = SimpleNamespace(id=10, name="Giewont", altitude=1894.0)
+        service._query_repo.get_badge_detail_data.return_value = {
+            "badge": badge,
+            "progress": None,
+            "target_version": target_version,
+            "tiers": [tier_with_image, tier_without_image],
+            "objects": [obj],
+        }
+        service._cache.get.return_value = {"scores": {10: 7}, "colors": {10: "GREEN"}}
+
+        result = service.get_badge_details("KGP", 42)
+
+        assert result.badge is badge
+        assert result.progress is None
+        assert result.evaluation is None
+        assert result.target_version is target_version
+        assert result.has_consent is True
+        assert result.objects_list[0].id == 10
+        assert result.objects_list[0].score == 7
+        assert result.objects_list[0].color == "GREEN"
+        assert result.tiers_info[0].required_count == 3
+        assert result.tiers_info[0].image_url == "/badges/standard.png"
+        assert result.tiers_info[1].required_count == 0
+        assert result.tiers_info[1].image_url is None
+        service._query_repo.get_badge_detail_data.assert_called_once_with("KGP", 42)
+        service._cache.get.assert_called_once_with("map_state:42")
+
+    def test_get_object_details_builds_dto(self, service):
+        obj = SimpleNamespace(id=10)
+        parent = SimpleNamespace(id=1)
+        child = SimpleNamespace(id=11)
+        badge = SimpleNamespace(badge=SimpleNamespace(code="KGP", name="KGP"))
+        service._query_repo.get_object_detail_data.return_value = {
+            "obj": obj,
+            "regions": [("VOIVODESHIP", "Małopolskie")],
+            "badges": [badge],
+            "ascents": [object()],
+            "parent": parent,
+            "children": [child],
+            "subscribed_badge_codes": ["KGP"],
+        }
+        service._cache.get.return_value = {"scores": {10: 2}, "colors": {10: "BLUE"}}
+
+        result = service.get_object_details(10, 42)
+
+        assert result.obj is obj
+        assert result.regions[0].level == "VOIVODESHIP"
+        assert result.regions[0].name == "Małopolskie"
+        assert result.badges_list == [{"code": "KGP", "name": "KGP"}]
+        assert result.score == 2
+        assert result.color == "BLUE"
+        assert result.parent is parent
+        assert result.children == [child]
+        assert result.subscribed_badge_codes == ["KGP"]
+        service._query_repo.get_object_detail_data.assert_called_once_with(10, 42)
+        service._cache.get.assert_called_once_with("map_state:42")
+
+    def test_get_region_context_builds_dto_and_extent(self, service):
+        region = SimpleNamespace(shape=SimpleNamespace(extent=(1.0, 2.0, 3.0, 4.0)))
+        first = SimpleNamespace(id=10, name="Pierwszy", type="Szczyt")
+        second = SimpleNamespace(id=11, name="Drugi", type="Schronisko")
+        service._query_repo.get_region_context_data.return_value = {
+            "region": region,
+            "objects": [first, second],
+            "parent_region": SimpleNamespace(id=1),
+            "parent_level": "MACROREGION",
+            "children_regions": [SimpleNamespace(id=12)],
+            "children_level": "MESOREGION",
+            "neighbors": [SimpleNamespace(id=13)],
+        }
+        service._cache.get.return_value = {"scores": {10: 5, 11: 9}, "colors": {10: "GREEN", 11: "RED"}}
+
+        result = service.get_region_context("VOIVODESHIP", 2, 42)
+
+        assert result.region is region
+        assert result.extent == (1.0, 2.0, 3.0, 4.0)
+        assert [entry.id for entry in result.ranking_data] == [11, 10]
+        assert result.ranking_data[0].score == 9
+        assert result.ranking_data[0].color == "RED"
+        assert result.total_objects == 2
+        assert result.parent_level == "MACROREGION"
+        assert result.children_level == "MESOREGION"
+        service._query_repo.get_region_context_data.assert_called_once_with("VOIVODESHIP", 2, 42)
+        service._cache.get.assert_called_once_with("map_state:42")
+
+    def test_get_region_context_rejects_unknown_level(self, service):
+        service._query_repo.get_region_context_data.return_value = None
+
+        with pytest.raises(ValueError, match="Nieobsługiwany poziom regionu: UNKNOWN"):
+            service.get_region_context("UNKNOWN", 2, 42)
+
+    def test_get_organizer_detail_builds_dto(self, service):
+        organizer = object()
+        service._query_repo.get_organizer_detail.return_value = organizer
+
+        result = service.get_organizer_detail(7)
+
+        assert result.organizer is organizer
+        service._query_repo.get_organizer_detail.assert_called_once_with(7)
+
+    def test_get_subscribed_badge_ids_delegates_to_repository(self, service):
+        service._query_repo.get_subscribed_badge_ids.return_value = [1, 2]
+
+        assert service.get_subscribed_badge_ids(42) == [1, 2]
+        service._query_repo.get_subscribed_badge_ids.assert_called_once_with(42)

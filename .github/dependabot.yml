@@ -43,21 +43,7 @@ updates:
     # Dependabot otwiera osobne PR-y → asynchroniczny bump → version mismatch.
     # Wyłączamy automat i ręcznie podnosimy oba SHA jednocześnie.
     ignore:
-      - dependency-name: "github/codeql-action"
+      - dependency-name: "github/codeql-action/init"
         update-type: "all"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "04:00"
-      timezone: "Europe/Warsaw"
-    open-pull-requests-limit: 5
-    cooldown:
-      default-days: 7
-    reviewers:
-      - "Marek1Marecki"
-    commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-    allow:
-      - dependency-type: "all"
+      - dependency-name: "github/codeql-action/analyze"
+        update-type: "all"
