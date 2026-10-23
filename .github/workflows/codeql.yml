@@ -48,6 +48,9 @@ jobs:
           - javascript
 
     steps:
+      # AUDYT-154: init i analyze MUSZĄ mieć IDENTYCZNY SHA.
+      # Rozdzielny bump powoduje 'Loaded a configuration file for version X, but running version Y'.
+      # Dependabot ma ustawione ignore dla obu — aktualizuj ręcznie oba razem.
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
