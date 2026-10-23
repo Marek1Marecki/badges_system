@@ -3,6 +3,16 @@
 # ==============================================================================
 
 # Ignorowanie podatności dla zależności deweloperskich Semgrep/MCP.
-# Zgodnie z decyzją architektoniczną EC-084, pakiety z grupy 'dev'
+# Zgodnie z decyzją architektoniczna EC-084, pakiety z grupy 'dev'
 # nigdy nie trafiają do skompilowanych obrazów na środowisko TEST/PRE-PROD/PROD.
 # Ryzyko wycieku zniwelowane przez `uv sync --no-dev`.
+
+# mcp 1.29.0 — transitive dep z semgrep (grupa dev). Nie trafia do PROD (EC-084).
+# opentelemetry-api 1.37.0 — transitive dep z semgrep (grupa dev). Nie trafia do PROD (EC-084).
+[[IgnoredVulns]]
+id = "GHSA-84m7-p3x7-pcfv"
+reason = "Dev-only transitive dep z semgrep (mcp). Nie trafia do obrazów PROD (EC-084)."
+
+[[IgnoredVulns]]
+id = "GHSA-xcq7-p3pf-p88h"
+reason = "Dev-only transitive dep z semgrep (opentelemetry-api). Nie trafia do obrazów PROD (EC-084)."
