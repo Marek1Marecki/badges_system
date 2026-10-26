@@ -100,7 +100,7 @@ jobs:
 
       - name: Zapisz raporty z testów do archiwum Github Actions
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: unit-test-results
           path: unit-test-results.xml
@@ -172,7 +172,7 @@ jobs:
 
       - name: Upload artefaktów diagnostycznych
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: diagnostic-artifacts
           path: |
@@ -297,7 +297,7 @@ jobs:
 
       - name: Upload raportu Trivy jako artefakt
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: trivy-report
           path: trivy-report.json
@@ -322,7 +322,7 @@ jobs:
 
       - name: Upload SBOM jako artefakt
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: sbom
           path: sbom.cdx.json
@@ -340,7 +340,7 @@ jobs:
 
       - name: Upload dump'a PostgreSQL jako artefakt
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: postgis-dump
           path: postgis_dump.custom
@@ -353,7 +353,7 @@ jobs:
 
       - name: Upload logów Dockera jako artefakt
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: integration-test-docker-logs
           path: integration-test-docker-logs.txt
@@ -479,7 +479,7 @@ jobs:
 
       - name: Upload logów Dockera jako artefakt
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: e2e-docker-logs
           path: e2e-docker-logs.txt
